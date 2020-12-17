@@ -1008,6 +1008,9 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64, 
 		return err
 	}
 
+	//注意：
+	//这行代码的位置，必须在BeginBlocker()之后，
+	//这样，在setWorkerCoinBase()方法中，才能正确读取到CandidateInfo，才能读取到正确的收益地址。
 	// Only set the coinbase if our consensus engine is running (avoid spurious block rewards)
 	if w.isRunning() {
 		if b, ok := w.engine.(consensus.Bft); ok {

@@ -438,3 +438,12 @@ func hashAtDistance(a common.Hash, n int) (b common.Hash) {
 	}
 	return b
 }
+
+//lvxiaoyi, added for center node
+func ExtractNode(sealhash common.Hash, sign []byte) (NodeID, common.NodeAddress, error) {
+	pk, err := crypto.SigToPub(sealhash.Bytes(), sign)
+	if err != nil {
+		return ZeroNodeID, common.ZeroNodeAddr, err
+	}
+	return PubkeyID(pk), crypto.PubkeyToNodeAddress(*pk), nil
+}

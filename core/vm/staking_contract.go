@@ -376,6 +376,7 @@ func (stkc *StakingContract) editCandidate(benefitAddress *common.Address, nodeI
 			TxEditorCandidate, staking.ErrCanStatusInvalid)
 	}
 
+	//发起修改交易的钱包地址，必须和发起质押的钱包地址一致
 	if from != canOld.StakingAddress {
 		return txResultHandler(vm.StakingContractAddr, stkc.Evm, "editCandidate",
 			fmt.Sprintf("contract sender: %s, can stake addr: %s", from, canOld.StakingAddress),
@@ -387,6 +388,7 @@ func (stkc *StakingContract) editCandidate(benefitAddress *common.Address, nodeI
 			return xcom.NewResult(common.InvalidParameter, nil), errors.New(common.InvalidParameter.Error())
 		}
 	} else {
+		//修改收益地址
 		if canOld.BenefitAddress != vm.RewardManagerPoolAddr {
 			canOld.BenefitAddress = *benefitAddress
 		}
@@ -447,6 +449,8 @@ func (stkc *StakingContract) editCandidate(benefitAddress *common.Address, nodeI
 			isChange = canOld.NextRewardPer != canOld.RewardPer
 		}
 
+		//分红比例修改时，和原有比例不能变化太大
+		//分红比例修改时，不能太频繁。要和上次修改间隔一定的epoch
 		if isChange {
 			rewardPerMaxChangeRange, err := gov.GovernRewardPerMaxChangeRange(blockNumber.Uint64(), blockHash)
 			if nil != err {
@@ -469,6 +473,7 @@ func (stkc *StakingContract) editCandidate(benefitAddress *common.Address, nodeI
 
 			canOld.NextRewardPer = *rewardPer
 			difference := uint16(math.Abs(float64(canOld.NextRewardPer) - float64(canOld.RewardPer)))
+			//分红比例修改时，和原有比例不能变化太大
 			if difference > rewardPerMaxChangeRange {
 				return txResultHandler(vm.StakingContractAddr, stkc.Evm, "editCandidate",
 					fmt.Sprintf("invalid rewardPer: %d, modified by more than: %d", rewardPer, rewardPerMaxChangeRange),
@@ -821,7 +826,9 @@ func (stkc *StakingContract) withdrewDelegate(stakingBlockNum uint64, nodeId dis
 		return nil, nil
 	}
 
-	issueIncome, err := stkc.Plugin.WithdrewDelegate(state, blockHash, blockNumber, amount, from, nodeId, stakingBlockNum, del, delegateRewardPerList)
+	//stats
+	//issueIncome, err := stkc.Plugin.WithdrewDelegate(state, blockHash, blockNumber, amount, from, nodeId, stakingBlockNum, del, delegateRewardPerList)
+	issueIncome, err := stkc.Plugin.WithdrewDelegate(state, blockHash, blockNumber, txHash, amount, from, nodeId, stakingBlockNum, del, delegateRewardPerList)
 	if nil != err {
 		if bizErr, ok := err.(*common.BizError); ok {
 

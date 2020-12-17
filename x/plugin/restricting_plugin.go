@@ -75,12 +75,18 @@ func (rp *RestrictingPlugin) EndBlock(blockHash common.Hash, head *types.Header,
 	if xutil.IsEndOfEpoch(head.Number.Uint64()) {
 		expect := xutil.CalculateEpoch(head.Number.Uint64())
 		rp.log.Info("begin to release restricting plan", "currentHash", blockHash, "currBlock", head.Number, "expectBlock", head.Number, "expectEpoch", expect)
-		if err := rp.releaseRestricting(expect, state); err != nil {
+
+		//到EPOCH尾了，看看是否有需要在这个结算周期释放的锁仓计划（除创世块锁仓计划）
+		//stats
+		if err := rp.releaseRestricting(head.Number.Uint64(), expect, state); err != nil {
+			//if err := rp.releaseRestricting(expect, state); err != nil {
 			return err
 		}
+		//到年尾了，需要释放创世块的锁仓计划，把钱按计划释放到激励池中
 		if ok, _ := xcom.IsYearEnd(blockHash, head.Number.Uint64()); ok {
 			rp.log.Info(fmt.Sprintf("release genesis restricting plan, blocknumber:%d", head.Number.Uint64()))
-			return rp.releaseGenesisRestrictingPlans(blockHash, state)
+			return rp.releaseGenesisRestrictingPlans(head.Number.Uint64(), blockHash, state)
+			//return rp.releaseGenesisRestrictingPlans(blockHash, state)
 		}
 	}
 	return nil
@@ -166,7 +172,9 @@ func (rp *RestrictingPlugin) updateGenesisRestrictingPlans(plans []*big.Int, sta
 }
 
 // init the genesis restricting plans
-func (rp *RestrictingPlugin) InitGenesisRestrictingPlans(statedb xcom.StateDB) error {
+//stats
+func (rp *RestrictingPlugin) InitGenesisRestrictingPlans(genesisDataCollector *common.GenesisData, statedb xcom.StateDB) error {
+	//func (rp *RestrictingPlugin) InitGenesisRestrictingPlans(statedb xcom.StateDB) error {
 
 	genesisAllowancePlans := []*big.Int{
 		new(big.Int).Mul(big.NewInt(55965742), big.NewInt(1e18)),
@@ -184,10 +192,16 @@ func (rp *RestrictingPlugin) InitGenesisRestrictingPlans(statedb xcom.StateDB) e
 	statedb.SubBalance(xcom.CDFAccount(), initialRelease)
 	statedb.AddBalance(vm.RewardManagerPoolAddr, initialRelease)
 
+	//stats:创世块，需要从基金账户，预先拨付资金到激励池。后端根据此数据，进行相关账户修改。
+	genesisDataCollector.AddInitFundItem(xcom.CDFAccount(), vm.RewardManagerPoolAddr, initialRelease)
+
 	//transfer 259096239ATP from CDFAccount to vm.RestrictingContractAddr
 	totalRestrictingPlan := new(big.Int).Mul(big.NewInt(259096239), big.NewInt(1e18))
 	statedb.SubBalance(xcom.CDFAccount(), totalRestrictingPlan)
 	statedb.AddBalance(vm.RestrictingContractAddr, totalRestrictingPlan)
+
+	//stats:收集创世块的锁仓计划，后端和处理普通锁仓计划一样处理账户（先要把plans中的金额累计）
+	genesisDataCollector.AddRestrictingCreateItem(xcom.CDFAccount(), vm.RewardManagerPoolAddr, genesisAllowancePlans)
 
 	if err := rp.updateGenesisRestrictingPlans(genesisAllowancePlans, statedb); nil != err {
 		return err
@@ -196,7 +210,9 @@ func (rp *RestrictingPlugin) InitGenesisRestrictingPlans(statedb xcom.StateDB) e
 }
 
 // release genesis restricting plans
-func (rp *RestrictingPlugin) releaseGenesisRestrictingPlans(blockHash common.Hash, statedb xcom.StateDB) error {
+//stats
+func (rp *RestrictingPlugin) releaseGenesisRestrictingPlans(blockNumber uint64, blockHash common.Hash, statedb xcom.StateDB) error {
+	//func (rp *RestrictingPlugin) releaseGenesisRestrictingPlans(blockHash common.Hash, statedb xcom.StateDB) error {
 
 	plansBytes := statedb.GetState(vm.RestrictingContractAddr, restricting.InitialFoundationRestricting)
 	var genesisAllowancePlans []*big.Int
@@ -205,13 +221,21 @@ func (rp *RestrictingPlugin) releaseGenesisRestrictingPlans(blockHash common.Has
 			rp.log.Error("failed to rlp decode the genesis allowance plans", "err", err.Error())
 			return common.InternalError.Wrap(err.Error())
 		} else {
+			//剩余的锁仓计划，类似{6，5，4}这样的数组，释放时，只释放第一个计划项，把剩余的计划项，更新到锁仓计划合于中。
+			//锁仓计划合约中，只保存剩余的锁仓释放计划项
 			remains := len(genesisAllowancePlans)
 			if remains > 0 {
 				allowance := genesisAllowancePlans[0]
 				statedb.SubBalance(vm.RestrictingContractAddr, allowance)
 				statedb.AddBalance(vm.RewardManagerPoolAddr, allowance)
+
+				//stats: 增加锁仓释放计划项目
+				common.CollectRestrictingReleaseItem(blockNumber, vm.RewardManagerPoolAddr, allowance, common.Big0)
+
 				rp.log.Info("Genesis restricting plan release", "remains", remains, "allowance", allowance)
 				genesisAllowancePlans = append(genesisAllowancePlans[:0], genesisAllowancePlans[1:]...)
+
+				//保存剩余的创世块锁仓释放计划项
 				if err := rp.updateGenesisRestrictingPlans(genesisAllowancePlans, statedb); nil != err {
 					return err
 				}
@@ -552,7 +576,9 @@ func (rp *RestrictingPlugin) storeAmount2ReleaseAmount(state xcom.StateDB, epoch
 }
 
 // releaseRestricting will release restricting plans on target epoch
-func (rp *RestrictingPlugin) releaseRestricting(epoch uint64, state xcom.StateDB) error {
+//stats
+func (rp *RestrictingPlugin) releaseRestricting(blockNumber uint64, epoch uint64, state xcom.StateDB) error {
+	//func (rp *RestrictingPlugin) releaseRestricting(epoch uint64, state xcom.StateDB) error {
 
 	rp.log.Info("Call releaseRestricting begin", "epoch", epoch)
 	releaseEpochKey, numbers := rp.getReleaseEpochNumber(state, epoch)
@@ -586,16 +612,26 @@ func (rp *RestrictingPlugin) releaseRestricting(epoch uint64, state xcom.StateDB
 					restrictInfo.NeedRelease.Add(restrictInfo.NeedRelease, releaseAmount)
 				}
 			}
+
+			//stats: 增加释放列表，此时不会释放金额到账户，但是需要修改欠释放到账户的钱
+			common.CollectRestrictingReleaseItem(blockNumber, account, common.Big0, restrictInfo.NeedRelease)
 		} else {
 			canRelease := new(big.Int).Sub(restrictInfo.CachePlanAmount, restrictInfo.StakingAmount)
 			if canRelease.Cmp(releaseAmount) >= 0 {
 				rp.transferAmount(state, vm.RestrictingContractAddr, account, releaseAmount)
 				restrictInfo.CachePlanAmount.Sub(restrictInfo.CachePlanAmount, releaseAmount)
+
+				//stats: 增加释放列表
+				common.CollectRestrictingReleaseItem(blockNumber, account, releaseAmount, common.Big0)
+
 			} else {
 				needRelease := new(big.Int).Sub(releaseAmount, canRelease)
 				rp.transferAmount(state, vm.RestrictingContractAddr, account, canRelease)
 				restrictInfo.NeedRelease.Add(restrictInfo.NeedRelease, needRelease)
 				restrictInfo.CachePlanAmount.Sub(restrictInfo.CachePlanAmount, canRelease)
+
+				//stats: 增加释放列表
+				common.CollectRestrictingReleaseItem(blockNumber, account, canRelease, needRelease)
 			}
 		}
 

@@ -21,9 +21,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/PlatONnetwork/PlatON-Go/core/statsdb"
 	"io"
 	"os"
 	"reflect"
+	"strings"
 	"unicode"
 
 	cli "gopkg.in/urfave/cli.v1"
@@ -75,11 +77,19 @@ var tomlSettings = toml.Config{
 type ethstatsConfig struct {
 	URL string `toml:",omitempty"`
 }
+type statsConfig struct {
+	URL                  string `toml:",omitempty"`
+	BlockTopic           string `toml:",omitempty"`
+	AccountCheckingTopic string `toml:",omitempty"`
+	AccountCheckingGroup string `toml:",omitempty"`
+}
 
 type platonConfig struct {
-	Eth      eth.Config
-	Node     node.Config
-	Ethstats ethstatsConfig
+	Eth  eth.Config
+	Node node.Config
+	//Ethstats ethstatsConfig
+	//stats：数据统计
+	Stats statsConfig
 }
 
 func loadConfig(file string, cfg *platonConfig) error {
@@ -169,6 +179,28 @@ func makeConfigNode(ctx *cli.Context) (*node.Node, platonConfig) {
 	//	cfg.Ethstats.URL = ctx.GlobalString(utils.EthStatsURLFlag.Name)
 	//}
 
+	//stats：数据统计
+	if ctx.GlobalIsSet(utils.StatsFlag.Name) {
+		statsConfig := ctx.GlobalString(utils.StatsFlag.Name)
+		configs := strings.Split(statsConfig, ";")
+		if len(configs) == 1 {
+			cfg.Stats.URL = configs[0]
+		} else if len(configs) == 2 {
+			cfg.Stats.URL = configs[0]
+			cfg.Stats.BlockTopic = configs[1]
+		} else if len(configs) == 3 {
+			cfg.Stats.URL = configs[0]
+			cfg.Stats.BlockTopic = configs[1]
+			cfg.Stats.AccountCheckingTopic = configs[2]
+		} else if len(configs) == 4 {
+			cfg.Stats.URL = configs[0]
+			cfg.Stats.BlockTopic = configs[1]
+			cfg.Stats.AccountCheckingTopic = configs[2]
+			cfg.Stats.AccountCheckingGroup = configs[3]
+		} else {
+			utils.Fatalf("Failed to parse --stats command")
+		}
+	}
 	//utils.SetShhConfig(ctx, stack, &cfg.Shh)
 
 	return stack, cfg
@@ -179,12 +211,16 @@ func makeFullNode(ctx *cli.Context) *node.Node {
 	stack, cfg := makeConfigNode(ctx)
 
 	snapshotdb.SetDBPathWithNode(stack.ResolvePath(snapshotdb.DBPath))
-
+	statsdb.SetDBPath(stack.ResolvePath(statsdb.DBPath))
 	utils.RegisterEthService(stack, &cfg.Eth)
 
 	// Add the Ethereum Stats daemon if requested.
-	if cfg.Ethstats.URL != "" {
+	/*if cfg.Ethstats.URL != "" {
 		utils.RegisterEthStatsService(stack, cfg.Ethstats.URL)
+	}*/
+	//stats：数据统计
+	if len(cfg.Stats.URL) > 0 {
+		utils.RegisterStatsService(stack, cfg.Stats.URL, cfg.Stats.BlockTopic, cfg.Stats.AccountCheckingTopic, cfg.Stats.AccountCheckingGroup, cfg.Node.DataDir)
 	}
 	return stack
 }
@@ -192,12 +228,17 @@ func makeFullNode(ctx *cli.Context) *node.Node {
 func makeFullNodeForCBFT(ctx *cli.Context) (*node.Node, platonConfig) {
 	stack, cfg := makeConfigNode(ctx)
 	snapshotdb.SetDBPathWithNode(stack.ResolvePath(snapshotdb.DBPath))
+	statsdb.SetDBPath(stack.ResolvePath(statsdb.DBPath))
 
 	utils.RegisterEthService(stack, &cfg.Eth)
 
 	// Add the Ethereum Stats daemon if requested.
-	if cfg.Ethstats.URL != "" {
+	/*if cfg.Ethstats.URL != "" {
 		utils.RegisterEthStatsService(stack, cfg.Ethstats.URL)
+	}*/
+	//stats：数据统计
+	if cfg.Stats.URL != "" {
+		utils.RegisterStatsService(stack, cfg.Stats.URL, cfg.Stats.BlockTopic, cfg.Stats.AccountCheckingTopic, cfg.Stats.AccountCheckingGroup, cfg.Node.DataDir)
 	}
 	return stack, cfg
 }

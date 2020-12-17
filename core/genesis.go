@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/PlatONnetwork/PlatON-Go/core/statsdb"
 	"github.com/PlatONnetwork/PlatON-Go/x/gov"
 	"io"
 	"math/big"
@@ -367,12 +368,21 @@ func (g *Genesis) ToBlock(db ethdb.Database, sdb snapshotdb.BaseDB) *types.Block
 		sdb = snapshotdb.NewMemBaseDB()
 	}
 
+	//stats
+	genesisDataCollector := new(common.GenesisData)
+
 	genesisIssuance := new(big.Int)
 
 	statedb, _ := state.New(common.Hash{}, state.NewDatabase(db))
 	// First, Store the PlatONFoundation and CommunityDeveloperFoundation
 	statedb.AddBalance(xcom.PlatONFundAccount(), xcom.PlatONFundBalance())
 	statedb.AddBalance(xcom.CDFAccount(), xcom.CDFBalance())
+
+	//stats: 收集PlatONFund基金的初始化值
+	genesisDataCollector.AddAllocItem(xcom.PlatONFundAccount(), xcom.PlatONFundBalance())
+
+	//stats: 收集CDF基金的初始化值
+	genesisDataCollector.AddAllocItem(xcom.CDFAccount(), xcom.CDFBalance())
 
 	genesisIssuance = genesisIssuance.Add(genesisIssuance, xcom.PlatONFundBalance())
 	genesisIssuance = genesisIssuance.Add(genesisIssuance, xcom.CDFBalance())
@@ -386,8 +396,17 @@ func (g *Genesis) ToBlock(db ethdb.Database, sdb snapshotdb.BaseDB) *types.Block
 			statedb.SetState(addr, key.Bytes(), value.Bytes())
 		}
 
+		//stats: 收集创世块中，预先分配的账户余额
+		genesisDataCollector.AddAllocItem(addr, account.Balance)
 		genesisIssuance = genesisIssuance.Add(genesisIssuance, account.Balance)
 	}
+
+	//总的发行量
+	//todo: 采集：创世块发行量
+	//跟踪系统: update chain_env.issue_time=0, chain_env.issue_block=0，
+	//update chain_env.issue_amount, chain_env.total_issue_amount,
+	//update chain_env.age, chain_env.reward_pool_available = findBalance(RewardManagerPoolAddr)
+
 	log.Debug("genesisIssuance", "amount", genesisIssuance)
 
 	var initDataStateHash = common.ZeroHash
@@ -418,12 +437,16 @@ func (g *Genesis) ToBlock(db ethdb.Database, sdb snapshotdb.BaseDB) *types.Block
 		}
 
 		// Store genesis version into governance data And somethings about reward
-		if err := genesisPluginState(g, statedb, sdb, genesisIssuance); nil != err {
+		//if err := genesisPluginState(g, statedb, sdb, genesisIssuance); nil != err {
+		//stats: 收集数据
+		if err := genesisPluginState(genesisDataCollector, g, statedb, sdb, genesisIssuance); nil != err {
 			panic("Failed to Store xxPlugin genesis statedb: " + err.Error())
 		}
 
 		// Store genesis staking data
-		if _, err := genesisStakingData(initDataStateHash, sdb, g, statedb); nil != err {
+		//if _, err := genesisStakingData(initDataStateHash, sdb, g, statedb); nil != err {
+		//stats：收集数据
+		if _, err := genesisStakingData(genesisDataCollector, initDataStateHash, sdb, g, statedb); nil != err {
 			panic("Failed Store staking: " + err.Error())
 		}
 
@@ -466,6 +489,10 @@ func (g *Genesis) ToBlock(db ethdb.Database, sdb snapshotdb.BaseDB) *types.Block
 	if err := sdb.SetCurrent(block.Hash(), *common.Big0, *common.Big0); nil != err {
 		panic(fmt.Errorf("Failed to SetCurrent by snapshotdb. genesisHash: %s, error:%s", block.Hash().Hex(), err.Error()))
 	}
+
+	//stats:保持创世块统计数据
+	//todo: Genesis增加一个指示器，collected bool，当true，则不再写。
+	statsdb.Instance().WriteGenesisData(genesisDataCollector)
 
 	log.Debug("Call ToBlock finished", "genesisHash", block.Hash().Hex())
 	return block

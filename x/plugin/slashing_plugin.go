@@ -153,6 +153,7 @@ func (sp *SlashingPlugin) BeginBlock(blockHash common.Hash, header *types.Header
 				}
 			}
 
+			//stats:查看是否有0出块的节点
 			if slashQueue, err = sp.zeroProduceProcess(blockHash, header, validatorMap, preRoundVal.Arr); nil != err {
 				log.Error("Failed to BeginBlock, call zeroProduceProcess is failed", "blockNumber", header.Number.Uint64(), "blockHash", blockHash.TerminalString(), "err", err)
 				return err
@@ -167,11 +168,25 @@ func (sp *SlashingPlugin) BeginBlock(blockHash common.Hash, header *types.Header
 					log.Error("Failed to BeginBlock, call SlashCandidates is failed", "blockNumber", header.Number.Uint64(), "blockHash", blockHash.TerminalString(), "err", err)
 					return err
 				}
+
+				//stats: 收集零出块惩罚数据
+				//common.CollectZeroSlashingItem(header.Number.Uint64(), convertSlashNodeItem(slashQueue))
 			}
 
 		}
 	}
 	return nil
+}
+
+func convertSlashNodeItem(slashItemList []*staking.SlashNodeItem) []*common.ZeroSlashingItem {
+	zeroSlashingItemList := make([]*common.ZeroSlashingItem, len(slashItemList))
+	for idx, slashNodeItem := range slashItemList {
+		zeroSlashingItem := &common.ZeroSlashingItem{
+			NodeID: common.NodeID(slashNodeItem.NodeId), SlashingAmount: slashNodeItem.Amount,
+		}
+		zeroSlashingItemList[idx] = zeroSlashingItem
+	}
+	return zeroSlashingItemList
 }
 
 func (sp *SlashingPlugin) EndBlock(blockHash common.Hash, header *types.Header, state xcom.StateDB) error {
@@ -623,7 +638,7 @@ func (sp *SlashingPlugin) Slash(evidence consensus.Evidence, blockHash common.Ha
 			"err", err)
 		return err
 	}
-
+	//计算有效质押金
 	totalBalance := calcCanTotalBalance(blockNumber, canMutable)
 	slashAmount := calcAmountByRate(totalBalance, uint64(fraction), TenThousandDenominator)
 
@@ -657,6 +672,8 @@ func (sp *SlashingPlugin) Slash(evidence consensus.Evidence, blockHash common.Ha
 		"evidenceBlockNum", evidence.BlockNumber(), "nodeId", canBase.NodeId.TerminalString(), "evidenceType", evidence.Type(),
 		"the txHash", stateDB.TxHash().TerminalString())
 
+	//stats: 收集双签举报时，举报奖励分配参数
+	common.CollectDuplicatedSignSlashingSetting(blockNumber, fraction, rewardFraction)
 	return nil
 }
 
