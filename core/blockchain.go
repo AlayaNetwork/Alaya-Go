@@ -121,6 +121,8 @@ type BlockChain struct {
 	BlockFeed        event.Feed
 	BlockExecuteFeed event.Feed
 
+	platonstatsFeed event.Feed
+
 	mu      sync.RWMutex // global mutex for locking chain operations
 	chainmu sync.RWMutex // blockchain insertion lock
 	procmu  sync.RWMutex // block processor lock

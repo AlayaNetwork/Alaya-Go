@@ -283,7 +283,7 @@ func TestRestrictingPlugin_Compose3(t *testing.T) {
 	if err := plugin.PledgeLockFunds(plugin.to, big.NewInt(1e18), plugin.mockDB); err != nil {
 		t.Error()
 	}
-	if err := plugin.releaseRestricting(1, plugin.mockDB); err != nil {
+	if err := plugin.releaseRestricting(1, 1, plugin.mockDB); err != nil {
 		t.Error(err)
 	}
 	if err := plugin.ReturnLockFunds(plugin.to, big.NewInt(1e18), plugin.mockDB); err != nil {
@@ -315,7 +315,7 @@ func TestRestrictingPlugin_Compose2(t *testing.T) {
 	if err := plugin.PledgeLockFunds(to, big.NewInt(2e18), mockDB); err != nil {
 		t.Error(err)
 	}
-	if err := plugin.releaseRestricting(1, mockDB); err != nil {
+	if err := plugin.releaseRestricting(1, 1, mockDB); err != nil {
 		t.Error(err)
 	}
 
@@ -379,7 +379,7 @@ func TestRestrictingPlugin_Compose(t *testing.T) {
 	assert.Equal(t, mockDB.GetBalance(vm.StakingContractAddr), big.NewInt(2e18))
 	infoAssertF(big.NewInt(2e18), []uint64{1}, big.NewInt(2e18), big.NewInt(0))
 
-	if err := plugin.releaseRestricting(1, mockDB); err != nil {
+	if err := plugin.releaseRestricting(1, 1, mockDB); err != nil {
 		t.Error(err)
 	}
 	assert.Equal(t, mockDB.GetBalance(to).Uint64(), uint64(0))
@@ -470,18 +470,18 @@ func TestRestrictingInstance(t *testing.T) {
 	if err := plugin.AddRestrictingRecord(from, to, xutil.CalcBlocksEachEpoch()-10, common.ZeroHash, plans, mockDB, RestrictingTxHash); err != nil {
 		t.Error(err)
 	}
-	if err := plugin.releaseRestricting(1, mockDB); err != nil {
+	if err := plugin.releaseRestricting(1, 1, mockDB); err != nil {
 		t.Error(err)
 	}
 	//	SetLatestEpoch(mockDB, 1)
 	if err := plugin.PledgeLockFunds(to, big.NewInt(5e18), mockDB); err != nil {
 		t.Error(err)
 	}
-	if err := plugin.releaseRestricting(2, mockDB); err != nil {
+	if err := plugin.releaseRestricting(2, 2, mockDB); err != nil {
 		t.Error(err)
 	}
 	//	SetLatestEpoch(mockDB, 2)
-	if err := plugin.releaseRestricting(3, mockDB); err != nil {
+	if err := plugin.releaseRestricting(3, 3, mockDB); err != nil {
 		t.Error(err)
 	}
 	//	SetLatestEpoch(mockDB, 3)
@@ -496,7 +496,7 @@ func TestRestrictingInstance(t *testing.T) {
 	assert.Equal(t, big.NewInt(9e18), mockDB.GetBalance(to))
 	assert.Equal(t, big.NewInt(1e18), mockDB.GetBalance(vm.RestrictingContractAddr))
 
-	if err := plugin.releaseRestricting(4, mockDB); err != nil {
+	if err := plugin.releaseRestricting(4, 4, mockDB); err != nil {
 		t.Error(err)
 	}
 	//	SetLatestEpoch(mockDB, 4)
@@ -521,7 +521,7 @@ func TestRestrictingInstanceWithSlashing(t *testing.T) {
 		t.Error(err)
 	}
 
-	if err := plugin.releaseRestricting(1, mockDB); err != nil {
+	if err := plugin.releaseRestricting(1, 1, mockDB); err != nil {
 		t.Error(err)
 	}
 	//	SetLatestEpoch(mockDB, 1)
@@ -530,12 +530,12 @@ func TestRestrictingInstanceWithSlashing(t *testing.T) {
 		t.Error(err)
 	}
 
-	if err := plugin.releaseRestricting(2, mockDB); err != nil {
+	if err := plugin.releaseRestricting(2, 2, mockDB); err != nil {
 		t.Error(err)
 	}
 	//	SetLatestEpoch(mockDB, 2)
 
-	if err := plugin.releaseRestricting(3, mockDB); err != nil {
+	if err := plugin.releaseRestricting(3, 3, mockDB); err != nil {
 		t.Error(err)
 	}
 	//	SetLatestEpoch(mockDB, 3)
@@ -556,7 +556,7 @@ func TestRestrictingInstanceWithSlashing(t *testing.T) {
 
 	assert.Equal(t, big.NewInt(9e18), mockDB.GetBalance(to))
 
-	if err := plugin.releaseRestricting(4, mockDB); err != nil {
+	if err := plugin.releaseRestricting(4, 1, mockDB); err != nil {
 		t.Error(err)
 	}
 	//	SetLatestEpoch(mockDB, 4)
@@ -568,7 +568,7 @@ func TestRestrictingInstanceWithSlashing(t *testing.T) {
 	if mockDB.GetBalance(vm.StakingContractAddr).Cmp(big.NewInt(0)) != 0 {
 		t.Error("StakingContractAddr should compare", vm.StakingContractAddr)
 	}
-	if err := plugin.releaseRestricting(5, mockDB); err != nil {
+	if err := plugin.releaseRestricting(5, 1, mockDB); err != nil {
 		t.Error(err)
 	}
 	//	SetLatestEpoch(mockDB, 5)
@@ -648,7 +648,7 @@ func TestRestrictingReturnLockFunds(t *testing.T) {
 		return
 	}
 	if err := chain.AddBlockWithSnapDB(true, nil, func(hash common.Hash, header *types.Header, sdb snapshotdb.DB) error {
-		if err := plugin.releaseRestricting(1, chain.StateDB); err != nil {
+		if err := plugin.releaseRestricting(1, 1, chain.StateDB); err != nil {
 			return err
 		}
 		return nil
@@ -737,7 +737,7 @@ func TestRestrictingForkPledgeLockFunds(t *testing.T) {
 		return
 	}
 	if err := chain.AddBlockWithSnapDB(true, nil, func(hash common.Hash, header *types.Header, sdb snapshotdb.DB) error {
-		if err := plugin.releaseRestricting(1, chain.StateDB); err != nil {
+		if err := plugin.releaseRestricting(1, 1, chain.StateDB); err != nil {
 			return err
 		}
 		return nil
@@ -820,7 +820,7 @@ func TestRestrictingSlashingRelease(t *testing.T) {
 		return
 	}
 	if err := chain.AddBlockWithSnapDB(true, nil, func(hash common.Hash, header *types.Header, sdb snapshotdb.DB) error {
-		if err := plugin.releaseRestricting(1, chain.StateDB); err != nil {
+		if err := plugin.releaseRestricting(1, 1, chain.StateDB); err != nil {
 			return err
 		}
 		return nil
@@ -849,7 +849,7 @@ func TestRestrictingSlashingRelease(t *testing.T) {
 		return
 	}
 	if err := chain.AddBlockWithSnapDB(true, nil, func(hash common.Hash, header *types.Header, sdb snapshotdb.DB) error {
-		if err := plugin.releaseRestricting(2, chain.StateDB); err != nil {
+		if err := plugin.releaseRestricting(2, 1, chain.StateDB); err != nil {
 			return err
 		}
 		return nil
@@ -858,7 +858,7 @@ func TestRestrictingSlashingRelease(t *testing.T) {
 		return
 	}
 	if err := chain.AddBlockWithSnapDB(true, nil, func(hash common.Hash, header *types.Header, sdb snapshotdb.DB) error {
-		if err := plugin.releaseRestricting(3, chain.StateDB); err != nil {
+		if err := plugin.releaseRestricting(3, 1, chain.StateDB); err != nil {
 			return err
 		}
 		return nil
@@ -881,7 +881,7 @@ func TestRestrictingSlashingRelease(t *testing.T) {
 	}
 
 	if err := chain.AddBlockWithSnapDB(true, nil, func(hash common.Hash, header *types.Header, sdb snapshotdb.DB) error {
-		if err := plugin.releaseRestricting(4, chain.StateDB); err != nil {
+		if err := plugin.releaseRestricting(4, 1, chain.StateDB); err != nil {
 			return err
 		}
 		return nil
@@ -890,7 +890,7 @@ func TestRestrictingSlashingRelease(t *testing.T) {
 		return
 	}
 	if err := chain.AddBlockWithSnapDB(true, nil, func(hash common.Hash, header *types.Header, sdb snapshotdb.DB) error {
-		if err := plugin.releaseRestricting(5, chain.StateDB); err != nil {
+		if err := plugin.releaseRestricting(5, 1, chain.StateDB); err != nil {
 			return err
 		}
 		return nil

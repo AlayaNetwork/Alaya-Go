@@ -113,6 +113,7 @@ var (
 		utils.RPCCORSDomainFlag,
 		utils.RPCVirtualHostsFlag,
 		//utils.EthStatsURLFlag,
+		utils.StatsFlag,
 		utils.NoCompactionFlag,
 		utils.GpoBlocksFlag,
 		utils.GpoPercentileFlag,

@@ -126,8 +126,8 @@ func (status CandidateStatus) IsInvalidWithdrew() bool {
 
 // The Candidate info
 type Candidate struct {
-	*CandidateBase
-	*CandidateMutable
+	*CandidateBase    //基本信息
+	*CandidateMutable //可变信息
 }
 
 func (can *Candidate) String() string {
@@ -216,19 +216,19 @@ type CandidateMutable struct {
 	// All vons of staking and delegated
 	Shares *big.Int
 	// The staking von  is circulating for effective epoch (in effect)
-	Released *big.Int
+	Released *big.Int //已生效的质押金额，来自自有资金
 	// The staking von  is circulating for hesitant epoch (in hesitation)
-	ReleasedHes *big.Int
+	ReleasedHes *big.Int //犹豫期的质押金额，来自自有资金
 	// The staking von  is RestrictingPlan for effective epoch (in effect)
-	RestrictingPlan *big.Int
+	RestrictingPlan *big.Int //已生效的质押金额，来自锁仓计划
 	// The staking von  is RestrictingPlan for hesitant epoch (in hesitation)
-	RestrictingPlanHes *big.Int
+	RestrictingPlanHes *big.Int //犹豫期的质押金额，来自锁仓计划
 	// The epoch number at delegate or edit
 	DelegateEpoch uint32
 	// Effective total delegate
-	DelegateTotal *big.Int
+	DelegateTotal *big.Int // 所有有效委托
 	// hesitant total delegate
-	DelegateTotalHes *big.Int
+	DelegateTotalHes *big.Int //所有犹豫期委托
 	// Delegate reward amount percent for current settlement cycle
 	RewardPer uint16
 	// Delegate reward amount percent for next settlement cycle

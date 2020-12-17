@@ -19,11 +19,12 @@ package plugin
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/PlatONnetwork/PlatON-Go/x/gov"
 	"math"
 	"math/big"
 	"sort"
 	"sync"
+
+	"github.com/PlatONnetwork/PlatON-Go/x/gov"
 
 	"github.com/PlatONnetwork/PlatON-Go/common/hexutil"
 
@@ -229,18 +230,17 @@ func (rmp *RewardMgrPlugin) increaseIssuance(thisYear, lastYear uint32, state xc
 		//stats
 		//histIssuance.Add(histIssuance, currIssuance)
 		//SetYearEndCumulativeIssue(state, thisYear, histIssuance)
-		//stats，新增newTotalIssuance
+		//计算总发行金额
 		newTotalIssuance := new(big.Int).Add(histIssuance, currIssuance)
+		//stats，利用newTotalIssuance
+		SetYearEndCumulativeIssue(state, thisYear, newTotalIssuance)
+		log.Debug("Call EndBlock on reward_plugin: increase issuance", "thisYear", thisYear, "addIssuance", currIssuance, "hit", histIssuance)
+
 		//stats: 收集增发数据
 		additionalIssuance.AdditionalNo = thisYear
 		additionalIssuance.AdditionalBase = histIssuance          //上年发行量
 		additionalIssuance.AdditionalAmount = currIssuance        //今年增发量 = 上年发行量 * 今年增发率
 		additionalIssuance.AdditionalRate = increaseIssuanceRatio //今年增发率
-
-		//stats，利用newTotalIssuance
-		//SetYearEndCumulativeIssue(state, thisYear, histIssuance)
-		SetYearEndCumulativeIssue(state, thisYear, newTotalIssuance)
-		log.Debug("Call EndBlock on reward_plugin: increase issuance", "thisYear", thisYear, "addIssuance", currIssuance, "hit", histIssuance)
 
 	}
 	//今年的增发量，需要转入一部分到激励池中，以及其它基金会账户

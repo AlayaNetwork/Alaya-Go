@@ -85,6 +85,7 @@ func (rp *RestrictingPlugin) EndBlock(blockHash common.Hash, head *types.Header,
 		//到年尾了，需要释放创世块的锁仓计划，把钱按计划释放到激励池中
 		if ok, _ := xcom.IsYearEnd(blockHash, head.Number.Uint64()); ok {
 			rp.log.Info(fmt.Sprintf("release genesis restricting plan, blocknumber:%d", head.Number.Uint64()))
+			//stats：统计数据
 			return rp.releaseGenesisRestrictingPlans(head.Number.Uint64(), blockHash, state)
 			//return rp.releaseGenesisRestrictingPlans(blockHash, state)
 		}

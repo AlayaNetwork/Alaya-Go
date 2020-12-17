@@ -83,6 +83,7 @@ func (rc *DelegateRewardContract) CheckGasPrice(gasPrice *big.Int, fcode uint16)
 	return nil
 }
 
+//用户领取委托分红（委托奖励）
 func (rc *DelegateRewardContract) withdrawDelegateReward() ([]byte, error) {
 	from := rc.Contract.CallerAddress
 	txHash := rc.Evm.StateDB.TxHash()
@@ -123,6 +124,7 @@ func (rc *DelegateRewardContract) withdrawDelegateReward() ([]byte, error) {
 	unCalEpoch := 0
 	delegationInfoWithRewardPerList := make([]*plugin.DelegationInfoWithRewardPerList, 0)
 	for _, stakingNode := range list {
+		//查询每个结算周期，委托奖励的单价（每LAT有效委托奖励多少）
 		delegateRewardPerList, err := rc.Plugin.GetDelegateRewardPerList(blockHash, stakingNode.NodeID, stakingNode.StakeBlockNumber, uint64(stakingNode.Delegation.DelegateEpoch), currentEpoch-1)
 		if err != nil {
 			log.Error("Failed to withdrawDelegateReward",
@@ -131,6 +133,7 @@ func (rc *DelegateRewardContract) withdrawDelegateReward() ([]byte, error) {
 		}
 		if len(delegateRewardPerList) > 0 {
 			// the  begin of  delegation  have not reward
+			//计算从哪个结算周期开始发放委托分红（前面的已经被用户领取了）
 			if stakingNode.Delegation.Released.Cmp(common.Big0) == 0 && stakingNode.Delegation.RestrictingPlan.Cmp(common.Big0) == 0 && uint64(stakingNode.Delegation.DelegateEpoch) == delegateRewardPerList[0].Epoch {
 				delegateRewardPerList = delegateRewardPerList[1:]
 			}

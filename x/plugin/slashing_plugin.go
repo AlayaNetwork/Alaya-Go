@@ -22,9 +22,10 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/PlatONnetwork/PlatON-Go/rlp"
 	"math/big"
 	"sync"
+
+	"github.com/PlatONnetwork/PlatON-Go/rlp"
 
 	"github.com/PlatONnetwork/PlatON-Go/x/gov"
 
