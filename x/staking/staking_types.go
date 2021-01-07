@@ -214,7 +214,7 @@ type CandidateMutable struct {
 	// The epoch number at staking or edit
 	StakingEpoch uint32
 	// All vons of staking and delegated
-	Shares *big.Int
+	Shares *big.Int //质押金额（犹豫期+有效的）+委托金额（犹豫期+有效的）
 	// The staking von  is circulating for effective epoch (in effect)
 	Released *big.Int //已生效的质押金额，来自自有资金
 	// The staking von  is circulating for hesitant epoch (in hesitation)

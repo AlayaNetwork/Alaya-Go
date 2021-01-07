@@ -2908,6 +2908,7 @@ func calcDelegateIncome(epoch uint64, del *staking.Delegation, per []*reward.Del
 	if per[0].Epoch > uint64(del.DelegateEpoch) {
 		lazyCalcDelegateAmount(epoch, del)
 	}
+	//todo: totalEffectiveDelegate，有效的委托总金额
 	totalReleased := new(big.Int).Add(del.Released, del.RestrictingPlan)
 	for i, rewardPer := range per {
 		if totalReleased.Cmp(common.Big0) > 0 {

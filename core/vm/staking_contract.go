@@ -772,6 +772,12 @@ func (stkc *StakingContract) delegate(typ uint16, nodeId discover.NodeID, amount
 		"", TxDelegate, common.NoErr)
 }
 
+// 撤消委托，当撤消某个节点的全部委托时，委托奖励将立刻发放到委托用户账户；当撤消某个接的部分委托时，只是计算委托奖励。
+//	stakingBlockNum + nodeId 确定一个质押的节点
+// param: stakingBlockNum	代表着某个node的某次质押的唯一标示
+// param: nodeId			被质押的节点的NodeId
+// param: amount			减持的金额
+// return:
 func (stkc *StakingContract) withdrewDelegate(stakingBlockNum uint64, nodeId discover.NodeID, amount *big.Int) ([]byte, error) {
 
 	txHash := stkc.Evm.StateDB.TxHash()

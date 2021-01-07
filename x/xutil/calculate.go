@@ -171,6 +171,7 @@ func InHashList(hash common.Hash, hashList []common.Hash) bool {
 }
 
 // end-voting-block = the end block of a consensus period - electionDistance, end-voting-block must be a Consensus Election block
+//提案投票结束块高，是个共识周期的选举块。
 func CalEndVotingBlock(blockNumber uint64, endVotingRounds uint64) uint64 {
 	electionDistance := xcom.ElectionDistance()
 	consensusSize := ConsensusSize()
@@ -178,6 +179,7 @@ func CalEndVotingBlock(blockNumber uint64, endVotingRounds uint64) uint64 {
 }
 
 // active-block = the begin of a consensus period, so, it is possible that active-block also is the begin of a epoch.
+// 升级提案的激活块高，是投票结束共识轮的下个共识论的第一个块。可能刚好也是个结算周期的开始块。
 func CalActiveBlock(endVotingBlock uint64) uint64 {
 	//return endVotingBlock + xcom.ElectionDistance() + (xcom.VersionProposalActive_ConsensusRounds()-1)*ConsensusSize() + 1
 	return endVotingBlock + xcom.ElectionDistance() + 1

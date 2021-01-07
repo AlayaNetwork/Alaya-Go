@@ -569,7 +569,7 @@ func (rmp *RewardMgrPlugin) AllocatePackageBlock(blockHash common.Hash, head *ty
 
 		log.Debug("allocate package reward,block reward", "blockNumber", head.Number, "blockHash", blockHash,
 			"coinBase", head.Coinbase.String(), "reward", reward)
-		// 1. 出块节点，直接从激励池拿到质押奖励。
+		// 1. 出块节点，直接从激励池拿到出块奖励。
 		state.SubBalance(vm.RewardManagerPoolAddr, reward)
 		state.AddBalance(head.Coinbase, reward)
 	}

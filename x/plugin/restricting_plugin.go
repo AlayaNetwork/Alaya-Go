@@ -531,6 +531,13 @@ func (rp *RestrictingPlugin) ReturnLockFunds(account common.Address, amount *big
 }
 
 // ReturnWrongLockFunds transfer the money from the staking contract account to the restricting contract account
+//
+// 退回用户挪用的锁仓合约金额。
+// 1. 把挪用金额，从内置质押合约，转移到内置锁仓合约
+// 2. 修改（释放给）用户的锁仓信息
+// param: account
+// param: amount	用户挪用的锁仓合约金额
+// param: state
 func (rp *RestrictingPlugin) ReturnWrongLockFunds(account common.Address, amount *big.Int, state xcom.StateDB) error {
 	amountCompareWithZero := amount.Cmp(common.Big0)
 	if amountCompareWithZero == 0 {
@@ -538,6 +545,7 @@ func (rp *RestrictingPlugin) ReturnWrongLockFunds(account common.Address, amount
 	} else if amountCompareWithZero < 0 {
 		return restricting.ErrReturnLockFundsAmountLessThanZero
 	}
+	//查询释放给委托用户的锁仓信息
 	restrictingKey, restrictInfo, err := rp.mustGetRestrictingInfoByDecode(state, account)
 	if err != nil {
 		return err
@@ -548,7 +556,10 @@ func (rp *RestrictingPlugin) ReturnWrongLockFunds(account common.Address, amount
 		return restricting.ErrStakingAmountInvalid
 	}
 
+	//把挪用的金额，退回到内置锁仓合约
 	rp.transferAmount(state, vm.StakingContractAddr, vm.RestrictingContractAddr, amount)
+
+	//修改委托用户的锁仓信息
 	restrictInfo.CachePlanAmount.Sub(restrictInfo.CachePlanAmount, amount)
 	restrictInfo.StakingAmount.Sub(restrictInfo.StakingAmount, amount)
 	// save restricting account info

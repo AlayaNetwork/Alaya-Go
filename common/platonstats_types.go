@@ -190,10 +190,11 @@ func (d *AdditionalIssuanceData) AddIssuanceItem(address Address, amount *big.In
 	d.IssuanceItemList = append(d.IssuanceItemList, &IssuanceItem{Address: address, Amount: amount})
 }
 
-//  注意：委托人不一定每次都能参与到出块奖励的分配中（共识论跨结算周期时会出现，此时节点虽然还在出块，但是可能已经不在当前结算周期的101备选人列表里了，那这个出块节点的委托人在当前结算周期，就不参与这个块的出块奖励分配）
+// 分配奖励，包括出块奖励，质押奖励
+// 注意：委托人不一定每次都能参与到出块奖励的分配中（共识论跨结算周期时会出现，此时节点虽然还在出块，但是可能已经不在当前结算周期的101备选人列表里了，那这个出块节点的委托人在当前结算周期，就不参与这个块的出块奖励分配）
 type RewardData struct {
 	BlockRewardAmount   *big.Int         `json:"blockRewardAmount,omitempty"`   //出块奖励
-	DelegatorReward     bool             `json:"delegatorReward,omitempty"`     //是否有委托人的奖励（出块奖励是否分配给委托人）
+	DelegatorReward     bool             `json:"delegatorReward,omitempty"`     //出块奖励中，分配给委托人的奖励
 	StakingRewardAmount *big.Int         `json:"stakingRewardAmount,omitempty"` //一结算周期内所有101节点的质押奖励
 	CandidateInfoList   []*CandidateInfo `json:"candidateInfoList,omitempty"`   //备选节点信息
 }
@@ -230,11 +231,38 @@ type RestrictingReleaseItem struct {
 	LackingAmount *big.Int `json:"lackingAmount,omitempty"`         //欠释放金额
 }
 
+//todo:改名
+//撤消委托后领取的奖励（全部减持）
 type WithdrawDelegation struct {
 	TxHash          Hash     `json:"txHash,omitempty"`                    //委托用户撤销节点的全部委托的交易HASH
 	DelegateAddress Address  `json:"delegateAddress,omitempty,omitempty"` //委托用户地址
 	NodeID          NodeID   `json:"nodeId,omitempty"`                    //委托用户委托的节点ID
 	RewardAmount    *big.Int `json:"rewardAmount,omitempty"`              //委托用户从此节点获取的全部委托奖励
+}
+
+//处理委托
+type FixDelegation struct {
+	NodeID                              NodeID   `json:"nodeId,omitempty"`                              //委托用户委托的节点ID
+	StakingBlockNumber                  uint64   `json:"stakingBlockNumber,omitempty"`                  //委托用户委托的节点ID
+	ImproperValidRestrictingAmount      *big.Int `json:"improperValidRestrictingAmount,omitempty"`      //需要退回的生效期的，挪用的锁仓金额
+	ImproperHesitatingRestrictingAmount *big.Int `json:"improperHesitatingRestrictingAmount,omitempty"` //需要退回的犹豫期的，挪用的锁仓金额
+	Withdraw                            bool     `json:"withdraw,omitempty"`                            //true/false
+	RewardAmount                        *big.Int `json:"rewardAmount,omitempty"`                        //Withdraw=true时，委托用户从此节点获取的全部委托奖励
+}
+
+//处理质押
+type FixStaking struct {
+	NodeID                              NodeID   `json:"nodeId,omitempty"`                              //节点ID
+	StakingBlockNumber                  uint64   `json:"stakingBlockNumber,omitempty"`                  //节点首次质押的快高
+	ImproperValidRestrictingAmount      *big.Int `json:"improperValidRestrictingAmount,omitempty"`      //需要退回的生效期的，挪用的锁仓金额
+	ImproperHesitatingRestrictingAmount *big.Int `json:"improperHesitatingRestrictingAmount,omitempty"` //需要退回的犹豫期的，挪用的锁仓金额
+	FurtherOperation                    string   `json:"furtherOperation,omitempty"`                    //在退回挪用的锁仓金额后的进一步操作，NOP：已经撤消并在冻结期,则不需要额外做什么；WITHDRAW：需要撤消并冻结1个结算周期，REDUCE：继续质押
+}
+
+//处理Issue1625
+type FixIssue1625 struct {
+	FixDelegationList []*FixDelegation `json:"fixDelegationList,omitempty"` //节点ID
+	FixStakingList    []*FixStaking    `json:"fixStakingList,omitempty"`    //节点首次质押的快高
 }
 
 var ExeBlockDataCollector = make(map[uint64]*ExeBlockData)
@@ -254,6 +282,7 @@ func InitExeBlockData(blockNumber uint64) {
 		RestrictingReleaseItemList: make([]*RestrictingReleaseItem, 0),
 		EmbedTransferTxList:        make([]*EmbedTransferTx, 0),
 		EmbedContractTxList:        make([]*EmbedContractTx, 0),
+		FixIssue1625Map:            make(map[Address]*FixIssue1625),
 	}
 
 	ExeBlockDataCollector[blockNumber] = exeBlockData
@@ -264,6 +293,7 @@ func GetExeBlockData(blockNumber uint64) *ExeBlockData {
 }
 
 type ExeBlockData struct {
+	ActiveVersion                 string                         `json:"activeVersion,omitempty"` //如果当前块有升级提案生效，则填写新版本,0.14.0
 	AdditionalIssuanceData        *AdditionalIssuanceData        `json:"additionalIssuanceData,omitempty"`
 	RewardData                    *RewardData                    `json:"rewardData,omitempty"`
 	ZeroSlashingItemList          []*ZeroSlashingItem            `json:"zeroSlashingItemList,omitempty"`
@@ -274,7 +304,7 @@ type ExeBlockData struct {
 	EmbedTransferTxList           []*EmbedTransferTx             `json:"embedTransferTxList,omitempty"`    //一个显式交易引起的内置转账交易：一般有两种情况：1是部署，或者调用合约时，带上了value，则这个value会转账给合约地址；2是调用合约，合约内部调用transfer()函数完成转账
 	EmbedContractTxList           []*EmbedContractTx             `json:"embedContractTxList,omitempty"`    //一个显式交易引起的内置合约交易。这个显式交易显然也是个合约交易，在这个合约里，又调用了其他合约（包括内置合约）
 	WithdrawDelegationList        []*WithdrawDelegation          `json:"withdrawDelegationList,omitempty"` //当委托用户撤回节点的全部委托时，需要的统计信息（由于Alaya在运行中，只能兼容Alaya的bug）
-
+	FixIssue1625Map               map[Address]*FixIssue1625      `json:"fixIssue1625Map,omitempty"`
 }
 
 func CollectAdditionalIssuance(blockNumber uint64, additionalIssuanceData *AdditionalIssuanceData) {
@@ -345,10 +375,8 @@ func CollectStakingSetting(blockNumber uint64, operatingThreshold *big.Int) {
 
 func CollectZeroSlashingItem(blockNumber uint64, nodeId NodeID, slashingAmount *big.Int) {
 	if exeBlockData, ok := ExeBlockDataCollector[blockNumber]; ok && exeBlockData != nil {
-		if exeBlockData, ok := ExeBlockDataCollector[blockNumber]; ok && exeBlockData != nil {
-			log.Debug("CollectZeroSlashingItem", "blockNumber", blockNumber, "nodeId", Bytes2Hex(nodeId[:]), "slashingAmount", slashingAmount)
-			exeBlockData.ZeroSlashingItemList = append(exeBlockData.ZeroSlashingItemList, &ZeroSlashingItem{NodeID: nodeId, SlashingAmount: slashingAmount})
-		}
+		log.Debug("CollectZeroSlashingItem", "blockNumber", blockNumber, "nodeId", Bytes2Hex(nodeId[:]), "slashingAmount", slashingAmount)
+		exeBlockData.ZeroSlashingItemList = append(exeBlockData.ZeroSlashingItemList, &ZeroSlashingItem{NodeID: nodeId, SlashingAmount: slashingAmount})
 	}
 }
 
@@ -375,10 +403,40 @@ func CollectEmbedContractTx(blockNumber uint64, txHash Hash, from, contractAddre
 	}
 }
 
+//撤消委托时，才需要收集委托奖励总金额
 func CollectWithdrawDelegation(blockNumber uint64, txHash Hash, delegateAddress Address, nodeId NodeID, delegationRewardAmount *big.Int) {
 	if exeBlockData, ok := ExeBlockDataCollector[blockNumber]; ok && exeBlockData != nil {
 		log.Debug("CollectWithdrawDelegation", "blockNumber", blockNumber, "txHash", txHash.Hex(), "delegateAddress", delegateAddress.Bech32(), "nodeId", Bytes2Hex(nodeId[:]), "delegationRewardAmount", delegationRewardAmount)
 		amt := new(big.Int).Set(delegationRewardAmount)
 		exeBlockData.WithdrawDelegationList = append(exeBlockData.WithdrawDelegationList, &WithdrawDelegation{TxHash: txHash, DelegateAddress: delegateAddress, NodeID: nodeId, RewardAmount: amt})
+	}
+}
+
+func CollectActiveVersion(blockNumber uint64, newVersion uint32) {
+	if exeBlockData, ok := ExeBlockDataCollector[blockNumber]; ok && exeBlockData != nil {
+		log.Debug("CollectActiveVersion", "blockNumber", blockNumber, "newVersion", newVersion)
+		exeBlockData.ActiveVersion = FormatVersion(newVersion)
+	}
+}
+
+func CollectFixDelegation(blockNumber uint64, account Address, fixDelegation *FixDelegation) {
+	if exeBlockData, ok := ExeBlockDataCollector[blockNumber]; ok && exeBlockData != nil {
+		log.Debug("CollectFixDelegation", "blockNumber", blockNumber, "account", account.Bech32(), "fixDelegation", fixDelegation)
+		if _, ok := exeBlockData.FixIssue1625Map[account]; !ok {
+			//不存在
+			exeBlockData.FixIssue1625Map[account] = &FixIssue1625{FixDelegationList: make([]*FixDelegation, 1)}
+		}
+
+	}
+}
+
+func CollectFixStaking(blockNumber uint64, account Address, fixStaking *FixStaking) {
+	if exeBlockData, ok := ExeBlockDataCollector[blockNumber]; ok && exeBlockData != nil {
+		log.Debug("CollectFixDelegation", "blockNumber", blockNumber, "account", account.Bech32(), "fixStaking", fixStaking)
+		if _, ok := exeBlockData.FixIssue1625Map[account]; ok {
+			//不存在
+			exeBlockData.FixIssue1625Map[account] = &FixIssue1625{FixStakingList: make([]*FixStaking, 1)}
+		}
+		exeBlockData.FixIssue1625Map[account].FixStakingList = append(exeBlockData.FixIssue1625Map[account].FixStakingList, fixStaking)
 	}
 }
