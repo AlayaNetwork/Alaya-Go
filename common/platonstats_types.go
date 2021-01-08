@@ -422,11 +422,12 @@ func CollectActiveVersion(blockNumber uint64, newVersion uint32) {
 func CollectFixDelegation(blockNumber uint64, account Address, fixDelegation *FixDelegation) {
 	if exeBlockData, ok := ExeBlockDataCollector[blockNumber]; ok && exeBlockData != nil {
 		log.Debug("CollectFixDelegation", "blockNumber", blockNumber, "account", account.Bech32(), "fixDelegation", fixDelegation)
-		if _, ok := exeBlockData.FixIssue1625Map[account]; !ok {
+		if _, ok := exeBlockData.FixIssue1625Map[account]; ok {
+			exeBlockData.FixIssue1625Map[account].FixDelegationList = append(exeBlockData.FixIssue1625Map[account].FixDelegationList, fixDelegation)
+		} else {
 			//不存在
-			exeBlockData.FixIssue1625Map[account] = &FixIssue1625{FixDelegationList: make([]*FixDelegation, 1)}
+			exeBlockData.FixIssue1625Map[account] = &FixIssue1625{FixDelegationList: []*FixDelegation{fixDelegation}}
 		}
-
 	}
 }
 
@@ -434,9 +435,10 @@ func CollectFixStaking(blockNumber uint64, account Address, fixStaking *FixStaki
 	if exeBlockData, ok := ExeBlockDataCollector[blockNumber]; ok && exeBlockData != nil {
 		log.Debug("CollectFixDelegation", "blockNumber", blockNumber, "account", account.Bech32(), "fixStaking", fixStaking)
 		if _, ok := exeBlockData.FixIssue1625Map[account]; ok {
+			exeBlockData.FixIssue1625Map[account].FixStakingList = append(exeBlockData.FixIssue1625Map[account].FixStakingList, fixStaking)
+		} else {
 			//不存在
-			exeBlockData.FixIssue1625Map[account] = &FixIssue1625{FixStakingList: make([]*FixStaking, 1)}
+			exeBlockData.FixIssue1625Map[account] = &FixIssue1625{FixStakingList: []*FixStaking{fixStaking}}
 		}
-		exeBlockData.FixIssue1625Map[account].FixStakingList = append(exeBlockData.FixIssue1625Map[account].FixStakingList, fixStaking)
 	}
 }
