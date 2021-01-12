@@ -197,7 +197,7 @@ func (d *AdditionalIssuanceData) AddIssuanceItem(address Address, amount *big.In
 // 注意：委托人不一定每次都能参与到出块奖励的分配中（共识论跨结算周期时会出现，此时节点虽然还在出块，但是可能已经不在当前结算周期的101备选人列表里了，那这个出块节点的委托人在当前结算周期，就不参与这个块的出块奖励分配）
 type RewardData struct {
 	BlockRewardAmount   *big.Int         `json:"blockRewardAmount,omitempty"`   //出块奖励
-	DelegatorReward     bool             `json:"delegatorReward,omitempty"`     //出块奖励中，分配给委托人的奖励
+	DelegatorReward     bool             `json:"delegatorReward"`               //出块奖励中，分配给委托人的奖励
 	StakingRewardAmount *big.Int         `json:"stakingRewardAmount,omitempty"` //一结算周期内所有101节点的质押奖励
 	CandidateInfoList   []*CandidateInfo `json:"candidateInfoList,omitempty"`   //备选节点信息
 }
@@ -249,7 +249,7 @@ type FixDelegation struct {
 	StakingBlockNumber                  uint64   `json:"stakingBlockNumber,omitempty"`                  //委托用户委托的节点ID
 	ImproperValidRestrictingAmount      *big.Int `json:"improperValidRestrictingAmount,omitempty"`      //需要退回的生效期的，挪用的锁仓金额
 	ImproperHesitatingRestrictingAmount *big.Int `json:"improperHesitatingRestrictingAmount,omitempty"` //需要退回的犹豫期的，挪用的锁仓金额
-	Withdraw                            bool     `json:"withdraw,omitempty"`                            //true/false
+	Withdraw                            bool     `json:"withdraw"`                                      //true/false
 	RewardAmount                        *big.Int `json:"rewardAmount,omitempty"`                        //Withdraw=true时，委托用户从此节点获取的全部委托奖励
 }
 
