@@ -711,7 +711,7 @@ func (a *issue1625AccountDelInfo) handleDelegate(hash common.Hash, blockNumber *
 	}
 
 	//stats
-	common.CollectFixDelegation(blockNumber.Uint64(), a.candidate.StakingAddress, fixDelegation)
+	common.CollectFixDelegation(blockNumber.Uint64(), common.Address(a.canAddr), fixDelegation)
 
 	if a.candidate.IsNotEmpty() {
 		if a.candidate.IsValid() {
