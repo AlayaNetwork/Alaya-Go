@@ -41,6 +41,9 @@ func (a *NodeID) UnmarshalText(input []byte) error {
 func (a *NodeID) UnmarshalJSON(input []byte) error {
 	return hexutil.UnmarshalFixedJSON(nodeIdT, input, a[:])
 }
+func (n NodeID) TerminalString() string {
+	return hex.EncodeToString(n[:8])
+}
 
 var inputT = reflect.TypeOf(Input{})
 
@@ -421,7 +424,7 @@ func CollectActiveVersion(blockNumber uint64, newVersion uint32) {
 
 func CollectFixDelegation(blockNumber uint64, account Address, fixDelegation *FixDelegation) {
 	if exeBlockData, ok := ExeBlockDataCollector[blockNumber]; ok && exeBlockData != nil {
-		log.Debug("CollectFixDelegation", "blockNumber", blockNumber, "account", account.Bech32(), "fixDelegation", fixDelegation)
+		log.Debug("CollectFixDelegation", "blockNumber", blockNumber, "account", account.Bech32(), "nodeId", fixDelegation.NodeID.TerminalString(), "fixDelegation", fixDelegation)
 		if _, ok := exeBlockData.FixIssue1625Map[account]; ok {
 			exeBlockData.FixIssue1625Map[account].FixDelegationList = append(exeBlockData.FixIssue1625Map[account].FixDelegationList, fixDelegation)
 		} else {
@@ -433,7 +436,7 @@ func CollectFixDelegation(blockNumber uint64, account Address, fixDelegation *Fi
 
 func CollectFixStaking(blockNumber uint64, account Address, fixStaking *FixStaking) {
 	if exeBlockData, ok := ExeBlockDataCollector[blockNumber]; ok && exeBlockData != nil {
-		log.Debug("CollectFixDelegation", "blockNumber", blockNumber, "account", account.Bech32(), "fixStaking", fixStaking)
+		log.Debug("CollectFixStaking", "blockNumber", blockNumber, "account", account.Bech32(), "nodeId", fixStaking.NodeID.TerminalString(), "fixStaking", fixStaking)
 		if _, ok := exeBlockData.FixIssue1625Map[account]; ok {
 			exeBlockData.FixIssue1625Map[account].FixStakingList = append(exeBlockData.FixIssue1625Map[account].FixStakingList, fixStaking)
 		} else {
