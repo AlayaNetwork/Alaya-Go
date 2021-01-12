@@ -626,8 +626,8 @@ func (a *issue1625AccountDelInfo) handleDelegate(hash common.Hash, blockNumber *
 	//stats
 	//fix委托，构造调整记录
 	fixDelegation := new(common.FixDelegation)
-	fixDelegation.NodeID = common.NodeID(a.candidate.NodeId)
-	fixDelegation.StakingBlockNumber = a.candidate.StakingBlockNum
+	fixDelegation.NodeID = common.NodeID(a.nodeID)
+	fixDelegation.StakingBlockNumber = a.stakingBlock
 
 	//先计算委托收益
 	delegateRewardPerList, err := RewardMgrInstance().GetDelegateRewardPerList(hash, a.nodeID, a.stakingBlock, uint64(a.del.DelegateEpoch), xutil.CalculateEpoch(blockNumber.Uint64())-1)
