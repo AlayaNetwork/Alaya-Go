@@ -174,44 +174,6 @@ func (rp *RestrictingPlugin) updateGenesisRestrictingPlans(plans []*big.Int, sta
 	return nil
 }
 
-// init the genesis restricting plans
-//stats
-func (rp *RestrictingPlugin) InitGenesisRestrictingPlans(genesisDataCollector *common.GenesisData, statedb xcom.StateDB) error {
-	//func (rp *RestrictingPlugin) InitGenesisRestrictingPlans(statedb xcom.StateDB) error {
-
-	genesisAllowancePlans := []*big.Int{
-		new(big.Int).Mul(big.NewInt(55965742), big.NewInt(1e18)),
-		new(big.Int).Mul(big.NewInt(49559492), big.NewInt(1e18)),
-		new(big.Int).Mul(big.NewInt(42993086), big.NewInt(1e18)),
-		new(big.Int).Mul(big.NewInt(36262520), big.NewInt(1e18)),
-		new(big.Int).Mul(big.NewInt(29363689), big.NewInt(1e18)),
-		new(big.Int).Mul(big.NewInt(22292388), big.NewInt(1e18)),
-		new(big.Int).Mul(big.NewInt(15044304), big.NewInt(1e18)),
-		new(big.Int).Mul(big.NewInt(7615018), big.NewInt(1e18)),
-	}
-
-	//initial release from genesis restricting plans(62215742ATP)
-	initialRelease := new(big.Int).Mul(big.NewInt(62215742), big.NewInt(1e18))
-	statedb.SubBalance(xcom.CDFAccount(), initialRelease)
-	statedb.AddBalance(vm.RewardManagerPoolAddr, initialRelease)
-
-	//stats:创世块，需要从基金账户，预先拨付资金到激励池。后端根据此数据，进行相关账户修改。
-	genesisDataCollector.AddInitFundItem(xcom.CDFAccount(), vm.RewardManagerPoolAddr, initialRelease)
-
-	//transfer 259096239ATP from CDFAccount to vm.RestrictingContractAddr
-	totalRestrictingPlan := new(big.Int).Mul(big.NewInt(259096239), big.NewInt(1e18))
-	statedb.SubBalance(xcom.CDFAccount(), totalRestrictingPlan)
-	statedb.AddBalance(vm.RestrictingContractAddr, totalRestrictingPlan)
-
-	//stats:收集创世块的锁仓计划，后端和处理普通锁仓计划一样处理账户（先要把plans中的金额累计）
-	genesisDataCollector.AddRestrictingCreateItem(xcom.CDFAccount(), vm.RewardManagerPoolAddr, genesisAllowancePlans)
-
-	if err := rp.updateGenesisRestrictingPlans(genesisAllowancePlans, statedb); nil != err {
-		return err
-	}
-	return nil
-}
-
 // release genesis restricting plans
 //stats
 func (rp *RestrictingPlugin) releaseGenesisRestrictingPlans(blockNumber uint64, blockHash common.Hash, statedb xcom.StateDB) error {
