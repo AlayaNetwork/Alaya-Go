@@ -224,7 +224,7 @@ type CandidateMutable struct {
 	// The staking von  is RestrictingPlan for hesitant epoch (in hesitation)
 	RestrictingPlanHes *big.Int //犹豫期的质押金额，来自锁仓计划
 	// The epoch number at delegate or edit
-	DelegateEpoch uint32
+	DelegateEpoch uint32 //最近一次的用户委托时的结算周期。
 	// Effective total delegate
 	DelegateTotal *big.Int // 所有有效委托
 	// hesitant total delegate
