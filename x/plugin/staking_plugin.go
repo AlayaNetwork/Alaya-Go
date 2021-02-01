@@ -1398,6 +1398,9 @@ func (sk *StakingPlugin) GetVerifierList(blockHash common.Hash, blockNumber uint
 	return queue, nil
 }
 
+/**
+判断 nodeId 是否是101备选节点之一
+*/
 func (sk *StakingPlugin) IsCurrVerifier(blockHash common.Hash, blockNumber uint64, nodeId discover.NodeID, isCommit bool) (bool, error) {
 
 	verifierList, err := sk.getVerifierList(blockHash, blockNumber, isCommit)
@@ -3423,6 +3426,9 @@ func (sk *StakingPlugin) setRoundValListByIndex(blockNumber uint64, blockHash co
 	return nil
 }
 
+/**
+列出备选节点列表（101）
+*/
 func (sk *StakingPlugin) getVerifierList(blockHash common.Hash, blockNumber uint64, isCommit bool) (*staking.ValidatorArray, error) {
 
 	targetIndex, err := sk.getVeriferIndex(blockHash, blockNumber, isCommit)

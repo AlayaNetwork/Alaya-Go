@@ -519,6 +519,8 @@ func (rmp *RewardMgrPlugin) getBlockMinderAddress(blockHash common.Hash, head *t
 // 2. 委托用户，出块奖励从激励池发放到委托激励合约。
 // 3. 为每个质押节点，记录应该分配给委托用户的所有奖励。
 func (rmp *RewardMgrPlugin) AllocatePackageBlock(blockHash common.Hash, head *types.Header, reward *big.Int, state xcom.StateDB) error {
+
+	//由header中pubkey得出块节点id
 	nodeID, add, err := rmp.getBlockMinderAddress(blockHash, head)
 	if err != nil {
 		log.Error("AllocatePackageBlock getBlockMinderAddress fail", "err", err, "blockNumber", head.Number, "blockHash", blockHash)
@@ -532,7 +534,8 @@ func (rmp *RewardMgrPlugin) AllocatePackageBlock(blockHash common.Hash, head *ty
 		log.Error("AllocatePackageBlock IsCurrVerifier fail", "err", err, "blockNumber", head.Number, "blockHash", blockHash)
 		return err
 	}
-	//stats
+	//stats,
+	//tddo:跟踪系统需要知道coinBase/minerAddress和nodeId的对应关系
 	blockReward := big.NewInt(0).Set(reward)
 	if currVerifier {
 		cm, err := rmp.stakingPlugin.GetCanMutable(blockHash, add)
