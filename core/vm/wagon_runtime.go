@@ -2,6 +2,8 @@ package vm
 
 import (
 	"crypto/sha256"
+	"encoding/binary"
+	"github.com/PlatONnetwork/PlatON-Go/crypto/bn256"
 	"github.com/PlatONnetwork/PlatON-Go/crypto/bulletproof/tx"
 
 	"github.com/holiman/uint256"
@@ -24,20 +26,33 @@ import (
 )
 
 type VMContext struct {
-	evm      *EVM
-	contract *Contract
-	config   Config
-	gasTable params.GasTable
-	db       StateDB
-	Input    []byte
-	CallOut  []byte
-	Output   []byte
+	evm            *EVM
+	contract       *Contract
+	config         Config
+	gasTable       params.GasTable
+	db             StateDB
+	Input          []byte
+	CallOut        []byte
+	Output         []byte
 	VariableResult []byte
-	readOnly bool // Whether to throw on stateful modifications
-	Revert   bool
-	Log      *WasmLogger
+	readOnly       bool // Whether to throw on stateful modifications
+	Revert         bool
+	Log            *WasmLogger
 }
 
+var (
+	ptrSize = uint32(4)
+)
+
+func NewVMContext(evm *EVM, contract *Contract, config Config, gasTable params.GasTable, db StateDB) *VMContext {
+	return &VMContext{
+		evm:      evm,
+		contract: contract,
+		config:   config,
+		gasTable: gasTable,
+		db:       db,
+	}
+}
 func addFuncExport(m *wasm.Module, sig wasm.FunctionSig, function wasm.Function, export wasm.ExportEntry) {
 	typesLen := len(m.Types.Entries)
 	m.Types.Entries = append(m.Types.Entries, sig)
@@ -842,12 +857,195 @@ func NewHostModule() *wasm.Module {
 		},
 	)
 
+	// int bn256_g1_add(byte x1[32], byte y1[32], byte x2[32], byte y2[32], byte x3[32], byte y3[32]);
+	// func $bn256_g1_add(param $0 i32) (param $1 i32) (param $2 i32) (param $3 i32) (param $4 i32) (param $5 i32) (result i32)
+	addFuncExport(m,
+		wasm.FunctionSig{
+			ParamTypes:  []wasm.ValueType{wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32},
+			ReturnTypes: []wasm.ValueType{wasm.ValueTypeI32},
+		},
+		wasm.Function{
+			Host: reflect.ValueOf(Bn256G1Add),
+			Body: &wasm.FunctionBody{},
+		},
+		wasm.ExportEntry{
+			FieldStr: "bn256_g1_add",
+			Kind:     wasm.ExternalFunction,
+		},
+	)
+
+	// int bn256_g1_mul(byte x1[32], byte y1[32], byte bigint[32], byte x2[32], byte y2[32]);
+	// func $bn256_g1_mul(param $0 i32) (param $1 i32) (param $2 i32) (param $3 i32) (param $4 i32) (result i32)
+	addFuncExport(m,
+		wasm.FunctionSig{
+			ParamTypes:  []wasm.ValueType{wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32},
+			ReturnTypes: []wasm.ValueType{wasm.ValueTypeI32},
+		},
+		wasm.Function{
+			Host: reflect.ValueOf(Bn256G1Mul),
+			Body: &wasm.FunctionBody{},
+		},
+		wasm.ExportEntry{
+			FieldStr: "bn256_g1_mul",
+			Kind:     wasm.ExternalFunction,
+		},
+	)
+
+	// int bn256_g2_add(byte x11[32], byte y11[32], byte x12[32], byte y12[32], byte x21[32], byte y21[32], byte x22[32], byte y22[32], byte x31[32], byte y31[32], byte x32[32], byte y32[32]);
+	// func $bn256_g2_add(param $0 i32) (param $1 i32) (param $2 i32) (param $3 i32) (param $4 i32) (param $5 i32) (param $6 i32) (param $7 i32) (param $8 i32) (param $9 i32) (param $10 i32) (param $11 i32) (result i32)
+	addFuncExport(m,
+		wasm.FunctionSig{
+			ParamTypes:  []wasm.ValueType{wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32},
+			ReturnTypes: []wasm.ValueType{wasm.ValueTypeI32},
+		},
+		wasm.Function{
+			Host: reflect.ValueOf(Bn256G2Add),
+			Body: &wasm.FunctionBody{},
+		},
+		wasm.ExportEntry{
+			FieldStr: "bn256_g2_add",
+			Kind:     wasm.ExternalFunction,
+		},
+	)
+
+	// int bn256_g2_mul(byte x11[32], byte y11[32], byte x12[32], byte y12[32], byte bigint[32] byte x21[32], byte y21[32], byte x22[32], byte y22[32]);
+	// func $bn256_g2_mul(param $0 i32) (param $1 i32) (param $2 i32) (param $3 i32) (param $4 i32) (param $5 i32) (param $6 i32) (param $7 i32) (param $8 i32) (result i32)
+	addFuncExport(m,
+		wasm.FunctionSig{
+			ParamTypes:  []wasm.ValueType{wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32},
+			ReturnTypes: []wasm.ValueType{wasm.ValueTypeI32},
+		},
+		wasm.Function{
+			Host: reflect.ValueOf(Bn256G2Mul),
+			Body: &wasm.FunctionBody{},
+		},
+		wasm.ExportEntry{
+			FieldStr: "bn256_g2_mul",
+			Kind:     wasm.ExternalFunction,
+		},
+	)
+
+	// int bn256_pairing(uint8_t* x1[], uint8_t* y1[], uint8_t* x21[], uint8_t* y21[], uint8_t* x22[], uint8_t* y22[], size_t len);
+	// func $bn256_pairing(param $0 i32) (param $1 i32) (param $2 i32) (param $3 i32) (param $4 i32) (param $5 i32) (param $6 i32) (result i32)
+	addFuncExport(m,
+		wasm.FunctionSig{
+			ParamTypes:  []wasm.ValueType{wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32},
+			ReturnTypes: []wasm.ValueType{wasm.ValueTypeI32},
+		},
+		wasm.Function{
+			Host: reflect.ValueOf(Bn256Pairing),
+			Body: &wasm.FunctionBody{},
+		},
+		wasm.ExportEntry{
+			FieldStr: "bn256_pairing",
+			Kind:     wasm.ExternalFunction,
+		},
+	)
+
+
+	// uint32_t bigint_binary_operator(const uint8_t *left, uint8_t left_negative, size_t left_arr_size, const uint8_t *right, uint8_t right_negative, size_t right_arr_size, uint8_t *result, size_t result_arr_size, BinaryOperator binary_operator);
+	// func $bigint_binary_operator(param $0 i32) (param $1 i32) (param $2 i32) (param $3 i32) (param $4 i32) (param $5 i32) (param $6 i32) (param $7 i32) (param $8 i32) (result  i32)
+	addFuncExport(m,
+		wasm.FunctionSig{
+			ParamTypes:  []wasm.ValueType{wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32},
+			ReturnTypes: []wasm.ValueType{wasm.ValueTypeI32},
+		},
+		wasm.Function{
+			Host: reflect.ValueOf(BigintBinaryOperator),
+			Body: &wasm.FunctionBody{},
+		},
+		wasm.ExportEntry{
+			FieldStr: "bigint_binary_operator",
+			Kind:     wasm.ExternalFunction,
+		},
+	)
+
+	// uint32_t bigint_exp_mod(const uint8_t *left, uint8_t left_negative, size_t left_arr_size, const uint8_t *right, uint8_t right_negative, size_t right_arr_size, const uint8_t *mod, uint8_t mod_negative, size_t mod_arr_size, uint8_t *result, size_t result_arr_siz);
+	// func $bigint_exp_mod(param $0 i32) (param $1 i32) (param $2 i32) (param $3 i32) (param $4 i32) (param $5 i32) (param $6 i32) (param $7 i32) (param $8 i32) (param $9 i32) (param $10 i32) (result  i32)
+	addFuncExport(m,
+		wasm.FunctionSig{
+			ParamTypes:  []wasm.ValueType{wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32},
+			ReturnTypes: []wasm.ValueType{wasm.ValueTypeI32},
+		},
+		wasm.Function{
+			Host: reflect.ValueOf(BigintExpMod),
+			Body: &wasm.FunctionBody{},
+		},
+		wasm.ExportEntry{
+			FieldStr: "bigint_exp_mod",
+			Kind:     wasm.ExternalFunction,
+		},
+	)
+
+	// int32_t bigint_cmp(const uint8_t *left, uint8_t left_negative, size_t left_arr_size, const uint8_t *right, uint8_t right_negative, size_t right_arr_size);
+	// func $bigint_cmp(param $0 i32) (param $1 i32) (param $2 i32) (param $3 i32) (param $4 i32) (param $5 i32) (result  i32)
+	addFuncExport(m,
+		wasm.FunctionSig{
+			ParamTypes:  []wasm.ValueType{wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32},
+			ReturnTypes: []wasm.ValueType{wasm.ValueTypeI32},
+		},
+		wasm.Function{
+			Host: reflect.ValueOf(BigintCmp),
+			Body: &wasm.FunctionBody{},
+		},
+		wasm.ExportEntry{
+			FieldStr: "bigint_cmp",
+			Kind:     wasm.ExternalFunction,
+		},
+	)
+
+	// uint32_t bigint_sh(const uint8_t *origin, uint8_t origin_negative, size_t origin_arr_size, uint8_t *result, size_t result_arr_size, uint32_t shift_num, ShiftDirection direction);
+	// func $bigint_sh(param $0 i32) (param $1 i32) (param $2 i32) (param $3 i32) (param $4 i32) (param $5 i32) (param $6 i32)  (result i32)
+	addFuncExport(m,
+		wasm.FunctionSig{
+			ParamTypes:  []wasm.ValueType{wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32},
+			ReturnTypes: []wasm.ValueType{wasm.ValueTypeI32},
+		},
+		wasm.Function{
+			Host: reflect.ValueOf(BigintSh),
+			Body: &wasm.FunctionBody{},
+		},
+		wasm.ExportEntry{
+			FieldStr: "bigint_sh",
+			Kind:     wasm.ExternalFunction,
+		},
+	)
+
+	// uint32_t string_convert_operator(const uint8_t *str, size_t str_len, uint8_t *result, size_t result_arr_size);
+	// func $string_convert_operator(param $0 i32) (param $1 i32) (param $2 i32) (param $3 i32) (result i32)
+	addFuncExport(m,
+		wasm.FunctionSig{
+			ParamTypes:  []wasm.ValueType{wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32},
+			ReturnTypes: []wasm.ValueType{wasm.ValueTypeI32},
+		},
+		wasm.Function{
+			Host: reflect.ValueOf(StringConvertOperator),
+			Body: &wasm.FunctionBody{},
+		},
+		wasm.ExportEntry{
+			FieldStr: "string_convert_operator",
+			Kind:     wasm.ExternalFunction,
+		},
+	)
+
 	return m
 }
 
 func checkGas(ctx *VMContext, gas uint64) {
 	if !ctx.contract.UseGas(gas) {
 		panic(ErrOutOfGas)
+	}
+}
+
+func mustReadAt(proc *exec.Process, p []byte, off int64) {
+	if _, err := proc.ReadAt(p, off); err != nil {
+		panic(err)
+	}
+}
+
+func mustWriteAt(proc *exec.Process, p []byte, off int64) {
+	if _, err := proc.WriteAt(p, off); err != nil {
+		panic(err)
 	}
 }
 func GasPrice(proc *exec.Process, gasPrice uint32) uint32 {
@@ -2339,7 +2537,7 @@ func PlatonClone(proc *exec.Process, oldAddr, newAddr, args, argsLen, val, valLe
 func ConfidentialTxVerify(proc *exec.Process, txData uint32, txLen uint32) int32 {
 	ctx := proc.HostCtx().(*VMContext)
 
-	checkGas(ctx, params.ConfidentialTxVerifyBaseGas + uint64(txLen/256)*params.ConfidentialTxPerNoteGas)
+	checkGas(ctx, params.ConfidentialTxVerifyBaseGas+uint64(txLen/256)*params.ConfidentialTxPerNoteGas)
 
 	// read data
 	dataBuf := make([]byte, txLen)
@@ -2374,4 +2572,575 @@ func VariableLengthResult(proc *exec.Process, result uint32, resultLen uint32) i
 	}
 
 	return int32(len(ctx.VariableResult))
+}
+
+// int bn256_g1_add(byte x1[32], byte y1[32], byte x2[32], byte y2[32], byte x3[32], byte y3[32]);
+// func $bn256_g1_add(param $0 i32) (param $1 i32) (param $2 i32) (param $3 i32) (param $4 i32) (param $5 i32) (result i32)
+func Bn256G1Add(proc *exec.Process, x1, y1, x2, y2, x3, y3 uint32) int32 {
+	ctx := proc.HostCtx().(*VMContext)
+
+	checkGas(ctx, params.Bn256G1AddGas)
+	var x1Bytes [32]byte
+	var y1Bytes [32]byte
+	var x2Bytes [32]byte
+	var y2Bytes [32]byte
+
+	mustReadAt(proc, x1Bytes[:], int64(x1))
+	mustReadAt(proc, y1Bytes[:], int64(y1))
+	mustReadAt(proc, x2Bytes[:], int64(x2))
+	mustReadAt(proc, y2Bytes[:], int64(y2))
+
+	var gx1, gx2 bn256.G1
+	if _, err := gx1.Unmarshal(append(x1Bytes[:], y1Bytes[:]...)); err != nil {
+		return -1
+	}
+	if _, err := gx2.Unmarshal(append(x2Bytes[:], y2Bytes[:]...)); err != nil {
+		return -1
+	}
+
+	gx3 := new(bn256.G1)
+
+	gx3.Add(&gx1, &gx2)
+	res := gx3.Marshal()
+
+	mustWriteAt(proc, res[:32], int64(x3))
+	mustWriteAt(proc, res[32:], int64(y3))
+	return 0
+}
+
+// int bn256_g1_mul(byte x1[32], byte y1[32], byte bigint[32], byte x2[32], byte y2[32]);
+// func $bn256_g1_mul(param $0 i32) (param $1 i32) (param $2 i32) (param $3 i32) (param $4 i32) (result i32)
+func Bn256G1Mul(proc *exec.Process, x1, y1, bigint, x2, y2 uint32) int32 {
+	ctx := proc.HostCtx().(*VMContext)
+	checkGas(ctx, params.Bn256G1ScalarMulGas)
+
+	var x1Bytes [32]byte
+	var y1Bytes [32]byte
+	var bigIntBytes [32]byte
+	mustReadAt(proc, x1Bytes[:], int64(x1))
+	mustReadAt(proc, y1Bytes[:], int64(y1))
+	mustReadAt(proc, bigIntBytes[:], int64(bigint))
+
+	scalar := new(big.Int).SetBytes(bigIntBytes[:])
+	var gx1 bn256.G1
+	if _, err := gx1.Unmarshal(append(x1Bytes[:], y1Bytes[:]...)); err != nil {
+		return -1
+	}
+
+	gx3 := new(bn256.G1)
+
+	gx3.ScalarMult(&gx1, scalar)
+	res := gx3.Marshal()
+
+	mustWriteAt(proc, res[:32], int64(x2))
+	mustWriteAt(proc, res[32:], int64(y2))
+	return 0
+}
+
+// int bn256_g2_add(byte x11[32], byte x12[32], byte y11[32], byte y12[32], byte x21[32], byte x22[32], byte y21[32], byte y22[32], byte x31[32], byte x32[32], byte y31[32], byte y32[32]);
+// func $bn256_g2_add(param $0 i32) (param $1 i32) (param $2 i32) (param $3 i32) (param $4 i32) (param $5 i32) (result i32)
+func Bn256G2Add(proc *exec.Process, x11, x12, y11, y12, x21, x22, y21, y22, x31, x32, y31, y32 uint32) int32 {
+	ctx := proc.HostCtx().(*VMContext)
+	checkGas(ctx, params.Bn256G2AddGas)
+
+	var x11Bytes [32]byte
+	var y11Bytes [32]byte
+	var x12Bytes [32]byte
+	var y12Bytes [32]byte
+
+	var x21Bytes [32]byte
+	var y21Bytes [32]byte
+	var x22Bytes [32]byte
+	var y22Bytes [32]byte
+
+	mustReadAt(proc, x11Bytes[:], int64(x11))
+	mustReadAt(proc, y11Bytes[:], int64(y11))
+	mustReadAt(proc, x12Bytes[:], int64(x12))
+	mustReadAt(proc, y12Bytes[:], int64(y12))
+
+	mustReadAt(proc, x21Bytes[:], int64(x21))
+	mustReadAt(proc, y21Bytes[:], int64(y21))
+	mustReadAt(proc, x22Bytes[:], int64(x22))
+	mustReadAt(proc, y22Bytes[:], int64(y22))
+
+	var gx1, gx2 bn256.G2
+	if _, err := gx1.Unmarshal(append(x11Bytes[:], append(x12Bytes[:], append(y11Bytes[:], y12Bytes[:]...)...)...)); err != nil {
+		return -1
+	}
+	if _, err := gx2.Unmarshal(append(x21Bytes[:], append(x22Bytes[:], append(y21Bytes[:], y22Bytes[:]...)...)...)); err != nil {
+		return -1
+	}
+
+	gx3 := new(bn256.G2)
+
+	gx3.Add(&gx1, &gx2)
+	res := gx3.Marshal()
+
+	mustWriteAt(proc, res[:32], int64(x31))
+	mustWriteAt(proc, res[32:64], int64(x32))
+	mustWriteAt(proc, res[64:96], int64(y31))
+	mustWriteAt(proc, res[96:128], int64(y32))
+
+	return 0
+}
+
+// int bn256_g2_mul(byte x11[32], byte x12[32], byte y11[32], byte y12[32], byte bigint[32] byte x21[32], byte x22[32], byte y21[32], byte y22[32]);
+// func $bn256_g2_mul(param $0 i32) (param $1 i32) (param $2 i32) (param $3 i32) (param $4 i32) (param $5 i32) (param $6 i32) (param $7 i32) (param $8 i32) (result i32)
+func Bn256G2Mul(proc *exec.Process, x11, x12, y11, y12, bigint, x21, x22, y21, y22 uint32) int32 {
+	ctx := proc.HostCtx().(*VMContext)
+	checkGas(ctx, params.Bn256G2ScalarMulGas)
+
+	var x11Bytes [32]byte
+	var y11Bytes [32]byte
+	var x12Bytes [32]byte
+	var y12Bytes [32]byte
+	var bigintBytes [32]byte
+
+	mustReadAt(proc, x11Bytes[:], int64(x11))
+	mustReadAt(proc, y11Bytes[:], int64(y11))
+	mustReadAt(proc, x12Bytes[:], int64(x12))
+	mustReadAt(proc, y12Bytes[:], int64(y12))
+	mustReadAt(proc, bigintBytes[:], int64(bigint))
+
+	var gx1 bn256.G2
+	if _, err := gx1.Unmarshal(append(x11Bytes[:], append(x12Bytes[:], append(y11Bytes[:], y12Bytes[:]...)...)...)); err != nil {
+		return -1
+	}
+
+	gx3 := new(bn256.G2)
+
+	gx3.ScalarMult(&gx1, new(big.Int).SetBytes(bigintBytes[:]))
+	res := gx3.Marshal()
+
+	mustWriteAt(proc, res[:32], int64(x21))
+	mustWriteAt(proc, res[32:64], int64(x22))
+	mustWriteAt(proc, res[64:96], int64(y21))
+	mustWriteAt(proc, res[96:128], int64(y22))
+
+	return 0
+}
+
+// int bn256_pairing(uint8_t* x1[], uint8_t* y1[], uint8_t* x21[], uint8_t* x22[], uint8_t* y21[], uint8_t* y22[], size_t len);
+// func $bn256_pairing(param $0 i32) (param $1 i32) (param $2 i32) (param $3 i32) (param $4 i32) (param $5 i32) (param $6 i32) (result i32)
+func Bn256Pairing(proc *exec.Process, x1, y1, x21, x22, y21, y22, len uint32) int32 {
+	ctx := proc.HostCtx().(*VMContext)
+	checkGas(ctx, params.Bn256PairingCheckBaseGas+params.Bn256PairingCheckPerPairGas*uint64(len))
+
+	x1Array := make([]byte, len*ptrSize)
+	y1Array := make([]byte, len*ptrSize)
+
+	x21Array := make([]byte, len*ptrSize)
+	y21Array := make([]byte, len*ptrSize)
+	x22Array := make([]byte, len*ptrSize)
+	y22Array := make([]byte, len*ptrSize)
+
+	mustReadAt(proc, x1Array[:], int64(x1))
+	mustReadAt(proc, y1Array[:], int64(y1))
+	mustReadAt(proc, x21Array[:], int64(x21))
+	mustReadAt(proc, y21Array[:], int64(y21))
+	mustReadAt(proc, x22Array[:], int64(x22))
+	mustReadAt(proc, y22Array[:], int64(y22))
+
+	g1s := make([]*bn256.G1, 0, len)
+	g2s := make([]*bn256.G2, 0, len)
+
+	for i := uint32(0); i < len; i++ {
+		var x1Bytes [32]byte
+		var y1Bytes [32]byte
+
+		var x21Bytes [32]byte
+		var y21Bytes [32]byte
+		var x22Bytes [32]byte
+		var y22Bytes [32]byte
+
+		mustReadAt(proc, x1Bytes[:], int64(binary.LittleEndian.Uint32(x1Array[i*4:(i+1)*4])))
+		mustReadAt(proc, y1Bytes[:], int64(binary.LittleEndian.Uint32(y1Array[i*4:(i+1)*4])))
+		mustReadAt(proc, x21Bytes[:], int64(binary.LittleEndian.Uint32(x21Array[i*4:(i+1)*4])))
+		mustReadAt(proc, y21Bytes[:], int64(binary.LittleEndian.Uint32(y21Array[i*4:(i+1)*4])))
+		mustReadAt(proc, x22Bytes[:], int64(binary.LittleEndian.Uint32(x22Array[i*4:(i+1)*4])))
+		mustReadAt(proc, y22Bytes[:], int64(binary.LittleEndian.Uint32(y22Array[i*4:(i+1)*4])))
+
+		var gx1 bn256.G1
+		if _, err := gx1.Unmarshal(append(x1Bytes[:], y1Bytes[:]...)); err != nil {
+			return -2
+		}
+		g1s = append(g1s, &gx1)
+
+		var gx2 bn256.G2
+		if _, err := gx2.Unmarshal(append(x21Bytes[:], append(x22Bytes[:], append(y21Bytes[:], y22Bytes[:]...)...)...)); err != nil {
+			return -2
+		}
+		g2s = append(g2s, &gx2)
+	}
+
+	if !bn256.PairingCheck(g1s, g2s) {
+		return -1
+	}
+
+	return 0
+}
+
+
+type BinaryOperatorType uint32
+
+const (
+	BIGINTADD BinaryOperatorType = 0x01
+	BIGINTSUB BinaryOperatorType = 0x02
+	BIGINTMUL BinaryOperatorType = 0x04
+	BIGINTDIV BinaryOperatorType = 0x08
+	BIGINTMOD BinaryOperatorType = 0x10
+	BIGINTAND BinaryOperatorType = 0x20
+	BIGINTOR  BinaryOperatorType = 0x40
+	BIGINTXOR BinaryOperatorType = 0x80
+)
+
+// uint32_t bigint_binary_operator(const uint8_t *left, uint8_t left_negative, size_t left_arr_size, const uint8_t *right, uint8_t right_negative, size_t right_arr_size, uint8_t *result, size_t result_arr_size, BinaryOperator binary_operator);
+// func $bigint_binary_operator(param $0 i32) (param $1 i32) (param $2 i32) (param $3 i32) (param $4 i32) (param $5 i32) (param $6 i32) (param $7 i32) (param $8 i32) (result  i32)
+func BigintBinaryOperator(proc *exec.Process, left uint32, leftNegative uint32, leftArrSize uint32, right uint32, rightNegative uint32, rightArrSize uint32,
+	result uint32, resultArrSize uint32, binaryOperator uint32) uint32 {
+	// read left data
+	leftDataBuf := make([]byte, leftArrSize)
+	_, leftErr := proc.ReadAt(leftDataBuf, int64(left))
+	if nil != leftErr {
+		panic(leftErr)
+	}
+
+	leftOperand := new(big.Int)
+	leftOperand.SetBytes(leftDataBuf)
+
+	if leftNegative > 0 {
+		bigValueTemp := new(big.Int)
+		bigValueTemp.Neg(leftOperand)
+		leftOperand = bigValueTemp
+	}
+
+	// read right data
+	rightDataBuf := make([]byte, rightArrSize)
+	_, rightErr := proc.ReadAt(rightDataBuf, int64(right))
+	if nil != rightErr {
+		panic(rightErr)
+	}
+
+	rightOperand := new(big.Int)
+	rightOperand.SetBytes(rightDataBuf)
+
+	if rightNegative > 0 {
+		bigValueTemp := new(big.Int)
+		bigValueTemp.Neg(rightOperand)
+		rightOperand = bigValueTemp
+	}
+
+	// binary operation
+	operationResult := new(big.Int)
+	switch BinaryOperatorType(binaryOperator) {
+	case BIGINTADD:
+		operationResult.Add(leftOperand, rightOperand)
+	case BIGINTSUB:
+		operationResult.Sub(leftOperand, rightOperand)
+	case BIGINTMUL:
+		operationResult.Mul(leftOperand, rightOperand)
+	case BIGINTDIV:
+		operationResult.Div(leftOperand, rightOperand)
+	case BIGINTMOD:
+		operationResult.Mod(leftOperand, rightOperand)
+	case BIGINTAND:
+		operationResult.And(leftOperand, rightOperand)
+	case BIGINTOR:
+		operationResult.Or(leftOperand, rightOperand)
+	case BIGINTXOR:
+		operationResult.Xor(leftOperand, rightOperand)
+	default:
+		panic("invalid parameter")
+	}
+
+	// write result
+	bytesResult := operationResult.Bytes()
+
+	// Clear to zero
+	zeroResult := make([]byte, resultArrSize)
+	_, clearErr := proc.WriteAt(zeroResult, int64(result))
+	if nil != clearErr {
+		panic(clearErr)
+	}
+
+	// Set to actual value
+	bytesRealResult := bytesResult
+	if len(bytesRealResult) > int(resultArrSize) {
+		begin := len(bytesRealResult) - int(resultArrSize)
+		bytesRealResult = bytesResult[begin:]
+	}
+	result = result + resultArrSize - uint32(len(bytesRealResult))
+
+	_, setErr := proc.WriteAt(bytesRealResult, int64(result))
+	if nil != setErr {
+		panic(setErr)
+	}
+
+	var returnResult uint32 = 0
+
+	if -1 == operationResult.Sign() {
+		returnResult |= 0x01
+	}
+
+	if len(bytesResult) > int(resultArrSize) {
+		returnResult |= 0x02
+	}
+
+	return returnResult
+}
+
+// uint32_t bigint_exp_mod(const uint8_t *left, uint8_t left_negative, size_t left_arr_size, const uint8_t *right, uint8_t right_negative, size_t right_arr_size, const uint8_t *mod, uint8_t mod_negative, size_t mod_arr_size, uint8_t *result, size_t result_arr_siz);
+// func $bigint_exp_mod(param $0 i32) (param $1 i32) (param $2 i32) (param $3 i32) (param $4 i32) (param $5 i32) (param $6 i32) (param $7 i32) (param $8 i32) (param $9 i32) (param $10 i32) (result  i32)
+func BigintExpMod(proc *exec.Process, left uint32, leftNegative uint32, leftArrSize uint32, right uint32, rightNegative uint32, rightArrSize uint32, mod uint32, modNegative uint32, modArrSize uint32,
+	result uint32, resultArrSize uint32) uint32 {
+	// read left data
+	leftDataBuf := make([]byte, leftArrSize)
+	_, leftErr := proc.ReadAt(leftDataBuf, int64(left))
+	if nil != leftErr {
+		panic(leftErr)
+	}
+
+	leftOperand := new(big.Int)
+	leftOperand.SetBytes(leftDataBuf)
+
+	if leftNegative > 0 {
+		bigValueTemp := new(big.Int)
+		bigValueTemp.Neg(leftOperand)
+		leftOperand = bigValueTemp
+	}
+
+	// read right data
+	rightDataBuf := make([]byte, rightArrSize)
+	_, rightErr := proc.ReadAt(rightDataBuf, int64(right))
+	if nil != rightErr {
+		panic(rightErr)
+	}
+
+	rightOperand := new(big.Int)
+	rightOperand.SetBytes(rightDataBuf)
+
+	if rightNegative > 0 {
+		bigValueTemp := new(big.Int)
+		bigValueTemp.Neg(rightOperand)
+		rightOperand = bigValueTemp
+	}
+
+	// read mod data
+	modDataBuf := make([]byte, modArrSize)
+	_, modErr := proc.ReadAt(modDataBuf, int64(mod))
+	if nil != modErr {
+		panic(modErr)
+	}
+
+	modOperand := new(big.Int)
+	modOperand.SetBytes(modDataBuf)
+
+	if modNegative > 0 {
+		bigValueTemp := new(big.Int)
+		bigValueTemp.Neg(rightOperand)
+		modOperand = bigValueTemp
+	}
+
+	// binary operation
+	operationResult := new(big.Int)
+	operationResult.Exp(leftOperand, rightOperand, modOperand)
+
+	// write result
+	bytesResult := operationResult.Bytes()
+
+	// Clear to zero
+	zeroResult := make([]byte, resultArrSize)
+	_, clearErr := proc.WriteAt(zeroResult, int64(result))
+	if nil != clearErr {
+		panic(clearErr)
+	}
+
+	//Set to actual value
+	// Set to actual value
+	bytesRealResult := bytesResult
+	if len(bytesRealResult) > int(resultArrSize) {
+		begin := len(bytesRealResult) - int(resultArrSize)
+		bytesRealResult = bytesResult[begin:]
+	}
+	result = result + resultArrSize - uint32(len(bytesRealResult))
+
+	_, setErr := proc.WriteAt(bytesRealResult, int64(result))
+	if nil != setErr {
+		panic(setErr)
+	}
+
+	var returnResult uint32 = 0
+
+	if -1 == operationResult.Sign() {
+		returnResult |= 0x01
+	}
+
+	if len(bytesResult) > int(resultArrSize) {
+		returnResult |= 0x02
+	}
+
+	return returnResult
+}
+
+// int32_t bigint_cmp(const uint8_t *left, uint8_t left_negative, size_t left_arr_size, const uint8_t *right, uint8_t right_negative, size_t right_arr_size);
+// func $bigint_cmp(param $0 i32) (param $1 i32) (param $2 i32) (param $3 i32) (param $4 i32) (param $5 i32) (result  i32)
+func BigintCmp(proc *exec.Process, left uint32, leftNegative uint32, leftArrSize uint32, right uint32, rightNegative uint32, rightArrSize uint32) int32 {
+	// read left data
+	leftDataBuf := make([]byte, leftArrSize)
+	_, leftErr := proc.ReadAt(leftDataBuf, int64(left))
+	if nil != leftErr {
+		panic(leftErr)
+	}
+
+	leftOperand := new(big.Int)
+	leftOperand.SetBytes(leftDataBuf)
+
+	if leftNegative > 0 {
+		bigValueTemp := new(big.Int)
+		bigValueTemp.Neg(leftOperand)
+		leftOperand = bigValueTemp
+	}
+
+	// read right data
+	rightDataBuf := make([]byte, rightArrSize)
+	_, rightErr := proc.ReadAt(rightDataBuf, int64(right))
+	if nil != rightErr {
+		panic(rightErr)
+	}
+
+	rightOperand := new(big.Int)
+	rightOperand.SetBytes(rightDataBuf)
+
+	if rightNegative > 0 {
+		bigValueTemp := new(big.Int)
+		bigValueTemp.Neg(rightOperand)
+		rightOperand = bigValueTemp
+	}
+
+	// compare
+	result := int32(leftOperand.Cmp(rightOperand))
+	return result
+}
+
+type ShiftDirectionType uint32
+
+const (
+	LEFT  ShiftDirectionType = 0x01
+	RIGHT ShiftDirectionType = 0x02
+)
+
+// uint32_t bigint_sh(const uint8_t *origin, uint8_t origin_negative, size_t origin_arr_size, uint8_t *result, size_t result_arr_size, uint32_t shift_num, ShiftDirection direction);
+// func $bigint_sh(param $0 i32) (param $1 i32) (param $2 i32) (param $3 i32) (param $4 i32) (param $5 i32) (param $6 i32)  (result i32)
+func BigintSh(proc *exec.Process, origin uint32, originNegative uint32, originArrSize uint32, result uint32, resultArrSize uint32, shiftNum uint32, direction uint32) uint32 {
+	// read origin data
+	originDataBuf := make([]byte, originArrSize)
+	_, originErr := proc.ReadAt(originDataBuf, int64(origin))
+	if nil != originErr {
+		panic(originErr)
+	}
+
+	originOperand := new(big.Int)
+	originOperand.SetBytes(originDataBuf)
+
+	if originNegative > 0 {
+		bigValueTemp := new(big.Int)
+		bigValueTemp.Neg(originOperand)
+		originOperand = bigValueTemp
+	}
+
+	// shift
+	operationResult := new(big.Int)
+	switch ShiftDirectionType(direction) {
+	case LEFT:
+		operationResult.Lsh(originOperand, uint(shiftNum))
+	case RIGHT:
+		operationResult.Rsh(originOperand, uint(shiftNum))
+	}
+
+	// write result
+	bytesResult := operationResult.Bytes()
+
+	// Clear to zero
+	zeroResult := make([]byte, resultArrSize)
+	_, clearErr := proc.WriteAt(zeroResult, int64(result))
+	if nil != clearErr {
+		panic(clearErr)
+	}
+
+	//Set to actual value
+	// Set to actual value
+	bytesRealResult := bytesResult
+	if len(bytesRealResult) > int(resultArrSize) {
+		begin := len(bytesRealResult) - int(resultArrSize)
+		bytesRealResult = bytesResult[begin:]
+	}
+	result = result + resultArrSize - uint32(len(bytesRealResult))
+
+	_, setErr := proc.WriteAt(bytesRealResult, int64(result))
+	if nil != setErr {
+		panic(setErr)
+	}
+
+	var returnResult uint32 = 0
+
+	if -1 == operationResult.Sign() {
+		returnResult |= 0x01
+	}
+
+	if len(bytesResult) > int(resultArrSize) {
+		returnResult |= 0x02
+	}
+
+	return returnResult
+}
+
+// uint32_t string_convert_operator(const uint8_t *str, size_t str_len, uint8_t *result, size_t result_arr_size);
+// func $string_convert_operator(param $0 i32) (param $1 i32) (param $2 i32) (param $3 i32) (result i32)
+func StringConvertOperator(proc *exec.Process, str uint32, strLen uint32, result uint32, resultArrSize uint32) uint32 {
+
+	// read string data
+	dataBuf := make([]byte, strLen)
+	_, err := proc.ReadAt(dataBuf, int64(str))
+	if nil != err {
+		panic(err)
+	}
+
+	strValue := string(dataBuf[:])
+	value := new(big.Int)
+	value.SetString(strValue, 10)
+
+	// write result
+	bytesResult := value.Bytes()
+
+	// Clear to zero
+	zeroResult := make([]byte, resultArrSize)
+	_, clearErr := proc.WriteAt(zeroResult, int64(result))
+	if nil != clearErr {
+		panic(clearErr)
+	}
+
+	//Set to actual value
+	bytesRealResult := bytesResult
+	if len(bytesRealResult) > int(resultArrSize) {
+		begin := len(bytesRealResult) - int(resultArrSize)
+		bytesRealResult = bytesResult[begin:]
+	}
+	result = result + resultArrSize - uint32(len(bytesRealResult))
+
+	_, setErr := proc.WriteAt(bytesRealResult, int64(result))
+	if nil != setErr {
+		panic(setErr)
+	}
+
+	var returnResult uint32 = 0
+
+	if -1 == value.Sign() {
+		returnResult |= 0x01
+	}
+
+	if len(bytesResult) > int(resultArrSize) {
+		returnResult |= 0x02
+	}
+
+	return returnResult
 }
