@@ -328,6 +328,8 @@ func (sk *StakingPlugin) CreateCandidate(state xcom.StateDB, blockHash common.Ha
 			}
 			can.RestrictingPlanHes = restrictingPlanHes
 			can.ReleasedHes = releasedHes
+			//stats
+			common.CollectAutoStakingTx(blockNumber.Uint64(), state.TxHash(), restrictingPlanHes, releasedHes)
 		} else {
 			log.Error("Failed to CreateCandidate on stakingPlugin", "err", staking.ErrWrongVonOptType,
 				"got type", typ, "need type", fmt.Sprintf("%d or %d", FreeVon, RestrictVon))

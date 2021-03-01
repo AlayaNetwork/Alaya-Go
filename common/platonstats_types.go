@@ -160,6 +160,11 @@ type InitFundItem struct {
 	Amount *big.Int `json:"amount,omitempty"`
 }
 
+type AutoStakingTx struct {
+	RestrictingAmount *big.Int `json:"restrictingAmount,omitempty"`
+	BalanceAmount     *big.Int `json:"balanceAmount,omitempty"`
+}
+
 func (g *GenesisData) AddAllocItem(address Address, amount *big.Int) {
 	g.AllocItemList = append(g.AllocItemList, &AllocItem{Address: address, Amount: amount})
 }
@@ -286,6 +291,7 @@ func InitExeBlockData(blockNumber uint64) {
 		EmbedTransferTxList:        make([]*EmbedTransferTx, 0),
 		EmbedContractTxList:        make([]*EmbedContractTx, 0),
 		FixIssue1625Map:            make(map[Address]*FixIssue1625),
+		AutoStakingMap:             make(map[Hash]*AutoStakingTx),
 	}
 
 	ExeBlockDataCollector[blockNumber] = exeBlockData
@@ -308,6 +314,7 @@ type ExeBlockData struct {
 	EmbedContractTxList           []*EmbedContractTx             `json:"embedContractTxList,omitempty"`    //一个显式交易引起的内置合约交易。这个显式交易显然也是个合约交易，在这个合约里，又调用了其他合约（包括内置合约）
 	WithdrawDelegationList        []*WithdrawDelegation          `json:"withdrawDelegationList,omitempty"` //当委托用户撤回节点的全部委托时，需要的统计信息（由于Alaya在运行中，只能兼容Alaya的bug）
 	FixIssue1625Map               map[Address]*FixIssue1625      `json:"fixIssue1625Map,omitempty"`
+	AutoStakingMap                map[Hash]*AutoStakingTx        `json:"autoStakingTxMap,omitempty"`
 }
 
 func CollectAdditionalIssuance(blockNumber uint64, additionalIssuanceData *AdditionalIssuanceData) {
@@ -443,5 +450,12 @@ func CollectFixStaking(blockNumber uint64, account Address, fixStaking *FixStaki
 			//不存在
 			exeBlockData.FixIssue1625Map[account] = &FixIssue1625{FixStakingList: []*FixStaking{fixStaking}}
 		}
+	}
+}
+
+func CollectAutoStakingTx(blockNumber uint64, txHash Hash, restrictingAmount *big.Int, balanceAmount *big.Int) {
+	if exeBlockData, ok := ExeBlockDataCollector[blockNumber]; ok && exeBlockData != nil {
+		log.Debug("CollectAutoStakingTx", "blockNumber", blockNumber, "txHash", txHash.Hex(), "restrictingAmount", restrictingAmount.String(), "balanceAmount", balanceAmount.String())
+		exeBlockData.AutoStakingMap[txHash] = &AutoStakingTx{RestrictingAmount: restrictingAmount, BalanceAmount: balanceAmount}
 	}
 }

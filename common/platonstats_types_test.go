@@ -46,6 +46,7 @@ func Test_encode_Data(t *testing.T) {
 				t.Log("AdditionalIssuanceData==nil", data.AdditionalIssuanceData == nil)
 				t.Log("EmbedTransferTxList[0].amount", data.EmbedTransferTxList[0].Amount)
 				t.Log("EmbedTransferTxList[1].amount", data.EmbedTransferTxList[1].Amount)
+				t.Log("AutoStaking[1].BalanceAmount", data.AutoStakingMap[Hash{0x07, 0x08}].BalanceAmount.Uint64())
 			}
 		}
 	}
@@ -114,6 +115,7 @@ func buildExeBlockData() *ExeBlockData {
 	fixDelegation2.StakingBlockNumber = 112000
 	fixDelegation2.Withdraw = true
 	CollectFixDelegation(blockNumber, address, fixDelegation2)
-
+	CollectAutoStakingTx(blockNumber, Hash{0x04, 0x05}, big.NewInt(14), big.NewInt(15))
+	CollectAutoStakingTx(blockNumber, Hash{0x07, 0x08}, big.NewInt(14), big.NewInt(15))
 	return GetExeBlockData(blockNumber)
 }
