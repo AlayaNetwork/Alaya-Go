@@ -430,7 +430,8 @@ func (s *PlatonStatsService) accountCheckingLoop() {
 			err := s.accountChecking(key, msg.Value)
 			if err != nil {
 				log.Error("Failed to check account balance", "err", err)
-				panic(err)
+				//对账失败，不退出进程
+				//panic(err)
 			} else {
 				log.Debug("Success to check account balance", "key", key)
 			}
