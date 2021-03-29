@@ -68,7 +68,7 @@ func (db *StatsDB) ReadGenesisData() *common.GenesisData {
 	}
 	var data common.GenesisData
 	if err := json.Unmarshal(bytes, &data); err != nil {
-		log.Crit("Failed to unmarshal genesis data", "data", common.Bytes2Hex(bytes), "err", err)
+		log.Crit("Failed to unmarshal genesis data", "data", string(bytes), "err", err)
 		return nil
 	}
 	return &data
