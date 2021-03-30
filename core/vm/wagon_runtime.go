@@ -3,6 +3,7 @@ package vm
 import (
 	"crypto/sha256"
 	"encoding/binary"
+
 	"github.com/PlatONnetwork/PlatON-Go/crypto/bn256"
 	"github.com/PlatONnetwork/PlatON-Go/crypto/bulletproof/tx"
 
@@ -11,6 +12,7 @@ import (
 	"golang.org/x/crypto/ripemd160"
 
 	"github.com/PlatONnetwork/PlatON-Go/common"
+	"github.com/PlatONnetwork/PlatON-Go/common/math"
 	imath "github.com/PlatONnetwork/PlatON-Go/common/math"
 	"github.com/PlatONnetwork/PlatON-Go/core/types"
 	"github.com/PlatONnetwork/PlatON-Go/rlp"
@@ -941,7 +943,6 @@ func NewHostModule() *wasm.Module {
 			Kind:     wasm.ExternalFunction,
 		},
 	)
-
 
 	// uint32_t bigint_binary_operator(const uint8_t *left, uint8_t left_negative, size_t left_arr_size, const uint8_t *right, uint8_t right_negative, size_t right_arr_size, uint8_t *result, size_t result_arr_size, BinaryOperator binary_operator);
 	// func $bigint_binary_operator(param $0 i32) (param $1 i32) (param $2 i32) (param $3 i32) (param $4 i32) (param $5 i32) (param $6 i32) (param $7 i32) (param $8 i32) (result  i32)
@@ -2780,7 +2781,6 @@ func Bn256Pairing(proc *exec.Process, x1, y1, x21, x22, y21, y22, len uint32) in
 	return 0
 }
 
-
 type BinaryOperatorType uint32
 
 const (
@@ -2798,6 +2798,9 @@ const (
 // func $bigint_binary_operator(param $0 i32) (param $1 i32) (param $2 i32) (param $3 i32) (param $4 i32) (param $5 i32) (param $6 i32) (param $7 i32) (param $8 i32) (result  i32)
 func BigintBinaryOperator(proc *exec.Process, left uint32, leftNegative uint32, leftArrSize uint32, right uint32, rightNegative uint32, rightArrSize uint32,
 	result uint32, resultArrSize uint32, binaryOperator uint32) uint32 {
+	ctx := proc.HostCtx().(*VMContext)
+	checkGas(ctx, GasFastStep)
+
 	// read left data
 	leftDataBuf := make([]byte, leftArrSize)
 	_, leftErr := proc.ReadAt(leftDataBuf, int64(left))
@@ -2893,6 +2896,8 @@ func BigintBinaryOperator(proc *exec.Process, left uint32, leftNegative uint32, 
 // func $bigint_exp_mod(param $0 i32) (param $1 i32) (param $2 i32) (param $3 i32) (param $4 i32) (param $5 i32) (param $6 i32) (param $7 i32) (param $8 i32) (param $9 i32) (param $10 i32) (result  i32)
 func BigintExpMod(proc *exec.Process, left uint32, leftNegative uint32, leftArrSize uint32, right uint32, rightNegative uint32, rightArrSize uint32, mod uint32, modNegative uint32, modArrSize uint32,
 	result uint32, resultArrSize uint32) uint32 {
+	ctx := proc.HostCtx().(*VMContext)
+
 	// read left data
 	leftDataBuf := make([]byte, leftArrSize)
 	_, leftErr := proc.ReadAt(leftDataBuf, int64(left))
@@ -2908,6 +2913,16 @@ func BigintExpMod(proc *exec.Process, left uint32, leftNegative uint32, leftArrS
 		bigValueTemp.Neg(leftOperand)
 		leftOperand = bigValueTemp
 	}
+
+	expByteLen := uint64((leftOperand.BitLen() + 7) / 8)
+	var (
+		gas      = expByteLen * ctx.gasTable.ExpByte // no overflow check required. Max is 256 * ExpByte gas
+		overflow bool
+	)
+	if gas, overflow = math.SafeAdd(gas, GasSlowStep); overflow {
+		panic(errGasUintOverflow)
+	}
+	checkGas(ctx, gas)
 
 	// read right data
 	rightDataBuf := make([]byte, rightArrSize)
@@ -2985,6 +3000,9 @@ func BigintExpMod(proc *exec.Process, left uint32, leftNegative uint32, leftArrS
 // int32_t bigint_cmp(const uint8_t *left, uint8_t left_negative, size_t left_arr_size, const uint8_t *right, uint8_t right_negative, size_t right_arr_size);
 // func $bigint_cmp(param $0 i32) (param $1 i32) (param $2 i32) (param $3 i32) (param $4 i32) (param $5 i32) (result  i32)
 func BigintCmp(proc *exec.Process, left uint32, leftNegative uint32, leftArrSize uint32, right uint32, rightNegative uint32, rightArrSize uint32) int32 {
+	ctx := proc.HostCtx().(*VMContext)
+	checkGas(ctx, GasFastestStep)
+
 	// read left data
 	leftDataBuf := make([]byte, leftArrSize)
 	_, leftErr := proc.ReadAt(leftDataBuf, int64(left))
@@ -3032,6 +3050,9 @@ const (
 // uint32_t bigint_sh(const uint8_t *origin, uint8_t origin_negative, size_t origin_arr_size, uint8_t *result, size_t result_arr_size, uint32_t shift_num, ShiftDirection direction);
 // func $bigint_sh(param $0 i32) (param $1 i32) (param $2 i32) (param $3 i32) (param $4 i32) (param $5 i32) (param $6 i32)  (result i32)
 func BigintSh(proc *exec.Process, origin uint32, originNegative uint32, originArrSize uint32, result uint32, resultArrSize uint32, shiftNum uint32, direction uint32) uint32 {
+	ctx := proc.HostCtx().(*VMContext)
+	checkGas(ctx, GasFastestStep)
+
 	// read origin data
 	originDataBuf := make([]byte, originArrSize)
 	_, originErr := proc.ReadAt(originDataBuf, int64(origin))
@@ -3097,6 +3118,12 @@ func BigintSh(proc *exec.Process, origin uint32, originNegative uint32, originAr
 // uint32_t string_convert_operator(const uint8_t *str, size_t str_len, uint8_t *result, size_t result_arr_size);
 // func $string_convert_operator(param $0 i32) (param $1 i32) (param $2 i32) (param $3 i32) (result i32)
 func StringConvertOperator(proc *exec.Process, str uint32, strLen uint32, result uint32, resultArrSize uint32) uint32 {
+	ctx := proc.HostCtx().(*VMContext)
+	byteLen := uint64((strLen + 7) / 8)
+	if 0 == strLen {
+		byteLen = 1
+	}
+	checkGas(ctx, byteLen*GasFastestStep)
 
 	// read string data
 	dataBuf := make([]byte, strLen)

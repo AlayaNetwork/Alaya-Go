@@ -1,0 +1,90 @@
+[
+    {
+        "Input": [
+            "12345678989742661278916",
+            "56728363836383636363643"
+        ],
+        "Return": -1,
+        "Expected": [],
+        "Gas": 3,
+        "Name": "bigint_cmp_lt",
+        "NoBenchmark": false
+    },
+    {
+        "Input": [
+            "56728363836383636363643",
+            "12345678989742661278916"
+        ],
+        "Return": 1,
+        "Expected": [],
+        "Gas": 3,
+        "Name": "bigint_cmp_lt",
+        "NoBenchmark": false
+    },
+    {
+        "Input": [
+            "56728363836383636363643",
+            "56728363836383636363643"
+        ],
+        "Return": 0,
+        "Expected": [],
+        "Gas": 3,
+        "Name": "bigint_cmp_lt",
+        "NoBenchmark": false
+    },
+    {
+        "Input": [
+            "-12345678989742661278916",
+            "56728363836383636363643"
+        ],
+        "Return": -1,
+        "Expected": [],
+        "Gas": 3,
+        "Name": "bigint_cmp_lt",
+        "NoBenchmark": false
+    },
+    {
+        "Input": [
+            "12345678989742661278916",
+            "-56728363836383636363643"
+        ],
+        "Return": 1,
+        "Expected": [],
+        "Gas": 3,
+        "Name": "bigint_cmp_lt",
+        "NoBenchmark": false
+    },
+    {
+        "Input": [
+            "-12345678989742661278916",
+            "-56728363836383636363643"
+        ],
+        "Return": 1,
+        "Expected": [],
+        "Gas": 3,
+        "Name": "bigint_cmp_lt",
+        "NoBenchmark": false
+    },
+    {
+        "Input": [
+            "-56728363836383636363643",
+            "-12345678989742661278916"
+        ],
+        "Return": -1,
+        "Expected": [],
+        "Gas": 3,
+        "Name": "bigint_cmp_lt",
+        "NoBenchmark": false
+    },
+    {
+        "Input": [
+            "-56728363836383636363643",
+            "-56728363836383636363643"
+        ],
+        "Return": 0,
+        "Expected": [],
+        "Gas": 3,
+        "Name": "bigint_cmp_lt",
+        "NoBenchmark": false
+    }
+]

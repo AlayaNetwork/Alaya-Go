@@ -1,0 +1,72 @@
+[
+    {
+        "Input": [
+            "12345678989742661278916",
+            "5",
+            "01"
+        ],
+        "Return": 0,
+        "Expected": [
+            "395061727671765160925312"
+        ],
+        "Gas": 3,
+        "Name": "bigint_sh_left",
+        "NoBenchmark": false
+    },
+    {
+        "Input": [
+            "12345678989742661278916",
+            "5",
+            "02"
+        ],
+        "Return": 0,
+        "Expected": [
+            "385802468429458164966"
+        ],
+        "Gas": 3,
+        "Name": "bigint_sh_right",
+        "NoBenchmark": false
+    },
+    {
+        "Input": [
+            "-1",
+            "5",
+            "02"
+        ],
+        "Return": 1,
+        "Expected": [
+            "-1"
+        ],
+        "Gas": 3,
+        "Name": "bigint_sh_right",
+        "NoBenchmark": false
+    },
+    {
+        "Input": [
+            "-1",
+            "16",
+            "01"
+        ],
+        "Return": 1,
+        "Expected": [
+            "-65536"
+        ],
+        "Gas": 3,
+        "Name": "bigint_sh_right",
+        "NoBenchmark": false
+    },
+    {
+        "Input": [
+            "-1",
+            "257",
+            "01"
+        ],
+        "Return": 3,
+        "Expected": [
+            "0"
+        ],
+        "Gas": 3,
+        "Name": "bigint_sh_right",
+        "NoBenchmark": false
+    }
+]
