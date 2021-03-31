@@ -1,0 +1,62 @@
+[
+    {
+        "Input": [
+            "12345678989742661278916"
+        ],
+        "Return": 0,
+        "Expected": [
+            "12345678989742661278916"
+        ],
+        "Gas": 12,
+        "Name": "string_convert_operator",
+        "NoBenchmark": false
+    },
+    {
+        "Input": [
+            "1234567898974266127891656275255273638"
+        ],
+        "Return": 0,
+        "Expected": [
+            "1234567898974266127891656275255273638"
+        ],
+        "Gas": 15,
+        "Name": "string_convert_operator",
+        "NoBenchmark": false
+    },
+    {
+        "Input": [
+            ""
+        ],
+        "Return": 0,
+        "Expected": [
+            "0"
+        ],
+        "Gas": 3,
+        "Name": "string_convert_operator",
+        "NoBenchmark": false
+    },
+    {
+        "Input": [
+            "1957935386711347641546115552729054922295194179936589948401488719806125401287265028105"
+        ],
+        "Return": 2,
+        "Expected": [
+            "2272213854157228352958050567129780813026193712624458064361281817417808807945"
+        ],
+        "Gas": 33,
+        "Name": "string_convert_operator",
+        "NoBenchmark": false
+    },
+    {
+        "Input": [
+            "-1957935386711347641546115552729054922295194179936589948401488719806125401287265028105"
+        ],
+        "Return": 3,
+        "Expected": [
+            "2272213854157228352958050567129780813026193712624458064361281817417808807945"
+        ],
+        "Gas": 33,
+        "Name": "string_convert_operator",
+        "NoBenchmark": false
+    }
+]

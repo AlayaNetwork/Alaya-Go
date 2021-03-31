@@ -8,12 +8,14 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/PlatONnetwork/PlatON-Go/common/hexutil"
 	"hash/fnv"
 	"io/ioutil"
 	"math/big"
+	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/PlatONnetwork/PlatON-Go/common/hexutil"
 
 	"github.com/PlatONnetwork/PlatON-Go/params"
 
@@ -1641,7 +1643,7 @@ func TestBn256G1Add(t *testing.T) {
 		process.WriteAt(x2, 1024+64)
 		process.WriteAt(y2, 1024+96)
 
-		res, panic := executeExternalFunc(func()int32 {
+		res, panic := executeExternalFunc(func() int32 {
 			return Bn256G1Add(process, 1024, 1024+32, 1024+64, 1024+96, 1024+128, 1024+160)
 		})
 		checkGasCost(t, process, p.Gas)
@@ -1651,7 +1653,7 @@ func TestBn256G1Add(t *testing.T) {
 			assert.Equal(t, p.Return, int(res), fmt.Sprintf("execute testcase error pos:%d", pos))
 			for i, e := range p.Expected {
 				var buf [32]byte
-				process.ReadAt(buf[:], 1024+128 + int64(i)*32)
+				process.ReadAt(buf[:], 1024+128+int64(i)*32)
 				assert.Equal(t, e, hex.EncodeToString(buf[:]), fmt.Sprintf("execute testcase error pos:%d", pos))
 			}
 
@@ -1673,7 +1675,7 @@ func TestBn256G1Mul(t *testing.T) {
 		process.WriteAt(y1, 1024+32)
 		process.WriteAt(x2, 1024+64)
 
-		res, panic := executeExternalFunc(func()int32 {
+		res, panic := executeExternalFunc(func() int32 {
 			return Bn256G1Mul(process, 1024, 1024+32, 1024+64, 1024+96, 1024+128)
 		})
 		checkGasCost(t, process, p.Gas)
@@ -1683,7 +1685,7 @@ func TestBn256G1Mul(t *testing.T) {
 			assert.Equal(t, p.Return, int(res), fmt.Sprintf("execute testcase error pos:%d", pos))
 			for i, e := range p.Expected {
 				var buf [32]byte
-				process.ReadAt(buf[:], 1024+96 + int64(i)*32)
+				process.ReadAt(buf[:], 1024+96+int64(i)*32)
 				assert.Equal(t, e, hex.EncodeToString(buf[:]), fmt.Sprintf("execute testcase error pos:%d", pos))
 			}
 		}
@@ -1829,3 +1831,199 @@ func TestBn256Pairing(t *testing.T) {
 	}
 }
 
+// Big integer related unit tests
+func TestBigintBinaryOperator(t *testing.T) {
+	process := exec.NewProcess(newTestVM())
+	testcases := mustReadExternalFuncTestCase("testdata/wasm/bigint_binary_operator.json", t)
+
+	for _, p := range testcases {
+		leftAddress := int64(1024)
+		leftOperandString := p.Input[0]
+		leftOperand, _ := new(big.Int).SetString(leftOperandString, int(10))
+		var leftNegative uint32 = 0
+		if leftOperand.Sign() == -1 {
+			leftNegative = 1
+		}
+		leftOperandBytes := leftOperand.Bytes()
+		process.WriteAt(leftOperandBytes, leftAddress)
+
+		rightAddress := leftAddress + int64(len(leftOperandBytes))
+		rightOperandString := p.Input[1]
+		rightOperand, _ := new(big.Int).SetString(rightOperandString, int(10))
+		var rightNegative uint32 = 0
+		if rightOperand.Sign() == -1 {
+			rightNegative = 1
+		}
+		rightOperandBytes := rightOperand.Bytes()
+		process.WriteAt(rightOperandBytes, rightAddress)
+
+		resultAddress := rightAddress + int64(len(rightOperandBytes))
+		binaryOperator, _ := strconv.ParseInt(p.Input[2], 16, 32)
+		flag := BigintBinaryOperator(process, uint32(leftAddress), leftNegative, uint32(len(leftOperandBytes)), uint32(rightAddress), rightNegative, uint32(len(rightOperandBytes)),
+			uint32(resultAddress), 32, uint32(binaryOperator))
+
+		assert.Equal(t, p.Return, int(flag))
+
+		resultOperandString := p.Expected[0]
+		resultOperand, _ := new(big.Int).SetString(resultOperandString, int(10))
+		resultOperandBytes := resultOperand.Bytes()
+
+		result := make([]byte, 32)
+		process.ReadAt(result, resultAddress)
+		result = result[32-len(resultOperandBytes):]
+		assert.Equal(t, result, resultOperandBytes)
+
+		checkGasCost(t, process, p.Gas)
+	}
+}
+
+func TestBigintExpMod(t *testing.T) {
+	process := exec.NewProcess(newTestVM())
+	testcases := mustReadExternalFuncTestCase("testdata/wasm/bigint_exp_mod.json", t)
+
+	for _, p := range testcases {
+		leftAddress := int64(1024)
+		leftOperandString := p.Input[0]
+		leftOperand, _ := new(big.Int).SetString(leftOperandString, int(10))
+		var leftNegative uint32 = 0
+		if leftOperand.Sign() == -1 {
+			leftNegative = 1
+		}
+		leftOperandBytes := leftOperand.Bytes()
+		process.WriteAt(leftOperandBytes, leftAddress)
+
+		rightAddress := leftAddress + int64(len(leftOperandBytes))
+		rightOperandString := p.Input[1]
+		rightOperand, _ := new(big.Int).SetString(rightOperandString, int(10))
+		var rightNegative uint32 = 0
+		if rightOperand.Sign() == -1 {
+			rightNegative = 1
+		}
+		rightOperandBytes := rightOperand.Bytes()
+		process.WriteAt(rightOperandBytes, rightAddress)
+
+		modAddress := rightAddress + int64(len(rightOperandBytes))
+		modOperandString := p.Input[2]
+		modOperand, _ := new(big.Int).SetString(modOperandString, int(10))
+		var modNegative uint32 = 0
+		if modOperand.Sign() == -1 {
+			modNegative = 1
+		}
+		modOperandBytes := modOperand.Bytes()
+		process.WriteAt(modOperandBytes, modAddress)
+
+		resultAddress := rightAddress + int64(len(modOperandBytes))
+		flag := BigintExpMod(process, uint32(leftAddress), leftNegative, uint32(len(leftOperandBytes)), uint32(rightAddress), rightNegative, uint32(len(rightOperandBytes)),
+			uint32(modAddress), modNegative, uint32(len(modOperandBytes)), uint32(resultAddress), 32)
+
+		assert.Equal(t, p.Return, int(flag))
+
+		resultOperandString := p.Expected[0]
+		resultOperand, _ := new(big.Int).SetString(resultOperandString, int(10))
+		resultOperandBytes := resultOperand.Bytes()
+
+		result := make([]byte, 32)
+		process.ReadAt(result, resultAddress)
+		result = result[32-len(resultOperandBytes):]
+		assert.Equal(t, result, resultOperandBytes)
+
+		checkGasCost(t, process, p.Gas)
+	}
+}
+
+func TestBigintCmp(t *testing.T) {
+	process := exec.NewProcess(newTestVM())
+	testcases := mustReadExternalFuncTestCase("testdata/wasm/bigint_cmp.json", t)
+
+	for _, p := range testcases {
+		leftAddress := int64(1024)
+		leftOperandString := p.Input[0]
+		leftOperand, _ := new(big.Int).SetString(leftOperandString, int(10))
+		var leftNegative uint32 = 0
+		if leftOperand.Sign() == -1 {
+			leftNegative = 1
+		}
+		leftOperandBytes := leftOperand.Bytes()
+		process.WriteAt(leftOperandBytes, leftAddress)
+
+		rightAddress := leftAddress + int64(len(leftOperandBytes))
+		rightOperandString := p.Input[1]
+		rightOperand, _ := new(big.Int).SetString(rightOperandString, int(10))
+		var rightNegative uint32 = 0
+		if rightOperand.Sign() == -1 {
+			rightNegative = 1
+		}
+		rightOperandBytes := rightOperand.Bytes()
+		process.WriteAt(rightOperandBytes, rightAddress)
+
+		compareResult := BigintCmp(process, uint32(leftAddress), leftNegative, uint32(len(leftOperandBytes)), uint32(rightAddress), rightNegative, uint32(len(rightOperandBytes)))
+
+		assert.Equal(t, p.Return, int(compareResult))
+
+		checkGasCost(t, process, p.Gas)
+	}
+}
+
+func TestBigintSh(t *testing.T) {
+	process := exec.NewProcess(newTestVM())
+	testcases := mustReadExternalFuncTestCase("testdata/wasm/bigint_sh.json", t)
+
+	for _, p := range testcases {
+		leftAddress := int64(1024)
+		leftOperandString := p.Input[0]
+		leftOperand, _ := new(big.Int).SetString(leftOperandString, int(10))
+		var leftNegative uint32 = 0
+		if leftOperand.Sign() == -1 {
+			leftNegative = 1
+		}
+		leftOperandBytes := leftOperand.Bytes()
+		process.WriteAt(leftOperandBytes, leftAddress)
+
+		resultAddress := leftAddress + int64(len(leftOperandBytes))
+		shiftNum, _ := strconv.ParseInt(p.Input[1], 10, 32)
+		direction, _ := strconv.ParseInt(p.Input[2], 16, 32)
+		flag := BigintSh(process, uint32(leftAddress), leftNegative, uint32(len(leftOperandBytes)), uint32(resultAddress), 32,
+			uint32(shiftNum), uint32(direction))
+
+		assert.Equal(t, p.Return, int(flag))
+
+		resultOperandString := p.Expected[0]
+		resultOperand, _ := new(big.Int).SetString(resultOperandString, int(10))
+		resultOperandBytes := resultOperand.Bytes()
+
+		result := make([]byte, 32)
+		process.ReadAt(result, resultAddress)
+		result = result[32-len(resultOperandBytes):]
+		assert.Equal(t, result, resultOperandBytes)
+
+		checkGasCost(t, process, p.Gas)
+	}
+}
+
+func TestStringConvertOperator(t *testing.T) {
+	process := exec.NewProcess(newTestVM())
+	testcases := mustReadExternalFuncTestCase("testdata/wasm/string_convert_operator.json", t)
+
+	for _, p := range testcases {
+		strAddress := int64(1024)
+		str := p.Input[0]
+		strBytes := []byte(str)
+		process.WriteAt(strBytes, strAddress)
+
+		resultAddress := strAddress + int64(len(strBytes))
+		flag := StringConvertOperator(process, uint32(strAddress), uint32(len(strBytes)), uint32(resultAddress), 32)
+
+		assert.Equal(t, p.Return, int(flag))
+
+		resultOperandString := p.Expected[0]
+		resultOperand, _ := new(big.Int).SetString(resultOperandString, int(10))
+		resultOperandBytes := resultOperand.Bytes()
+
+		result := make([]byte, 32)
+		process.ReadAt(result, resultAddress)
+		result = result[32-len(resultOperandBytes):]
+		assert.Equal(t, result, resultOperandBytes)
+
+		checkGasCost(t, process, p.Gas)
+	}
+}
