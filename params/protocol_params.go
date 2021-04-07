@@ -160,6 +160,17 @@ const (
 	WithdrawDelegateRewardGas uint64 = 8000 // Gas needed for withdraw  delegate reward
 	WithdrawDelegateNodeGas   uint64 = 1000 // Gas needed for withdraw  delegate reward Node Count
 	WithdrawDelegateEpochGas  uint64 = 100  // Gas needed for withdraw  delegate reward epoch Count
+
+	//confidential tx
+	ConfidentialTxVerifyBaseGas uint64 = 5000 // Base price for an confidential tx
+	ConfidentialTxPerNoteGas    uint64 = 3000 // Per-note price for an confidential tx check
+
+	Bn256G1AddGas               uint64 = 150   // Gas needed for an elliptic curve addition
+	Bn256G1ScalarMulGas         uint64 = 6000  // Gas needed for an elliptic curve scalar multiplication
+	Bn256G2AddGas               uint64 = 600   // Gas needed for an elliptic curve addition
+	Bn256G2ScalarMulGas         uint64 = 24000 // Gas needed for an elliptic curve scalar multiplication
+	Bn256PairingCheckBaseGas    uint64 = 45000 // Base price for an elliptic curve pairing check
+	Bn256PairingCheckPerPairGas uint64 = 34000 // Per-point price for an elliptic curve pairing check
 )
 
 var (
