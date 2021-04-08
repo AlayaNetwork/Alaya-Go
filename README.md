@@ -6,7 +6,7 @@ Alaya-Go is the implementation of Alaya network which is pioneering demonstratio
 https://camo.githubusercontent.com/915b7be44ada53c290eb157634330494ebe3e30a/68747470733a2f2f676f646f632e6f72672f6769746875622e636f6d2f676f6c616e672f6764646f3f7374617475732e737667
 )](https://pkg.go.dev/github.com/AlayaNetwork/Alaya-Go?tab=doc)
 [![Go Report Card](https://goreportcard.com/badge/github.com/AlayaNetwork/Alaya-Go)](https://goreportcard.com/report/github.com/AlayaNetwork/Alaya-Go)
-[![Build Status](https://github.com/AlayaNetwork/Alaya-Go/workflows/unittest/badge.svg)](https://github.com/AlayaNetwork/Alaya-Go/actions)
+[![Build Status](https://github.com/AlayaNetwork/Alaya-Go/actions/workflows/test.yml/badge.svg))](https://github.com/AlayaNetwork/Alaya-Go/actions)
 [![codecov](https://codecov.io/gh/AlayaNetwork/Alaya-Go/branch/feature-mainnet-launch/graph/badge.svg)](https://codecov.io/gh/AlayaNetwork/Alaya-Go)
 [![version](https://img.shields.io/github/v/tag/AlayaNetwork/Alaya-Go)](https://github.com/AlayaNetwork/Alaya-Go/releases/latest)
 [![GitHub All Releases](https://img.shields.io/github/downloads/AlayaNetwork/Alaya-Go/total.svg)](https://github.com/AlayaNetwork/Alaya-Go)
