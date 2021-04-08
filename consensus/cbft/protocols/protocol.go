@@ -22,12 +22,12 @@ import (
 	"reflect"
 	"sync/atomic"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	ctypes "github.com/PlatONnetwork/PlatON-Go/consensus/cbft/types"
-	"github.com/PlatONnetwork/PlatON-Go/consensus/cbft/utils"
-	"github.com/PlatONnetwork/PlatON-Go/core/types"
-	"github.com/PlatONnetwork/PlatON-Go/crypto"
-	"github.com/PlatONnetwork/PlatON-Go/rlp"
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	ctypes "github.com/AlayaNetwork/Alaya-Go/consensus/cbft/types"
+	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/utils"
+	"github.com/AlayaNetwork/Alaya-Go/core/types"
+	"github.com/AlayaNetwork/Alaya-Go/crypto"
+	"github.com/AlayaNetwork/Alaya-Go/rlp"
 )
 
 // Maximum cap on the size of a cbft protocol message

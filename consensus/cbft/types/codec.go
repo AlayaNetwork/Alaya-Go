@@ -19,7 +19,7 @@ package types
 import (
 	"errors"
 
-	"github.com/PlatONnetwork/PlatON-Go/rlp"
+	"github.com/AlayaNetwork/Alaya-Go/rlp"
 )
 
 // EncodeExtra encode cbft version and `QuorumCert` as extra data.

@@ -1,4 +1,4 @@
-module github.com/PlatONnetwork/PlatON-Go
+module github.com/AlayaNetwork/Alaya-Go
 
 go 1.13
 

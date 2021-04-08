@@ -20,7 +20,7 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	"github.com/PlatONnetwork/PlatON-Go/crypto/bls"
+	"github.com/AlayaNetwork/Alaya-Go/crypto/bls"
 	"gopkg.in/urfave/cli.v1"
 )
 

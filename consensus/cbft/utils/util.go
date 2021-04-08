@@ -23,8 +23,8 @@ import (
 	"sort"
 	"sync/atomic"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	"github.com/PlatONnetwork/PlatON-Go/crypto/sha3"
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/crypto/sha3"
 )
 
 // RandomOffset returns a random offset between 0 and n

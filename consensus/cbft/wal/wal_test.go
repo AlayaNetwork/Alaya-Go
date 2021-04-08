@@ -22,8 +22,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/PlatONnetwork/PlatON-Go/consensus/cbft/protocols"
-	"github.com/PlatONnetwork/PlatON-Go/rlp"
+	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/protocols"
+	"github.com/AlayaNetwork/Alaya-Go/rlp"
 	"github.com/stretchr/testify/assert"
 )
 

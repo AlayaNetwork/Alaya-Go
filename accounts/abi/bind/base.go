@@ -1,18 +1,18 @@
-// Copyright 2015 The go-platon Authors
-// This file is part of the go-platon library.
+// Copyright 2015 The go-alaya Authors
+// This file is part of the go-alaya library.
 //
-// The go-platon library is free software: you can redistribute it and/or modify
+// The go-alaya library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The go-platon library is distributed in the hope that it will be useful,
+// The go-alaya library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the go-platon library. If not, see <http://www.gnu.org/licenses/>.
+// along with the go-alaya library. If not, see <http://www.gnu.org/licenses/>.
 
 package bind
 
@@ -22,13 +22,13 @@ import (
 	"fmt"
 	"math/big"
 
-	platon "github.com/PlatONnetwork/PlatON-Go"
+	platon "github.com/AlayaNetwork/Alaya-Go"
 
-	"github.com/PlatONnetwork/PlatON-Go/accounts/abi"
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	"github.com/PlatONnetwork/PlatON-Go/core/types"
-	"github.com/PlatONnetwork/PlatON-Go/crypto"
-	"github.com/PlatONnetwork/PlatON-Go/event"
+	"github.com/AlayaNetwork/Alaya-Go/accounts/abi"
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/core/types"
+	"github.com/AlayaNetwork/Alaya-Go/crypto"
+	"github.com/AlayaNetwork/Alaya-Go/event"
 )
 
 // SignerFn is a signer function callback when a contract requires a method to
@@ -44,9 +44,9 @@ type CallOpts struct {
 }
 
 // TransactOpts is the collection of authorization data required to create a
-// valid platon transaction.
+// valid alaya transaction.
 type TransactOpts struct {
-	From   common.Address // platon account to send the transaction from
+	From   common.Address // alaya account to send the transaction from
 	Nonce  *big.Int       // Nonce to use for the transaction execution (nil = use pending state)
 	Signer SignerFn       // Method to use for signing the transaction (mandatory)
 
@@ -74,11 +74,11 @@ type WatchOpts struct {
 }
 
 // BoundContract is the base wrapper object that reflects a contract on the
-// platon network. It contains a collection of methods that are used by the
+// alaya network. It contains a collection of methods that are used by the
 // higher level contract bindings to operate.
 type BoundContract struct {
-	address    common.Address     // Deployment address of the contract on the platon blockchain
-	abi        abi.ABI            // Reflect based ABI to access the correct platon methods
+	address    common.Address     // Deployment address of the contract on the alaya blockchain
+	abi        abi.ABI            // Reflect based ABI to access the correct alaya methods
 	caller     ContractCaller     // Read interface to interact with the blockchain
 	transactor ContractTransactor // Write interface to interact with the blockchain
 	filterer   ContractFilterer   // Event filtering to interact with the blockchain
@@ -96,7 +96,7 @@ func NewBoundContract(address common.Address, abi abi.ABI, caller ContractCaller
 	}
 }
 
-// DeployContract deploys a contract onto the platon blockchain and binds the
+// DeployContract deploys a contract onto the alaya blockchain and binds the
 // deployment address with a Go wrapper.
 func DeployContract(opts *TransactOpts, abi abi.ABI, bytecode []byte, backend ContractBackend, params ...interface{}) (common.Address, *types.Transaction, *BoundContract, error) {
 	// Otherwise try to deploy the contract

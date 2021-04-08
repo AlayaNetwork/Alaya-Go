@@ -20,14 +20,14 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	"github.com/PlatONnetwork/PlatON-Go/consensus/cbft/network"
-	"github.com/PlatONnetwork/PlatON-Go/consensus/cbft/protocols"
-	ctypes "github.com/PlatONnetwork/PlatON-Go/consensus/cbft/types"
-	"github.com/PlatONnetwork/PlatON-Go/consensus/cbft/utils"
-	"github.com/PlatONnetwork/PlatON-Go/core/types"
-	"github.com/PlatONnetwork/PlatON-Go/crypto/bls"
-	"github.com/PlatONnetwork/PlatON-Go/params"
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/network"
+	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/protocols"
+	ctypes "github.com/AlayaNetwork/Alaya-Go/consensus/cbft/types"
+	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/utils"
+	"github.com/AlayaNetwork/Alaya-Go/core/types"
+	"github.com/AlayaNetwork/Alaya-Go/crypto/bls"
+	"github.com/AlayaNetwork/Alaya-Go/params"
 )
 
 const (

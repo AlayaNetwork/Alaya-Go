@@ -19,7 +19,7 @@ package restricting
 import (
 	"math/big"
 
-	"github.com/PlatONnetwork/PlatON-Go/common/hexutil"
+	"github.com/AlayaNetwork/Alaya-Go/common/hexutil"
 )
 
 // for genesis and plugin test

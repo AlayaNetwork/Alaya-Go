@@ -19,7 +19,7 @@ package gov
 import (
 	"bytes"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/common"
 )
 
 var (

@@ -18,9 +18,9 @@ package cbft
 
 import (
 	"encoding/json"
-	"github.com/PlatONnetwork/PlatON-Go/consensus/cbft/state"
-	"github.com/PlatONnetwork/PlatON-Go/consensus/cbft/types"
-	"github.com/PlatONnetwork/PlatON-Go/crypto/bls"
+	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/state"
+	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/types"
+	"github.com/AlayaNetwork/Alaya-Go/crypto/bls"
 )
 
 type Status struct {

@@ -22,17 +22,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/PlatONnetwork/PlatON-Go/log"
+	"github.com/AlayaNetwork/Alaya-Go/log"
 
-	"github.com/PlatONnetwork/PlatON-Go/p2p/discover"
+	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	"github.com/PlatONnetwork/PlatON-Go/consensus/cbft/fetcher"
-	"github.com/PlatONnetwork/PlatON-Go/consensus/cbft/network"
-	"github.com/PlatONnetwork/PlatON-Go/consensus/cbft/protocols"
-	types2 "github.com/PlatONnetwork/PlatON-Go/consensus/cbft/types"
-	"github.com/PlatONnetwork/PlatON-Go/consensus/cbft/utils"
-	"github.com/PlatONnetwork/PlatON-Go/core/types"
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/fetcher"
+	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/network"
+	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/protocols"
+	types2 "github.com/AlayaNetwork/Alaya-Go/consensus/cbft/types"
+	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/utils"
+	"github.com/AlayaNetwork/Alaya-Go/core/types"
 	"github.com/stretchr/testify/assert"
 )
 

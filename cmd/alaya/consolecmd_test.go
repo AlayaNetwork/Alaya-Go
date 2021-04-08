@@ -27,12 +27,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/PlatONnetwork/PlatON-Go/params"
+	"github.com/AlayaNetwork/Alaya-Go/params"
 )
 
 const (
-	ipcAPIs  = "admin:1.0 debug:1.0 miner:1.0 net:1.0 personal:1.0 platon:1.0 rpc:1.0 txgen:1.0 txpool:1.0 web3:1.0"
-	httpAPIs = "net:1.0 platon:1.0 rpc:1.0 web3:1.0"
+	ipcAPIs  = "admin:1.0 debug:1.0 miner:1.0 net:1.0 personal:1.0 alaya:1.0 rpc:1.0 txgen:1.0 txpool:1.0 web3:1.0"
+	httpAPIs = "net:1.0 alaya:1.0 rpc:1.0 web3:1.0"
 )
 
 // Tests that a node embedded within a console can be started up properly and
@@ -53,9 +53,9 @@ func TestConsoleWelcome(t *testing.T) {
 
 	// Verify the actual welcome message to the required template
 	platon.Expect(`
-Welcome to the PlatON JavaScript console!
+Welcome to the Alaya JavaScript console!
 
-instance: PlatONnetwork/v{{gethver}}/{{goos}}-{{goarch}}/{{gover}}
+instance: AlayaNetwork/v{{gethver}}/{{goos}}-{{goarch}}/{{gover}}
 at block: 0 ({{niltime}})
  datadir: {{.Datadir}}
  modules: {{apis}}
@@ -74,7 +74,7 @@ func TestIPCAttachWelcome(t *testing.T) {
 	} else {
 		ws := tmpdir(t)
 		defer os.RemoveAll(ws)
-		ipc = filepath.Join(ws, "platon.ipc")
+		ipc = filepath.Join(ws, "alaya.ipc")
 	}
 	platon := runPlatON(t,
 		"--port", "0", "--testnet", "--maxpeers", "0", "--nodiscover", "--nat", "none", "--ipcpath", ipc)
@@ -114,7 +114,7 @@ func TestWSAttachWelcome(t *testing.T) {
 }
 
 func testAttachWelcome(t *testing.T, platon *testplaton, endpoint, apis string) {
-	// Attach to a running platon note and terminate immediately
+	// Attach to a running alaya note and terminate immediately
 	attach := runPlatON(t, "attach", endpoint)
 	defer attach.ExpectExit()
 	attach.CloseStdin()
@@ -131,9 +131,9 @@ func testAttachWelcome(t *testing.T, platon *testplaton, endpoint, apis string) 
 
 	// Verify the actual welcome message to the required template
 	attach.Expect(`
-Welcome to the PlatON JavaScript console!
+Welcome to the Alaya JavaScript console!
 
-instance: PlatONnetwork/v{{gethver}}/{{goos}}-{{goarch}}/{{gover}}
+instance: AlayaNetwork/v{{gethver}}/{{goos}}-{{goarch}}/{{gover}}
 at block: 0 ({{niltime}}){{if ipc}}
  datadir: {{datadir}}{{end}}
  modules: {{apis}}

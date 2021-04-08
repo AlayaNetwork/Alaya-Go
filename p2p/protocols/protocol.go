@@ -37,12 +37,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/PlatONnetwork/PlatON-Go/log"
-	"github.com/PlatONnetwork/PlatON-Go/metrics"
-	"github.com/PlatONnetwork/PlatON-Go/p2p"
-	"github.com/PlatONnetwork/PlatON-Go/rlp"
-	//	"github.com/PlatONnetwork/PlatON-Go/swarm/spancontext"
-	//	"github.com/PlatONnetwork/PlatON-Go/swarm/tracing"
+	"github.com/AlayaNetwork/Alaya-Go/log"
+	"github.com/AlayaNetwork/Alaya-Go/metrics"
+	"github.com/AlayaNetwork/Alaya-Go/p2p"
+	"github.com/AlayaNetwork/Alaya-Go/rlp"
+	//	"github.com/AlayaNetwork/Alaya-Go/swarm/spancontext"
+	//	"github.com/AlayaNetwork/Alaya-Go/swarm/tracing"
 )
 
 // error codes used by this  protocol scheme

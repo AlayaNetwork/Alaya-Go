@@ -25,15 +25,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/PlatONnetwork/PlatON-Go/p2p"
+	"github.com/AlayaNetwork/Alaya-Go/p2p"
 
-	"github.com/PlatONnetwork/PlatON-Go/consensus/cbft/types"
+	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/types"
 
-	"github.com/PlatONnetwork/PlatON-Go/consensus/cbft/protocols"
+	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/protocols"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/common"
 
-	"github.com/PlatONnetwork/PlatON-Go/p2p/discover"
+	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
 
 	"github.com/stretchr/testify/assert"
 )

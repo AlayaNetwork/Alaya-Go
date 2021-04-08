@@ -7,16 +7,16 @@ import (
 
 	"golang.org/x/crypto/ripemd160"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	imath "github.com/PlatONnetwork/PlatON-Go/common/math"
-	"github.com/PlatONnetwork/PlatON-Go/core/types"
-	"github.com/PlatONnetwork/PlatON-Go/rlp"
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	imath "github.com/AlayaNetwork/Alaya-Go/common/math"
+	"github.com/AlayaNetwork/Alaya-Go/core/types"
+	"github.com/AlayaNetwork/Alaya-Go/rlp"
 
 	"github.com/PlatONnetwork/wagon/exec"
 	"github.com/PlatONnetwork/wagon/wasm"
 
-	"github.com/PlatONnetwork/PlatON-Go/crypto"
-	"github.com/PlatONnetwork/PlatON-Go/params"
+	"github.com/AlayaNetwork/Alaya-Go/crypto"
+	"github.com/AlayaNetwork/Alaya-Go/params"
 
 	"math/big"
 	"reflect"

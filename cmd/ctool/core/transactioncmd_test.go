@@ -36,7 +36,7 @@ func TestGetNonce(t *testing.T) {
 
 func TestSendTransaction(t *testing.T) {
 
-	//platon, datadir := prepare(t)
+	//alaya, datadir := prepare(t)
 	//
 	//to := "0x3058552A64Ce86aFb57806d15Fd9612a8591b01d"
 	//value := "100000000000000000000000000"
@@ -52,13 +52,13 @@ func TestSendTransaction(t *testing.T) {
 	//
 	//assert.NotEqual(t, hash, "", fmt.Sprintf("the transaction hash is empty"))
 	//
-	//clean(platon, datadir)
+	//clean(alaya, datadir)
 
 }
 
 //func TestSendRawTransaction(t *testing.T) {
 //
-//	platon, datadir := prepare(t)
+//	alaya, datadir := prepare(t)
 //
 //	hash, err := SendRawTransaction(from, "0xD71DaAA3ce55F52a4D820460d09A801C5D487a16", "1000000", pkFilePath)
 //
@@ -66,11 +66,11 @@ func TestSendTransaction(t *testing.T) {
 //
 //	assert.NotEqual(t, hash, "", fmt.Sprintf("the transaction hash is empty"))
 //
-//	clean(platon, datadir)
+//	clean(alaya, datadir)
 //}
 
 //func TestGetTxReceipt(t *testing.T) {
-//	platon, datadir := prepare(t)
+//	alaya, datadir := prepare(t)
 //
 //	to := "0x3058552A64Ce86aFb57806d15Fd9612a8591b01d"
 //	value := "100000000000000000000000000"
@@ -96,5 +96,5 @@ func TestSendTransaction(t *testing.T) {
 //
 //	assert.NotEqual(t, r, "", fmt.Sprintf("the transaction hash is empty"))
 //
-//	clean(platon, datadir)
+//	clean(alaya, datadir)
 //}

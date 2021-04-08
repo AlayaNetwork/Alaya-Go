@@ -22,7 +22,7 @@ import (
 
 func TestSend(t *testing.T) {
 
-	//platon, datadir := prepare(t)
+	//alaya, datadir := prepare(t)
 	//
 	//params := make([]TxParams, 1)
 	//params[0] = TxParams{
@@ -38,5 +38,5 @@ func TestSend(t *testing.T) {
 	//assert.Nil(t, err, fmt.Sprintf("failed to send, err: %v", err))
 	//assert.NotEqual(t, res, "", "the response is empty")
 	//
-	//clean(platon, datadir)
+	//clean(alaya, datadir)
 }

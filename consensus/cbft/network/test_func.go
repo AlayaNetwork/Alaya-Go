@@ -17,7 +17,7 @@
 package network
 
 import (
-	ctpyes "github.com/PlatONnetwork/PlatON-Go/consensus/cbft/types"
+	ctpyes "github.com/AlayaNetwork/Alaya-Go/consensus/cbft/types"
 )
 
 // SetSendQueueHook

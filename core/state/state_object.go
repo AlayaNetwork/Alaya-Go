@@ -23,12 +23,12 @@ import (
 	"io"
 	"math/big"
 
-	"github.com/PlatONnetwork/PlatON-Go/crypto/sha3"
+	"github.com/AlayaNetwork/Alaya-Go/crypto/sha3"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	cvm "github.com/PlatONnetwork/PlatON-Go/common/vm"
-	"github.com/PlatONnetwork/PlatON-Go/crypto"
-	"github.com/PlatONnetwork/PlatON-Go/rlp"
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	cvm "github.com/AlayaNetwork/Alaya-Go/common/vm"
+	"github.com/AlayaNetwork/Alaya-Go/crypto"
+	"github.com/AlayaNetwork/Alaya-Go/rlp"
 )
 
 var emptyCodeHash = crypto.Keccak256(nil)

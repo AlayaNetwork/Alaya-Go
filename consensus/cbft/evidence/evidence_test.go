@@ -24,14 +24,14 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/PlatONnetwork/PlatON-Go/crypto/bls"
+	"github.com/AlayaNetwork/Alaya-Go/crypto/bls"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	"github.com/PlatONnetwork/PlatON-Go/consensus/cbft/utils"
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/utils"
 
-	"github.com/PlatONnetwork/PlatON-Go/common/consensus"
+	"github.com/AlayaNetwork/Alaya-Go/common/consensus"
 
-	"github.com/PlatONnetwork/PlatON-Go/core/types"
+	"github.com/AlayaNetwork/Alaya-Go/core/types"
 
 	"github.com/stretchr/testify/assert"
 )

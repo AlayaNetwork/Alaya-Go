@@ -9,13 +9,13 @@ package trie
 //	"testing"
 //	"time"
 //
-//	"github.com/PlatONnetwork/PlatON-Go/ethdb/memorydb"
+//	"github.com/AlayaNetwork/Alaya-Go/ethdb/memorydb"
 //
 //	"github.com/stretchr/testify/assert"
 //
-//	"github.com/PlatONnetwork/PlatON-Go/common"
-//	"github.com/PlatONnetwork/PlatON-Go/crypto"
-//	"github.com/PlatONnetwork/PlatON-Go/rlp"
+//	"github.com/AlayaNetwork/Alaya-Go/common"
+//	"github.com/AlayaNetwork/Alaya-Go/crypto"
+//	"github.com/AlayaNetwork/Alaya-Go/rlp"
 //)
 //
 //func TestTrieDAG2(t *testing.T) {

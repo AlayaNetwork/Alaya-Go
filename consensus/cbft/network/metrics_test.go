@@ -19,11 +19,11 @@ package network
 import (
 	"testing"
 
-	"github.com/PlatONnetwork/PlatON-Go/metrics"
+	"github.com/AlayaNetwork/Alaya-Go/metrics"
 
-	"github.com/PlatONnetwork/PlatON-Go/consensus/cbft/protocols"
+	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/protocols"
 
-	"github.com/PlatONnetwork/PlatON-Go/p2p"
+	"github.com/AlayaNetwork/Alaya-Go/p2p"
 	"github.com/stretchr/testify/assert"
 )
 

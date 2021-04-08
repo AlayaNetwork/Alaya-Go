@@ -20,9 +20,9 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/PlatONnetwork/PlatON-Go/common/math"
+	"github.com/AlayaNetwork/Alaya-Go/common/math"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/common"
 
 	"github.com/stretchr/testify/assert"
 )

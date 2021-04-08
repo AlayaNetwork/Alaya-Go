@@ -18,16 +18,16 @@ package cbft
 
 import (
 	"fmt"
-	"github.com/PlatONnetwork/PlatON-Go/consensus/cbft/validator"
+	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/validator"
 	"io/ioutil"
 	"os"
 	"testing"
 	"time"
 
-	"github.com/PlatONnetwork/PlatON-Go/consensus/cbft/wal"
+	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/wal"
 
-	"github.com/PlatONnetwork/PlatON-Go/consensus/cbft/protocols"
-	"github.com/PlatONnetwork/PlatON-Go/core/types"
+	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/protocols"
+	"github.com/AlayaNetwork/Alaya-Go/core/types"
 	"github.com/stretchr/testify/assert"
 )
 

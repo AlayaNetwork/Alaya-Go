@@ -19,8 +19,8 @@ package core
 import (
 	"sync"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	"github.com/PlatONnetwork/PlatON-Go/core/state"
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/core/state"
 )
 
 // txNoncer is a tiny virtual state database to manage the executable nonces of

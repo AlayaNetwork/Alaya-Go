@@ -25,17 +25,17 @@ import (
 	"sync/atomic"
 	"time"
 
-	ethereum "github.com/PlatONnetwork/PlatON-Go"
-	"github.com/PlatONnetwork/PlatON-Go/core/snapshotdb"
+	ethereum "github.com/AlayaNetwork/Alaya-Go"
+	"github.com/AlayaNetwork/Alaya-Go/core/snapshotdb"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	"github.com/PlatONnetwork/PlatON-Go/core/rawdb"
-	"github.com/PlatONnetwork/PlatON-Go/core/types"
-	"github.com/PlatONnetwork/PlatON-Go/ethdb"
-	"github.com/PlatONnetwork/PlatON-Go/event"
-	"github.com/PlatONnetwork/PlatON-Go/log"
-	"github.com/PlatONnetwork/PlatON-Go/metrics"
-	"github.com/PlatONnetwork/PlatON-Go/params"
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/core/rawdb"
+	"github.com/AlayaNetwork/Alaya-Go/core/types"
+	"github.com/AlayaNetwork/Alaya-Go/ethdb"
+	"github.com/AlayaNetwork/Alaya-Go/event"
+	"github.com/AlayaNetwork/Alaya-Go/log"
+	"github.com/AlayaNetwork/Alaya-Go/metrics"
+	"github.com/AlayaNetwork/Alaya-Go/params"
 )
 
 const (
@@ -641,7 +641,7 @@ func (d *Downloader) fetchPPOSInfo(p *peerConnection) (latest *types.Header, piv
 }
 
 //setFastSyncStatus set status to snapshot db when fast sync begin
-//if  the user close platon when sync not finish,set status fail
+//if  the user close alaya when sync not finish,set status fail
 //if the sync is complete,will del the key
 func (d *Downloader) setFastSyncStatus(status uint16) error {
 	key := []byte(KeyFastSyncStatus)

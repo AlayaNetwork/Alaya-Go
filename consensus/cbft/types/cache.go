@@ -17,7 +17,7 @@
 package types
 
 import (
-	"github.com/PlatONnetwork/PlatON-Go/common/math"
+	"github.com/AlayaNetwork/Alaya-Go/common/math"
 	"sync"
 	"time"
 )

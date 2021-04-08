@@ -22,8 +22,8 @@ import (
 	"io/ioutil"
 	"time"
 
-	"github.com/PlatONnetwork/PlatON-Go/common/hexutil"
-	"github.com/PlatONnetwork/PlatON-Go/rlp"
+	"github.com/AlayaNetwork/Alaya-Go/common/hexutil"
+	"github.com/AlayaNetwork/Alaya-Go/rlp"
 	"gopkg.in/urfave/cli.v1"
 )
 

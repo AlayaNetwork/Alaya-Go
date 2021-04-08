@@ -20,10 +20,10 @@ import (
 	"encoding/json"
 	"math/big"
 
-	"github.com/PlatONnetwork/PlatON-Go/common/hexutil"
+	"github.com/AlayaNetwork/Alaya-Go/common/hexutil"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	"github.com/PlatONnetwork/PlatON-Go/p2p/discover"
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
 )
 
 func NewDelegateRewardPer(epoch uint64, totalReward, totalDelegate *big.Int) *DelegateRewardPer {

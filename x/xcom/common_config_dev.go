@@ -18,7 +18,7 @@
 
 package xcom
 
-import "github.com/PlatONnetwork/PlatON-Go/log"
+import "github.com/AlayaNetwork/Alaya-Go/log"
 
 func init() {
 	log.Info("Init ppos common config", "network name", "DefaultTestNet", "network value", DefaultUnitTestNet)

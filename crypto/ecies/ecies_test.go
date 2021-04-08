@@ -39,7 +39,7 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/PlatONnetwork/PlatON-Go/crypto"
+	"github.com/AlayaNetwork/Alaya-Go/crypto"
 )
 
 // Ensure the KDF generates appropriately sized keys.

@@ -20,18 +20,18 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/PlatONnetwork/PlatON-Go/p2p/discover"
+	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
 
-	"github.com/PlatONnetwork/PlatON-Go/common/consensus"
+	"github.com/AlayaNetwork/Alaya-Go/common/consensus"
 
-	"github.com/PlatONnetwork/PlatON-Go/common/vm"
+	"github.com/AlayaNetwork/Alaya-Go/common/vm"
 
-	"github.com/PlatONnetwork/PlatON-Go/common/hexutil"
-	"github.com/PlatONnetwork/PlatON-Go/log"
-	"github.com/PlatONnetwork/PlatON-Go/params"
+	"github.com/AlayaNetwork/Alaya-Go/common/hexutil"
+	"github.com/AlayaNetwork/Alaya-Go/log"
+	"github.com/AlayaNetwork/Alaya-Go/params"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	"github.com/PlatONnetwork/PlatON-Go/x/plugin"
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/x/plugin"
 )
 
 const (

@@ -25,15 +25,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/PlatONnetwork/PlatON-Go/ethdb/leveldb"
+	"github.com/AlayaNetwork/Alaya-Go/ethdb/leveldb"
 
-	"github.com/PlatONnetwork/PlatON-Go/crypto"
+	"github.com/AlayaNetwork/Alaya-Go/crypto"
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/PlatONnetwork/PlatON-Go/consensus"
-	"github.com/PlatONnetwork/PlatON-Go/core/snapshotdb"
-	"github.com/PlatONnetwork/PlatON-Go/ethdb"
+	"github.com/AlayaNetwork/Alaya-Go/consensus"
+	"github.com/AlayaNetwork/Alaya-Go/core/snapshotdb"
+	"github.com/AlayaNetwork/Alaya-Go/ethdb"
 )
 
 var (
@@ -75,7 +75,7 @@ func newBlockChainForTesting(db ethdb.Database) (*BlockChain, error) {
 }
 
 func TestCleaner(t *testing.T) {
-	tmpDir, err := ioutil.TempDir("", "platon")
+	tmpDir, err := ioutil.TempDir("", "alaya")
 	assert.Nil(t, err)
 	defer os.RemoveAll(tmpDir)
 	db, err := leveldb.New(tmpDir, 100, 1024, "")
@@ -131,7 +131,7 @@ func TestCleaner(t *testing.T) {
 }
 
 func TestStopCleaner(t *testing.T) {
-	tmpDir, _ := ioutil.TempDir("", "platon")
+	tmpDir, _ := ioutil.TempDir("", "alaya")
 	defer os.RemoveAll(tmpDir)
 
 	db, err := leveldb.New(tmpDir, 100, 1024, "")

@@ -19,8 +19,8 @@ package common
 import (
 	"bytes"
 
-	"github.com/PlatONnetwork/PlatON-Go/crypto/sha3"
-	"github.com/PlatONnetwork/PlatON-Go/rlp"
+	"github.com/AlayaNetwork/Alaya-Go/crypto/sha3"
+	"github.com/AlayaNetwork/Alaya-Go/rlp"
 )
 
 func MustRlpEncode(val interface{}) []byte {

@@ -17,8 +17,8 @@
 package fetcher
 
 import (
-	"github.com/PlatONnetwork/PlatON-Go/consensus/cbft/protocols"
-	"github.com/PlatONnetwork/PlatON-Go/consensus/cbft/types"
+	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/protocols"
+	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/types"
 	"github.com/stretchr/testify/assert"
 	"sync"
 	"testing"

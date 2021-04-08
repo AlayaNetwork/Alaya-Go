@@ -21,11 +21,11 @@ import (
 	"os"
 	"sort"
 
-	"github.com/PlatONnetwork/PlatON-Go/cmd/ctool/core"
+	"github.com/AlayaNetwork/Alaya-Go/cmd/ctool/core"
 
 	"gopkg.in/urfave/cli.v1"
 
-	"github.com/PlatONnetwork/PlatON-Go/cmd/ctool/ppos"
+	"github.com/AlayaNetwork/Alaya-Go/cmd/ctool/ppos"
 )
 
 var (

@@ -25,12 +25,12 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/PlatONnetwork/PlatON-Go/consensus/cbft/protocols"
+	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/protocols"
 
-	ctypes "github.com/PlatONnetwork/PlatON-Go/consensus/cbft/types"
-	"github.com/PlatONnetwork/PlatON-Go/log"
-	"github.com/PlatONnetwork/PlatON-Go/node"
-	"github.com/PlatONnetwork/PlatON-Go/rlp"
+	ctypes "github.com/AlayaNetwork/Alaya-Go/consensus/cbft/types"
+	"github.com/AlayaNetwork/Alaya-Go/log"
+	"github.com/AlayaNetwork/Alaya-Go/node"
+	"github.com/AlayaNetwork/Alaya-Go/rlp"
 )
 
 const (
@@ -217,7 +217,7 @@ func (wal *baseWal) LoadChainState(recovery recoveryChainStateFn) error {
 	// open wal database
 	data, err := wal.metaDB.Get(chainStateKey)
 	if err != nil {
-		log.Warn("Failed to get chainState from db, may be the first time to run platon")
+		log.Warn("Failed to get chainState from db, may be the first time to run alaya")
 		return nil
 	}
 	var cs protocols.ChainState
@@ -284,7 +284,7 @@ func (wal *baseWal) Load(recovery recoveryConsensusMsgFn) error {
 	// open wal database
 	data, err := wal.metaDB.Get(viewChangeKey)
 	if err != nil {
-		log.Warn("Failed to get viewChange meta from db, may be the first time to run platon")
+		log.Warn("Failed to get viewChange meta from db, may be the first time to run alaya")
 		return nil
 	}
 	var vc ViewChangeMessage

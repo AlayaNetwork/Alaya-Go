@@ -27,7 +27,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/PlatONnetwork/PlatON-Go/log"
+	"github.com/AlayaNetwork/Alaya-Go/log"
 	"hash"
 	"io"
 	"io/ioutil"
@@ -36,12 +36,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/PlatONnetwork/PlatON-Go/crypto"
-	"github.com/PlatONnetwork/PlatON-Go/crypto/ecies"
-	"github.com/PlatONnetwork/PlatON-Go/crypto/secp256k1"
-	"github.com/PlatONnetwork/PlatON-Go/crypto/sha3"
-	"github.com/PlatONnetwork/PlatON-Go/p2p/discover"
-	"github.com/PlatONnetwork/PlatON-Go/rlp"
+	"github.com/AlayaNetwork/Alaya-Go/crypto"
+	"github.com/AlayaNetwork/Alaya-Go/crypto/ecies"
+	"github.com/AlayaNetwork/Alaya-Go/crypto/secp256k1"
+	"github.com/AlayaNetwork/Alaya-Go/crypto/sha3"
+	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
+	"github.com/AlayaNetwork/Alaya-Go/rlp"
 	"github.com/golang/snappy"
 )
 

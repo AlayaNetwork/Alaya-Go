@@ -19,7 +19,7 @@ package node
 import (
 	"crypto/ecdsa"
 
-	"github.com/PlatONnetwork/PlatON-Go/p2p/discover"
+	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
 )
 
 var FakeNetEnable bool = false

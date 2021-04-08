@@ -18,7 +18,7 @@ package cbft
 
 import (
 	"fmt"
-	"github.com/PlatONnetwork/PlatON-Go/p2p/discover"
+	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
 	"io/ioutil"
 	"math/big"
 	"os"
@@ -26,27 +26,27 @@ import (
 	"testing"
 	"time"
 
-	"github.com/PlatONnetwork/PlatON-Go/consensus"
+	"github.com/AlayaNetwork/Alaya-Go/consensus"
 
-	"github.com/PlatONnetwork/PlatON-Go/common/hexutil"
+	"github.com/AlayaNetwork/Alaya-Go/common/hexutil"
 
-	"github.com/PlatONnetwork/PlatON-Go/consensus/cbft/executor"
+	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/executor"
 
-	"github.com/PlatONnetwork/PlatON-Go/consensus/cbft/evidence"
+	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/evidence"
 
-	"github.com/PlatONnetwork/PlatON-Go/consensus/cbft/rules"
+	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/rules"
 
-	"github.com/PlatONnetwork/PlatON-Go/consensus/cbft/utils"
+	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/utils"
 
-	"github.com/PlatONnetwork/PlatON-Go/crypto/bls"
+	"github.com/AlayaNetwork/Alaya-Go/crypto/bls"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/common"
 
-	"github.com/PlatONnetwork/PlatON-Go/core/types"
+	"github.com/AlayaNetwork/Alaya-Go/core/types"
 
-	"github.com/PlatONnetwork/PlatON-Go/consensus/cbft/protocols"
+	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/protocols"
 
-	ctypes "github.com/PlatONnetwork/PlatON-Go/consensus/cbft/types"
+	ctypes "github.com/AlayaNetwork/Alaya-Go/consensus/cbft/types"
 	"github.com/stretchr/testify/assert"
 )
 

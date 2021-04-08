@@ -21,7 +21,7 @@ package platon
 import (
 	"errors"
 
-	"github.com/PlatONnetwork/PlatON-Go/p2p"
+	"github.com/AlayaNetwork/Alaya-Go/p2p"
 )
 
 // NodeInfo represents pi short summary of the information known about the host.

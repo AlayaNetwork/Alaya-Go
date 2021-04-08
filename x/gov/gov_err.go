@@ -16,7 +16,7 @@
 
 package gov
 
-import "github.com/PlatONnetwork/PlatON-Go/common"
+import "github.com/AlayaNetwork/Alaya-Go/common"
 
 var (
 	ActiveVersionError                = common.NewBizError(302001, "Current active version not found")

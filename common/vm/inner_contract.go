@@ -16,7 +16,7 @@
 
 package vm
 
-import "github.com/PlatONnetwork/PlatON-Go/common"
+import "github.com/AlayaNetwork/Alaya-Go/common"
 
 // the inner contract addr  table
 var (

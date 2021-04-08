@@ -21,8 +21,8 @@ import (
 	"hash"
 	"sync/atomic"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	"github.com/PlatONnetwork/PlatON-Go/common/math"
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/common/math"
 )
 
 // Config are the configuration options for the Interpreter

@@ -19,7 +19,7 @@ package snapshotdb
 import (
 	"math/big"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/common"
 )
 
 const WalKeyPrefix = "journal-"

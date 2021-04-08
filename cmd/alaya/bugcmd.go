@@ -26,17 +26,17 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/PlatONnetwork/PlatON-Go/cmd/internal/browser"
-	"github.com/PlatONnetwork/PlatON-Go/params"
+	"github.com/AlayaNetwork/Alaya-Go/cmd/internal/browser"
+	"github.com/AlayaNetwork/Alaya-Go/params"
 
-	"github.com/PlatONnetwork/PlatON-Go/cmd/utils"
+	"github.com/AlayaNetwork/Alaya-Go/cmd/utils"
 	cli "gopkg.in/urfave/cli.v1"
 )
 
 var bugCommand = cli.Command{
 	Action:    utils.MigrateFlags(reportBug),
 	Name:      "bug",
-	Usage:     "opens a window to report a bug on the platon repo",
+	Usage:     "opens a window to report a bug on the alaya repo",
 	ArgsUsage: " ",
 	Category:  "MISCELLANEOUS COMMANDS",
 }

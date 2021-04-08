@@ -20,9 +20,9 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/PlatONnetwork/PlatON-Go/core/types"
+	"github.com/AlayaNetwork/Alaya-Go/core/types"
 
-	ctypes "github.com/PlatONnetwork/PlatON-Go/consensus/cbft/types"
+	ctypes "github.com/AlayaNetwork/Alaya-Go/consensus/cbft/types"
 )
 
 const (

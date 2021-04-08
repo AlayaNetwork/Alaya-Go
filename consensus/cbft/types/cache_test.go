@@ -17,7 +17,7 @@
 package types
 
 import (
-	"github.com/PlatONnetwork/PlatON-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/common"
 	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"

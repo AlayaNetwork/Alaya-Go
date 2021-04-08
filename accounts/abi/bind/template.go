@@ -1,22 +1,22 @@
-// Copyright 2016 The go-platon Authors
-// This file is part of the go-platon library.
+// Copyright 2016 The go-alaya Authors
+// This file is part of the go-alaya library.
 //
-// The go-platon library is free software: you can redistribute it and/or modify
+// The go-alaya library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The go-platon library is distributed in the hope that it will be useful,
+// The go-alaya library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the go-platon library. If not, see <http://www.gnu.org/licenses/>.
+// along with the go-alaya library. If not, see <http://www.gnu.org/licenses/>.
 
 package bind
 
-import "github.com/PlatONnetwork/PlatON-Go/accounts/abi"
+import "github.com/AlayaNetwork/Alaya-Go/accounts/abi"
 
 // tmplData is the data structure required to fill the binding template.
 type tmplData struct {
@@ -91,12 +91,12 @@ import (
 	"math/big"
 	"strings"
 
-	platon "github.com/PlatONnetwork/PlatON-Go"
-	"github.com/PlatONnetwork/PlatON-Go/accounts/abi"
-	"github.com/PlatONnetwork/PlatON-Go/accounts/abi/bind"
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	"github.com/PlatONnetwork/PlatON-Go/core/types"
-	"github.com/PlatONnetwork/PlatON-Go/event"
+	alaya "github.com/AlayaNetwork/Alaya-Go"
+	"github.com/AlayaNetwork/Alaya-Go/accounts/abi"
+	"github.com/AlayaNetwork/Alaya-Go/accounts/abi/bind"
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/core/types"
+	"github.com/AlayaNetwork/Alaya-Go/event"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.

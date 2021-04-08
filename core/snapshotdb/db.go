@@ -22,13 +22,13 @@ import (
 	"path"
 	"sort"
 
-	"github.com/PlatONnetwork/PlatON-Go/rlp"
+	"github.com/AlayaNetwork/Alaya-Go/rlp"
 
 	"github.com/syndtr/goleveldb/leveldb"
 
 	"github.com/syndtr/goleveldb/leveldb/util"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/common"
 )
 
 func getBaseDBPath(dbpath string) string {

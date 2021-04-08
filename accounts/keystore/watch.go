@@ -21,7 +21,7 @@ package keystore
 import (
 	"time"
 
-	"github.com/PlatONnetwork/PlatON-Go/log"
+	"github.com/AlayaNetwork/Alaya-Go/log"
 	"github.com/rjeczalik/notify"
 )
 
