@@ -19,13 +19,7 @@ package params
 // MainnetBootnodes are the enode URLs of the P2P bootstrap nodes running on
 // the main PlatON network.
 var MainnetBootnodes = []string{
-	"enode://81dd24640878badc06de82a82fdb0fe55f24d27877144261d81b1f39faa6686ac8f5d2489dbf97cd44d583b4b00976a8f92845378084d25c7a8bae671a543983@ms1.bfa6.alaya.network:16789",
-	"enode://32d628cfd32d3f464666792f4fa0bf097c723045f8fe415a8015f1c3cbd0a1bba23e7c76defac277967101dc73e3bd8fc255febb7a52d77c1018ed0cbf8d3ad4@ms2.6cc3.alaya.network:16789",
-	"enode://3b2ca03c94a2b8f36b88983d8666947dd08e15347980f95c395b36a4e69218c902894e9e2e92c5a2e0fe8b5c137732d2df40a118766245fdac88c480eb120c18@ms3.cd41.alaya.network:16789",
-	"enode://7b5323a73e9cbffd1e6d9178f0b1d55e92649aa71ebe55a0a9c577d374a9ae21ee4980aef2a3214b6e16aa9928ee48df65a382bd2d7ec19f7b87e6d993654d17@ms4.1fda.alaya.network:16789",
-	"enode://e6123b585a8e030b42d873d7d09b68847d1f3bba86fab84490fc29acf332a94682a8f8e1518ca857fc75391d62eaf2117703dfeed386b4e0926bf017b5cae445@ms5.ee7a.alaya.network:16789",
-	"enode://ab2f7cdf347d4ca26f4fdf5657d7b669464c5712cddc42609ad2060691226187815f0ce87f4dca2cac3ee618d4beeeba9618dbd31c54f97af21d16b7cbf0dccd@ms6.63a8.alaya.network:16789",
-	"enode://4c5a092156c43d5aa3dc71f9dc11d304d7631d393725b09e574577c583759e58ddc245e38f993cc0f32fe873cc782bfc1c62fbd49097eec3278b240de785800b@ms7.66dc.alaya.network:16789",
+	"enode://81dd24640878badc06de82a82fdb0fe55f24d27877144261d81b1f39faa6686ac8f5d2489dbf97cd44d583b4b00976a8f92845378084d25c7a8bae671a543983@127.0.0.1:16789",
 }
 
 // TestnetBootnodes are the enode URLs of the P2P bootstrap nodes running on the test network.

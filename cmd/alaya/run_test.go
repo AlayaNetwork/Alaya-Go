@@ -27,7 +27,7 @@ import (
 )
 
 func tmpdir(t *testing.T) string {
-	dir, err := ioutil.TempDir("", "alaya-test")
+	dir, err := ioutil.TempDir("", "platon-test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -43,7 +43,7 @@ type testplaton struct {
 
 func init() {
 	// Run the app if we've been exec'd as "alaya-test" in runPlatON.
-	reexec.Register("alaya-test", func() {
+	reexec.Register("platon-test", func() {
 		if err := app.Run(os.Args); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
@@ -87,7 +87,7 @@ func runPlatON(t *testing.T, args ...string) *testplaton {
 
 	// Boot "alaya". This actually runs the test binary but the TestMain
 	// function will prevent any tests from running.
-	tt.Run("alaya-test", args...)
+	tt.Run("platon-test", args...)
 
 	return tt
 }

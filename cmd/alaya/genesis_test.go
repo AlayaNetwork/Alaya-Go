@@ -97,7 +97,7 @@ var customGenesisTests = []struct {
         }
     }
 }`,
-		query:  "alaya.getBlock(0).nonce",
+		query:  "platon.getBlock(0).nonce",
 		result: "0x024c6378c176ef6c717cd37a74c612c9abd615d13873ff6651e3d352b31cb0b2e1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
 	},
 	//Genesis file with only cbft config
@@ -169,7 +169,7 @@ var customGenesisTests = []struct {
         }
     }
 }`,
-		query:  "alaya.getBlock(0).nonce",
+		query:  "platon.getBlock(0).nonce",
 		result: "0x024c6378c176ef6c717cd37a74c612c9abd615d13873ff6651e3d352b31cb0b2e1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
 	},
 	//Genesis file with specific chain configurations
@@ -244,7 +244,7 @@ var customGenesisTests = []struct {
         }
     }
 }`,
-		query:  "alaya.getBlock(0).nonce",
+		query:  "platon.getBlock(0).nonce",
 		result: "0x024c6378c176ef6c717cd37a74c612c9abd615d13873ff6651e3d352b31cb0b2e1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
 	},
 }
@@ -267,7 +267,7 @@ func TestCustomGenesis(t *testing.T) {
 		// Query the custom genesis block
 		platon := runPlatON(t,
 			"--datadir", datadir, "--maxpeers", "0", "--port", "0",
-			"--nodiscover", "--nat", "none", "--ipcdisable", "--alayatestnet",
+			"--nodiscover", "--nat", "none", "--ipcdisable", "--alaya",
 			"--exec", tt.query, "console")
 		t.Log("testi", i)
 		platon.ExpectRegexp(tt.result)

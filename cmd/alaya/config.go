@@ -115,9 +115,9 @@ func defaultNodeConfig() node.Config {
 	cfg := node.DefaultConfig
 	cfg.Name = clientIdentifier
 	cfg.Version = params.VersionWithCommit(gitCommit)
-	cfg.HTTPModules = append(cfg.HTTPModules, "alaya")
-	cfg.WSModules = append(cfg.WSModules, "alaya")
-	cfg.IPCPath = "alaya.ipc"
+	cfg.HTTPModules = append(cfg.HTTPModules, "platon")
+	cfg.WSModules = append(cfg.WSModules, "platon")
+	cfg.IPCPath = "platon.ipc"
 	return cfg
 }
 

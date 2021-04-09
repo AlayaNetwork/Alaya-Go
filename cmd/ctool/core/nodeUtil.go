@@ -187,7 +187,7 @@ func trulyRandInt(lo, hi int) int {
 }
 
 func tmpdir(t *testing.T) string {
-	dir, err := ioutil.TempDir("", "alaya-test")
+	dir, err := ioutil.TempDir("", "platon-test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -216,9 +216,9 @@ func runPlatON(t *testing.T, args ...string) *testPlatON {
 			}
 		}()
 	}
-	t.Log("run alaya args: ", strings.Join(args, " "))
+	t.Log("run platon args: ", strings.Join(args, " "))
 
-	tt.Run("alaya-test", args...)
+	tt.Run("platon-test", args...)
 
 	return tt
 }
