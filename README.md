@@ -1,12 +1,18 @@
-## Go PlatON
+## Go Alaya
 
-Welcome to the PlatON-Go source code repository! This is an Ethereum-based、high-performance and high-security implementation of the PlatON protocol.
-Most of peculiarities according the PlatON's [whitepaper](https://www.platon.network/static-new/pdf/zh/PlatON_A_High-Efficiency_Trustless_Computing_Network_Whitepaper_ZH.pdf) has been developed.
+Alaya-Go is the implementation of Alaya network which is pioneering demonstration network of PlatON.
 
-[![Build Status](https://travis-ci.com/PlatONnetwork/PlatON-Go.svg?branch=feature%2Fbump-version-to-0.7)](https://travis-ci.com/PlatONnetwork/PlatON-Go)
+[![API Reference](
+https://camo.githubusercontent.com/915b7be44ada53c290eb157634330494ebe3e30a/68747470733a2f2f676f646f632e6f72672f6769746875622e636f6d2f676f6c616e672f6764646f3f7374617475732e737667
+)](https://pkg.go.dev/github.com/AlayaNetwork/Alaya-Go?tab=doc)
+[![Go Report Card](https://goreportcard.com/badge/github.com/AlayaNetwork/Alaya-Go)](https://goreportcard.com/report/github.com/AlayaNetwork/Alaya-Go)
+[![Build Status](https://github.com/AlayaNetwork/Alaya-Go/actions/workflows/test.yml/badge.svg))](https://github.com/AlayaNetwork/Alaya-Go/actions)
+[![codecov](https://codecov.io/gh/AlayaNetwork/Alaya-Go/branch/feature-mainnet-launch/graph/badge.svg)](https://codecov.io/gh/AlayaNetwork/Alaya-Go)
+[![version](https://img.shields.io/github/v/tag/AlayaNetwork/Alaya-Go)](https://github.com/AlayaNetwork/Alaya-Go/releases/latest)
+[![GitHub All Releases](https://img.shields.io/github/downloads/AlayaNetwork/Alaya-Go/total.svg)](https://github.com/AlayaNetwork/Alaya-Go)
 
 ## Building the source
-The requirements to build PlatON-Go are:
+The requirements to build Alaya-Go are:
 
 - OS:Windows10/Ubuntu18.04
 - [Golang](https://golang.org/doc/install) :version 1.13+
@@ -22,10 +28,10 @@ sudo apt install libgmp-dev libssl-dev
 Then, clone the repository
 
 ```
-git clone https://github.com/PlatONnetwork/PlatON-Go.git --recursive
+git clone https://github.com/AlayaNetwork/Alaya-Go.git --recursive
 ```
 
-Switch to the PlatON-Go repository root directory.
+Switch to the Alaya-Go repository root directory.
 
 Ubuntu:
 
@@ -39,7 +45,7 @@ Windows:
 go run build\ci.go install 
 ```
 
-The resulting binary will be placed in '$PlatON-Go/build/bin'(Ubuntu) or in '%GOPATH%\bin'(Windows) .
+The resulting binary will be placed in '$Alaya-Go/build/bin'(Ubuntu) or in '%GOPATH%\bin'(Windows) .
 
 ## Getting Started
 
@@ -47,7 +53,7 @@ The project comes with several executables found in the `build/bin` directory.
 
 | Command    | Description |
 |:----------:|-------------|
-| **`platon`** | Our main PlatON CLI client. It is the entry point into the PlatON network |
+| **`platon`** | Our main Alaya CLI client. It is the entry point into the Alaya network |
 | `keytool`    | a key related tool. |
 
 ### Generate the keys
@@ -89,13 +95,12 @@ platon --datadir ./data account new
 Your new account is locked with a password. Please give a password. Do not forget this password.
 Passphrase:
 Repeat passphrase:
-main net Address: lat1anp4tzmdggdrcf39qvshfq3glacjxcd5k60wg9
-other net Address: lax1anp4tzmdggdrcf39qvshfq3glacjxcd5elapx2
+Address: {apt1anp4tzmdggdrcf39qvshfq3glacjxcd5mayaa8}
 ```
 
 > Do remember the password
 
-### Connect to the PlatON network
+### Connect to the Alaya network
 
 | Options | description |
 | :------------ | :------------ |
@@ -109,10 +114,10 @@ other net Address: lax1anp4tzmdggdrcf39qvshfq3glacjxcd5elapx2
 | --nodekey | P2P node key file |
 | --cbft.blskey | BLS key file |
 
-Run the following command to launch a PlatON node connecting to the PlatON's mainnet:
+Run the following command to launch a Alaya node connecting to the Alaya's mainnet:
 
 ```
-$ ./platon --identity "platon" --datadir ./data --port {your-p2p-port} --rpcaddr 127.0.0.1 --rpcport {your-rpc-port} --rpcapi "db,platon,net,web3,admin,personal" --rpc --nodiscover --nodekey ./data/nodekey --cbft.blskey ./data/blskey
+$ ./platon --identity "alaya" --datadir ./data --port {your-p2p-port} --rpcaddr 127.0.0.1 --rpcport {your-rpc-port} --rpcapi "db,platon,net,web3,admin,personal" --rpc --nodiscover --nodekey ./data/nodekey --cbft.blskey ./data/blskey
 ```
 
 OK, it seems that the chain is running correctly, we can check it as follow:
@@ -130,17 +135,17 @@ at block: 26 (Wed, 15 Dec 51802 20:22:44 CST)
 29
 ```
 
-For more information, please visit our [Docs](https://platonnetwork.github.io/Docs/#/en-us/basics/[English]-Getting-Started).
+For more information, please visit our [Docs](https://devdocs.alaya.network/alaya-devdocs/en/).
 
-## Contributing to PlatON-Go
+## Contributing to Alaya-Go
 
-All of codes for PlatON-Go are open source and contributing are very welcome! Before beginning, please take a look at our contributing [guidelines](https://github.com/PlatONnetwork/PlatON-Go/blob/master/.github/CONTRIBUTING.md). You can also open an issue by clicking [here](https://github.com/PlatONnetwork/PlatON-Go/issues/new).
+All of codes for Alaya-Go are open source and contributing are very welcome! Before beginning, please take a look at our contributing [guidelines](https://github.com/AlayaNetwork/Alaya-Go/blob/master/.github/CONTRIBUTING.md). You can also open an issue by clicking [here](https://github.com/AlayaNetwork/Alaya-Go/issues/new).
 
 ## Support
 If you have any questions or suggestions please contact us at support@platon.network.
 
 ## License
-The PlatON-Go library (i.e. all code outside of the cmd directory) is licensed under the GNU Lesser General Public License v3.0, also included in our repository in the COPYING.LESSER file.
+The Alaya-Go library (i.e. all code outside of the cmd directory) is licensed under the GNU Lesser General Public License v3.0, also included in our repository in the COPYING.LESSER file.
 
-The PlatON-Go binaries (i.e. all code inside of the cmd directory) is licensed under the GNU General Public License v3.0, also included in our repository in the COPYING file.
+The Alaya-Go binaries (i.e. all code inside of the cmd directory) is licensed under the GNU General Public License v3.0, also included in our repository in the COPYING file.
 
