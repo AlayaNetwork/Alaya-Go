@@ -24,9 +24,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/PlatONnetwork/PlatON-Go/core/rawdb"
+	"github.com/AlayaNetwork/Alaya-Go/core/rawdb"
 
-	"github.com/PlatONnetwork/PlatON-Go/common/mclock"
+	"github.com/AlayaNetwork/Alaya-Go/common/mclock"
 )
 
 func TestFreeClientPoolL10C100(t *testing.T) {

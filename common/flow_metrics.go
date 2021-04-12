@@ -1,7 +1,7 @@
 package common
 
 import (
-	"github.com/PlatONnetwork/PlatON-Go/metrics"
+	"github.com/AlayaNetwork/Alaya-Go/metrics"
 )
 
 var (

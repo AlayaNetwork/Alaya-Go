@@ -6,7 +6,7 @@ import (
 	"hash"
 	"math/big"
 	"crypto/sha256"
-	"github.com/PlatONnetwork/PlatON-Go/crypto/secp256k1"
+	"github.com/AlayaNetwork/Alaya-Go/crypto/secp256k1"
 	"crypto/ecdsa"
 )
 

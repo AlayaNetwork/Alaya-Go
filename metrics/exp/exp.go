@@ -8,8 +8,8 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/PlatONnetwork/PlatON-Go/metrics"
-	"github.com/PlatONnetwork/PlatON-Go/metrics/prometheus"
+	"github.com/AlayaNetwork/Alaya-Go/metrics"
+	"github.com/AlayaNetwork/Alaya-Go/metrics/prometheus"
 )
 
 type exp struct {

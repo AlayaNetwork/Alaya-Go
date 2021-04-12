@@ -21,11 +21,11 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/PlatONnetwork/PlatON-Go/common/mock"
-	"github.com/PlatONnetwork/PlatON-Go/common/vm"
-	"github.com/PlatONnetwork/PlatON-Go/x/plugin"
+	"github.com/AlayaNetwork/Alaya-Go/common/mock"
+	"github.com/AlayaNetwork/Alaya-Go/common/vm"
+	"github.com/AlayaNetwork/Alaya-Go/x/plugin"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/common"
 )
 
 // precompiledTest defines the input/output pairs for precompiled contract tests.

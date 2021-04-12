@@ -26,17 +26,17 @@ import (
 	"os"
 	"strings"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	"github.com/PlatONnetwork/PlatON-Go/common/hexutil"
-	"github.com/PlatONnetwork/PlatON-Go/core"
-	"github.com/PlatONnetwork/PlatON-Go/core/rawdb"
-	"github.com/PlatONnetwork/PlatON-Go/core/state"
-	"github.com/PlatONnetwork/PlatON-Go/core/types"
-	"github.com/PlatONnetwork/PlatON-Go/internal/ethapi"
-	"github.com/PlatONnetwork/PlatON-Go/params"
-	"github.com/PlatONnetwork/PlatON-Go/rlp"
-	"github.com/PlatONnetwork/PlatON-Go/rpc"
-	"github.com/PlatONnetwork/PlatON-Go/trie"
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/common/hexutil"
+	"github.com/AlayaNetwork/Alaya-Go/core"
+	"github.com/AlayaNetwork/Alaya-Go/core/rawdb"
+	"github.com/AlayaNetwork/Alaya-Go/core/state"
+	"github.com/AlayaNetwork/Alaya-Go/core/types"
+	"github.com/AlayaNetwork/Alaya-Go/internal/ethapi"
+	"github.com/AlayaNetwork/Alaya-Go/params"
+	"github.com/AlayaNetwork/Alaya-Go/rlp"
+	"github.com/AlayaNetwork/Alaya-Go/rpc"
+	"github.com/AlayaNetwork/Alaya-Go/trie"
 )
 
 // PrivateMinerAPI provides private RPC methods to control the miner.

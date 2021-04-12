@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/PlatONnetwork/PlatON-Go/consensus"
+	"github.com/AlayaNetwork/Alaya-Go/consensus"
 	"github.com/stretchr/testify/assert"
 )
 

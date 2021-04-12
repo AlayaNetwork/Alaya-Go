@@ -1,18 +1,18 @@
 // Copyright 2018-2020 The PlatON Network Authors
-// This file is part of the PlatON-Go library.
+// This file is part of the Alaya-Go library.
 //
-// The PlatON-Go library is free software: you can redistribute it and/or modify
+// The Alaya-Go library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The PlatON-Go library is distributed in the hope that it will be useful,
+// The Alaya-Go library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the PlatON-Go library. If not, see <http://www.gnu.org/licenses/>.
+// along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
 package core
 
@@ -47,7 +47,7 @@ func TestParseAbiFromJson(t *testing.T) {
 
 func TestHttpPostTransfer(t *testing.T) {
 
-	//platon, datadir := prepare(t)
+	//alaya, datadir := prepare(t)
 	//
 	//param := JsonParam{
 	//	Jsonrpc: "2.0",
@@ -68,11 +68,11 @@ func TestHttpPostTransfer(t *testing.T) {
 	//assert.Nil(t, e, fmt.Sprintf("test http post error: %v", e))
 	//assert.NotEqual(t, r, "", "the result is nil")
 	//t.Log("the result ", r)
-	//clean(platon, datadir)
+	//clean(alaya, datadir)
 }
 
 func TestHttpPostDeploy(t *testing.T) {
-	//platon, datadir := prepare(t)
+	//alaya, datadir := prepare(t)
 	//
 	//deployParams := DeployParams{
 	//	From:     from,
@@ -127,11 +127,11 @@ func TestHttpPostDeploy(t *testing.T) {
 	//	fmt.Printf("get contract receipt timeout...more than 100 second.\n")
 	//}
 	//
-	//clean(platon, datadir)
+	//clean(alaya, datadir)
 }
 
 func TestHttpCallContact(t *testing.T) {
-	//platon, datadir := prepare(t)
+	//alaya, datadir := prepare(t)
 	//
 	//param1 := uint(33)
 	//b := new(bytes.Buffer)
@@ -158,7 +158,7 @@ func TestHttpCallContact(t *testing.T) {
 	//assert.Nil(t, e, fmt.Sprintf("test http post error: %v", e))
 	//assert.NotEqual(t, r, "", "the result is nil")
 	//t.Log("the result ", r)
-	//clean(platon, datadir)
+	//clean(alaya, datadir)
 
 }
 

@@ -20,7 +20,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"github.com/PlatONnetwork/PlatON-Go/common/byteutil"
+	"github.com/AlayaNetwork/Alaya-Go/common/byteutil"
 	"io/ioutil"
 	"math/big"
 	"math/rand"
@@ -30,17 +30,17 @@ import (
 	"testing/quick"
 	"time"
 
-	"github.com/PlatONnetwork/PlatON-Go/ethdb/leveldb"
+	"github.com/AlayaNetwork/Alaya-Go/ethdb/leveldb"
 
-	"github.com/PlatONnetwork/PlatON-Go/ethdb/memorydb"
+	"github.com/AlayaNetwork/Alaya-Go/ethdb/memorydb"
 
 	"github.com/stretchr/testify/assert"
 
 	"github.com/davecgh/go-spew/spew"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	"github.com/PlatONnetwork/PlatON-Go/crypto"
-	"github.com/PlatONnetwork/PlatON-Go/rlp"
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/crypto"
+	"github.com/AlayaNetwork/Alaya-Go/rlp"
 )
 
 func init() {

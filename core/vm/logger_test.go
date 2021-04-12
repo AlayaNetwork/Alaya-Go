@@ -18,16 +18,16 @@ package vm
 
 import (
 	"bytes"
-	"github.com/PlatONnetwork/PlatON-Go/common/mock"
+	"github.com/AlayaNetwork/Alaya-Go/common/mock"
 	"github.com/holiman/uint256"
 	"math/big"
 	"strings"
 	"testing"
 
-	"github.com/PlatONnetwork/PlatON-Go/log"
+	"github.com/AlayaNetwork/Alaya-Go/log"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	"github.com/PlatONnetwork/PlatON-Go/params"
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/params"
 )
 
 type dummyContractRef struct {

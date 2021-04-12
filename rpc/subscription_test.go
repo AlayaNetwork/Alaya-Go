@@ -216,7 +216,7 @@ func waitForMessages(t *testing.T, in *json.Decoder, successes chan<- jsonSucces
 // for multiple different namespaces.
 func TestSubscriptionMultipleNamespaces(t *testing.T) {
 	var (
-		//namespaces             = []string{"platon", "shh", "bzz"}
+		//namespaces             = []string{"alaya", "shh", "bzz"}
 		namespaces             = []string{"platon"}
 		service           = NotificationTestService{}
 		subCount          = len(namespaces) * 2

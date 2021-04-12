@@ -20,9 +20,9 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/PlatONnetwork/PlatON-Go/ethdb/memorydb"
+	"github.com/AlayaNetwork/Alaya-Go/ethdb/memorydb"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/common"
 )
 
 // makeTestTrie create a sample test trie to test node-wise reconstruction.

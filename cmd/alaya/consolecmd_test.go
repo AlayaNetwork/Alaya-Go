@@ -27,7 +27,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/PlatONnetwork/PlatON-Go/params"
+	"github.com/AlayaNetwork/Alaya-Go/params"
 )
 
 const (
@@ -41,21 +41,22 @@ func TestConsoleWelcome(t *testing.T) {
 	datadir := tmpdir(t)
 	defer os.RemoveAll(datadir)
 	platon := runPlatON(t,
-		"--datadir", datadir, "--port", "0", "--ipcdisable", "--testnet", "--maxpeers", "0", "--nodiscover", "--nat", "none", "console")
+		"--datadir", datadir, "--port", "0", "--ipcdisable", "--alaya", "--maxpeers", "0", "--nodiscover", "--nat", "none", "console")
 
 	// Gather all the infos the welcome message needs to contain
 	platon.SetTemplateFunc("goos", func() string { return runtime.GOOS })
 	platon.SetTemplateFunc("goarch", func() string { return runtime.GOARCH })
 	platon.SetTemplateFunc("gover", runtime.Version)
 	platon.SetTemplateFunc("gethver", func() string { return params.VersionWithMeta })
-	platon.SetTemplateFunc("niltime", func() string { return time.Unix(0, 0).Format(time.RFC1123) })
+	//platon.SetTemplateFunc("niltime", func() string { return time.Unix(0, 0).Format(time.RFC1123) })
+	platon.SetTemplateFunc("niltime", func() string { return time.Unix(1602973620000, 0).Format(time.RFC1123) })
 	platon.SetTemplateFunc("apis", func() string { return ipcAPIs })
 
 	// Verify the actual welcome message to the required template
 	platon.Expect(`
-Welcome to the PlatON JavaScript console!
+Welcome to the Alaya JavaScript console!
 
-instance: PlatONnetwork/v{{gethver}}/{{goos}}-{{goarch}}/{{gover}}
+instance: AlayaNetwork/v{{gethver}}/{{goos}}-{{goarch}}/{{gover}}
 at block: 0 ({{niltime}})
  datadir: {{.Datadir}}
  modules: {{apis}}
@@ -77,7 +78,7 @@ func TestIPCAttachWelcome(t *testing.T) {
 		ipc = filepath.Join(ws, "platon.ipc")
 	}
 	platon := runPlatON(t,
-		"--port", "0", "--testnet", "--maxpeers", "0", "--nodiscover", "--nat", "none", "--ipcpath", ipc)
+		"--port", "0", "--alaya", "--maxpeers", "0", "--nodiscover", "--nat", "none", "--ipcpath", ipc)
 
 	time.Sleep(2 * time.Second) // Simple way to wait for the RPC endpoint to open
 	testAttachWelcome(t, platon, "ipc:"+ipc, ipcAPIs)
@@ -89,7 +90,7 @@ func TestIPCAttachWelcome(t *testing.T) {
 func TestHTTPAttachWelcome(t *testing.T) {
 	port := strconv.Itoa(trulyRandInt(1024, 65536)) // Yeah, sometimes this will fail, sorry :P
 	platon := runPlatON(t,
-		"--port", "0", "--ipcdisable", "--testnet", "--maxpeers", "0", "--nodiscover", "--nat", "none",
+		"--port", "0", "--ipcdisable", "--alaya", "--maxpeers", "0", "--nodiscover", "--nat", "none",
 		"--rpc", "--rpcport", port)
 
 	time.Sleep(2 * time.Second) // Simple way to wait for the RPC endpoint to open
@@ -103,7 +104,7 @@ func TestWSAttachWelcome(t *testing.T) {
 	port := strconv.Itoa(trulyRandInt(1024, 65536)) // Yeah, sometimes this will fail, sorry :P
 
 	platon := runPlatON(t,
-		"--port", "0", "--ipcdisable", "--testnet", "--maxpeers", "0", "--nodiscover", "--nat", "none",
+		"--port", "0", "--ipcdisable", "--alaya", "--maxpeers", "0", "--nodiscover", "--nat", "none",
 		"--ws", "--wsport", port /*, "--testnet"*/)
 
 	time.Sleep(2 * time.Second) // Simple way to wait for the RPC endpoint to open
@@ -114,7 +115,7 @@ func TestWSAttachWelcome(t *testing.T) {
 }
 
 func testAttachWelcome(t *testing.T, platon *testplaton, endpoint, apis string) {
-	// Attach to a running platon note and terminate immediately
+	// Attach to a running alaya note and terminate immediately
 	attach := runPlatON(t, "attach", endpoint)
 	defer attach.ExpectExit()
 	attach.CloseStdin()
@@ -124,16 +125,17 @@ func testAttachWelcome(t *testing.T, platon *testplaton, endpoint, apis string) 
 	attach.SetTemplateFunc("goarch", func() string { return runtime.GOARCH })
 	attach.SetTemplateFunc("gover", runtime.Version)
 	attach.SetTemplateFunc("gethver", func() string { return params.VersionWithMeta })
-	attach.SetTemplateFunc("niltime", func() string { return time.Unix(0, 0).Format(time.RFC1123) })
+	//attach.SetTemplateFunc("niltime", func() string { return time.Unix(0, 0).Format(time.RFC1123) })
+	attach.SetTemplateFunc("niltime", func() string { return time.Unix(1602973620000, 0).Format(time.RFC1123) })
 	attach.SetTemplateFunc("ipc", func() bool { return strings.HasPrefix(endpoint, "ipc") })
 	attach.SetTemplateFunc("datadir", func() string { return platon.Datadir })
 	attach.SetTemplateFunc("apis", func() string { return apis })
 
 	// Verify the actual welcome message to the required template
 	attach.Expect(`
-Welcome to the PlatON JavaScript console!
+Welcome to the Alaya JavaScript console!
 
-instance: PlatONnetwork/v{{gethver}}/{{goos}}-{{goarch}}/{{gover}}
+instance: AlayaNetwork/v{{gethver}}/{{goos}}-{{goarch}}/{{gover}}
 at block: 0 ({{niltime}}){{if ipc}}
  datadir: {{datadir}}{{end}}
  modules: {{apis}}

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with go-ethereum. If not, see <http://www.gnu.org/licenses/>.
 
-// Contains the platon command usage template and generator.
+// Contains the alaya command usage template and generator.
 
 package main
 
@@ -24,15 +24,15 @@ import (
 
 	"gopkg.in/urfave/cli.v1"
 
-	"github.com/PlatONnetwork/PlatON-Go/cmd/utils"
-	"github.com/PlatONnetwork/PlatON-Go/internal/debug"
+	"github.com/AlayaNetwork/Alaya-Go/cmd/utils"
+	"github.com/AlayaNetwork/Alaya-Go/internal/debug"
 )
 
 // AppHelpTemplate is the test template for the default, global app help topic.
 var AppHelpTemplate = `NAME:
    {{.App.Name}} - {{.App.Usage}}
 
-   Copyright 2019 The PlatON-Go Authors
+   Copyright 2019 The Alaya-Go Authors
 
 USAGE:
    {{.App.HelpName}} [options]{{if .App.Commands}} command [command options]{{end}} {{if .App.ArgsUsage}}{{.App.ArgsUsage}}{{else}}[arguments...]{{end}}

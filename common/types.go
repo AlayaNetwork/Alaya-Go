@@ -25,7 +25,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/PlatONnetwork/PlatON-Go/common/hexutil"
+	"github.com/AlayaNetwork/Alaya-Go/common/hexutil"
 )
 
 // Lengths of hashes and addresses in bytes.

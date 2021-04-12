@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with go-ethereum. If not, see <http://www.gnu.org/licenses/>.
 
-// platon is the official command-line client for Ethereum.
+// alaya is the official command-line client for Ethereum.
 package main
 
 import (
@@ -31,30 +31,30 @@ import (
 	"github.com/panjf2000/ants/v2"
 	"gopkg.in/urfave/cli.v1"
 
-	"github.com/PlatONnetwork/PlatON-Go/accounts"
-	"github.com/PlatONnetwork/PlatON-Go/accounts/keystore"
-	"github.com/PlatONnetwork/PlatON-Go/cmd/utils"
-	"github.com/PlatONnetwork/PlatON-Go/console"
-	"github.com/PlatONnetwork/PlatON-Go/crypto/bls"
-	"github.com/PlatONnetwork/PlatON-Go/eth"
-	"github.com/PlatONnetwork/PlatON-Go/ethclient"
-	"github.com/PlatONnetwork/PlatON-Go/internal/debug"
-	"github.com/PlatONnetwork/PlatON-Go/log"
-	"github.com/PlatONnetwork/PlatON-Go/metrics"
-	"github.com/PlatONnetwork/PlatON-Go/node"
+	"github.com/AlayaNetwork/Alaya-Go/accounts"
+	"github.com/AlayaNetwork/Alaya-Go/accounts/keystore"
+	"github.com/AlayaNetwork/Alaya-Go/cmd/utils"
+	"github.com/AlayaNetwork/Alaya-Go/console"
+	"github.com/AlayaNetwork/Alaya-Go/crypto/bls"
+	"github.com/AlayaNetwork/Alaya-Go/eth"
+	"github.com/AlayaNetwork/Alaya-Go/ethclient"
+	"github.com/AlayaNetwork/Alaya-Go/internal/debug"
+	"github.com/AlayaNetwork/Alaya-Go/log"
+	"github.com/AlayaNetwork/Alaya-Go/metrics"
+	"github.com/AlayaNetwork/Alaya-Go/node"
 
 	gopsutil "github.com/shirou/gopsutil/mem"
 )
 
 const (
-	clientIdentifier = "platon" // Client identifier to advertise over the network
+	clientIdentifier = "alaya" // Client identifier to advertise over the network
 )
 
 var (
 	// Git SHA1 commit hash of the release (set via linker flags)
 	gitCommit = ""
 	// The app that holds all commands and flags.
-	app = utils.NewApp(gitCommit, "the platon-go command line interface")
+	app = utils.NewApp(gitCommit, "the alaya-go command line interface")
 	// flags that configure the node
 	nodeFlags = []cli.Flag{
 		utils.IdentityFlag,
@@ -183,7 +183,7 @@ func init() {
 	// Initialize the CLI app and start PlatON
 	app.Action = platon
 	app.HideVersion = true // we have a command to print the version
-	app.Copyright = "Copyright 2019 The PlatON-Go Authors"
+	app.Copyright = "Copyright 2019 The Alaya-Go Authors"
 	app.Commands = []cli.Command{
 		// See chaincmd.go:
 		initCommand,
@@ -285,7 +285,7 @@ func main() {
 	}
 }
 
-// platon is the main entry point into the system if no special subcommand is ran.
+// alaya is the main entry point into the system if no special subcommand is ran.
 // It creates a default node based on the command line arguments and runs it in
 // blocking mode, waiting for it to be shut down.
 func platon(ctx *cli.Context) error {

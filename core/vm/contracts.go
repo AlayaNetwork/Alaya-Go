@@ -20,16 +20,16 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"errors"
-	"github.com/PlatONnetwork/PlatON-Go/crypto/blake2b"
+	"github.com/AlayaNetwork/Alaya-Go/crypto/blake2b"
 	"math/big"
 
-	"github.com/PlatONnetwork/PlatON-Go/common/vm"
+	"github.com/AlayaNetwork/Alaya-Go/common/vm"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	"github.com/PlatONnetwork/PlatON-Go/common/math"
-	"github.com/PlatONnetwork/PlatON-Go/crypto"
-	"github.com/PlatONnetwork/PlatON-Go/crypto/bn256"
-	"github.com/PlatONnetwork/PlatON-Go/params"
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/common/math"
+	"github.com/AlayaNetwork/Alaya-Go/crypto"
+	"github.com/AlayaNetwork/Alaya-Go/crypto/bn256"
+	"github.com/AlayaNetwork/Alaya-Go/params"
 	"golang.org/x/crypto/ripemd160"
 )
 

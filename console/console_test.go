@@ -26,18 +26,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/PlatONnetwork/PlatON-Go/core/snapshotdb"
+	"github.com/AlayaNetwork/Alaya-Go/core/snapshotdb"
 
-	"github.com/PlatONnetwork/PlatON-Go/core"
-	"github.com/PlatONnetwork/PlatON-Go/crypto/bls"
+	"github.com/AlayaNetwork/Alaya-Go/core"
+	"github.com/AlayaNetwork/Alaya-Go/crypto/bls"
 
-	"github.com/PlatONnetwork/PlatON-Go/p2p/discover"
-	"github.com/PlatONnetwork/PlatON-Go/params"
+	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
+	"github.com/AlayaNetwork/Alaya-Go/params"
 
-	"github.com/PlatONnetwork/PlatON-Go/eth"
-	"github.com/PlatONnetwork/PlatON-Go/internal/jsre"
-	"github.com/PlatONnetwork/PlatON-Go/node"
-	_ "github.com/PlatONnetwork/PlatON-Go/x/xcom"
+	"github.com/AlayaNetwork/Alaya-Go/eth"
+	"github.com/AlayaNetwork/Alaya-Go/internal/jsre"
+	"github.com/AlayaNetwork/Alaya-Go/node"
+	_ "github.com/AlayaNetwork/Alaya-Go/x/xcom"
 )
 
 const (

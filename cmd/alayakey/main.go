@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/PlatONnetwork/PlatON-Go/cmd/utils"
+	"github.com/AlayaNetwork/Alaya-Go/cmd/utils"
 	"gopkg.in/urfave/cli.v1"
 )
 
@@ -34,7 +34,7 @@ var gitCommit = ""
 var app *cli.App
 
 func init() {
-	app = utils.NewApp(gitCommit, "an PlatON-Go key manager")
+	app = utils.NewApp(gitCommit, "an Alaya-Go key manager")
 	app.Commands = []cli.Command{
 		commandGenerate,
 		commandInspect,
