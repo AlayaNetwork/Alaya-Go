@@ -202,7 +202,7 @@ func TestWelcome(t *testing.T) {
 func TestApi(t *testing.T) {
 	tester := newTester(t, nil)
 	defer tester.Close(t)
-	fmt.Fprintf(tester.console.printer, "Welcome to the PlatON JavaScript console!\n\n")
+	fmt.Fprintf(tester.console.printer, "Welcome to the Alaya JavaScript console!\n\n")
 	_, err := tester.console.jsre.Run(`
 		console.log("aaaaaaa");
 		console.log("instance: " + web3.version.node);
