@@ -22,8 +22,8 @@ import (
 	"reflect"
 	"testing"
 
-	ethereum "github.com/PlatONnetwork/PlatON-Go"
-	"github.com/PlatONnetwork/PlatON-Go/common"
+	ethereum "github.com/AlayaNetwork/Alaya-Go"
+	"github.com/AlayaNetwork/Alaya-Go/common"
 )
 
 // Verify that Client implements the ethereum interfaces.

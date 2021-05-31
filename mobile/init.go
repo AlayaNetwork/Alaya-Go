@@ -22,7 +22,7 @@ import (
 	"os"
 	"runtime"
 
-	"github.com/PlatONnetwork/PlatON-Go/log"
+	"github.com/AlayaNetwork/Alaya-Go/log"
 )
 
 func init() {

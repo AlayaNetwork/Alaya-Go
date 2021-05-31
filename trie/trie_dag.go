@@ -5,12 +5,12 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/PlatONnetwork/PlatON-Go/common/byteutil"
+	"github.com/AlayaNetwork/Alaya-Go/common/byteutil"
 
 	"github.com/cespare/xxhash"
 	"github.com/panjf2000/ants/v2"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/common"
 )
 
 var fullNodeSuffix = []byte("fullnode")

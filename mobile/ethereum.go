@@ -21,8 +21,8 @@ package platon
 import (
 	"errors"
 
-	ethereum "github.com/PlatONnetwork/PlatON-Go"
-	"github.com/PlatONnetwork/PlatON-Go/common"
+	ethereum "github.com/AlayaNetwork/Alaya-Go"
+	"github.com/AlayaNetwork/Alaya-Go/common"
 )
 
 // Subscription represents an event subscription where events are

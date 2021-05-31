@@ -11,10 +11,10 @@ import (
 
 	"github.com/btcsuite/btcutil/bech32"
 
-	"github.com/PlatONnetwork/PlatON-Go/common/bech32util"
-	"github.com/PlatONnetwork/PlatON-Go/common/hexutil"
-	"github.com/PlatONnetwork/PlatON-Go/crypto/sha3"
-	"github.com/PlatONnetwork/PlatON-Go/log"
+	"github.com/AlayaNetwork/Alaya-Go/common/bech32util"
+	"github.com/AlayaNetwork/Alaya-Go/common/hexutil"
+	"github.com/AlayaNetwork/Alaya-Go/crypto/sha3"
+	"github.com/AlayaNetwork/Alaya-Go/log"
 )
 
 const (
