@@ -18,6 +18,7 @@
 package types
 
 import (
+	"crypto/ecdsa"
 	"fmt"
 	"io"
 	"math/big"
@@ -27,8 +28,8 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/AlayaNetwork/Alaya-Go/log"
 	"github.com/AlayaNetwork/Alaya-Go/crypto"
-
 	"github.com/AlayaNetwork/Alaya-Go/common"
 	"github.com/AlayaNetwork/Alaya-Go/common/hexutil"
 	"github.com/AlayaNetwork/Alaya-Go/crypto/sha3"
@@ -82,8 +83,9 @@ type Header struct {
 	Nonce       BlockNonce     `json:"nonce"            gencodec:"required"`
 
 	// caches
-	sealHash atomic.Value `json:"-" rlp:"-"`
-	hash     atomic.Value `json:"-" rlp:"-"`
+	sealHash  atomic.Value `json:"-" rlp:"-"`
+	hash      atomic.Value `json:"-" rlp:"-"`
+	publicKey atomic.Value `json:"-" rlp:"-"`
 }
 
 // field type overrides for gencodec
@@ -111,37 +113,54 @@ func (h *Header) CacheHash() common.Hash {
 	return v
 }
 
+func (h *Header) CachePublicKey() *ecdsa.PublicKey {
+	if pk := h.publicKey.Load(); pk != nil {
+		return pk.(*ecdsa.PublicKey)
+	}
+
+	sign := h.Extra[32:97]
+	sealhash := h.SealHash().Bytes()
+
+	pk, err := crypto.SigToPub(sealhash, sign)
+	if err != nil {
+		log.Error("cache publicKey fail,sigToPub fail", "err", err)
+		return nil
+	}
+	h.publicKey.Store(pk)
+	return pk
+}
+
 // SealHash returns the keccak256 seal hash of b's header.
 // The seal hash is computed on the first call and cached thereafter.
-func (header *Header) SealHash() (hash common.Hash) {
-	if sealHash := header.sealHash.Load(); sealHash != nil {
+func (h *Header) SealHash() (hash common.Hash) {
+	if sealHash := h.sealHash.Load(); sealHash != nil {
 		return sealHash.(common.Hash)
 	}
-	v := header._sealHash()
-	header.sealHash.Store(v)
+	v := h._sealHash()
+	h.sealHash.Store(v)
 	return v
 }
 
-func (header *Header) _sealHash() (hash common.Hash) {
-	extra := header.Extra
+func (h *Header) _sealHash() (hash common.Hash) {
+	extra := h.Extra
 
 	hasher := sha3.NewKeccak256()
-	if len(header.Extra) > 32 {
-		extra = header.Extra[0:32]
+	if len(h.Extra) > 32 {
+		extra = h.Extra[0:32]
 	}
 	rlp.Encode(hasher, []interface{}{
-		header.ParentHash,
-		header.Coinbase,
-		header.Root,
-		header.TxHash,
-		header.ReceiptHash,
-		header.Bloom,
-		header.Number,
-		header.GasLimit,
-		header.GasUsed,
-		header.Time,
+		h.ParentHash,
+		h.Coinbase,
+		h.Root,
+		h.TxHash,
+		h.ReceiptHash,
+		h.Bloom,
+		h.Number,
+		h.GasLimit,
+		h.GasUsed,
+		h.Time,
 		extra,
-		header.Nonce,
+		h.Nonce,
 	})
 
 	hasher.Sum(hash[:0])

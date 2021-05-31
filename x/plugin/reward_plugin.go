@@ -18,6 +18,7 @@ package plugin
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/AlayaNetwork/Alaya-Go/x/gov"
 	"math"
@@ -428,11 +429,9 @@ func (rmp *RewardMgrPlugin) getBlockMinderAddress(blockHash common.Hash, head *t
 	if blockHash == common.ZeroHash {
 		return rmp.nodeID, rmp.nodeADD, nil
 	}
-	sign := head.Extra[32:97]
-	sealhash := head.SealHash().Bytes()
-	pk, err := crypto.SigToPub(sealhash, sign)
-	if err != nil {
-		return discover.ZeroNodeID, common.ZeroNodeAddr, err
+	pk := head.CachePublicKey()
+	if pk == nil {
+		return discover.ZeroNodeID, common.ZeroNodeAddr, errors.New("failed to get the public key of the block producer")
 	}
 	return discover.PubkeyID(pk), crypto.PubkeyToNodeAddress(*pk), nil
 }
