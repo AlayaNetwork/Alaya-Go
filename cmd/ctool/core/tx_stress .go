@@ -1,7 +1,7 @@
 package core
 
 import (
-	"github.com/PlatONnetwork/PlatON-Go/eth"
+	"github.com/AlayaNetwork/Alaya-Go/eth"
 
 	"gopkg.in/urfave/cli.v1"
 )

@@ -3,14 +3,14 @@ package plugin
 import (
 	"math/big"
 
-	"github.com/PlatONnetwork/PlatON-Go/log"
+	"github.com/AlayaNetwork/Alaya-Go/log"
 
-	"github.com/PlatONnetwork/PlatON-Go/params"
+	"github.com/AlayaNetwork/Alaya-Go/params"
 
-	"github.com/PlatONnetwork/PlatON-Go/x/reward"
+	"github.com/AlayaNetwork/Alaya-Go/x/reward"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	"github.com/PlatONnetwork/PlatON-Go/x/xcom"
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/x/xcom"
 )
 
 //给没有领取委托奖励的账户平账 , https://github.com/PlatONnetwork/PlatON-Go/issues/1583

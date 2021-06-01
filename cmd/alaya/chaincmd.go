@@ -22,8 +22,6 @@ import (
 
 	"github.com/AlayaNetwork/Alaya-Go/core/rawdb"
 
-	"github.com/AlayaNetwork/Alaya-Go/core/vm"
-
 	"os"
 	"runtime"
 	"strconv"
