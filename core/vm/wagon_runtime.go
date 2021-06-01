@@ -4,6 +4,8 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 
+	"github.com/PlatONnetwork/PlatON-Go/crypto/bls12381"
+
 	"github.com/PlatONnetwork/PlatON-Go/crypto/bn256"
 	"github.com/PlatONnetwork/PlatON-Go/crypto/bulletproof/tx"
 
@@ -1025,6 +1027,176 @@ func NewHostModule() *wasm.Module {
 		},
 		wasm.ExportEntry{
 			FieldStr: "string_convert_operator",
+			Kind:     wasm.ExternalFunction,
+		},
+	)
+
+	// Bls12381G1Add int bls12381_g1_add(byte x1[48], byte y1[48], byte x2[48], byte y2[48], byte x3[48], byte y3[48]);
+	// func $bls12381_g1_add(param $0 i32) (param $1 i32) (param $2 i32) (param $3 i32) (param $4 i32) (param $5 i32) (result i32)
+	addFuncExport(m,
+		wasm.FunctionSig{
+			ParamTypes:  []wasm.ValueType{wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32},
+			ReturnTypes: []wasm.ValueType{wasm.ValueTypeI32},
+		},
+		wasm.Function{
+			Host: reflect.ValueOf(Bls12381G1Add),
+			Body: &wasm.FunctionBody{},
+		},
+		wasm.ExportEntry{
+			FieldStr: "bls12381_g1_add",
+			Kind:     wasm.ExternalFunction,
+		},
+	)
+
+	// Bls12381G1Mul int bls12381_g1_mul(byte x1[48], byte y1[48], byte bigint[48], byte x2[48], byte y2[48]);
+	// func $bls12381_g1_mul(param $0 i32) (param $1 i32) (param $2 i32) (param $3 i32) (param $4 i32) (result i32)
+	addFuncExport(m,
+		wasm.FunctionSig{
+			ParamTypes:  []wasm.ValueType{wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32},
+			ReturnTypes: []wasm.ValueType{wasm.ValueTypeI32},
+		},
+		wasm.Function{
+			Host: reflect.ValueOf(Bls12381G1Mul),
+			Body: &wasm.FunctionBody{},
+		},
+		wasm.ExportEntry{
+			FieldStr: "bls12381_g1_mul",
+			Kind:     wasm.ExternalFunction,
+		},
+	)
+
+	// Bls12381G1MulExp int bls12381_g1_mul_exp(uint8_t *x1, uint8_t *y1, uint8_t *bigint, size_t length, byte x2[48], byte y2[48]);
+	// func $bls12381_g1_mul_exp(param $0 i32) (param $1 i32) (param $2 i32) (param $3 i32) (param $4 i32) (param $4 i32) (result i32)
+	addFuncExport(m,
+		wasm.FunctionSig{
+			ParamTypes:  []wasm.ValueType{wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32},
+			ReturnTypes: []wasm.ValueType{wasm.ValueTypeI32},
+		},
+		wasm.Function{
+			Host: reflect.ValueOf(Bls12381G1MulExp),
+			Body: &wasm.FunctionBody{},
+		},
+		wasm.ExportEntry{
+			FieldStr: "bls12381_g1_mul_exp",
+			Kind:     wasm.ExternalFunction,
+		},
+	)
+
+	// Bls12381G2Add int bls12381_g2_add(byte x11[48], byte x12[48], byte y11[48], byte y12[48], byte x21[48], byte x22[48], byte y21[48], byte y22[48], byte x31[48], byte x32[48], byte y31[48], byte y32[48]);
+	// func $bls12381_g2_add(param $0 i32) (param $1 i32) (param $2 i32) (param $3 i32) (param $4 i32) (param $5 i32) (param $6 i32) (param $7 i32) (param $8 i32) (param $9 i32) (param $10 i32) (param $11 i32) (result i32)
+	addFuncExport(m,
+		wasm.FunctionSig{
+			ParamTypes:  []wasm.ValueType{wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32},
+			ReturnTypes: []wasm.ValueType{wasm.ValueTypeI32},
+		},
+		wasm.Function{
+			Host: reflect.ValueOf(Bls12381G2Add),
+			Body: &wasm.FunctionBody{},
+		},
+		wasm.ExportEntry{
+			FieldStr: "bls12381_g2_add",
+			Kind:     wasm.ExternalFunction,
+		},
+	)
+
+	// int bls12381_g2_mul(byte x11[32], byte y11[32], byte x12[32], byte y12[32], byte bigint[32] byte x21[32], byte y21[32], byte x22[32], byte y22[32]);
+	// func $bls12381_g2_mul(param $0 i32) (param $1 i32) (param $2 i32) (param $3 i32) (param $4 i32) (param $5 i32) (param $6 i32) (param $7 i32) (param $8 i32) (result i32)
+	addFuncExport(m,
+		wasm.FunctionSig{
+			ParamTypes:  []wasm.ValueType{wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32},
+			ReturnTypes: []wasm.ValueType{wasm.ValueTypeI32},
+		},
+		wasm.Function{
+			Host: reflect.ValueOf(Bls12381G2Mul),
+			Body: &wasm.FunctionBody{},
+		},
+		wasm.ExportEntry{
+			FieldStr: "bls12381_g2_mul",
+			Kind:     wasm.ExternalFunction,
+		},
+	)
+
+	// Bls12381G2MulExp int bls12381_g2_mul_exp(uint8_t *x11, uint8_t *x12, uint8_t *y11, uint8_t *y12, uint8_t *bigint, uint32_t length, byte x21[48], byte x22[48], byte y21[48], byte y22[48]);
+	// func $bls12381_g2_mul_exp(param $0 i32) (param $1 i32) (param $2 i32) (param $3 i32) (param $4 i32) (param $5 i32) (param $6 i32) (param $7 i32) (param $8 i32) (param $9 i32) (result i32)
+	addFuncExport(m,
+		wasm.FunctionSig{
+			ParamTypes:  []wasm.ValueType{wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32},
+			ReturnTypes: []wasm.ValueType{wasm.ValueTypeI32},
+		},
+		wasm.Function{
+			Host: reflect.ValueOf(Bls12381G2MulExp),
+			Body: &wasm.FunctionBody{},
+		},
+		wasm.ExportEntry{
+			FieldStr: "bls12381_g2_mul_exp",
+			Kind:     wasm.ExternalFunction,
+		},
+	)
+
+	// Bls12381G2MulExp int bls12381_g2_mul_exp(uint8_t *x11, uint8_t *x12, uint8_t *y11, uint8_t *y12, uint8_t *bigint, uint32_t length, byte x21[48], byte x22[48], byte y21[48], byte y22[48]);
+	// func $bls12381_g2_mul_exp(param $0 i32) (param $1 i32) (param $2 i32) (param $3 i32) (param $4 i32) (param $5 i32) (param $6 i32) (param $7 i32) (param $8 i32) (param $9 i32) (result i32)
+	addFuncExport(m,
+		wasm.FunctionSig{
+			ParamTypes:  []wasm.ValueType{wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32},
+			ReturnTypes: []wasm.ValueType{wasm.ValueTypeI32},
+		},
+		wasm.Function{
+			Host: reflect.ValueOf(Bls12381G2MulExp),
+			Body: &wasm.FunctionBody{},
+		},
+		wasm.ExportEntry{
+			FieldStr: "bls12381_g2_mul_exp",
+			Kind:     wasm.ExternalFunction,
+		},
+	)
+
+	// int bls12381_pairing(uint8_t* x1[], uint8_t* y1[], uint8_t* x21[], uint8_t* y21[], uint8_t* x22[], uint8_t* y22[], size_t len);
+	// func $bls12381_pairing(param $0 i32) (param $1 i32) (param $2 i32) (param $3 i32) (param $4 i32) (param $5 i32) (param $6 i32) (result i32)
+	addFuncExport(m,
+		wasm.FunctionSig{
+			ParamTypes:  []wasm.ValueType{wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32},
+			ReturnTypes: []wasm.ValueType{wasm.ValueTypeI32},
+		},
+		wasm.Function{
+			Host: reflect.ValueOf(Bls12381Pairing),
+			Body: &wasm.FunctionBody{},
+		},
+		wasm.ExportEntry{
+			FieldStr: "bls12381_pairing",
+			Kind:     wasm.ExternalFunction,
+		},
+	)
+
+	// Bls12381MapG1 int bls12381_map_g1(uint8_t* fp[], uint8_t* x1[], uint8_t* y1[]);
+	// func $bls12381_map_g1(param $0 i32) (param $1 i32) (param $2 i32)(result i32)
+	addFuncExport(m,
+		wasm.FunctionSig{
+			ParamTypes:  []wasm.ValueType{wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32},
+			ReturnTypes: []wasm.ValueType{wasm.ValueTypeI32},
+		},
+		wasm.Function{
+			Host: reflect.ValueOf(Bls12381MapG1),
+			Body: &wasm.FunctionBody{},
+		},
+		wasm.ExportEntry{
+			FieldStr: "bls12381_map_g1",
+			Kind:     wasm.ExternalFunction,
+		},
+	)
+
+	// Bls12381MapG2 int bls12381_map_g2(byte c0[48], byte c1[48], byte x1[48], byte x2[48], byte y1[48], byte y2[48]);
+	// func $bls12381_map_g2(param $0 i32) (param $1 i32) (param $2 i32) (param $3 i32) (param $4 i32)(param $5 i32)(result i32)
+	addFuncExport(m,
+		wasm.FunctionSig{
+			ParamTypes:  []wasm.ValueType{wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32},
+			ReturnTypes: []wasm.ValueType{wasm.ValueTypeI32},
+		},
+		wasm.Function{
+			Host: reflect.ValueOf(Bls12381MapG2),
+			Body: &wasm.FunctionBody{},
+		},
+		wasm.ExportEntry{
+			FieldStr: "bls12381_map_g2",
 			Kind:     wasm.ExternalFunction,
 		},
 	)
@@ -3170,4 +3342,403 @@ func StringConvertOperator(proc *exec.Process, str uint32, strLen uint32, result
 	}
 
 	return returnResult
+}
+
+// Bls12381G1Add int bls12381_g1_add(byte x1[48], byte y1[48], byte x2[48], byte y2[48], byte x3[48], byte y3[48]);
+// func $bls12381_g1_add(param $0 i32) (param $1 i32) (param $2 i32) (param $3 i32) (param $4 i32) (param $5 i32) (result i32)
+func Bls12381G1Add(proc *exec.Process, x1, y1, x2, y2, x3, y3 uint32) int32 {
+	ctx := proc.HostCtx().(*VMContext)
+
+	checkGas(ctx, params.Bls12381G1AddGas)
+	var x1Bytes [48]byte
+	var y1Bytes [48]byte
+	var x2Bytes [48]byte
+	var y2Bytes [48]byte
+
+	mustReadAt(proc, x1Bytes[:], int64(x1))
+	mustReadAt(proc, y1Bytes[:], int64(y1))
+	mustReadAt(proc, x2Bytes[:], int64(x2))
+	mustReadAt(proc, y2Bytes[:], int64(y2))
+
+	g1 := bls12381.NewG1()
+	var err error
+	var gx1, gx2 *bls12381.PointG1
+	if gx1, err = g1.FromPointBytes(x1Bytes[:], y1Bytes[:]); err != nil {
+		return -1
+	}
+	if gx2, err = g1.FromPointBytes(x2Bytes[:], y2Bytes[:]); err != nil {
+		return -1
+	}
+
+	gx3 := g1.New()
+
+	g1.Add(gx3, gx1, gx2)
+	x, y := g1.ToPointBytes(gx3)
+	mustWriteAt(proc, x, int64(x3))
+	mustWriteAt(proc, y, int64(y3))
+	return 0
+}
+
+// Bls12381G1Mul int bls12381_g1_mul(byte x1[48], byte y1[48], byte bigint[48], byte x2[48], byte y2[48]);
+// func $bls12381_g1_mul(param $0 i32) (param $1 i32) (param $2 i32) (param $3 i32) (param $4 i32) (result i32)
+func Bls12381G1Mul(proc *exec.Process, x1, y1, bigint, x2, y2 uint32) int32 {
+	ctx := proc.HostCtx().(*VMContext)
+	checkGas(ctx, params.Bls12381G1MulGas)
+
+	var x1Bytes [48]byte
+	var y1Bytes [48]byte
+	var bigIntBytes [32]byte
+	mustReadAt(proc, x1Bytes[:], int64(x1))
+	mustReadAt(proc, y1Bytes[:], int64(y1))
+	mustReadAt(proc, bigIntBytes[:], int64(bigint))
+
+	scalar := new(big.Int).SetBytes(bigIntBytes[:])
+
+	g1 := bls12381.NewG1()
+	var err error
+	var gx1 *bls12381.PointG1
+	if gx1, err = g1.FromPointBytes(x1Bytes[:], y1Bytes[:]); err != nil {
+		return -1
+	}
+
+	gx3 := g1.New()
+
+	g1.MulScalar(gx3, gx1, scalar)
+	x,y := g1.ToPointBytes(gx3)
+
+	mustWriteAt(proc, x, int64(x2))
+	mustWriteAt(proc, y, int64(y2))
+	return 0
+}
+
+// Bls12381G1MulExp int bls12381_g1_mul_exp(uint8_t *x1, uint8_t *y1, uint8_t *bigint, size_t length, byte x2[48], byte y2[48]);
+// func $bls12381_g1_mul_exp(param $0 i32) (param $1 i32) (param $2 i32) (param $3 i32) (param $4 i32) (param $4 i32) (result i32)
+func Bls12381G1MulExp(proc *exec.Process, x1, y1, bigint, length, x2, y2 uint32) int32 {
+	ctx := proc.HostCtx().(*VMContext)
+
+	costGas := func() uint64{
+		if length == 0 {
+			// Return 0 gas for small input length
+			return 0
+		}
+		// Lookup discount value for G1 point, scalar value pair length
+		var discount uint64
+		if dLen := len(params.Bls12381MultiExpDiscountTable); length < uint32(dLen) {
+			discount = params.Bls12381MultiExpDiscountTable[length-1]
+		} else {
+			discount = params.Bls12381MultiExpDiscountTable[dLen-1]
+		}
+		return (uint64(length) * params.Bls12381G1MulGas * discount) / 1000
+	}
+	checkGas(ctx, costGas())
+
+	x1Array := make([]byte, length*ptrSize)
+	y1Array := make([]byte, length*ptrSize)
+	bigintArray := make([]byte, length*ptrSize)
+
+	mustReadAt(proc, x1Array[:], int64(x1))
+	mustReadAt(proc, y1Array[:], int64(y1))
+	mustReadAt(proc, bigintArray[:], int64(bigint))
+
+	g1 := bls12381.NewG1()
+	var points []*bls12381.PointG1
+	var powers []*big.Int
+
+	for i := uint32(0); i < length; i++ {
+		var x1Bytes [48]byte
+		var y1Bytes [48]byte
+
+		var bigintBytes [32]byte
+
+		mustReadAt(proc, x1Bytes[:], int64(binary.LittleEndian.Uint32(x1Array[i*4:(i+1)*4])))
+		mustReadAt(proc, y1Bytes[:], int64(binary.LittleEndian.Uint32(y1Array[i*4:(i+1)*4])))
+		mustReadAt(proc, bigintBytes[:], int64(binary.LittleEndian.Uint32(bigintArray[i*4:(i+1)*4])))
+		g, err  := g1.FromPointBytes(x1Bytes[:], y1Bytes[:])
+		if err != nil {
+			return -1
+		}
+		points = append(points, g)
+		powers = append(powers, new(big.Int).SetBytes(bigintBytes[:]))
+	}
+
+	gx2 := g1.New()
+
+	g1.MultiExp(gx2, points, powers)
+
+	x,y := g1.ToPointBytes(gx2)
+
+	mustWriteAt(proc, x, int64(x2))
+	mustWriteAt(proc, y, int64(y2))
+	return 0
+}
+
+// Bls12381G2Add int bls12381_g2_add(byte x11[48], byte x12[48], byte y11[48], byte y12[48], byte x21[48], byte x22[48], byte y21[48], byte y22[48], byte x31[48], byte x32[48], byte y31[48], byte y32[48]);
+// func $bls12381_g2_add(param $0 i32) (param $1 i32) (param $2 i32) (param $3 i32) (param $4 i32) (param $5 i32) (result i32)
+func Bls12381G2Add(proc *exec.Process, x11, x12, y11, y12, x21, x22, y21, y22, x31, x32, y31, y32 uint32) int32 {
+	ctx := proc.HostCtx().(*VMContext)
+	checkGas(ctx, params.Bls12381G2AddGas)
+
+	var x11Bytes [48]byte
+	var y11Bytes [48]byte
+	var x12Bytes [48]byte
+	var y12Bytes [48]byte
+
+	var x21Bytes [48]byte
+	var y21Bytes [48]byte
+	var x22Bytes [48]byte
+	var y22Bytes [48]byte
+
+	mustReadAt(proc, x11Bytes[:], int64(x11))
+	mustReadAt(proc, x12Bytes[:], int64(x12))
+	mustReadAt(proc, y11Bytes[:], int64(y11))
+	mustReadAt(proc, y12Bytes[:], int64(y12))
+
+	mustReadAt(proc, x21Bytes[:], int64(x21))
+	mustReadAt(proc, x22Bytes[:], int64(x22))
+	mustReadAt(proc, y21Bytes[:], int64(y21))
+	mustReadAt(proc, y22Bytes[:], int64(y22))
+
+	g2 := bls12381.NewG2()
+	var err error
+	var gx1, gx2 *bls12381.PointG2
+
+	if gx1, err = g2.FromPointBytes(x11Bytes[:], x12Bytes[:], y11Bytes[:], y12Bytes[:]); err != nil {
+		return -1
+	}
+	if gx2, err = g2.FromPointBytes(x21Bytes[:], x22Bytes[:], y21Bytes[:], y22Bytes[:]); err != nil {
+		return -1
+	}
+
+	gx3 := g2.New()
+
+	g2.Add(gx3, gx1, gx2)
+	x1, x2, y1, y2 := g2.ToPointBytes(gx3)
+
+	mustWriteAt(proc, x1, int64(x31))
+	mustWriteAt(proc, x2, int64(x32))
+	mustWriteAt(proc, y1, int64(y31))
+	mustWriteAt(proc, y2, int64(y32))
+	return 0
+}
+
+// Bls12381G2Mul int bls12381_g2_mul(byte x11[48], byte x12[48], byte y11[48], byte y12[48], byte bigint[32] byte x21[48], byte x22[48], byte y21[48], byte y22[48]);
+// func $bls12381_g2_mul(param $0 i32) (param $1 i32) (param $2 i32) (param $3 i32) (param $4 i32) (param $5 i32) (param $6 i32) (param $7 i32) (param $8 i32) (result i32)
+func Bls12381G2Mul(proc *exec.Process, x11, x12, y11, y12, bigint, x21, x22, y21, y22 uint32) int32 {
+	ctx := proc.HostCtx().(*VMContext)
+	checkGas(ctx, params.Bls12381G2MulGas)
+
+	var x11Bytes [48]byte
+	var y11Bytes [48]byte
+	var x12Bytes [48]byte
+	var y12Bytes [48]byte
+	var bigintBytes [32]byte
+
+	mustReadAt(proc, x11Bytes[:], int64(x11))
+	mustReadAt(proc, y11Bytes[:], int64(y11))
+	mustReadAt(proc, x12Bytes[:], int64(x12))
+	mustReadAt(proc, y12Bytes[:], int64(y12))
+	mustReadAt(proc, bigintBytes[:], int64(bigint))
+
+	g2 := bls12381.NewG2()
+	var err error
+	var gx1 *bls12381.PointG2
+	if gx1, err = g2.FromPointBytes(x11Bytes[:], x12Bytes[:], y11Bytes[:], y12Bytes[:]); err != nil {
+		return -1
+	}
+
+	gx3 := g2.New()
+
+	g2.MulScalar(gx3, gx1, new(big.Int).SetBytes(bigintBytes[:]))
+	x1, x2, y1, y2 := g2.ToPointBytes(gx3)
+
+	mustWriteAt(proc, x1, int64(x21))
+	mustWriteAt(proc, x2, int64(x22))
+	mustWriteAt(proc, y1, int64(y21))
+	mustWriteAt(proc, y2, int64(y22))
+
+	return 0
+}
+
+// Bls12381G2MulExp int bls12381_g2_mul_exp(uint8_t *x11, uint8_t *x12, uint8_t *y11, uint8_t *y12, uint8_t *bigint, uint32_t length, byte x21[48], byte x22[48], byte y21[48], byte y22[48]);
+// func $bls12381_g2_mul_exp(param $0 i32) (param $1 i32) (param $2 i32) (param $3 i32) (param $4 i32) (param $5 i32) (param $6 i32) (param $7 i32) (param $8 i32) (param $9 i32) (result i32)
+func Bls12381G2MulExp(proc *exec.Process, x11, x12, y11, y12, bigint, length, x21, x22, y21, y22 uint32) int32 {
+	ctx := proc.HostCtx().(*VMContext)
+
+	costGas := func() uint64{
+		if length == 0 {
+			// Return 0 gas for small input length
+			return 0
+		}
+		// Lookup discount value for G1 point, scalar value pair length
+		var discount uint64
+		if dLen := len(params.Bls12381MultiExpDiscountTable); length < uint32(dLen) {
+			discount = params.Bls12381MultiExpDiscountTable[length-1]
+		} else {
+			discount = params.Bls12381MultiExpDiscountTable[dLen-1]
+		}
+		return (uint64(length) * params.Bls12381G2MulGas * discount) / 1000
+	}
+	checkGas(ctx, costGas())
+
+	x1Array := make([]byte, length*ptrSize)
+	y1Array := make([]byte, length*ptrSize)
+	x2Array := make([]byte, length*ptrSize)
+	y2Array := make([]byte, length*ptrSize)
+	bigintArray := make([]byte, length*ptrSize)
+
+	mustReadAt(proc, x1Array[:], int64(x11))
+	mustReadAt(proc, x2Array[:], int64(x12))
+	mustReadAt(proc, y1Array[:], int64(y11))
+	mustReadAt(proc, y2Array[:], int64(y12))
+	mustReadAt(proc, bigintArray[:], int64(bigint))
+
+	g2 := bls12381.NewG2()
+	var points []*bls12381.PointG2
+	var powers []*big.Int
+
+	for i := uint32(0); i < length; i++ {
+		var x1Bytes [48]byte
+		var x2Bytes [48]byte
+		var y1Bytes [48]byte
+		var y2Bytes [48]byte
+
+		var bigintBytes [32]byte
+
+		mustReadAt(proc, x1Bytes[:], int64(binary.LittleEndian.Uint32(x1Array[i*4:(i+1)*4])))
+		mustReadAt(proc, x2Bytes[:], int64(binary.LittleEndian.Uint32(x2Array[i*4:(i+1)*4])))
+		mustReadAt(proc, y1Bytes[:], int64(binary.LittleEndian.Uint32(y1Array[i*4:(i+1)*4])))
+		mustReadAt(proc, y2Bytes[:], int64(binary.LittleEndian.Uint32(y2Array[i*4:(i+1)*4])))
+		mustReadAt(proc, bigintBytes[:], int64(binary.LittleEndian.Uint32(bigintArray[i*4:(i+1)*4])))
+
+		g, err  := g2.FromPointBytes(x1Bytes[:], x2Bytes[:], y1Bytes[:], y2Bytes[:])
+		if err != nil {
+			return -1
+		}
+		points = append(points, g)
+		powers = append(powers, new(big.Int).SetBytes(bigintBytes[:]))
+	}
+
+	gx2 := g2.New()
+
+	g2.MultiExp(gx2, points, powers)
+
+	x1, x2, y1, y2 := g2.ToPointBytes(gx2)
+
+	mustWriteAt(proc, x1, int64(x21))
+	mustWriteAt(proc, x2, int64(x22))
+	mustWriteAt(proc, y1, int64(y21))
+	mustWriteAt(proc, y2, int64(y22))
+	return 0
+}
+
+// Bls12381Pairing int bls12381_pairing(uint8_t* x1[], uint8_t* y1[], uint8_t* x21[], uint8_t* x22[], uint8_t* y21[], uint8_t* y22[], size_t len);
+// func $bls12381_pairing(param $0 i32) (param $1 i32) (param $2 i32) (param $3 i32) (param $4 i32) (param $5 i32) (param $6 i32) (result i32)
+func Bls12381Pairing(proc *exec.Process, x1, y1, x21, x22, y21, y22, len uint32) int32 {
+	ctx := proc.HostCtx().(*VMContext)
+	checkGas(ctx, params.Bls12381PairingBaseGas+params.Bls12381PairingPerPairGas*uint64(len))
+
+	x1Array := make([]byte, len*ptrSize)
+	y1Array := make([]byte, len*ptrSize)
+
+	x21Array := make([]byte, len*ptrSize)
+	y21Array := make([]byte, len*ptrSize)
+	x22Array := make([]byte, len*ptrSize)
+	y22Array := make([]byte, len*ptrSize)
+
+	mustReadAt(proc, x1Array[:], int64(x1))
+	mustReadAt(proc, y1Array[:], int64(y1))
+	mustReadAt(proc, x21Array[:], int64(x21))
+	mustReadAt(proc, y21Array[:], int64(y21))
+	mustReadAt(proc, x22Array[:], int64(x22))
+	mustReadAt(proc, y22Array[:], int64(y22))
+
+
+	pairing := bls12381.NewPairingEngine()
+	for i := uint32(0); i < len; i++ {
+		var x1Bytes [48]byte
+		var y1Bytes [48]byte
+
+		var x21Bytes [48]byte
+		var y21Bytes [48]byte
+		var x22Bytes [48]byte
+		var y22Bytes [48]byte
+
+		mustReadAt(proc, x1Bytes[:], int64(binary.LittleEndian.Uint32(x1Array[i*4:(i+1)*4])))
+		mustReadAt(proc, y1Bytes[:], int64(binary.LittleEndian.Uint32(y1Array[i*4:(i+1)*4])))
+		mustReadAt(proc, x21Bytes[:], int64(binary.LittleEndian.Uint32(x21Array[i*4:(i+1)*4])))
+		mustReadAt(proc, y21Bytes[:], int64(binary.LittleEndian.Uint32(y21Array[i*4:(i+1)*4])))
+		mustReadAt(proc, x22Bytes[:], int64(binary.LittleEndian.Uint32(x22Array[i*4:(i+1)*4])))
+		mustReadAt(proc, y22Bytes[:], int64(binary.LittleEndian.Uint32(y22Array[i*4:(i+1)*4])))
+
+		g1 := bls12381.NewG1()
+		g2 := bls12381.NewG2()
+		var err error
+		var gx1 *bls12381.PointG1
+		if gx1, err = g1.FromPointBytes(x1Bytes[:], y1Bytes[:]); err != nil {
+			return -2
+		}
+
+		var gx2 *bls12381.PointG2
+		if gx2, err = g2.FromPointBytes(x21Bytes[:], x22Bytes[:], y21Bytes[:], y22Bytes[:]); err != nil {
+			return -2
+		}
+		pairing.AddPair(gx1, gx2)
+	}
+
+
+	if !pairing.Check() {
+		return -1
+	}
+
+	return 0
+}
+
+// Bls12381MapG1 int bls12381_map_g1(uint8_t* fp[], uint8_t* x1[], uint8_t* y1[]);
+// func $bls12381_map_g1(param $0 i32) (param $1 i32) (param $2 i32)(result i32)
+func Bls12381MapG1(proc *exec.Process, fp, x1, y1 uint32) int32 {
+	ctx := proc.HostCtx().(*VMContext)
+	checkGas(ctx, params.Bls12381MapG1Gas)
+
+	var fpBytes [48]byte
+
+	mustReadAt(proc, fpBytes[:], int64(fp))
+
+	g1 := bls12381.NewG1()
+	gx, err := g1.MapToCurve(fpBytes[:])
+	if err != nil {
+		return -1
+	}
+
+	x,y := g1.ToPointBytes(gx)
+
+	mustWriteAt(proc, x, int64(x1))
+	mustWriteAt(proc, y, int64(y1))
+
+	return 0
+}
+
+// Bls12381MapG2 int bls12381_map_g2(byte c0[48], byte c1[48], byte x1[48], byte x2[48], byte y1[48], byte y2[48]);
+// func $bls12381_map_g2(param $0 i32) (param $1 i32) (param $2 i32) (param $3 i32) (param $4 i32)(param $5 i32)(result i32)
+func Bls12381MapG2(proc *exec.Process, c0, c1, x1, x2, y1, y2 uint32) int32 {
+	ctx := proc.HostCtx().(*VMContext)
+	checkGas(ctx, params.Bls12381MapG2Gas)
+
+	var c0Bytes [48]byte
+	var c1Bytes [48]byte
+	mustReadAt(proc, c0Bytes[:], int64(c0))
+	mustReadAt(proc, c1Bytes[:], int64(c1))
+
+	g2 := bls12381.NewG2()
+	gx, err := g2.MapToCurve(append(c1Bytes[:], c0Bytes[:]...))
+	if err != nil {
+		return -1
+	}
+
+	x11, x12, y11, y12 := g2.ToPointBytes(gx)
+
+	mustWriteAt(proc, x11, int64(x1))
+	mustWriteAt(proc, x12, int64(x2))
+	mustWriteAt(proc, y11, int64(y1))
+	mustWriteAt(proc, y12, int64(y2))
+	return 0
 }

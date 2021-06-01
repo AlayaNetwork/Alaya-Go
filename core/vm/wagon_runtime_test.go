@@ -1577,7 +1577,7 @@ func (testContract) Address() common.Address {
 	return common.Address{}
 }
 
-var initExternalGas = uint64(10000000)
+var initExternalGas = uint64(1000000000)
 
 func newTestVM() *exec.VM {
 	code := "0x0061736d010000000108026000006000017f03030200010405017001010105030100020615037f01418088040b7f00418088040b7f004180080b072c04066d656d6f727902000b5f5f686561705f6261736503010a5f5f646174615f656e640302046d61696e00010a090202000b0400412a0b004d0b2e64656275675f696e666f3d0000000400000000000401000000000c0023000000000000004300000005000000040000000205000000040000005c000000010439000000036100000005040000100e2e64656275675f6d6163696e666f0000400d2e64656275675f616262726576011101250e1305030e10171b0e110112060000022e0011011206030e3a0b3b0b49133f190000032400030e3e0b0b0b000000005e0b2e64656275675f6c696e654e000000040037000000010101fb0e0d0001010101000000010000012f746d702f6275696c645f7664717864336f336f316c2e24000066696c652e630001000000000502050000001505030a3d020100010100700a2e64656275675f737472636c616e672076657273696f6e20382e302e3020287472756e6b2033343139363029002f746d702f6275696c645f7664717864336f336f316c2e242f66696c652e63002f746d702f6275696c645f7664717864336f336f316c2e24006d61696e00696e74000021046e616d65011a0200115f5f7761736d5f63616c6c5f63746f727301046d61696e"
@@ -2026,4 +2026,479 @@ func TestStringConvertOperator(t *testing.T) {
 
 		checkGasCost(t, process, p.Gas)
 	}
+}
+
+func testBlsG1Add(t *testing.T, testFile string) {
+	process := exec.NewProcess(newTestVM())
+
+	testcases := mustReadExternalFuncTestCase(testFile, t)
+
+	count := 0
+	for pos, p := range testcases {
+		x1, _ := hex.DecodeString(p.Input[0])
+		y1, _ := hex.DecodeString(p.Input[1])
+		x2, _ := hex.DecodeString(p.Input[2])
+		y2, _ := hex.DecodeString(p.Input[3])
+		step := int64(48)
+		x1Pos := int64(1024)
+		process.WriteAt(x1, x1Pos)
+		y1Pos := x1Pos + step
+		process.WriteAt(y1, y1Pos)
+		x2Pos := y1Pos + step
+		process.WriteAt(x2, x2Pos)
+		y2Pos := x2Pos + step
+		process.WriteAt(y2, y2Pos)
+
+		x3Pos := y2Pos + step
+		y3Pos := x3Pos + step
+
+
+		res, panic := executeExternalFunc(func() int32 {
+			return Bls12381G1Add(process, uint32(x1Pos), uint32(y1Pos), uint32(x2Pos), uint32(y2Pos), uint32(x3Pos), uint32(y3Pos))
+		})
+		checkGasCost(t, process, p.Gas)
+		if panic {
+			assert.Empty(t, p.Expected)
+		} else {
+			assert.Equal(t, p.Return, int(res), fmt.Sprintf("execute testcase error pos:%d", pos))
+			for i, e := range p.Expected {
+				var buf [48]byte
+				process.ReadAt(buf[:], x3Pos+int64(i)*48)
+				assert.Equal(t, e, hex.EncodeToString(buf[:]), fmt.Sprintf("execute testcase error pos:%d", pos))
+			}
+
+		}
+		count++
+	}
+}
+func testBlsG1Mul(t *testing.T, testFile string) {
+	process := exec.NewProcess(newTestVM())
+	testcases := mustReadExternalFuncTestCase(testFile, t)
+
+	for pos, p := range testcases {
+		x1, _ := hex.DecodeString(p.Input[0])
+		y1, _ := hex.DecodeString(p.Input[1])
+		x2, _ := hex.DecodeString(p.Input[2])
+		step := int64(48)
+		x1Pos := int64(1024)
+		process.WriteAt(x1, x1Pos)
+		y1Pos := x1Pos+step
+		process.WriteAt(y1, y1Pos)
+		bigIntPos := y1Pos+step
+		process.WriteAt(x2, bigIntPos)
+		x2Pos := bigIntPos + step
+		y2Pos := x2Pos + step
+
+		res, panic := executeExternalFunc(func() int32 {
+			return Bls12381G1Mul(process, uint32(x1Pos), uint32(y1Pos), uint32(bigIntPos), uint32(x2Pos), uint32(y2Pos))
+		})
+		checkGasCost(t, process, p.Gas)
+		if panic {
+			assert.Empty(t, p.Expected)
+		} else {
+			assert.Equal(t, p.Return, int(res), fmt.Sprintf("execute testcase error pos:%d", pos))
+			for i, e := range p.Expected {
+				var buf [48]byte
+				process.ReadAt(buf[:], x2Pos + int64(i) * 48)
+				assert.Equal(t, e, hex.EncodeToString(buf[:]), fmt.Sprintf("execute testcase error pos:%d", pos))
+			}
+		}
+	}
+}
+func testBlsG1MulExp(t *testing.T, testFile string) {
+	process := exec.NewProcess(newTestVM())
+	testcases := mustReadExternalFuncTestCase(testFile, t)
+
+	for pos, p := range testcases {
+
+		step := int64(200)
+		x1 := int64(1024)
+		y1 := x1 + step
+		bigint := y1 + step
+
+
+		step = 10000
+		x1Data := int64(2024)
+		y1Data := x1Data + step
+		bigintData := y1Data + step
+
+
+		for _, pair := range p.Input {
+			var args []string
+			json.Unmarshal([]byte(pair), &args)
+			offset := make([]byte, 4)
+			binary.LittleEndian.PutUint32(offset, uint32(x1Data))
+			process.WriteAt(offset, x1)
+
+			binary.LittleEndian.PutUint32(offset, uint32(y1Data))
+			process.WriteAt(offset, y1)
+
+			binary.LittleEndian.PutUint32(offset, uint32(bigintData))
+			process.WriteAt(offset, bigint)
+
+
+			decodeString := func(a string) []byte {
+				buf, _ := hex.DecodeString(a)
+				return buf
+			}
+			process.WriteAt(decodeString(args[0]), x1Data)
+			process.WriteAt(decodeString(args[1]), y1Data)
+			process.WriteAt(decodeString(args[2]), bigintData)
+
+			x1, y1, bigint = x1+4, y1+4, bigint+4
+			x1Data, y1Data, bigintData = x1Data+48, y1Data+48, bigintData+48
+		}
+		x3 := bigintData+step
+		y3 := x3 + step
+
+		res, panic := executeExternalFunc(func() int32 {
+			return Bls12381G1MulExp(process, 1024, 1024+200, 1024+400, uint32(len(p.Input)), uint32(x3), uint32(y3))
+		})
+		checkGasCost(t, process, p.Gas)
+		if panic {
+			assert.Empty(t, p.Expected)
+		} else {
+			assert.Equal(t, p.Return, int(res), fmt.Sprintf("execute testcase error pos:%d", pos))
+			for i, e := range p.Expected {
+				var buf [48]byte
+				process.ReadAt(buf[:], x3 + int64(i) * step)
+				assert.Equal(t, e, hex.EncodeToString(buf[:]), fmt.Sprintf("execute testcase error pos:%d", pos))
+			}
+		}
+	}
+}
+
+func testBlsG1Map(t *testing.T, testFile string) {
+	process := exec.NewProcess(newTestVM())
+	testcases := mustReadExternalFuncTestCase(testFile, t)
+
+	for pos, p := range testcases {
+		x1, _ := hex.DecodeString(p.Input[0])
+		step := int64(48)
+		x1Pos := int64(1024)
+		process.WriteAt(x1, x1Pos)
+		x2Pos := x1Pos + step
+		y2Pos := x2Pos + step
+
+		res, panic := executeExternalFunc(func() int32 {
+			return Bls12381MapG1(process, uint32(x1Pos),  uint32(x2Pos), uint32(y2Pos))
+		})
+		checkGasCost(t, process, p.Gas)
+		if panic {
+			assert.Empty(t, p.Expected)
+		} else {
+			assert.Equal(t, p.Return, int(res), fmt.Sprintf("execute testcase error pos:%d", pos))
+			for i, e := range p.Expected {
+				var buf [48]byte
+				process.ReadAt(buf[:], x2Pos + int64(i) * 48)
+				assert.Equal(t, e, hex.EncodeToString(buf[:]), fmt.Sprintf("execute testcase error pos:%d", pos))
+			}
+		}
+	}
+}
+func testBlsG2Add(t *testing.T, testFile string) {
+	process := exec.NewProcess(newTestVM())
+	testcases := mustReadExternalFuncTestCase(testFile, t)
+
+	for pos, p := range testcases {
+		step := int64(48)
+		x11, _ := hex.DecodeString(p.Input[0])
+		x12, _ := hex.DecodeString(p.Input[1])
+		y11, _ := hex.DecodeString(p.Input[2])
+		y12, _ := hex.DecodeString(p.Input[3])
+		x21, _ := hex.DecodeString(p.Input[4])
+		x22, _ := hex.DecodeString(p.Input[5])
+		y21, _ := hex.DecodeString(p.Input[6])
+		y22, _ := hex.DecodeString(p.Input[7])
+
+		x11Pos := int64(1024)
+		process.WriteAt(x11, x11Pos)
+		x12Pos := x11Pos + step
+		process.WriteAt(x12, x12Pos)
+		y11Pos := x12Pos + step
+		process.WriteAt(y11, y11Pos)
+		y12Pos := y11Pos + step
+		process.WriteAt(y12, y12Pos)
+		x21Pos := y12Pos + step
+		process.WriteAt(x21, x21Pos)
+		x22Pos := x21Pos + step
+		process.WriteAt(x22, x22Pos)
+		y21Pos := x22Pos + step
+		process.WriteAt(y21, y21Pos)
+		y22Pos := y21Pos + step
+		process.WriteAt(y22, y22Pos)
+
+		x31Pos := y22Pos + step
+		x32Pos := x31Pos + step
+		y31Pos := x32Pos + step
+		y32Pos := y31Pos + step
+		res, panic := executeExternalFunc(func() int32 {
+
+			return  Bls12381G2Add(process, uint32(x11Pos), uint32(x12Pos), uint32(y11Pos), uint32(y12Pos), uint32(x21Pos), uint32(x22Pos), uint32(y21Pos), uint32(y22Pos), uint32(x31Pos), uint32(x32Pos), uint32(y31Pos), uint32(y32Pos))
+		})
+
+		checkGasCost(t, process, p.Gas)
+		if panic {
+			assert.Empty(t, p.Expected)
+		} else {
+			assert.Equal(t, p.Return, int(res), fmt.Sprintf("execute testcase error pos:%d", pos))
+			for i, e := range p.Expected {
+				var buf [48]byte
+				process.ReadAt(buf[:], x31Pos + int64(i) * 48)
+				assert.Equal(t, e, hex.EncodeToString(buf[:]), fmt.Sprintf("execute testcase error pos:%d", pos))
+			}
+		}
+	}
+}
+func testBlsG2Mul(t *testing.T, testFile string) {
+	process := exec.NewProcess(newTestVM())
+	testcases := mustReadExternalFuncTestCase(testFile, t)
+
+	for pos, p := range testcases {
+		step := int64(48)
+		x11, _ := hex.DecodeString(p.Input[0])
+		x12, _ := hex.DecodeString(p.Input[1])
+		y11, _ := hex.DecodeString(p.Input[2])
+		y12, _ := hex.DecodeString(p.Input[3])
+		bigint, _ := hex.DecodeString(p.Input[4])
+
+		x11Pos := int64(1024)
+		process.WriteAt(x11, x11Pos)
+		x12Pos := x11Pos + step
+		process.WriteAt(x12, x12Pos)
+		y11Pos := x12Pos + step
+		process.WriteAt(y11, y11Pos)
+		y12Pos := y11Pos + step
+		process.WriteAt(y12, y12Pos)
+		bigintPos := y12Pos + step
+		process.WriteAt(bigint, bigintPos)
+
+
+		x31Pos := bigintPos + step
+		x32Pos := x31Pos + step
+		y31Pos := x32Pos + step
+		y32Pos := y31Pos + step
+		res, panic := executeExternalFunc(func() int32 {
+
+			return  Bls12381G2Mul(process, uint32(x11Pos), uint32(x12Pos), uint32(y11Pos), uint32(y12Pos), uint32(bigintPos), uint32(x31Pos), uint32(x32Pos), uint32(y31Pos), uint32(y32Pos))
+		})
+
+		checkGasCost(t, process, p.Gas)
+		if panic {
+			assert.Empty(t, p.Expected)
+		} else {
+			assert.Equal(t, p.Return, int(res), fmt.Sprintf("execute testcase error pos:%d", pos))
+			for i, e := range p.Expected {
+				var buf [48]byte
+				process.ReadAt(buf[:], x31Pos + int64(i) * 48)
+				assert.Equal(t, e, hex.EncodeToString(buf[:]), fmt.Sprintf("execute testcase error pos:%d", pos))
+			}
+		}
+	}
+}
+func testBlsG2MulExp(t *testing.T, testFile string) {
+	testcases := mustReadExternalFuncTestCase(testFile, t)
+
+	for pos, p := range testcases {
+		process := exec.NewProcess(newTestVM())
+
+		step := int64(200)
+		x11 := int64(1024)
+		x12 := x11 + step
+		y11 := x12 + step
+		y12 := y11 + step
+		bigint := y12 + step
+
+
+		step = 10000
+		x11Data := int64(2024)
+		x12Data := x11Data + step
+		y11Data := x12Data + step
+		y12Data := y11Data + step
+		bigintData := y12Data + step
+
+
+		for _, pair := range p.Input {
+			var args []string
+			json.Unmarshal([]byte(pair), &args)
+			offset := make([]byte, 4)
+			binary.LittleEndian.PutUint32(offset, uint32(x11Data))
+			process.WriteAt(offset, x11)
+
+			binary.LittleEndian.PutUint32(offset, uint32(x12Data))
+			process.WriteAt(offset, x12)
+
+			binary.LittleEndian.PutUint32(offset, uint32(y11Data))
+			process.WriteAt(offset, y11)
+
+			binary.LittleEndian.PutUint32(offset, uint32(y12Data))
+			process.WriteAt(offset, y12)
+
+			binary.LittleEndian.PutUint32(offset, uint32(bigintData))
+			process.WriteAt(offset, bigint)
+
+
+			decodeString := func(a string) []byte {
+				buf, _ := hex.DecodeString(a)
+				return buf
+			}
+			process.WriteAt(decodeString(args[0]), x11Data)
+			process.WriteAt(decodeString(args[1]), x12Data)
+			process.WriteAt(decodeString(args[2]), y11Data)
+			process.WriteAt(decodeString(args[3]), y12Data)
+			process.WriteAt(decodeString(args[4]), bigintData)
+
+			x11, x12, y11, y12, bigint = x11+4, x12+4, y11+4, y12+4, bigint+4
+			x11Data, x12Data, y11Data, y12Data, bigintData = x11Data+48, x12Data+48, y11Data+48, y12Data+48, bigintData+48
+		}
+		x31 := bigintData+step
+		x32 := x31+step
+		y31 := x32 + step
+		y32 := y31 + step
+
+		res, panic := executeExternalFunc(func() int32 {
+			return Bls12381G2MulExp(process, 1024, 1024+200, 1024+400, 1024+600, 1024+800,  uint32(len(p.Input)), uint32(x31), uint32(x32), uint32(y31), uint32(y32))
+		})
+		checkGasCost(t, process, p.Gas)
+		if panic {
+			assert.Empty(t, p.Expected)
+		} else {
+			assert.Equal(t, p.Return, int(res), fmt.Sprintf("execute testcase error pos:%d", pos))
+			for i, e := range p.Expected {
+				var buf [48]byte
+				process.ReadAt(buf[:], x31 + int64(i) * step)
+				assert.Equal(t, e, hex.EncodeToString(buf[:]), fmt.Sprintf("execute testcase error pos:%d", pos))
+			}
+		}
+	}
+}
+func testBlsG2Map(t *testing.T, testFile string) {
+	testcases := mustReadExternalFuncTestCase(testFile, t)
+	process := exec.NewProcess(newTestVM())
+
+	for pos, p := range testcases {
+
+		c0, _ := hex.DecodeString(p.Input[0])
+		c1, _ := hex.DecodeString(p.Input[1])
+		step := int64(48)
+		c0Pos := int64(1024)
+		process.WriteAt(c0, c0Pos)
+		c1Pos := c0Pos + step
+		process.WriteAt(c1, c1Pos)
+		x21Pos := c1Pos + step*3
+		x22Pos := x21Pos + step
+		y21Pos := x22Pos + step
+		y22Pos := y21Pos + step
+
+		res, panic := executeExternalFunc(func() int32 {
+			return Bls12381MapG2(process, uint32(c0Pos), uint32(c1Pos), uint32(x21Pos), uint32(x22Pos), uint32(y21Pos), uint32(y22Pos))
+		})
+		checkGasCost(t, process, p.Gas)
+		if panic {
+			assert.Empty(t, p.Expected)
+		} else {
+			assert.Equal(t, p.Return, int(res), fmt.Sprintf("execute testcase error pos:%d", pos))
+			for i, e := range p.Expected {
+				var buf [48]byte
+				process.ReadAt(buf[:], x21Pos + int64(i) * 48)
+				assert.Equal(t, e, hex.EncodeToString(buf[:]), fmt.Sprintf("execute testcase error pos:%d", pos))
+			}
+		}
+	}
+}
+func testBlsPairing(t *testing.T, testFile string) {
+	process := exec.NewProcess(newTestVM())
+	testcases := mustReadExternalFuncTestCase(testFile, t)
+
+	for pos, p := range testcases {
+
+		step := int64(200)
+		x1 := int64(1024)
+		y1 := x1 + step
+		x11 := y1 + step
+		x12 := x11 + step
+		y11 := x12 + step
+		y12 := y11 + step
+
+
+		step = 10000
+		x1Data := int64(3024)
+		y1Data := x1Data + step
+		x11Data := y1Data + step
+		x12Data := x11Data + step
+		y11Data := x12Data + step
+		y12Data := y11Data + step
+
+
+		for _, pair := range p.Input {
+			var args []string
+			json.Unmarshal([]byte(pair), &args)
+			offset := make([]byte, 4)
+			binary.LittleEndian.PutUint32(offset, uint32(x1Data))
+			process.WriteAt(offset, x1)
+			binary.LittleEndian.PutUint32(offset, uint32(y1Data))
+			process.WriteAt(offset, y1)
+
+			binary.LittleEndian.PutUint32(offset, uint32(x11Data))
+			process.WriteAt(offset, x11)
+
+			binary.LittleEndian.PutUint32(offset, uint32(x12Data))
+			process.WriteAt(offset, x12)
+
+			binary.LittleEndian.PutUint32(offset, uint32(y11Data))
+			process.WriteAt(offset, y11)
+
+			binary.LittleEndian.PutUint32(offset, uint32(y12Data))
+			process.WriteAt(offset, y12)
+
+
+
+
+			decodeString := func(a string) []byte {
+				buf, _ := hex.DecodeString(a)
+				return buf
+			}
+			process.WriteAt(decodeString(args[0]), x1Data)
+			process.WriteAt(decodeString(args[1]), y1Data)
+			process.WriteAt(decodeString(args[2]), x11Data)
+			process.WriteAt(decodeString(args[3]), x12Data)
+			process.WriteAt(decodeString(args[4]), y11Data)
+			process.WriteAt(decodeString(args[5]), y12Data)
+
+			x1, y1, x11, x12, y11, y12 = x1+4, y1 + 4, x11+4, x12+4, y11+4, y12+4
+			x1Data, y1Data, x11Data, x12Data, y11Data, y12Data = x1Data+48, y1Data+48, x11Data+48, x12Data+48, y11Data+48, y12Data+48
+		}
+
+		res, panic := executeExternalFunc(func() int32 {
+			return Bls12381Pairing(process, 1024, 1024+200, 1024+400, 1024+600, 1024+800, 1024+1000, uint32(len(p.Input)))
+		})
+		checkGasCost(t, process, p.Gas)
+		if panic {
+			assert.Empty(t, p.Expected)
+		} else {
+			assert.Equal(t, p.Return, int(res), fmt.Sprintf("execute testcase error pos:%d", pos))
+		}
+	}
+}
+
+func TestBls(t *testing.T)  {
+	testBlsG1Add(t, "testdata/wasm/bls_g1_add.json")
+	testBlsG1Add(t, "testdata/wasm/fail_bls_g1_add.json")
+	testBlsG1Mul(t, "testdata/wasm/bls_g1_mul.json")
+	testBlsG1Mul(t, "testdata/wasm/fail_bls_g1_mul.json")
+	testBlsG1MulExp(t, "testdata/wasm/bls_g1_multi_exp.json")
+	testBlsG1MulExp(t, "testdata/wasm/fail_bls_g1_multi_exp.json")
+	testBlsG1Map(t, "testdata/wasm/bls_map_g1.json")
+	testBlsG1Map(t, "testdata/wasm/fail_bls_map_g1.json")
+	testBlsG2Add(t, "testdata/wasm/bls_g2_add.json")
+	testBlsG2Add(t, "testdata/wasm/fail_bls_g2_add.json")
+	testBlsG2Mul(t, "testdata/wasm/bls_g2_mul.json")
+	testBlsG2Mul(t, "testdata/wasm/fail_bls_g2_mul.json")
+	testBlsG2MulExp(t, "testdata/wasm/bls_g2_multi_exp.json")
+	testBlsG2MulExp(t, "testdata/wasm/fail_bls_g2_multi_exp.json")
+	testBlsG2Map(t, "testdata/wasm/bls_map_g2.json")
+	testBlsG2Map(t, "testdata/wasm/fail_bls_map_g2.json")
+	testBlsPairing(t, "testdata/wasm/bls_pairing.json")
+	testBlsPairing(t, "testdata/wasm/fail_bls_pairing.json")
+
 }
