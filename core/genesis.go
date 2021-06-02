@@ -155,7 +155,9 @@ func SetupGenesisBlock(db ethdb.Database, snapshotBaseDB snapshotdb.BaseDB, gene
 
 	if (stored == common.Hash{}) {
 		if genesis == nil {
-			panic("Please specify network")
+			//panic("Please specify network")
+			log.Info("Writing default alaya network genesis block")
+			genesis = DefaultAlayaGenesisBlock()
 		} else {
 			log.Info("Writing custom genesis block", "chainID", genesis.Config.ChainID, "addressHRP", genesis.Config.AddressHRP)
 		}
@@ -547,57 +549,6 @@ func DefaultAlayaGenesisBlock() *Genesis {
 			generalAddr:              {Balance: generalBalance},
 		},
 		EconomicModel: xcom.GetEc(xcom.DefaultAlayaNet),
-	}
-	xcom.SetNodeBlockTimeWindow(genesis.Config.Cbft.Period / 1000)
-	xcom.SetPerRoundBlocks(uint64(genesis.Config.Cbft.Amount))
-	return &genesis
-}
-
-// DefaultGenesisBlock returns the PlatON main net genesis block.
-func DefaultAlayaTestGenesisBlock() *Genesis {
-
-	generalAddr := common.MustBech32ToAddress("atx1dl93r6fr022ca5yjqe6cgkg06er9pyqfaxyupd")
-	generalBalance, _ := new(big.Int).SetString("100000000000000000000000000", 10)
-
-	rewardMgrPoolIssue, _ := new(big.Int).SetString("2000000000000000000000000", 10)
-
-	genesis := Genesis{
-		Config:    params.AlayaTestChainConfig,
-		Nonce:     hexutil.MustDecode("0x024c6378c176ef6c717cd37a74c612c9abd615d13873ff6651e3d352b31cb0b2e1"),
-		Timestamp: 1602973620000,
-		ExtraData: hexutil.MustDecode("0xd782070186706c61746f6e86676f312e3131856c696e757800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"),
-		GasLimit:  params.GenesisGasLimit,
-		Alloc: map[common.Address]GenesisAccount{
-			vm.RewardManagerPoolAddr: {Balance: rewardMgrPoolIssue},
-			generalAddr:              {Balance: generalBalance},
-		},
-		EconomicModel: xcom.GetEc(xcom.DefaultAlayaTestNet),
-	}
-	xcom.SetNodeBlockTimeWindow(genesis.Config.Cbft.Period / 1000)
-	xcom.SetPerRoundBlocks(uint64(genesis.Config.Cbft.Amount))
-	return &genesis
-}
-
-// DefaultTestnetGenesisBlock returns the PlatON test net genesis block.
-func DefaultTestnetGenesisBlock() *Genesis {
-
-	// TODO this should change
-	generalAddr := common.MustBech32ToAddress("atx1n8ws5exjsz0ru2f7gw7m7fcyel7c0t8vx0pet6")
-	generalBalance, _ := new(big.Int).SetString("9718188019000000000000000000", 10)
-
-	rewardMgrPoolIssue, _ := new(big.Int).SetString("200000000000000000000000000", 10)
-
-	genesis := Genesis{
-		Config:    params.TestnetChainConfig,
-		Nonce:     hexutil.MustDecode("0x0376e56dffd12ab53bb149bda4e0cbce2b6aabe4cccc0df0b5a39e12977a2fcd23"),
-		Timestamp: 0,
-		ExtraData: hexutil.MustDecode("0xd782070186706c61746f6e86676f312e3131856c696e757800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"),
-		GasLimit:  params.GenesisGasLimit,
-		Alloc: map[common.Address]GenesisAccount{
-			vm.RewardManagerPoolAddr: {Balance: rewardMgrPoolIssue},
-			generalAddr:              {Balance: generalBalance},
-		},
-		EconomicModel: xcom.GetEc(xcom.DefaultTestNet),
 	}
 	xcom.SetNodeBlockTimeWindow(genesis.Config.Cbft.Period / 1000)
 	xcom.SetPerRoundBlocks(uint64(genesis.Config.Cbft.Amount))

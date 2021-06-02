@@ -131,21 +131,6 @@ be gzipped.`,
 		Description: `
 The export-preimages command export hash preimages to an RLP encoded stream`,
 	}
-	copydbCommand = cli.Command{
-		Action:    utils.MigrateFlags(copyDb),
-		Name:      "copydb",
-		Usage:     "Create a local chain from a target chaindata folder",
-		ArgsUsage: "<sourceChaindataDir> <sourceSnapshotDBDir>",
-		Flags: []cli.Flag{
-			utils.DataDirFlag,
-			utils.CacheFlag,
-			//	utils.SyncModeFlag,
-			utils.TestnetFlag,
-		},
-		Category: "BLOCKCHAIN COMMANDS",
-		Description: `
-The first argument must be the directory containing the blockchain to download from,The second argument must be the directory containing the ppos to download from`,
-	}
 	removedbCommand = cli.Command{
 		Action:    utils.MigrateFlags(removeDB),
 		Name:      "removedb",

@@ -102,10 +102,6 @@ var (
 		utils.NodeKeyFileFlag,
 		utils.NodeKeyHexFlag,
 		utils.DeveloperPeriodFlag,
-		utils.MainFlag,
-		utils.TestnetFlag,
-		utils.AlayaNetFlag,
-		utils.AlayaTestNetFlag,
 		utils.NetworkIdFlag,
 		utils.RPCCORSDomainFlag,
 		utils.RPCVirtualHostsFlag,
@@ -191,7 +187,6 @@ func init() {
 		//exportCommand,
 		importPreimagesCommand,
 		exportPreimagesCommand,
-		copydbCommand,
 		removedbCommand,
 		dumpCommand,
 		// See accountcmd.go:

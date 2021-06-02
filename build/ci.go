@@ -92,11 +92,11 @@ var (
 		},
 		{
 			BinaryName:  "bootnode",
-			Description: "Ethereum bootnode.",
+			Description: "Alaya bootnode.",
 		},
 		{
 			BinaryName:  "alaya",
-			Description: "PlatON CLI client.",
+			Description: "Alaya CLI client.",
 		},
 		{
 			BinaryName:  "rlpdump",

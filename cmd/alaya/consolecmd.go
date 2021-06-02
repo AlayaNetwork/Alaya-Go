@@ -124,13 +124,7 @@ func remoteConsole(ctx *cli.Context) error {
 			path = ctx.GlobalString(utils.DataDirFlag.Name)
 		}
 		if path != "" {
-			if ctx.GlobalBool(utils.TestnetFlag.Name) {
-				path = filepath.Join(path, "testnet")
-			} else if ctx.GlobalBool(utils.AlayaNetFlag.Name) {
-				path = filepath.Join(path, "alayanet")
-			} else if ctx.GlobalBool(utils.AlayaTestNetFlag.Name) {
-				path = filepath.Join(path, "alayatestnet")
-			}
+			path = filepath.Join(path, "alayanet")
 		}
 		endpoint = fmt.Sprintf("%s/alaya.ipc", path)
 	}
