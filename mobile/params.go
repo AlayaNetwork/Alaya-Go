@@ -19,9 +19,19 @@
 package platon
 
 import (
+	"encoding/json"
+	"github.com/AlayaNetwork/Alaya-Go/core"
 	"github.com/AlayaNetwork/Alaya-Go/p2p/discv5"
 	"github.com/AlayaNetwork/Alaya-Go/params"
 )
+
+func TestnetGenesis() string {
+	enc, err := json.Marshal(core.DefaultTestnetGenesisBlock())
+	if err != nil {
+		panic(err)
+		}
+	return string(enc)
+}
 
 // FoundationBootnodes returns the enode URLs of the P2P bootstrap nodes operated
 // by the foundation running the V5 discovery protocol.
