@@ -1,6 +1,6 @@
 package platonstats
 
-import "github.com/PlatONnetwork/PlatON-Go/event"
+import "github.com/AlayaNetwork/Alaya-Go/event"
 
 type SampleEvent struct {
 	SampleMsg string

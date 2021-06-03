@@ -20,7 +20,7 @@ package utils
 import (
 	"crypto/ecdsa"
 	"fmt"
-	"github.com/PlatONnetwork/PlatON-Go/platonstats"
+	"github.com/AlayaNetwork/Alaya-Go/platonstats"
 	"io/ioutil"
 	"os"
 	"path/filepath"

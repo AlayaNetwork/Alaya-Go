@@ -22,28 +22,25 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/AlayaNetwork/Alaya-Go/core/statsdb"
-	"github.com/AlayaNetwork/Alaya-Go/x/gov"
 	"io"
 	"math/big"
 	"os"
 	"strings"
-
-	"github.com/AlayaNetwork/Alaya-Go/x/gov"
-
-	"github.com/AlayaNetwork/Alaya-Go/core/snapshotdb"
 
 	"github.com/AlayaNetwork/Alaya-Go/common"
 	"github.com/AlayaNetwork/Alaya-Go/common/hexutil"
 	"github.com/AlayaNetwork/Alaya-Go/common/math"
 	"github.com/AlayaNetwork/Alaya-Go/common/vm"
 	"github.com/AlayaNetwork/Alaya-Go/core/rawdb"
+	"github.com/AlayaNetwork/Alaya-Go/core/snapshotdb"
 	"github.com/AlayaNetwork/Alaya-Go/core/state"
+	"github.com/AlayaNetwork/Alaya-Go/core/statsdb"
 	"github.com/AlayaNetwork/Alaya-Go/core/types"
 	"github.com/AlayaNetwork/Alaya-Go/ethdb"
 	"github.com/AlayaNetwork/Alaya-Go/log"
 	"github.com/AlayaNetwork/Alaya-Go/params"
 	"github.com/AlayaNetwork/Alaya-Go/rlp"
+	"github.com/AlayaNetwork/Alaya-Go/x/gov"
 	"github.com/AlayaNetwork/Alaya-Go/x/xcom"
 )
 

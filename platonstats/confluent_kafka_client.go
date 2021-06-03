@@ -3,7 +3,7 @@ package platonstats
 import (
 	"fmt"
 
-	"github.com/PlatONnetwork/PlatON-Go/log"
+	"github.com/AlayaNetwork/Alaya-Go/log"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 )
 
