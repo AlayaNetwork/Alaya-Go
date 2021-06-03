@@ -28,7 +28,7 @@ import (
 	"errors"
 	"math/big"
 	"unsafe"
-	"github.com/PlatONnetwork/PlatON-Go/common/math"
+	"github.com/AlayaNetwork/Alaya-Go/common/math"
 )
 
 var context *C.secp256k1_context

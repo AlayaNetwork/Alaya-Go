@@ -3,7 +3,7 @@ package ppos
 import (
 	"gopkg.in/urfave/cli.v1"
 
-	"github.com/PlatONnetwork/PlatON-Go/p2p/discover"
+	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
 )
 
 var (
@@ -17,8 +17,9 @@ var (
 	getDelegateRewardCmd = cli.Command{
 		Name:   "getDelegateReward",
 		Usage:  "5100,query account not withdrawn commission rewards at each node,parameter:nodeList(can empty)",
+		Before: netCheck,
 		Action: getDelegateReward,
-		Flags:  []cli.Flag{rpcUrlFlag, testNetFlag, nodeList, jsonFlag},
+		Flags:  []cli.Flag{rpcUrlFlag, addressHRPFlag, nodeList, jsonFlag},
 	}
 	nodeList = cli.StringSliceFlag{
 		Name:  "nodeList",
@@ -27,7 +28,6 @@ var (
 )
 
 func getDelegateReward(c *cli.Context) error {
-	netCheck(c)
 	nodeIDlist := c.StringSlice(nodeList.Name)
 	idlist := make([]discover.NodeID, 0)
 	for _, node := range nodeIDlist {

@@ -24,9 +24,9 @@ import (
 
 	"gopkg.in/urfave/cli.v1"
 
-	"github.com/PlatONnetwork/PlatON-Go/cmd/utils"
-	"github.com/PlatONnetwork/PlatON-Go/console"
-	"github.com/PlatONnetwork/PlatON-Go/crypto"
+	"github.com/AlayaNetwork/Alaya-Go/cmd/utils"
+	"github.com/AlayaNetwork/Alaya-Go/console"
+	"github.com/AlayaNetwork/Alaya-Go/crypto"
 )
 
 // promptPassphrase prompts the user for a passphrase.  Set confirmation to true

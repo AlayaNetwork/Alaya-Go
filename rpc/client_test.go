@@ -30,7 +30,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/PlatONnetwork/PlatON-Go/log"
+	"github.com/AlayaNetwork/Alaya-Go/log"
 	"github.com/davecgh/go-spew/spew"
 )
 

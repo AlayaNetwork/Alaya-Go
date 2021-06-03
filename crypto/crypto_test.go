@@ -26,8 +26,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	"github.com/PlatONnetwork/PlatON-Go/common/hexutil"
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/common/hexutil"
 )
 
 var testAddrString = "atx1ju8gz29tsd8gatqh4w8rsyhszpnceau3f69x3g"

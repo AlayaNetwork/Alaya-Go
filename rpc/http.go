@@ -33,7 +33,7 @@ import (
 
 	"github.com/rs/cors"
 
-	"github.com/PlatONnetwork/PlatON-Go/log"
+	"github.com/AlayaNetwork/Alaya-Go/log"
 )
 
 const (

@@ -23,10 +23,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/PlatONnetwork/PlatON-Go/p2p"
-	"github.com/PlatONnetwork/PlatON-Go/p2p/discover"
-	"github.com/PlatONnetwork/PlatON-Go/p2p/simulations/adapters"
-	p2ptest "github.com/PlatONnetwork/PlatON-Go/p2p/testing"
+	"github.com/AlayaNetwork/Alaya-Go/p2p"
+	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
+	"github.com/AlayaNetwork/Alaya-Go/p2p/simulations/adapters"
+	p2ptest "github.com/AlayaNetwork/Alaya-Go/p2p/testing"
 )
 
 // handshake message type

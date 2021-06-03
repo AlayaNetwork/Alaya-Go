@@ -21,17 +21,17 @@ import (
 	"fmt"
 	"io/ioutil"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/common"
 
 	"gopkg.in/urfave/cli.v1"
 
-	"github.com/PlatONnetwork/PlatON-Go/accounts/keystore"
-	"github.com/PlatONnetwork/PlatON-Go/cmd/utils"
-	"github.com/PlatONnetwork/PlatON-Go/crypto"
+	"github.com/AlayaNetwork/Alaya-Go/accounts/keystore"
+	"github.com/AlayaNetwork/Alaya-Go/cmd/utils"
+	"github.com/AlayaNetwork/Alaya-Go/crypto"
 )
 
 type outputInspect struct {
-	Address    common.AddressOutput
+	Address    string
 	PublicKey  string
 	PrivateKey string
 }
@@ -52,8 +52,14 @@ make sure to use this feature with great caution!`,
 			Name:  "private",
 			Usage: "include the private key in the output",
 		},
+		utils.AddressHRPFlag,
 	},
 	Action: func(ctx *cli.Context) error {
+		hrp := ctx.String(utils.AddressHRPFlag.Name)
+		if err := common.SetAddressHRP(hrp); err != nil {
+			return err
+		}
+
 		keyfilepath := ctx.Args().First()
 
 		// Read key from file.
@@ -72,7 +78,7 @@ make sure to use this feature with great caution!`,
 		// Output all relevant information we can retrieve.
 		showPrivate := ctx.Bool("private")
 		out := outputInspect{
-			Address: common.NewAddressOutput(key.Address),
+			Address: key.Address.String(),
 			PublicKey: hex.EncodeToString(
 				crypto.FromECDSAPub(&key.PrivateKey.PublicKey)),
 		}
@@ -83,7 +89,7 @@ make sure to use this feature with great caution!`,
 		if ctx.Bool(jsonFlag.Name) {
 			mustPrintJSON(out)
 		} else {
-			out.Address.Print()
+			fmt.Printf("address: %s\n", out.Address)
 			fmt.Println("Public key:    ", out.PublicKey)
 			if showPrivate {
 				fmt.Println("Private key:   ", out.PrivateKey)
