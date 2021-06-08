@@ -3,6 +3,7 @@ package platonstats
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/AlayaNetwork/Alaya-Go/core/vm"
 	"io/ioutil"
 	"math/big"
 	"os"
@@ -124,6 +125,7 @@ type StatsBlockExt struct {
 	Receipts     []*types.Receipt       `json:"receipts,omitempty"`
 	ExeBlockData *common.ExeBlockData   `json:"exeBlockData,omitempty"`
 	GenesisData  *common.GenesisData    `json:"GenesisData,omitempty"`
+	ContractList []*common.Address      `json:"ContractList,omitempty"`
 }
 
 type PlatonStatsService struct {
@@ -278,6 +280,7 @@ func (s *PlatonStatsService) reportBlockMsg(block *types.Block) error {
 	}
 
 	brief := collectBrief(block)
+	contractList := s.filterContract(block.NumberU64(), block.Transactions())
 
 	blockJsonMapping, err := jsonBlock(block)
 	if err != nil {
@@ -294,6 +297,7 @@ func (s *PlatonStatsService) reportBlockMsg(block *types.Block) error {
 		Receipts:     receipts,
 		ExeBlockData: exeBlockData,
 		GenesisData:  genesisData,
+		ContractList: contractList,
 	}
 
 	jsonBytes, err := json.Marshal(statsBlockExt)
@@ -361,6 +365,16 @@ func collectBrief(block *types.Block) *Brief {
 	}
 
 	return brief
+}
+
+func (s *PlatonStatsService) filterContract(blockNumber uint64, txs types.Transactions) []*common.Address {
+	contractTxList := make([]*common.Address, 0)
+	for _, tx := range txs {
+		if tx.To() != nil && !vm.IsPrecompiledContract(*tx.To()) && !vm.IsPlatONPrecompiledContract(*tx.To()) && len(tx.Data()) > 0 && s.isContract(*tx.To(), blockNumber) {
+			contractTxList = append(contractTxList, tx.To())
+		}
+	}
+	return contractTxList
 }
 
 func readBlockNumber() (uint64, error) {
@@ -509,6 +523,22 @@ func getBalance(backend *eth.EthAPIBackend, address common.Address, blockNr rpc.
 	}
 	state.ClearParentReference()
 	return state.GetBalance(address), state.Error()
+}
+
+func (s *PlatonStatsService) getCode(to common.Address, blockNumber uint64) ([]byte, error) {
+	state, _, err := s.eth.APIBackend.StateAndHeaderByNumber(nil, rpc.BlockNumber(blockNumber))
+	if state == nil || err != nil {
+		return nil, err
+	}
+	state.ClearParentReference()
+	return state.GetCode(to), state.Error()
+}
+
+func (s *PlatonStatsService) isContract(to common.Address, blockNumber uint64) bool {
+	if code, err := s.getCode(to, blockNumber); err == nil && len(code) >= 4 {
+		return vm.CanUseEVMInterp(code) || vm.CanUseWASMInterp(code)
+	}
+	return false
 }
 
 func writeCheckingErr(bech32 string, blockNumber uint64, chainBalance, trackingBalance *big.Int) {
