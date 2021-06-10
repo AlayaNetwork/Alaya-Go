@@ -1,4 +1,4 @@
-name: Go
+name: unittest
 
 on:
   pull_request:
@@ -8,7 +8,7 @@ env:
 jobs:
   test:
     name: Build
-    runs-on: ubuntu-18.04
+    runs-on: self-hosted
     steps:
 
       - name: Set up Go 1.x
@@ -26,20 +26,20 @@ jobs:
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
-
       - name: Get dependencies
         run: |
           go get -v -t -d ./...
 
 
       - name: Build
-        run: make alaya
-
-      - name: Lint
-        uses: golangci/golangci-lint-action@v2
-        with:
-          version: v1.29
-          args: --no-config  --issues-exit-code=0 --timeout=30m --tests=false --skip-dirs="tests" --skip-dirs-use-default=true --disable-all --enable=govet  --enable=misspell --enable=goconst --enable=gofmt --enable=goimports  --enable=gosec  --enable=unconvert  --enable=unparam  --enable=funlen
+        run: make platon
 
       - name: Test
-        run: go test -tags=test -covermode=count -coverprofile=coverage.out  `go list ./...|grep -v life|grep -v swarm|grep -v tests|grep -v bn256|grep -v mobile`
+        run: go test -tags=test -covermode=count -coverprofile=coverage.txt  `go list ./...`
+
+      - name: Upload coverage report
+        uses: codecov/codecov-action@v1
+        with:
+          file: ./coverage.txt
+          flags: unittests
+          name: codecov-umbrella
