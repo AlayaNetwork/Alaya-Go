@@ -153,11 +153,6 @@ func TestRestrictingPlugin_AddRestrictingRecord(t *testing.T) {
 				expect: restricting.ErrBalanceNotEnough,
 				des:    "amount not enough",
 			},
-			{
-				input:  notEnough,
-				expect: restricting.ErrLockedAmountTooLess,
-				des:    "amount too small",
-			},
 		}
 		for _, value := range x {
 			if err := plugin.AddRestrictingRecord(sender, addrArr[0], 20, common.ZeroHash, value.input, mockDB, RestrictingTxHash); err != value.expect {
