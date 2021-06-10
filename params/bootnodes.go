@@ -16,17 +16,6 @@
 
 package params
 
-// MainnetBootnodes are the enode URLs of the P2P bootstrap nodes running on
-// the main PlatON network.
-var MainnetBootnodes = []string{
-	"enode://81dd24640878badc06de82a82fdb0fe55f24d27877144261d81b1f39faa6686ac8f5d2489dbf97cd44d583b4b00976a8f92845378084d25c7a8bae671a543983@127.0.0.1:16789",
-}
-
-// TestnetBootnodes are the enode URLs of the P2P bootstrap nodes running on the test network.
-var TestnetBootnodes = []string{
-	"enode://3fec5e5982a0b32a25168dae575c4705ab8509f266947cb8b16b62ac9eafb78d3e7efce2c31bac447edce3446a12b71383a41dcbdbe80fa856d8739b0214ff35@127.0.0.1:16789",
-}
-
 // DiscoveryV5Bootnodes are the enode URLs of the P2P bootstrap nodes for the
 // experimental RLPx v5 topic-discovery network.
 var DiscoveryV5Bootnodes = []string{}
@@ -41,6 +30,3 @@ var AlayanetBootnodes = []string{
 	"enode://49648f184dab8acf0927238452e1f7e8f0e86135dcd148baa0a2d22cd931ed9770f726fccf13a3976bbdb738a880a074dc21d811037190267cd9c8c1378a6043@seed6.8d4b.alaya.network:16789",
 	"enode://5670e1b34fe39da46ebdd9c3377053c5214c7b3e6b371d31fcc381f788414a38d44cf844ad71305eb1d0d8afddee8eccafb4d30b33b54ca002db47c4864ba080@seed7.bdac.alaya.network:16789",
 }
-
-// AlayaTestnetBootnodes are the enode URLs of the P2P bootstrap nodes running on the test network.
-var AlayaTestnetBootnodes = []string{}
