@@ -91,6 +91,14 @@ func Gte0150Version(version uint32) bool {
 	return version >= params.FORKVERSION_0_15_0
 }
 
+func Gte0160VersionState(state xcom.StateDB) bool {
+	return Gte0160Version(GetCurrentActiveVersion(state))
+}
+
+func Gte0160Version(version uint32) bool {
+	return version >= params.FORKVERSION_0_16_0
+}
+
 func WriteEcHash0140(state xcom.StateDB) error {
 	if data, err := xcom.EcParams0140(); nil != err {
 		return err
