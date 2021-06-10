@@ -185,8 +185,8 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 				return nil, err
 			}
 
-			//only private net  need InitGenesisAndSetEconomicConfig
-			if stored != params.MainnetGenesisHash && config.Genesis == nil {
+			// only private net  need InitGenesisAndSetEconomicConfig
+			if stored != params.AlayanetGenesisHash && config.Genesis == nil {
 				// private net
 				config.Genesis = new(core.Genesis)
 				if err := config.Genesis.InitGenesisAndSetEconomicConfig(ctx.GenesisPath()); err != nil {
