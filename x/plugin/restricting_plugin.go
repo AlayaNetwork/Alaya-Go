@@ -221,6 +221,7 @@ func (rp *RestrictingPlugin) AddRestrictingRecord(from, account common.Address, 
 	// pre-check
 
 	{
+		//为了兼容历史数据，所以这里保留
 		if totalAmount.Cmp(big.NewInt(1e18)) < 0 {
 			rp.log.Error("Failed to AddRestrictingRecord: total restricting amount need more than 1 ATP",
 				"from", from, "amount", totalAmount)
