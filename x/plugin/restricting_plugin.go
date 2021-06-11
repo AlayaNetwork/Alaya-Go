@@ -220,10 +220,17 @@ func (rp *RestrictingPlugin) AddRestrictingRecord(from, account common.Address, 
 	}
 	// pre-check
 
-	if state.GetBalance(from).Cmp(totalAmount) < 0 {
-		rp.log.Error("Failed to AddRestrictingRecord: balance of the sender is not enough",
-			"total", totalAmount, "balance", state.GetBalance(from))
-		return restricting.ErrBalanceNotEnough
+	{
+		if totalAmount.Cmp(big.NewInt(1e18)) < 0 {
+			rp.log.Error("Failed to AddRestrictingRecord: total restricting amount need more than 1 ATP",
+				"from", from, "amount", totalAmount)
+			return restricting.ErrLockedAmountTooLess
+		}
+		if state.GetBalance(from).Cmp(totalAmount) < 0 {
+			rp.log.Error("Failed to AddRestrictingRecord: balance of the sender is not enough",
+				"total", totalAmount, "balance", state.GetBalance(from))
+			return restricting.ErrBalanceNotEnough
+		}
 	}
 
 	if txhash == common.ZeroHash {
