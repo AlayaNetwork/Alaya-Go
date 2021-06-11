@@ -211,12 +211,12 @@ func TestRestrictingPlugin_AddRestrictingRecord(t *testing.T) {
 		plugin.storeAccount2ReleaseAccount(mockDB, 2, 2, account2)
 		var info, info2 restricting.RestrictingInfo
 		info.NeedRelease = big.NewInt(0)
-		info.StakingAmount = big.NewInt(1e18)
+		info.AdvanceAmount = big.NewInt(1e18)
 		info.CachePlanAmount = big.NewInt(1e18 + 2e18)
 		info.ReleaseList = []uint64{1, 2}
 		plugin.storeRestrictingInfo(mockDB, restricting.GetRestrictingKey(to), info)
 		info2.NeedRelease = big.NewInt(0)
-		info2.StakingAmount = big.NewInt(1e18)
+		info2.AdvanceAmount = big.NewInt(1e18)
 		info2.CachePlanAmount = big.NewInt(1e18)
 		plugin.storeRestrictingInfo(mockDB, restricting.GetRestrictingKey(account2), info2)
 		mockDB.AddBalance(vm.RestrictingContractAddr, big.NewInt(2e18))
@@ -246,7 +246,7 @@ func TestRestrictingPlugin_AddRestrictingRecord(t *testing.T) {
 			t.Error()
 		}
 		assert.Equal(t, big.NewInt(3e18+2e17+2e18), info2.CachePlanAmount)
-		assert.Equal(t, big.NewInt(1e18), info2.StakingAmount)
+		assert.Equal(t, big.NewInt(1e18), info2.AdvanceAmount)
 		assert.Equal(t, big.NewInt(0), info2.NeedRelease)
 		assert.Equal(t, 3, len(info2.ReleaseList))
 
@@ -330,7 +330,7 @@ func TestRestrictingPlugin_Compose2(t *testing.T) {
 		}
 		assert.Equal(t, info.CachePlanAmount, CachePlanAmount)
 		assert.Equal(t, info.ReleaseList, ReleaseList)
-		assert.Equal(t, info.StakingAmount, StakingAmount)
+		assert.Equal(t, info.AdvanceAmount, StakingAmount)
 		assert.Equal(t, info.NeedRelease, NeedRelease)
 	}
 
@@ -355,7 +355,7 @@ func TestRestrictingPlugin_Compose(t *testing.T) {
 		}
 		assert.Equal(t, info.CachePlanAmount, CachePlanAmount)
 		assert.Equal(t, info.ReleaseList, ReleaseList)
-		assert.Equal(t, info.StakingAmount, StakingAmount)
+		assert.Equal(t, info.AdvanceAmount, StakingAmount)
 		assert.Equal(t, info.NeedRelease, NeedRelease)
 	}
 	mockDB.AddBalance(from, big.NewInt(9e18))
@@ -727,8 +727,8 @@ func TestRestrictingReturnLockFunds(t *testing.T) {
 	if info.CachePlanAmount.Cmp(big.NewInt(3e18)) != 0 {
 		t.Error("CachePlanAmount  cal error")
 	}
-	if info.StakingAmount.Cmp(common.Big0) != 0 {
-		t.Error("StakingAmount  cal error")
+	if info.AdvanceAmount.Cmp(common.Big0) != 0 {
+		t.Error("AdvanceAmount  cal error")
 	}
 }
 

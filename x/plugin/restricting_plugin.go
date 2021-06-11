@@ -252,7 +252,7 @@ func (rp *RestrictingPlugin) AddRestrictingRecord(from, account common.Address, 
 		}
 		restrictInfo.CachePlanAmount = totalAmount
 		restrictInfo.NeedRelease = big.NewInt(0)
-		restrictInfo.StakingAmount = big.NewInt(0)
+		restrictInfo.AdvanceAmount = big.NewInt(0)
 		restrictInfo.ReleaseList = epochArr
 	} else {
 		rp.log.Trace("restricting record exist", "account", account.String())
@@ -314,11 +314,11 @@ func (rp *RestrictingPlugin) AdvanceLockedFunds(account common.Address, amount *
 		return nil
 	}
 	if gov.Gte0150VersionState(state) {
-		canStaking := new(big.Int).Sub(restrictInfo.CachePlanAmount, restrictInfo.StakingAmount)
+		canStaking := new(big.Int).Sub(restrictInfo.CachePlanAmount, restrictInfo.AdvanceAmount)
 
 		if canStaking.Cmp(amount) < 0 {
 			rp.log.Warn("Balance of restricting account not enough", "totalAmount",
-				restrictInfo.CachePlanAmount, "stakingAmount", restrictInfo.StakingAmount, "funds", amount)
+				restrictInfo.CachePlanAmount, "stakingAmount", restrictInfo.AdvanceAmount, "funds", amount)
 			return restricting.ErrRestrictBalanceNotEnough
 		}
 
@@ -331,35 +331,35 @@ func (rp *RestrictingPlugin) AdvanceLockedFunds(account common.Address, amount *
 		// handle the error restricting info,  the not release restricting amount should not less than CachePlanAmount
 		if leftAmount.Cmp(restrictInfo.CachePlanAmount) < 0 {
 			// cal the account's amount of can use staking ,use the not release restricting amount instead of  the error restricting CachePlanAmount to cal
-			canStaking := new(big.Int).Sub(leftAmount, restrictInfo.StakingAmount)
+			canStaking := new(big.Int).Sub(leftAmount, restrictInfo.AdvanceAmount)
 			if canStaking.Cmp(amount) < 0 {
 				rp.log.Warn("Balance of restricting account not enough", "totalAmount",
-					leftAmount, "stakingAmount", restrictInfo.StakingAmount, "funds", amount)
+					leftAmount, "stakingAmount", restrictInfo.AdvanceAmount, "funds", amount)
 				return restricting.ErrRestrictBalanceNotEnough
 			}
 		} else {
-			canStaking := new(big.Int).Sub(restrictInfo.CachePlanAmount, restrictInfo.StakingAmount)
+			canStaking := new(big.Int).Sub(restrictInfo.CachePlanAmount, restrictInfo.AdvanceAmount)
 
 			if canStaking.Cmp(amount) < 0 {
 				rp.log.Warn("Balance of restricting account not enough", "totalAmount",
-					restrictInfo.CachePlanAmount, "stakingAmount", restrictInfo.StakingAmount, "funds", amount)
+					restrictInfo.CachePlanAmount, "stakingAmount", restrictInfo.AdvanceAmount, "funds", amount)
 				return restricting.ErrRestrictBalanceNotEnough
 			}
 
 		}
 	} else {
-		canStaking := new(big.Int).Sub(restrictInfo.CachePlanAmount, restrictInfo.StakingAmount)
+		canStaking := new(big.Int).Sub(restrictInfo.CachePlanAmount, restrictInfo.AdvanceAmount)
 
 		if canStaking.Cmp(amount) < 0 {
 			rp.log.Warn("Balance of restricting account not enough", "totalAmount",
-				restrictInfo.CachePlanAmount, "stakingAmount", restrictInfo.StakingAmount, "funds", amount)
+				restrictInfo.CachePlanAmount, "stakingAmount", restrictInfo.AdvanceAmount, "funds", amount)
 			return restricting.ErrRestrictBalanceNotEnough
 		}
 
 	}
 
 	// sub Balance
-	restrictInfo.StakingAmount.Add(restrictInfo.StakingAmount, amount)
+	restrictInfo.AdvanceAmount.Add(restrictInfo.AdvanceAmount, amount)
 
 	// save restricting account info
 	rp.storeRestrictingInfo(state, restrictingKey, restrictInfo)
@@ -395,7 +395,7 @@ func (rp *RestrictingPlugin) MixAdvanceLockedFunds(account common.Address, amoun
 		return amount, amount, nil
 	}
 
-	canStakingRestricting := new(big.Int).Sub(restrictInfo.CachePlanAmount, restrictInfo.StakingAmount)
+	canStakingRestricting := new(big.Int).Sub(restrictInfo.CachePlanAmount, restrictInfo.AdvanceAmount)
 
 	canStakingFree := state.GetBalance(account)
 
@@ -403,7 +403,7 @@ func (rp *RestrictingPlugin) MixAdvanceLockedFunds(account common.Address, amoun
 
 	if total.Cmp(amount) < 0 {
 		rp.log.Warn("Balance of restricting and free not enough", "totalAmount",
-			restrictInfo.CachePlanAmount, "stakingAmount", restrictInfo.StakingAmount, "free", canStakingFree, "funds", amount)
+			restrictInfo.CachePlanAmount, "stakingAmount", restrictInfo.AdvanceAmount, "free", canStakingFree, "funds", amount)
 		return nil, nil, restricting.ErrRestrictBalanceAndFreeNotEnough
 	}
 
@@ -415,7 +415,7 @@ func (rp *RestrictingPlugin) MixAdvanceLockedFunds(account common.Address, amoun
 		rp.transferAmount(state, account, vm.StakingContractAddr, forFree)
 	}
 
-	restrictInfo.StakingAmount.Add(restrictInfo.StakingAmount, forRestricting)
+	restrictInfo.AdvanceAmount.Add(restrictInfo.AdvanceAmount, forRestricting)
 	// save restricting account info
 	rp.storeRestrictingInfo(state, restrictingKey, restrictInfo)
 	rp.transferAmount(state, vm.RestrictingContractAddr, vm.StakingContractAddr, forRestricting)
@@ -438,7 +438,7 @@ func (rp *RestrictingPlugin) ReturnLockFunds(account common.Address, amount *big
 	}
 	rp.log.Debug("Call ReturnLockFunds begin", "account", account, "amount", amount, "info", restrictInfo)
 
-	if restrictInfo.StakingAmount.Cmp(amount) < 0 {
+	if restrictInfo.AdvanceAmount.Cmp(amount) < 0 {
 		return restricting.ErrStakingAmountInvalid
 	}
 
@@ -462,9 +462,9 @@ func (rp *RestrictingPlugin) ReturnLockFunds(account common.Address, amount *big
 			restrictInfo.NeedRelease = big.NewInt(0)
 		}
 	}
-	restrictInfo.StakingAmount.Sub(restrictInfo.StakingAmount, amount)
+	restrictInfo.AdvanceAmount.Sub(restrictInfo.AdvanceAmount, amount)
 	// save restricting account info
-	if restrictInfo.StakingAmount.Cmp(common.Big0) == 0 &&
+	if restrictInfo.AdvanceAmount.Cmp(common.Big0) == 0 &&
 		len(restrictInfo.ReleaseList) == 0 && restrictInfo.CachePlanAmount.Cmp(common.Big0) == 0 {
 		state.SetState(vm.RestrictingContractAddr, restrictingKey, []byte{})
 		rp.log.Debug("Call ReturnLockFunds finished,set info empty", "RCContractBalance", state.GetBalance(vm.RestrictingContractAddr))
@@ -489,15 +489,15 @@ func (rp *RestrictingPlugin) ReturnWrongLockFunds(account common.Address, amount
 	}
 	rp.log.Debug("Call ReturnWrongLockFunds begin", "account", account, "amount", amount, "info", restrictInfo)
 
-	if restrictInfo.StakingAmount.Cmp(amount) < 0 {
+	if restrictInfo.AdvanceAmount.Cmp(amount) < 0 {
 		return restricting.ErrStakingAmountInvalid
 	}
 
 	rp.transferAmount(state, vm.StakingContractAddr, vm.RestrictingContractAddr, amount)
 	restrictInfo.CachePlanAmount.Sub(restrictInfo.CachePlanAmount, amount)
-	restrictInfo.StakingAmount.Sub(restrictInfo.StakingAmount, amount)
+	restrictInfo.AdvanceAmount.Sub(restrictInfo.AdvanceAmount, amount)
 	// save restricting account info
-	if restrictInfo.StakingAmount.Cmp(common.Big0) == 0 &&
+	if restrictInfo.AdvanceAmount.Cmp(common.Big0) == 0 &&
 		len(restrictInfo.ReleaseList) == 0 && restrictInfo.CachePlanAmount.Cmp(common.Big0) == 0 {
 		state.SetState(vm.RestrictingContractAddr, restrictingKey, []byte{})
 		rp.log.Debug("Call ReturnWrongLockFunds finished,set info empty", "RCContractBalance", state.GetBalance(vm.RestrictingContractAddr))
@@ -520,19 +520,19 @@ func (rp *RestrictingPlugin) SlashingNotify(account common.Address, amount *big.
 	} else if amount.Cmp(common.Big0) == 0 {
 		return nil
 	}
-	if restrictInfo.StakingAmount.Cmp(common.Big0) <= 0 {
-		rp.log.Error("Failed to SlashingNotify", "account", account, "Debt", restrictInfo.StakingAmount,
+	if restrictInfo.AdvanceAmount.Cmp(common.Big0) <= 0 {
+		rp.log.Error("Failed to SlashingNotify", "account", account, "Debt", restrictInfo.AdvanceAmount,
 			"slashing", amount, "err", restricting.ErrStakingAmountEmpty.Error())
 		return restricting.ErrStakingAmountEmpty
 	}
 
-	if restrictInfo.StakingAmount.Cmp(amount) < 0 {
+	if restrictInfo.AdvanceAmount.Cmp(amount) < 0 {
 		return restricting.ErrSlashingTooMuch
 	}
-	restrictInfo.StakingAmount.Sub(restrictInfo.StakingAmount, amount)
+	restrictInfo.AdvanceAmount.Sub(restrictInfo.AdvanceAmount, amount)
 	restrictInfo.CachePlanAmount.Sub(restrictInfo.CachePlanAmount, amount)
 
-	if restrictInfo.StakingAmount.Cmp(common.Big0) == 0 &&
+	if restrictInfo.AdvanceAmount.Cmp(common.Big0) == 0 &&
 		len(restrictInfo.ReleaseList) == 0 && restrictInfo.CachePlanAmount.Cmp(common.Big0) == 0 {
 		state.SetState(vm.RestrictingContractAddr, restrictingKey, []byte{})
 		// save restricting account info
@@ -649,7 +649,7 @@ func (rp *RestrictingPlugin) releaseRestricting(epoch uint64, state xcom.StateDB
 				}
 			}
 		} else {
-			canRelease := new(big.Int).Sub(restrictInfo.CachePlanAmount, restrictInfo.StakingAmount)
+			canRelease := new(big.Int).Sub(restrictInfo.CachePlanAmount, restrictInfo.AdvanceAmount)
 			if canRelease.Cmp(releaseAmount) >= 0 {
 				rp.transferAmount(state, vm.RestrictingContractAddr, account, releaseAmount)
 				restrictInfo.CachePlanAmount.Sub(restrictInfo.CachePlanAmount, releaseAmount)
@@ -726,7 +726,7 @@ func (rp *RestrictingPlugin) getRestrictingInfoToReturn(account common.Address, 
 
 	result.Debt = (*hexutil.Big)(info.NeedRelease)
 	result.Entry = plans
-	result.Pledge = (*hexutil.Big)(info.StakingAmount)
+	result.Pledge = (*hexutil.Big)(info.AdvanceAmount)
 	rp.log.Debug("Call releaseRestricting: query restricting result", "account", account, "result", result)
 	return &result, nil
 }
