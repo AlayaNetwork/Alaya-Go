@@ -1,4 +1,4 @@
-// Copyright 2018-2020 The PlatON Network Authors
+// Copyright 2018-2020 The Alaya Network Authors
 // This file is part of the Alaya-Go library.
 //
 // The Alaya-Go library is free software: you can redistribute it and/or modify
@@ -25,7 +25,7 @@ import (
 // for genesis and plugin test
 type RestrictingInfo struct {
 	NeedRelease     *big.Int
-	StakingAmount   *big.Int // including  staking and delegation
+	AdvanceAmount   *big.Int // including  staking and delegation
 	CachePlanAmount *big.Int
 	ReleaseList     []uint64 // ReleaseList representation which epoch will release restricting
 }

@@ -1,4 +1,4 @@
-// Copyright 2018-2020 The PlatON Network Authors
+// Copyright 2018-2020 The Alaya Network Authors
 // This file is part of the Alaya-Go library.
 //
 // The Alaya-Go library is free software: you can redistribute it and/or modify
@@ -691,7 +691,7 @@ func buildDbRestrictingPlan(account common.Address, t *testing.T, stateDB xcom.S
 	// build restricting user info
 	var user restricting.RestrictingInfo
 	user.CachePlanAmount = big.NewInt(int64(5e18))
-	user.StakingAmount = big.NewInt(0)
+	user.AdvanceAmount = big.NewInt(0)
 	user.NeedRelease = big.NewInt(0)
 	user.ReleaseList = list
 

@@ -1,4 +1,4 @@
-// Copyright 2018-2020 The PlatON Network Authors
+// Copyright 2018-2020 The Alaya Network Authors
 // This file is part of the Alaya-Go library.
 //
 // The Alaya-Go library is free software: you can redistribute it and/or modify
@@ -298,9 +298,9 @@ func (sk *StakingPlugin) CreateCandidate(state xcom.StateDB, blockHash common.Ha
 
 	} else if typ == RestrictVon { //  from account RestrictingPlan von
 
-		err := rt.PledgeLockFunds(can.StakingAddress, amount, state)
+		err := rt.AdvanceLockedFunds(can.StakingAddress, amount, state)
 		if nil != err {
-			log.Error("Failed to CreateCandidate on stakingPlugin: call Restricting PledgeLockFunds() is failed",
+			log.Error("Failed to CreateCandidate on stakingPlugin: call Restricting AdvanceLockedFunds() is failed",
 				"blockNumber", blockNumber.Uint64(), "blockHash", blockHash.Hex(), "nodeId", can.NodeId.String(),
 				"stakeAddr", can.StakingAddress, "stakingVon", amount, "err", err)
 			return err
@@ -308,9 +308,9 @@ func (sk *StakingPlugin) CreateCandidate(state xcom.StateDB, blockHash common.Ha
 		can.RestrictingPlanHes = amount
 	} else if typ == RestrictAndFreeVon { //  use Restricting and free von
 		if gov.Gte0150VersionState(state) {
-			restrictingPlanHes, releasedHes, err := rt.MixPledgeLockFunds(can.StakingAddress, amount, state)
+			restrictingPlanHes, releasedHes, err := rt.MixAdvanceLockedFunds(can.StakingAddress, amount, state)
 			if nil != err {
-				log.Error("Failed to CreateCandidate on stakingPlugin: call Restricting MixPledgeLockFunds() is failed",
+				log.Error("Failed to CreateCandidate on stakingPlugin: call Restricting MixAdvanceLockedFunds() is failed",
 					"blockNumber", blockNumber.Uint64(), "blockHash", blockHash.Hex(), "nodeId", can.NodeId.String(),
 					"stakeAddr", can.StakingAddress, "stakingVon", amount, "err", err)
 				return err
@@ -454,9 +454,9 @@ func (sk *StakingPlugin) IncreaseStaking(state xcom.StateDB, blockHash common.Ha
 
 	} else if typ == RestrictVon {
 
-		err := rt.PledgeLockFunds(can.StakingAddress, amount, state)
+		err := rt.AdvanceLockedFunds(can.StakingAddress, amount, state)
 		if nil != err {
-			log.Error("Failed to IncreaseStaking on stakingPlugin: call Restricting PledgeLockFunds() is failed",
+			log.Error("Failed to IncreaseStaking on stakingPlugin: call Restricting AdvanceLockedFunds() is failed",
 				"blockNumber", blockNumber.Uint64(), "blockHash", blockHash.Hex(),
 				"nodeId", can.NodeId.String(), "account", can.StakingAddress, "amount", amount, "err", err)
 			return err
@@ -656,11 +656,11 @@ func (sk *StakingPlugin) HandleUnCandidateItem(state xcom.StateDB, blockNumber u
 
 		// The state of the node needs to be restored
 		if stakeItem.Recovery {
-			// If the pledge has been revoked, there is no need to restore the state
+			// If the staking has been revoked, there is no need to restore the state
 			if gov.Gte0150VersionState(state) && can.IsWithdrew() {
 			} else {
 				// If the node is reported double-signed during the lock-up period，
-				// Then you need to enter the double-signed lock-up period after the lock-up period expires and release the pledge after the expiration
+				// Then you need to enter the double-signed lock-up period after the lock-up period expires and release the staking after the expiration
 				// Otherwise, the state of the node is restored to the normal staking state
 				if can.IsDuplicateSign() {
 
@@ -891,9 +891,9 @@ func (sk *StakingPlugin) Delegate(state xcom.StateDB, blockHash common.Hash, blo
 		del.ReleasedHes = new(big.Int).Add(del.ReleasedHes, amount)
 
 	} else if typ == RestrictVon { //  from account RestrictingPlan von
-		err := rt.PledgeLockFunds(delAddr, amount, state)
+		err := rt.AdvanceLockedFunds(delAddr, amount, state)
 		if nil != err {
-			log.Error("Failed to Delegate on stakingPlugin: call Restricting PledgeLockFunds() is failed",
+			log.Error("Failed to Delegate on stakingPlugin: call Restricting AdvanceLockedFunds() is failed",
 				"blockNumber", blockNumber, "blockHash", blockHash.Hex(), "epoch", epoch,
 				"delAddr", delAddr.String(), "nodeId", can.NodeId.String(), "StakingNum", can.StakingBlockNum,
 				"amount", amount, "err", err)
@@ -2335,9 +2335,9 @@ func (sk *StakingPlugin) toSlash(state xcom.StateDB, blockNumber uint64, blockHa
 	}
 
 	// Only when the staking is released, the staking-related information needs to be emptied.
-	// When penalizing the low block rate first, and then report double signing, the pledged deposit in the period of hesitation should be returned
+	// When penalizing the low block rate first, and then report double signing, the staked deposit in the period of hesitation should be returned
 	if needReturnHes {
-		// Return the pledged deposit during the hesitation period
+		// Return the staked deposit during the hesitation period
 		if can.ReleasedHes.Cmp(common.Big0) > 0 {
 			state.AddBalance(can.StakingAddress, can.ReleasedHes)
 			state.SubBalance(vm.StakingContractAddr, can.ReleasedHes)
@@ -2363,7 +2363,7 @@ func (sk *StakingPlugin) toSlash(state xcom.StateDB, blockNumber uint64, blockHa
 		// Only when the staking is released, the staking-related information needs to be emptied.
 		if needReturnHes {
 			// need to sub account rc
-			// Only need to be executed if the pledge is released
+			// Only need to be executed if the staking is released
 			if err := sk.db.SubAccountStakeRc(blockHash, can.StakingAddress); nil != err {
 				log.Error("Failed to SlashCandidates: Sub Account staking Reference Count is failed", "slashType", slashItem.SlashType,
 					"blockNumber", blockNumber, "blockHash", blockHash.Hex(), "nodeId", slashItem.NodeId.String(), "err", err)
@@ -2457,7 +2457,7 @@ func (sk *StakingPlugin) removeFromVerifiers(blockNumber uint64, blockHash commo
 
 func handleSlashTypeFn(blockNumber uint64, blockHash common.Hash, slashType staking.CandidateStatus, remain *big.Int) (bool, bool, bool, staking.CandidateStatus) {
 
-	var needInvalid, needRemove, needReturnHes bool // need invalid candidate status And need remove from verifierList,Refund of pledged deposits during hesitation period
+	var needInvalid, needRemove, needReturnHes bool // need invalid candidate status And need remove from verifierList,Refund of staked deposits during hesitation period
 	var changeStatus staking.CandidateStatus        // need to add this status
 
 	switch slashType {

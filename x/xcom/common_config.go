@@ -1,4 +1,4 @@
-// Copyright 2018-2020 The PlatON Network Authors
+// Copyright 2018-2020 The Alaya Network Authors
 // This file is part of the Alaya-Go library.
 //
 // The Alaya-Go library is free software: you can redistribute it and/or modify
@@ -64,6 +64,8 @@ const (
 	// When electing consensus nodes, it is used to calculate the P value of the binomial distribution
 	ElectionBaseL1 = 3000
 	ElectionBaseL2 = 6000
+
+	AlayaNetECHash = "0x828aafb72c19203ad930cb21cee8c9887fcd59eaa44f5c4a24f4cab7cfb80ad0"
 )
 
 var (
