@@ -18,7 +18,7 @@ The requirements to build Alaya-Go are:
 - [Golang](https://golang.org/doc/install) :version 1.14+
 - [cmake](https://cmake.org/) :version 3.0+
 - [g++&gcc](http://gcc.gnu.org/) :version 7.4.0+
-> The 'cmake' and 'gcc&g++' are usually included in Ubuntu18.04
+> The 'cmake' and 'gcc&g++' are usually built-in with Ubuntu
 
 In addition, the following libraries needs to be installed manually
 
