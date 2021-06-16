@@ -117,7 +117,7 @@ Address: {apt1anp4tzmdggdrcf39qvshfq3glacjxcd5mayaa8}
 Run the following command to launch a Alaya node connecting to the Alaya's mainnet:
 
 ```
-$ ./alaya --identity "alaya" --datadir ./data --port {your-p2p-port} --rpcaddr 127.0.0.1 --rpcport {your-rpc-port} --rpcapi "db,platon,net,web3,admin,personal" --rpc --nodiscover --nodekey ./data/nodekey --cbft.blskey ./data/blskey
+alaya --identity "alaya" --datadir ./data --port {your-p2p-port} --rpcaddr 127.0.0.1 --rpcport {your-rpc-port} --rpcapi "db,platon,net,web3,admin,personal" --rpc --nodiscover --nodekey ./data/nodekey --cbft.blskey ./data/blskey
 ```
 
 OK, it seems that the chain is running correctly, we can check it as follow:
