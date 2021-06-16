@@ -25,13 +25,13 @@ In addition, the following libraries needs to be installed manually
 ```
 sudo apt install libgmp-dev libssl-dev
 ```
-Then, clone the repository
+Then, clone the repository and download dependency
 
 ```
 git clone https://github.com/AlayaNetwork/Alaya-Go.git --recursive
-```
 
-Switch to the Alaya-Go repository root directory.
+cd Alaya-Go && go mod download
+```
 
 Ubuntu:
 
@@ -45,7 +45,7 @@ Windows:
 go run build\ci.go install 
 ```
 
-The resulting binary will be placed in '$Alaya-Go/build/bin'(Ubuntu) or in '%GOPATH%\bin'(Windows) .
+The resulting binary will be placed in '$Alaya-Go/build/bin' .
 
 ## Getting Started
 
@@ -142,7 +142,7 @@ For more information, please visit our [Docs](https://devdocs.alaya.network/alay
 All of codes for Alaya-Go are open source and contributing are very welcome! Before beginning, please take a look at our contributing [guidelines](https://github.com/AlayaNetwork/Alaya-Go/blob/master/.github/CONTRIBUTING.md). You can also open an issue by clicking [here](https://github.com/AlayaNetwork/Alaya-Go/issues/new).
 
 ## Support
-If you have any questions or suggestions please contact us at support@platon.network.
+If you have any questions or suggestions please contact us at support@alaya.network.
 
 ## License
 The Alaya-Go library (i.e. all code outside of the cmd directory) is licensed under the GNU Lesser General Public License v3.0, also included in our repository in the COPYING.LESSER file.
