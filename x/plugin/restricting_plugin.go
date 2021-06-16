@@ -638,6 +638,7 @@ func (rp *RestrictingPlugin) releaseRestricting(epoch uint64, state xcom.StateDB
 		rp.log.Debug("Call releaseRestricting: begin to release record", "index", index, "account", account,
 			"restrictInfo", restrictInfo, "releaseAmount", releaseAmount)
 
+		//if NeedRelease>0,CachePlanAmount = AdvanceAmount
 		if restrictInfo.NeedRelease.Cmp(common.Big0) > 0 {
 			if gov.Gte0140VersionState(state) {
 				restrictInfo.NeedRelease.Add(restrictInfo.NeedRelease, releaseAmount)
