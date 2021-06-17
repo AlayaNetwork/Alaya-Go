@@ -23,9 +23,7 @@ jobs:
 
       - name: Get dependencies
         run: |
-          go mod download
-          go env
-
+          go mod download -x
 
       - name: Build
         run: make alaya
