@@ -28,16 +28,18 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/AlayaNetwork/Alaya-Go/log"
-	"github.com/AlayaNetwork/Alaya-Go/crypto"
 	"github.com/AlayaNetwork/Alaya-Go/common"
 	"github.com/AlayaNetwork/Alaya-Go/common/hexutil"
+	"github.com/AlayaNetwork/Alaya-Go/crypto"
 	"github.com/AlayaNetwork/Alaya-Go/crypto/sha3"
+	"github.com/AlayaNetwork/Alaya-Go/log"
 	"github.com/AlayaNetwork/Alaya-Go/rlp"
 )
 
 var (
 	EmptyRootHash = DeriveSha(Transactions{})
+	// Extra field in the block header, maximum length
+	ExtraMaxSize = 97
 )
 
 // BlockNonce is an 81-byte vrf proof containing random numbers
@@ -179,6 +181,18 @@ func (h *Header) Signature() []byte {
 		return []byte{}
 	}
 	return h.Extra[32:]
+}
+
+func (h *Header) ExtraData() []byte {
+	if len(h.Extra) < 32 {
+		return []byte{}
+	}
+	return h.Extra[:32]
+}
+
+// Check whether the Extra field exceeds the limit size
+func (h *Header) IsInvalid() bool {
+	return len(h.Extra) > ExtraMaxSize
 }
 
 // hasherPool holds Keccak hashers.
