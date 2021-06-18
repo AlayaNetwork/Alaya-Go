@@ -56,7 +56,8 @@ const (
 	// The number is referenced from the size of tx pool.
 	txChanSize = 4096
 
-	numBroadcastTxPeers = 8 // Maximum number of peers for broadcast transactions
+	numBroadcastTxPeers    = 8 // Maximum number of peers for broadcast transactions
+	numBroadcastBlockPeers = 5 // Maximum number of peers for broadcast new block
 
 	defaultTxsCacheSize      = 20
 	defaultBroadcastInterval = 100 * time.Millisecond
@@ -888,8 +889,21 @@ func (pm *ProtocolManager) BroadcastBlock(block *types.Block, propagate bool) {
 			log.Warn("Propagating dangling block", "number", block.Number(), "hash", hash)
 			return
 		}
-		// Send the block to a subset of our peers
-		transfer := peers[:int(math.Sqrt(float64(len(peers))))]
+
+		var transfer []*peer
+		if len(peers) <= numBroadcastBlockPeers {
+			// Send the block to all peers
+			transfer = peers
+		} else {
+			// Send the block to a subset of our peers
+			rand.Seed(time.Now().UnixNano())
+			indexes := rand.Perm(len(peers))
+			maxPeers := int(math.Sqrt(float64(len(peers))))
+			transfer = make([]*peer, 0, maxPeers)
+			for i := 0; i < maxPeers; i++ {
+				transfer = append(transfer, peers[indexes[i]])
+			}
+		}
 		for _, peer := range transfer {
 			peer.AsyncSendNewBlock(block)
 		}
