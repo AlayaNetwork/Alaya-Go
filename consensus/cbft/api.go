@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
-
 package cbft
 
 import (
@@ -38,14 +37,14 @@ type API interface {
 	GetSchnorrNIZKProve() (*bls.SchnorrProof, error)
 }
 
-// PublicConsensusAPI provides an API to access the PlatON blockchain.
+// PublicConsensusAPI provides an API to access the Alaya blockchain.
 // It offers only methods that operate on public data that
 // is freely available to anyone.
 type PublicConsensusAPI struct {
 	engine API
 }
 
-// NewPublicConsensusAPI creates a new PlatON blockchain API.
+// NewPublicConsensusAPI creates a new Alaya blockchain API.
 func NewPublicConsensusAPI(engine API) *PublicConsensusAPI {
 	return &PublicConsensusAPI{engine: engine}
 }
