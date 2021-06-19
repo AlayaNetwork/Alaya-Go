@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
-
 package xutil
 
 import (
@@ -44,7 +43,7 @@ func CalcVersion(programVersion uint32) uint32 {
 }
 
 func IsWorker(extra []byte) bool {
-	return len(extra[32:]) >= common.ExtraSeal && bytes.Equal(extra[32:97], make([]byte, common.ExtraSeal))
+	return len(extra) > 32 && len(extra[32:]) >= common.ExtraSeal && bytes.Equal(extra[32:97], make([]byte, common.ExtraSeal))
 }
 
 // eg. 65536 => 1.0.0
