@@ -113,7 +113,6 @@ func newTestTxPool(config TxPoolConfig, chainconfig *params.ChainConfig) *TxPool
 		queue:       make(map[common.Address]*txList),
 		beats:       make(map[common.Address]time.Time),
 		all:         newTxLookup(),
-		// modified by PlatON
 		// chainHeadCh: make(chan ChainHeadEvent, chainHeadChanSize),
 		exitCh:      make(chan struct{}),
 		gasPrice:    new(big.Int).SetUint64(config.PriceLimit),
@@ -142,7 +141,6 @@ func newTestTxPool(config TxPoolConfig, chainconfig *params.ChainConfig) *TxPool
 		}
 	}
 	// Subscribe events from blockchain
-	// modified by PlatON
 	//pool.chainHeadSub = pool.chain.SubscribeChainHeadEvent(pool.chainHeadCh)
 
 	// Start the event loop and return
@@ -924,7 +922,7 @@ func TestTransactionQueueTimeLimitingNoLocals(t *testing.T) {
 func testTransactionQueueTimeLimiting(t *testing.T, nolocals bool) {
 	// Reduce the eviction interval to a testable amount
 	defer func(old time.Duration) { evictionInterval = old }(evictionInterval)
-	evictionInterval = time.Second
+	evictionInterval = time.Millisecond * 100
 
 	// Create the pool to test the non-expiration enforcement
 	config := testTxPoolConfig
