@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"math/rand"
 	"sort"
 	"strconv"
 	"sync"
@@ -2920,6 +2921,24 @@ func (svs sortValidatorQueue) Swap(i, j int) {
 	svs[i], svs[j] = svs[j], svs[i]
 }
 
+type newSortValidatorQueue []*sortValidator
+
+func (svs newSortValidatorQueue) Len() int {
+	return len(svs)
+}
+
+func (svs newSortValidatorQueue) Less(i, j int) bool {
+	if xutil.CalcVersion(svs[i].version) == xutil.CalcVersion(svs[j].version) {
+		return svs[i].x > svs[j].x
+	} else {
+		return xutil.CalcVersion(svs[i].version) > xutil.CalcVersion(svs[j].version)
+	}
+}
+
+func (svs newSortValidatorQueue) Swap(i, j int) {
+	svs[i], svs[j] = svs[j], svs[i]
+}
+
 // Elected verifier by vrf random election
 // validatorList：Waiting for the elected node
 // nonce：Vrf proof of the current block
@@ -2976,14 +2995,24 @@ func probabilityElection(validatorList staking.ValidatorQueue, shiftLen int, cur
 	}
 
 	var p float64
-	if gov.Gte0150Version(currentVersion) {
+	if gov.Gte0160Version(currentVersion) {
+		p = xcom.CalcPNew(totalSqrtWeightsFloat)
+	} else if gov.Gte0150Version(currentVersion) {
 		p = xcom.CalcP(totalWeightsFloat, totalSqrtWeightsFloat)
 	} else {
 		p = float64(xcom.ShiftValidatorNum()) * float64(xcom.MaxConsensusVals()) / totalSqrtWeightsFloat
 	}
 
+	shuffleSeed := new(big.Int).SetBytes(preNonces[0]).Int64()
 	log.Debug("Call probabilityElection Basic parameter on Election", "blockNumber", blockNumber, "currentVersion", currentVersion, "validatorListSize", len(validatorList),
-		"p", p, "totalWeights", totalWeightsFloat, "totalSqrtWeightsFloat", totalSqrtWeightsFloat, "shiftValidatorNum", shiftLen)
+		"p", p, "totalWeights", totalWeightsFloat, "totalSqrtWeightsFloat", totalSqrtWeightsFloat, "shiftValidatorNum", shiftLen, "shuffleSeed", shuffleSeed)
+
+	if gov.Gte0160Version(currentVersion) {
+		rand.Seed(shuffleSeed)
+		rand.Shuffle(len(svList), func(i, j int) {
+			svList[i], svList[j] = svList[j], svList[i]
+		})
+	}
 
 	for index, sv := range svList {
 		resultStr := new(big.Int).Xor(new(big.Int).SetBytes(currentNonce), new(big.Int).SetBytes(preNonces[index])).Text(10)
@@ -3010,7 +3039,11 @@ func probabilityElection(validatorList staking.ValidatorQueue, shiftLen int, cur
 
 	log.Debug("Call probabilityElection, sort probability queue", "blockNumber", blockNumber, "currentVersion", currentVersion, "list", svList)
 
-	sort.Sort(svList)
+	if gov.Gte0160Version(currentVersion) {
+		sort.Sort(newSortValidatorQueue(svList))
+	} else {
+		sort.Sort(svList)
+	}
 	for index, sv := range svList {
 		if index == shiftLen {
 			break
