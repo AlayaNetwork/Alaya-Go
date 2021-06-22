@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with Alaya-Go. If not, see <http://www.gnu.org/licenses/>.
 
-
 package main
 
 import (
@@ -90,7 +89,7 @@ type Ppos_1004 struct {
 	Amount *big.Int
 }
 
-// withdrewDelegate
+// withdrewDelegation
 type Ppos_1005 struct {
 	StakingBlockNum uint64
 	NodeId          discover.NodeID
