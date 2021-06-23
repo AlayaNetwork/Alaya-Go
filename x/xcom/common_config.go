@@ -1,4 +1,4 @@
-// Copyright 2018-2020 The Alaya Network Authors
+// Copyright 2021 The Alaya Network Authors
 // This file is part of the Alaya-Go library.
 //
 // The Alaya-Go library is free software: you can redistribute it and/or modify
@@ -13,6 +13,7 @@
 //
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
+
 
 package xcom
 
@@ -62,6 +63,8 @@ const (
 	IncreaseIssuanceRatioLowerLimit   = 0
 
 	// When electing consensus nodes, it is used to calculate the P value of the binomial distribution
+	ElectionBase = 25	// New expectations
+
 	ElectionBaseL1 = 3000
 	ElectionBaseL2 = 6000
 
@@ -868,4 +871,8 @@ func CalcP(totalWeight float64, sqrtWeight float64) float64 {
 	} else {
 		return float64(ElectionBaseL2) / sqrtWeight
 	}
+}
+
+func CalcPNew(sqrtWeight float64) float64 {
+	return float64(ElectionBase) / sqrtWeight
 }

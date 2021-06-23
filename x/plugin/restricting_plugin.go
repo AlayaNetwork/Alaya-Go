@@ -1,4 +1,4 @@
-// Copyright 2018-2020 The Alaya Network Authors
+// Copyright 2021 The Alaya Network Authors
 // This file is part of the Alaya-Go library.
 //
 // The Alaya-Go library is free software: you can redistribute it and/or modify
@@ -13,6 +13,7 @@
 //
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
+
 
 package plugin
 
@@ -638,6 +639,7 @@ func (rp *RestrictingPlugin) releaseRestricting(epoch uint64, state xcom.StateDB
 		rp.log.Debug("Call releaseRestricting: begin to release record", "index", index, "account", account,
 			"restrictInfo", restrictInfo, "releaseAmount", releaseAmount)
 
+		//if NeedRelease>0,CachePlanAmount = AdvanceAmount
 		if restrictInfo.NeedRelease.Cmp(common.Big0) > 0 {
 			if gov.Gte0140VersionState(state) {
 				restrictInfo.NeedRelease.Add(restrictInfo.NeedRelease, releaseAmount)

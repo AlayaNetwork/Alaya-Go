@@ -272,7 +272,6 @@ type TxPool struct {
 	gasPrice *big.Int
 	txFeed   event.Feed
 	scope    event.SubscriptionScope
-	// modified by PlatON
 
 	signer types.Signer
 	mu     sync.RWMutex
@@ -452,7 +451,6 @@ func (pool *TxPool) loop() {
 	}
 }
 
-// added by PlatON
 func (pool *TxPool) Reset(newBlock *types.Block) {
 	startTime := time.Now()
 	if pool == nil {
@@ -1032,6 +1030,7 @@ func (pool *TxPool) addTxs(txs []*types.Transaction, local, sync bool) []error {
 			nilSlot++
 		}
 		errs[nilSlot] = err
+		nilSlot++
 	}
 
 	if request {
