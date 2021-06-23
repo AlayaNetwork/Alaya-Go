@@ -47,7 +47,7 @@ import (
 )
 
 const (
-	clientIdentifier = "alaya" // Client identifier to advertise over the network
+	clientIdentifier = "platon" // Client identifier to advertise over the network
 )
 
 var (

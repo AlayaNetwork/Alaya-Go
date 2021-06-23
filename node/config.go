@@ -241,7 +241,7 @@ func DefaultWSEndpoint() string {
 // NodeName returns the devp2p node identifier.
 func (c *Config) NodeName() string {
 	name := c.name()
-	if name == "alaya" || name == "alaya-testnet" || name == "alaya-betanet" || name == "alaya-innertestnet" || name == "alaya-innerdevnet" {
+	if name == "platon" || name == "alaya" || name == "alaya-testnet" || name == "alaya-betanet" || name == "alaya-innertestnet" || name == "alaya-innerdevnet" {
 		name = "AlayaNetwork"
 	}
 	if c.UserIdent != "" {
