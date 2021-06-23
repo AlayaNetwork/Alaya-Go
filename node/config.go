@@ -291,7 +291,7 @@ func (c *Config) ResolvePath(path string) string {
 	// by alaya 1.4 are used if they exist.
 	if warn, isOld := isOldPlatONResource[path]; isOld {
 		oldpath := ""
-		if c.name() == "alaya" {
+		if c.name() == "platon" {
 			oldpath = filepath.Join(c.DataDir, path)
 		}
 		if oldpath != "" && common.FileExist(oldpath) {
