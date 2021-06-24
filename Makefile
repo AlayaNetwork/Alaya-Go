@@ -19,10 +19,6 @@ alaya:
 	@echo "Done building."
 	@echo "Run \"$(GOBIN)/alaya\" to launch alaya."
 
-fix-cbft-test:
-	build/cbft_test.sh
-	@echo "Done fix."
-
 alaya-with-mpc:
 	build/build_deps.sh
 	$(GORUN) build/ci.go install -mpc on ./cmd/alaya

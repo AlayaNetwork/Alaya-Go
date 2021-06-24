@@ -64,17 +64,14 @@ type flagGroup struct {
 // AppHelpFlagGroups is the application flags, grouped by functionality.
 var AppHelpFlagGroups = []flagGroup{
 	{
-		Name: "PLATON",
+		Name: "ALAYA",
 		Flags: []cli.Flag{
 			configFileFlag,
 			utils.DataDirFlag,
 			utils.KeyStoreDirFlag,
 			utils.NoUSBFlag,
 			utils.NetworkIdFlag,
-			utils.MainFlag,
-			utils.TestnetFlag,
 			utils.AlayaNetFlag,
-			utils.AlayaTestNetFlag,
 			utils.SyncModeFlag,
 			//utils.EthStatsURLFlag,
 			utils.StatsFlag,

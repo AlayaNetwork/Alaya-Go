@@ -1,4 +1,4 @@
-// Copyright 2018-2020 The PlatON Network Authors
+// Copyright 2021 The Alaya Network Authors
 // This file is part of the Alaya-Go library.
 //
 // The Alaya-Go library is free software: you can redistribute it and/or modify
@@ -80,7 +80,7 @@ func (a *FixIssue1625Plugin) fix(blockHash common.Hash, head *types.Header, stat
 		}
 
 		//实际用于（质押+委托）的挪用金额 = 锁仓当前用于（质押+委托）的金额 - 锁仓实际可用金额
-		wrongStakingAmount := new(big.Int).Sub(restrictInfo.StakingAmount, actualRestrictingAmount)
+		wrongStakingAmount := new(big.Int).Sub(restrictInfo.AdvanceAmount, actualRestrictingAmount)
 		if wrongStakingAmount.Cmp(common.Big0) > 0 {
 			//用于（质押+委托）的锁仓金额，必须 <= 锁仓实际可用金额，现在是>了
 			//说明有挪用金额用于质押或者委托
@@ -107,7 +107,7 @@ func (a *FixIssue1625Plugin) fix(blockHash common.Hash, head *types.Header, stat
 		} else {
 			//当用户没有使用因为漏洞产生的钱，直接减去漏洞的钱就是正确的余额
 			restrictInfo.CachePlanAmount.Sub(restrictInfo.CachePlanAmount, issue1625Account.amount)
-			if restrictInfo.StakingAmount.Cmp(common.Big0) == 0 &&
+			if restrictInfo.AdvanceAmount.Cmp(common.Big0) == 0 &&
 				len(restrictInfo.ReleaseList) == 0 && restrictInfo.CachePlanAmount.Cmp(common.Big0) == 0 {
 				state.SetState(vm.RestrictingContractAddr, restrictingKey, []byte{})
 				log.Debug("fix issue 1625 finished,set info empty", "account", issue1625Account.addr, "fix amount", issue1625Account.amount)

@@ -1,4 +1,4 @@
-// Copyright 2018-2020 The PlatON Network Authors
+// Copyright 2021 The Alaya Network Authors
 // This file is part of the Alaya-Go library.
 //
 // The Alaya-Go library is free software: you can redistribute it and/or modify
@@ -13,6 +13,7 @@
 //
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
+
 
 package snapshotdb
 
@@ -47,7 +48,7 @@ const (
 	JournalRemain             = 200
 	UnBlockNeedClean          = 200
 	MaxBlockCompaction        = 10
-	MaxBlockCompactionSync    = 100
+	MaxBlockNotCompactionSync = 10
 	MaxBlockTriggerCompaction = 200
 )
 
@@ -465,7 +466,8 @@ func (s *snapshotDB) findToWrite() int {
 		commitNum int
 	)
 	if len(s.committed) > MaxBlockTriggerCompaction {
-		commitNum = MaxBlockCompactionSync
+		// So that the number of remaining committed blocks is less than MaxBlockNotCompactionSync
+		commitNum = len(s.committed) - MaxBlockNotCompactionSync
 		return commitNum
 	} else {
 		for i := 0; i < len(s.committed); i++ {

@@ -43,7 +43,7 @@ func TestReadWriteChainConfig(t *testing.T) {
 	config := ReadChainConfig(chainDb, common.ZeroHash)
 	assert.Nil(t, config, "the chainConfig is not nil")
 
-	WriteChainConfig(chainDb, common.ZeroHash, params.MainnetChainConfig)
+	WriteChainConfig(chainDb, common.ZeroHash, params.AlayaChainConfig)
 	config = ReadChainConfig(chainDb, common.ZeroHash)
 	assert.NotNil(t, config, "the chainConfig is nil")
 

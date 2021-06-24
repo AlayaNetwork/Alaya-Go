@@ -1,4 +1,4 @@
-// Copyright 2018-2020 The PlatON Network Authors
+// Copyright 2021 The Alaya Network Authors
 // This file is part of the Alaya-Go library.
 //
 // The Alaya-Go library is free software: you can redistribute it and/or modify
@@ -13,6 +13,7 @@
 //
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
+
 
 package plugin
 
@@ -146,6 +147,18 @@ func (govPlugin *GovPlugin) BeginBlock(blockHash common.Hash, header *types.Head
 					return err
 				}
 				log.Info("Successfully upgraded the new version 0.15.0", "blockNumber", blockNumber, "blockHash", blockHash, "preActiveProposalID", preActiveVersionProposalID)
+			}
+			if versionProposal.NewVersion == params.FORKVERSION_0_16_0 {
+				fixSharesPlugin := NewFixIssue1654Plugin(snapshotdb.Instance())
+				if err := fixSharesPlugin.fix(blockHash, govPlugin.chainID, state); err != nil {
+					return err
+				}
+
+				fixPlugin := NewFixIssue1583Plugin()
+				if err := fixPlugin.fix(blockHash, govPlugin.chainID, state); err != nil {
+					return err
+				}
+				log.Info("Successfully upgraded the new version 0.16.0", "blockNumber", blockNumber, "blockHash", blockHash, "preActiveProposalID", preActiveVersionProposalID)
 			}
 
 			//stats

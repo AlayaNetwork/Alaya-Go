@@ -47,7 +47,7 @@ import (
 )
 
 const (
-	clientIdentifier = "alaya" // Client identifier to advertise over the network
+	clientIdentifier = "platon" // Client identifier to advertise over the network
 )
 
 var (
@@ -102,10 +102,7 @@ var (
 		utils.NodeKeyFileFlag,
 		utils.NodeKeyHexFlag,
 		utils.DeveloperPeriodFlag,
-		utils.MainFlag,
-		utils.TestnetFlag,
 		utils.AlayaNetFlag,
-		utils.AlayaTestNetFlag,
 		utils.NetworkIdFlag,
 		utils.RPCCORSDomainFlag,
 		utils.RPCVirtualHostsFlag,

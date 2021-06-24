@@ -1,4 +1,4 @@
-// Copyright 2018-2020 The PlatON Network Authors
+// Copyright 2021 The Alaya Network Authors
 // This file is part of the Alaya-Go library.
 //
 // The Alaya-Go library is free software: you can redistribute it and/or modify
@@ -26,7 +26,7 @@ import (
 //每个锁仓账户，都只有一个这样的对象，记录当前最新的状态。
 type RestrictingInfo struct {
 	NeedRelease     *big.Int //欠释放金额，到了结算周期需要释放却因为质押而无法释放的金额
-	StakingAmount   *big.Int //锁仓金额用于（质押+委托）的金额
+	AdvanceAmount   *big.Int //锁仓金额用于（质押+委托）的金额
 	CachePlanAmount *big.Int //锁仓计划列表中，剩余的锁仓金额
 	ReleaseList     []uint64 // ReleaseList representation which epoch will release restricting
 }

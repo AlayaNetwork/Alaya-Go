@@ -147,7 +147,7 @@ func (t *VMTest) newEVM(statedb *state.StateDB, vmconfig vm.Config) *vm.EVM {
 		GasPrice:    t.json.Exec.GasPrice,
 	}
 	vmconfig.NoRecursion = true
-	return vm.NewEVM(context, nil, statedb, params.MainnetChainConfig, vmconfig)
+	return vm.NewEVM(context, nil, statedb, params.AlayaChainConfig, vmconfig)
 }
 
 func vmTestBlockHash(n uint64) common.Hash {

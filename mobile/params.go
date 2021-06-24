@@ -26,12 +26,6 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/params"
 )
 
-// MainnetGenesis returns the JSON spec to use for the main Ethereum network. It
-// is actually empty since that defaults to the hard coded binary genesis block.
-func MainnetGenesis() string {
-	return ""
-}
-
 // TestnetGenesis returns the JSON spec to use for the Alpha test network.
 func TestnetGenesis() string {
 	enc, err := json.Marshal(core.DefaultTestnetGenesisBlock())

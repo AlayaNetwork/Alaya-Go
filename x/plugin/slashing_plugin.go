@@ -1,4 +1,4 @@
-// Copyright 2018-2020 The PlatON Network Authors
+// Copyright 2021 The Alaya Network Authors
 // This file is part of the Alaya-Go library.
 //
 // The Alaya-Go library is free software: you can redistribute it and/or modify
@@ -13,6 +13,7 @@
 //
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
+
 
 package plugin
 
@@ -720,10 +721,9 @@ func parseNodeId(header *types.Header) (discover.NodeID, error) {
 	if xutil.IsWorker(header.Extra) {
 		return discover.PubkeyID(&SlashInstance().privateKey.PublicKey), nil
 	} else {
-		sign := header.Extra[32:97]
-		pk, err := crypto.SigToPub(header.SealHash().Bytes(), sign)
-		if nil != err {
-			return discover.NodeID{}, err
+		pk := header.CachePublicKey()
+		if pk == nil {
+			return discover.NodeID{}, errors.New("failed to get the public key of the block producer")
 		}
 		return discover.PubkeyID(pk), nil
 	}

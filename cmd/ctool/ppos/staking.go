@@ -1,3 +1,19 @@
+// Copyright 2021 The Alaya Network Authors
+// This file is part of Alaya-Go.
+//
+// Alaya-Go is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Alaya-Go is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Alaya-Go. If not, see <http://www.gnu.org/licenses/>.
+
 package ppos
 
 import (
@@ -49,7 +65,7 @@ var (
 	}
 	getRelatedListByDelAddrCmd = cli.Command{
 		Name:   "getRelatedListByDelAddr",
-		Usage:  "1103,Query the NodeID and pledge Id of the node entrusted by the current account address,parameter:add",
+		Usage:  "1103,Query the NodeID and staking Id of the node entrusted by the current account address,parameter:add",
 		Before: netCheck,
 		Action: getRelatedListByDelAddr,
 		Flags:  []cli.Flag{rpcUrlFlag, addressHRPFlag, addFlag, jsonFlag},
@@ -63,7 +79,7 @@ var (
 	}
 	getCandidateInfoCmd = cli.Command{
 		Name:   "getCandidateInfo",
-		Usage:  "1105,Query the pledge information of the current node,parameter:nodeid",
+		Usage:  "1105,Query the staking information of the current node,parameter:nodeid",
 		Before: netCheck,
 		Action: getCandidateInfo,
 		Flags:  []cli.Flag{rpcUrlFlag, addressHRPFlag, nodeIdFlag, jsonFlag},
@@ -77,7 +93,7 @@ var (
 	}
 	getStakingRewardCmd = cli.Command{
 		Name:   "getStakingReward",
-		Usage:  "1201,query the pledge reward of the current settlement epoch",
+		Usage:  "1201,query the staking reward of the current settlement epoch",
 		Before: netCheck,
 		Action: getStakingReward,
 		Flags:  []cli.Flag{rpcUrlFlag, addressHRPFlag, jsonFlag},

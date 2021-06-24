@@ -6,11 +6,16 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"github.com/AlayaNetwork/Alaya-Go/common/hexutil"
+	"encoding/json"
 	"hash/fnv"
 	"io/ioutil"
 	"math/big"
 	"strings"
 	"testing"
+
+	"github.com/AlayaNetwork/Alaya-Go/common/hexutil"
+	"github.com/AlayaNetwork/Alaya-Go/common/vm"
+	"github.com/AlayaNetwork/Alaya-Go/x/gov"
 
 	"github.com/AlayaNetwork/Alaya-Go/params"
 
@@ -55,9 +60,20 @@ var testCase = []*Case{
 				GetHash: func(u uint64) common.Hash {
 					return common.Hash{1, 2, 3}
 				}},
+				StateDB: &mock.MockStateDB{
+					Balance: make(map[common.Address]*big.Int),
+					State:   make(map[common.Address]map[string][]byte),
+					Journal: mock.NewJournal(),
+				},
 			},
 		},
 		funcName: "platon_block_hash_test",
+		init: func(self *Case, t *testing.T) {
+			curAv := gov.ActiveVersionValue{ActiveVersion: params.FORKVERSION_0_16_0, ActiveBlock: 1}
+			avList := []gov.ActiveVersionValue{curAv}
+			avListBytes, _ := json.Marshal(avList)
+			self.ctx.evm.StateDB.SetState(vm.GovContractAddr, gov.KeyActiveVersions(), avListBytes)
+		},
 		check: func(self *Case, err error) bool {
 			hash := common.Hash{1, 2, 3}
 			return bytes.Equal(hash[:], self.ctx.Output)
@@ -167,8 +183,26 @@ var testCase = []*Case{
 	},
 	{
 		ctx: &VMContext{
-			contract: &Contract{caller: AccountRef{1, 2, 3}}},
+			contract: &Contract{caller: &AccountRef{1, 2, 3}},
+			evm: &EVM{Context: Context{
+				BlockNumber: big.NewInt(99),
+				GetHash: func(u uint64) common.Hash {
+					return common.Hash{1, 2, 3}
+				}},
+				StateDB: &mock.MockStateDB{
+					Balance: make(map[common.Address]*big.Int),
+					State:   make(map[common.Address]map[string][]byte),
+					Journal: mock.NewJournal(),
+				},
+			},
+		},
 		funcName: "platon_caller_test",
+		init: func(self *Case, t *testing.T) {
+			curAv := gov.ActiveVersionValue{ActiveVersion: params.FORKVERSION_0_15_0, ActiveBlock: 1}
+			avList := []gov.ActiveVersionValue{curAv}
+			avListBytes, _ := json.Marshal(avList)
+			self.ctx.evm.StateDB.SetState(vm.GovContractAddr, gov.KeyActiveVersions(), avListBytes)
+		},
 		check: func(self *Case, err error) bool {
 			addr := addr1
 			return bytes.Equal(addr[:], self.ctx.Output)
@@ -1588,6 +1622,11 @@ func TestGetBlockHash(t *testing.T) {
 				},
 				BlockNumber: big.NewInt(blockNumber),
 			},
+			StateDB: &mock.MockStateDB{
+				Balance: make(map[common.Address]*big.Int),
+				State:   make(map[common.Address]map[string][]byte),
+				Journal: mock.NewJournal(),
+			},
 		}))
 	}
 
@@ -1596,15 +1635,44 @@ func TestGetBlockHash(t *testing.T) {
 		getNumber   uint64
 		expect      common.Hash
 	}
-	cases := []TestCase{
+
+	// Before upgrading
+	casesBeforUpgrade := []TestCase{
+		{1, 123, testBlockHash},
+		{123, 123, testBlockHash},
+		{123, 122, testBlockHash},
+		{1024, 122, testBlockHash},
+		{1024, 1024 - 256, testBlockHash},
+	}
+	for _, c := range casesBeforUpgrade {
+		proc := newProc(c.blockNumber)
+		ctx := proc.HostCtx().(*VMContext)
+		curAv := gov.ActiveVersionValue{ActiveVersion: params.FORKVERSION_0_15_0, ActiveBlock: 1}
+		avList := []gov.ActiveVersionValue{curAv}
+		avListBytes, _ := json.Marshal(avList)
+		ctx.evm.StateDB.SetState(vm.GovContractAddr, gov.KeyActiveVersions(), avListBytes)
+		BlockHash(proc, c.getNumber, 1024)
+		res := common.Hash{}
+		proc.ReadAt(res[:], 1024)
+		assert.Equal(t, c.expect, res)
+		assert.Equal(t, initExternalGas-GasExtStep, proc.HostCtx().(*VMContext).contract.Gas)
+	}
+
+	// After the upgrade
+	casesAfterUpgrade := []TestCase{
 		{1, 123, common.Hash{}},
 		{123, 123, common.Hash{}},
 		{123, 122, testBlockHash},
 		{1024, 122, common.Hash{}},
 		{1024, 1024 - 256, testBlockHash},
 	}
-	for _, c := range cases {
+	for _, c := range casesAfterUpgrade {
 		proc := newProc(c.blockNumber)
+		ctx := proc.HostCtx().(*VMContext)
+		curAv := gov.ActiveVersionValue{ActiveVersion: params.FORKVERSION_0_16_0, ActiveBlock: 1}
+		avList := []gov.ActiveVersionValue{curAv}
+		avListBytes, _ := json.Marshal(avList)
+		ctx.evm.StateDB.SetState(vm.GovContractAddr, gov.KeyActiveVersions(), avListBytes)
 		BlockHash(proc, c.getNumber, 1024)
 		res := common.Hash{}
 		proc.ReadAt(res[:], 1024)

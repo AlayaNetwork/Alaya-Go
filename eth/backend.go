@@ -158,7 +158,7 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 			// Just commit the new block if there is no stored genesis block.
 			stored := rawdb.ReadCanonicalHash(chainDb, 0)
 
-			log.Info("last fast sync is fail,init  db", "status", status, "prichain", config.Genesis == nil)
+			log.Info("last fast sync is fail,init  db", "status", common.BytesToUint32(status)  , "prichain", config.Genesis == nil)
 			chainDb.Close()
 			if err := snapshotBaseDB.Close(); err != nil {
 				return nil, err
@@ -185,8 +185,8 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 				return nil, err
 			}
 
-			//only private net  need InitGenesisAndSetEconomicConfig
-			if stored != params.MainnetGenesisHash && config.Genesis == nil {
+			// only private net  need InitGenesisAndSetEconomicConfig
+			if stored != params.AlayanetGenesisHash && config.Genesis == nil {
 				// private net
 				config.Genesis = new(core.Genesis)
 				if err := config.Genesis.InitGenesisAndSetEconomicConfig(ctx.GenesisPath()); err != nil {
@@ -317,7 +317,7 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 		return nil, fmt.Errorf("The gasFloor must be less than gasCeil, got: %d, expect range (0, %d]", config.MinerGasFloor, gasCeil)
 	}
 
-	eth.miner = miner.New(eth, eth.chainConfig, minningConfig, &vmConfig, eth.EventMux(), eth.engine, config.MinerRecommit,
+	eth.miner = miner.New(eth, eth.chainConfig, minningConfig, eth.EventMux(), eth.engine, config.MinerRecommit,
 		config.MinerGasFloor, eth.isLocalBlock, blockChainCache, config.VmTimeoutDuration)
 
 	//extra data for each block will be set by worker.go
