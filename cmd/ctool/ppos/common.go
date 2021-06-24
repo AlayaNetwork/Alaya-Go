@@ -1,3 +1,19 @@
+// Copyright 2021 The Alaya Network Authors
+// This file is part of Alaya-Go.
+//
+// Alaya-Go is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Alaya-Go is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Alaya-Go. If not, see <http://www.gnu.org/licenses/>.
+
 package ppos
 
 import (
@@ -9,12 +25,12 @@ import (
 
 	"gopkg.in/urfave/cli.v1"
 
-	platon "github.com/PlatONnetwork/PlatON-Go"
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	"github.com/PlatONnetwork/PlatON-Go/common/hexutil"
-	"github.com/PlatONnetwork/PlatON-Go/common/vm"
-	"github.com/PlatONnetwork/PlatON-Go/ethclient"
-	"github.com/PlatONnetwork/PlatON-Go/rlp"
+	platon "github.com/AlayaNetwork/Alaya-Go"
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/common/hexutil"
+	"github.com/AlayaNetwork/Alaya-Go/common/vm"
+	"github.com/AlayaNetwork/Alaya-Go/ethclient"
+	"github.com/AlayaNetwork/Alaya-Go/rlp"
 )
 
 func CallPPosContract(client *ethclient.Client, funcType uint16, params ...interface{}) ([]byte, error) {
@@ -81,12 +97,12 @@ func funcTypeToContractAddress(funcType uint16) common.Address {
 	return toadd
 }
 
-func netCheck(context *cli.Context) {
-	if !context.Bool(testNetFlag.Name) {
-		common.SetAddressPrefix(common.MainNetAddressPrefix)
-	} else {
-		common.SetAddressPrefix(common.TestNetAddressPrefix)
+func netCheck(context *cli.Context) error {
+	hrp := context.String(addressHRPFlag.Name)
+	if err := common.SetAddressHRP(hrp); err != nil {
+		return err
 	}
+	return nil
 }
 
 func query(c *cli.Context, funcType uint16, params ...interface{}) error {

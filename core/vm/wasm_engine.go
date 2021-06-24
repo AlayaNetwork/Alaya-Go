@@ -3,14 +3,14 @@ package vm
 import (
 	"context"
 	"fmt"
-	"github.com/PlatONnetwork/PlatON-Go/params"
+	"github.com/AlayaNetwork/Alaya-Go/params"
 
 	"hash/fnv"
 
-	"github.com/PlatONnetwork/PlatON-Go/log"
-	"github.com/PlatONnetwork/PlatON-Go/rlp"
+	"github.com/AlayaNetwork/Alaya-Go/log"
+	"github.com/AlayaNetwork/Alaya-Go/rlp"
 
-	"github.com/PlatONnetwork/PlatON-Go/core/lru"
+	"github.com/AlayaNetwork/Alaya-Go/core/lru"
 
 	"github.com/PlatONnetwork/wagon/exec"
 	"github.com/pkg/errors"

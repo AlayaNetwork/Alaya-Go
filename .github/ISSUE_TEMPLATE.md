@@ -4,7 +4,7 @@ please note that this is an issue tracker reserved for bug reports and feature r
 
 #### System information
 
-PlatON version: `platon version`
+Alaya version: `alaya version`
 OS & Version: Windows/Linux/OSX
 Commit hash : (if `develop`)
 

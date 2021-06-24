@@ -1,3 +1,19 @@
+// Copyright 2021 The Alaya Network Authors
+// This file is part of Alaya-Go.
+//
+// Alaya-Go is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Alaya-Go is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Alaya-Go. If not, see <http://www.gnu.org/licenses/>.
+
 package ppos
 
 import (
@@ -5,7 +21,7 @@ import (
 
 	"gopkg.in/urfave/cli.v1"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/common"
 )
 
 var (
@@ -25,44 +41,51 @@ var (
 	getProposalCmd = cli.Command{
 		Name:   "getProposal",
 		Usage:  "2100,get proposal,parameter:proposalID",
+		Before: netCheck,
 		Action: getProposal,
-		Flags:  []cli.Flag{rpcUrlFlag, testNetFlag, proposalIDFlag, jsonFlag},
+		Flags:  []cli.Flag{rpcUrlFlag, addressHRPFlag, proposalIDFlag, jsonFlag},
 	}
 	getTallyResultCmd = cli.Command{
 		Name:   "getTallyResult",
 		Usage:  "2101,get tally result,parameter:proposalID",
+		Before: netCheck,
 		Action: getTallyResult,
-		Flags:  []cli.Flag{rpcUrlFlag, testNetFlag, proposalIDFlag, jsonFlag},
+		Flags:  []cli.Flag{rpcUrlFlag, addressHRPFlag, proposalIDFlag, jsonFlag},
 	}
 	listProposalCmd = cli.Command{
 		Name:   "listProposal",
 		Usage:  "2102,list proposal",
+		Before: netCheck,
 		Action: listProposal,
-		Flags:  []cli.Flag{rpcUrlFlag, testNetFlag, jsonFlag},
+		Flags:  []cli.Flag{rpcUrlFlag, addressHRPFlag, jsonFlag},
 	}
 	getActiveVersionCmd = cli.Command{
 		Name:   "getActiveVersion",
 		Usage:  "2103,query the effective version of the  chain",
+		Before: netCheck,
 		Action: getActiveVersion,
-		Flags:  []cli.Flag{rpcUrlFlag, testNetFlag, jsonFlag},
+		Flags:  []cli.Flag{rpcUrlFlag, addressHRPFlag, jsonFlag},
 	}
 	getGovernParamValueCmd = cli.Command{
 		Name:   "getGovernParamValue",
 		Usage:  "2104,query the governance parameter value of the current block height,parameter:module,name",
+		Before: netCheck,
 		Action: getGovernParamValue,
-		Flags:  []cli.Flag{rpcUrlFlag, testNetFlag, moduleFlag, nameFlag, jsonFlag},
+		Flags:  []cli.Flag{rpcUrlFlag, addressHRPFlag, moduleFlag, nameFlag, jsonFlag},
 	}
 	getAccuVerifiersCountCmd = cli.Command{
 		Name:   "getAccuVerifiersCount",
 		Usage:  "2105,query the cumulative number of votes available for a proposal,parameter:proposalID,blockHash",
+		Before: netCheck,
 		Action: getAccuVerifiersCount,
-		Flags:  []cli.Flag{rpcUrlFlag, testNetFlag, proposalIDFlag, blockHashFlag, jsonFlag},
+		Flags:  []cli.Flag{rpcUrlFlag, addressHRPFlag, proposalIDFlag, blockHashFlag, jsonFlag},
 	}
 	listGovernParamCmd = cli.Command{
 		Name:   "listGovernParam",
 		Usage:  "2106,query the list of governance parameters,parameter:module",
+		Before: netCheck,
 		Action: listGovernParam,
-		Flags:  []cli.Flag{rpcUrlFlag, testNetFlag, moduleFlag, jsonFlag},
+		Flags:  []cli.Flag{rpcUrlFlag, addressHRPFlag, moduleFlag, jsonFlag},
 	}
 	proposalIDFlag = cli.StringFlag{
 		Name:  "proposalID",
@@ -83,7 +106,6 @@ var (
 )
 
 func getProposal(c *cli.Context) error {
-	netCheck(c)
 	proposalIDstring := c.String(proposalIDFlag.Name)
 	if proposalIDstring == "" {
 		return errors.New("proposalID not set")
@@ -94,7 +116,6 @@ func getProposal(c *cli.Context) error {
 }
 
 func getTallyResult(c *cli.Context) error {
-	netCheck(c)
 	proposalIDstring := c.String(proposalIDFlag.Name)
 	if proposalIDstring == "" {
 		return errors.New("param proposalID not set")
@@ -105,17 +126,14 @@ func getTallyResult(c *cli.Context) error {
 }
 
 func listProposal(c *cli.Context) error {
-	netCheck(c)
 	return query(c, 2102)
 }
 
 func getActiveVersion(c *cli.Context) error {
-	netCheck(c)
 	return query(c, 2103)
 }
 
 func getGovernParamValue(c *cli.Context) error {
-	netCheck(c)
 	module := c.String(moduleFlag.Name)
 	if module == "" {
 		return errors.New("param module not set")
@@ -128,7 +146,6 @@ func getGovernParamValue(c *cli.Context) error {
 }
 
 func getAccuVerifiersCount(c *cli.Context) error {
-	netCheck(c)
 	proposalIDstring := c.String(proposalIDFlag.Name)
 	if proposalIDstring == "" {
 		return errors.New("param proposalID not set")
@@ -141,7 +158,6 @@ func getAccuVerifiersCount(c *cli.Context) error {
 }
 
 func listGovernParam(c *cli.Context) error {
-	netCheck(c)
 	module := c.String(moduleFlag.Name)
 	return query(c, 2106, module)
 }

@@ -17,9 +17,9 @@
 package rawdb
 
 import (
-	"github.com/PlatONnetwork/PlatON-Go/ethdb"
-	"github.com/PlatONnetwork/PlatON-Go/ethdb/leveldb"
-	"github.com/PlatONnetwork/PlatON-Go/ethdb/memorydb"
+	"github.com/AlayaNetwork/Alaya-Go/ethdb"
+	"github.com/AlayaNetwork/Alaya-Go/ethdb/leveldb"
+	"github.com/AlayaNetwork/Alaya-Go/ethdb/memorydb"
 )
 
 // NewDatabase creates a high level database on top of a given key-value data

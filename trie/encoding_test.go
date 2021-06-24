@@ -18,7 +18,7 @@ package trie
 
 import (
 	"bytes"
-	"github.com/PlatONnetwork/PlatON-Go/common/hexutil"
+	"github.com/AlayaNetwork/Alaya-Go/common/hexutil"
 	"testing"
 )
 

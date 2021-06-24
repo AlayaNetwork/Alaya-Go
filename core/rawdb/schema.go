@@ -20,8 +20,8 @@ package rawdb
 import (
 	"encoding/binary"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	"github.com/PlatONnetwork/PlatON-Go/metrics"
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/metrics"
 )
 
 // The fields below define the low level database schema prefixing.
@@ -31,6 +31,9 @@ var (
 
 	// headHeaderKey tracks the latest know header's hash.
 	headHeaderKey = []byte("LastHeader")
+
+	// chain address hrp key
+	AddressHRPKey = []byte("address-hrp-key-")
 
 	// headBlockKey tracks the latest know full block's hash.
 	headBlockKey = []byte("LastBlock")

@@ -22,9 +22,9 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/PlatONnetwork/PlatON-Go/p2p"
-	"github.com/PlatONnetwork/PlatON-Go/p2p/nat"
-	"github.com/PlatONnetwork/PlatON-Go/rpc"
+	"github.com/AlayaNetwork/Alaya-Go/p2p"
+	"github.com/AlayaNetwork/Alaya-Go/p2p/nat"
+	"github.com/AlayaNetwork/Alaya-Go/rpc"
 )
 
 const (
@@ -45,7 +45,7 @@ var DefaultConfig = Config{
 	WSModules:        []string{"net", "web3"},
 	P2P: p2p.Config{
 		ListenAddr:        ":16789",
-		MaxPeers:          50,
+		MaxPeers:          80,
 		NAT:               nat.Any(),
 		MaxConsensusPeers: 75,
 	},
@@ -58,11 +58,11 @@ func DefaultDataDir() string {
 	home := homeDir()
 	if home != "" {
 		if runtime.GOOS == "darwin" {
-			return filepath.Join(home, "Library", "PlatON")
+			return filepath.Join(home, "Library", "Alaya")
 		} else if runtime.GOOS == "windows" {
-			return filepath.Join(home, "AppData", "Roaming", "PlatON")
+			return filepath.Join(home, "AppData", "Roaming", "Alaya")
 		} else {
-			return filepath.Join(home, ".platon")
+			return filepath.Join(home, ".alaya")
 		}
 	}
 	// As we cannot guess a stable location, return empty and handle later

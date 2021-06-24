@@ -21,7 +21,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/PlatONnetwork/PlatON-Go/internal/cmdtest"
+	"github.com/AlayaNetwork/Alaya-Go/internal/cmdtest"
 	"github.com/docker/docker/pkg/reexec"
 )
 

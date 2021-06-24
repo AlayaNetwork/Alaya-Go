@@ -22,12 +22,12 @@ import (
 	"os"
 	"strings"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	"github.com/PlatONnetwork/PlatON-Go/internal/ethapi"
-	"github.com/PlatONnetwork/PlatON-Go/log"
-	"github.com/PlatONnetwork/PlatON-Go/signer/core"
-	"github.com/PlatONnetwork/PlatON-Go/signer/rules/deps"
-	"github.com/PlatONnetwork/PlatON-Go/signer/storage"
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/internal/ethapi"
+	"github.com/AlayaNetwork/Alaya-Go/log"
+	"github.com/AlayaNetwork/Alaya-Go/signer/core"
+	"github.com/AlayaNetwork/Alaya-Go/signer/rules/deps"
+	"github.com/AlayaNetwork/Alaya-Go/signer/storage"
 	"github.com/robertkrimen/otto"
 )
 

@@ -3,14 +3,14 @@ package bls
 import (
 	"testing"
 
-	"github.com/PlatONnetwork/PlatON-Go/rlp"
+	"github.com/AlayaNetwork/Alaya-Go/rlp"
 )
 import (
 	"bytes"
 	"fmt"
 	"strconv"
 
-	"github.com/PlatONnetwork/PlatON-Go/crypto"
+	"github.com/AlayaNetwork/Alaya-Go/crypto"
 )
 
 var unitN = 0

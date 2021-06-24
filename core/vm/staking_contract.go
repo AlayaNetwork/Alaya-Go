@@ -1,18 +1,18 @@
-// Copyright 2018-2020 The PlatON Network Authors
-// This file is part of the PlatON-Go library.
+// Copyright 2021 The Alaya Network Authors
+// This file is part of the Alaya-Go library.
 //
-// The PlatON-Go library is free software: you can redistribute it and/or modify
+// The Alaya-Go library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The PlatON-Go library is distributed in the hope that it will be useful,
+// The Alaya-Go library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the PlatON-Go library. If not, see <http://www.gnu.org/licenses/>.
+// along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
 package vm
 
@@ -23,43 +23,43 @@ import (
 	"math"
 	"math/big"
 
-	"github.com/PlatONnetwork/PlatON-Go/x/reward"
+	"github.com/AlayaNetwork/Alaya-Go/x/reward"
 
-	"github.com/PlatONnetwork/PlatON-Go/x/xcom"
+	"github.com/AlayaNetwork/Alaya-Go/x/xcom"
 
-	"github.com/PlatONnetwork/PlatON-Go/common/hexutil"
+	"github.com/AlayaNetwork/Alaya-Go/common/hexutil"
 
-	"github.com/PlatONnetwork/PlatON-Go/node"
+	"github.com/AlayaNetwork/Alaya-Go/node"
 
-	"github.com/PlatONnetwork/PlatON-Go/x/gov"
+	"github.com/AlayaNetwork/Alaya-Go/x/gov"
 
-	"github.com/PlatONnetwork/PlatON-Go/crypto/bls"
+	"github.com/AlayaNetwork/Alaya-Go/crypto/bls"
 
-	"github.com/PlatONnetwork/PlatON-Go/params"
+	"github.com/AlayaNetwork/Alaya-Go/params"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	"github.com/PlatONnetwork/PlatON-Go/common/vm"
-	"github.com/PlatONnetwork/PlatON-Go/core/snapshotdb"
-	"github.com/PlatONnetwork/PlatON-Go/log"
-	"github.com/PlatONnetwork/PlatON-Go/p2p/discover"
-	"github.com/PlatONnetwork/PlatON-Go/x/plugin"
-	"github.com/PlatONnetwork/PlatON-Go/x/staking"
-	"github.com/PlatONnetwork/PlatON-Go/x/xutil"
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/common/vm"
+	"github.com/AlayaNetwork/Alaya-Go/core/snapshotdb"
+	"github.com/AlayaNetwork/Alaya-Go/log"
+	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
+	"github.com/AlayaNetwork/Alaya-Go/x/plugin"
+	"github.com/AlayaNetwork/Alaya-Go/x/staking"
+	"github.com/AlayaNetwork/Alaya-Go/x/xutil"
 )
 
 const (
-	TxCreateStaking                = 1000
-	TxEditorCandidate              = 1001
-	TxIncreaseStaking              = 1002
-	TxWithdrewCandidate            = 1003
-	TxDelegate                     = 1004
-	TxWithdrewDelegate             = 1005
-	QueryVerifierList              = 1100
-	QueryValidatorList             = 1101
-	QueryCandidateList             = 1102
-	QueryRelateList                = 1103
-	QueryDelegateInfo              = 1104
-	QueryCandidateInfo             = 1105
+	TxCreateStaking      = 1000
+	TxEditorCandidate    = 1001
+	TxIncreaseStaking    = 1002
+	TxWithdrewCandidate  = 1003
+	TxDelegate           = 1004
+	TxWithdrewDelegation = 1005
+	QueryVerifierList    = 1100
+	QueryValidatorList   = 1101
+	QueryCandidateList   = 1102
+	QueryRelateList      = 1103
+	QueryDelegateInfo    = 1104
+	QueryCandidateInfo   = 1105
 	QueryHistoryVerifierList       = 1106
 	QueryHistoryValidatorList      = 1107
 	QueryNodeVersion               = 1108
@@ -67,9 +67,9 @@ const (
 	QueryHistorySlash              = 1110
 	QueryHistoryTrans              = 1111
 	QueryAdjustmentStakingDelegate = 1112
-	GetPackageReward               = 1200
-	GetStakingReward               = 1201
-	GetAvgPackTime                 = 1202
+	GetPackageReward     = 1200
+	GetStakingReward     = 1201
+	GetAvgPackTime       = 1202
 )
 
 const (
@@ -104,12 +104,12 @@ func (stkc *StakingContract) CheckGasPrice(gasPrice *big.Int, fcode uint16) erro
 func (stkc *StakingContract) FnSigns() map[uint16]interface{} {
 	return map[uint16]interface{}{
 		// Set
-		TxCreateStaking:     stkc.createStaking,
-		TxEditorCandidate:   stkc.editCandidate,
-		TxIncreaseStaking:   stkc.increaseStaking,
-		TxWithdrewCandidate: stkc.withdrewStaking,
-		TxDelegate:          stkc.delegate,
-		TxWithdrewDelegate:  stkc.withdrewDelegate,
+		TxCreateStaking:      stkc.createStaking,
+		TxEditorCandidate:    stkc.editCandidate,
+		TxIncreaseStaking:    stkc.increaseStaking,
+		TxWithdrewCandidate:  stkc.withdrewStaking,
+		TxDelegate:           stkc.delegate,
+		TxWithdrewDelegation: stkc.withdrewDelegation,
 
 		// Get
 		QueryVerifierList:              stkc.getVerifierList,
@@ -782,7 +782,7 @@ func (stkc *StakingContract) delegate(typ uint16, nodeId discover.NodeID, amount
 		"", TxDelegate, common.NoErr)
 }
 
-func (stkc *StakingContract) withdrewDelegate(stakingBlockNum uint64, nodeId discover.NodeID, amount *big.Int) ([]byte, error) {
+func (stkc *StakingContract) withdrewDelegation(stakingBlockNum uint64, nodeId discover.NodeID, amount *big.Int) ([]byte, error) {
 
 	txHash := stkc.Evm.StateDB.TxHash()
 	blockNumber := stkc.Evm.BlockNumber
@@ -790,17 +790,17 @@ func (stkc *StakingContract) withdrewDelegate(stakingBlockNum uint64, nodeId dis
 	from := stkc.Contract.CallerAddress
 	state := stkc.Evm.StateDB
 
-	log.Debug("Call withdrewDelegate of stakingContract", "txHash", txHash.Hex(),
+	log.Debug("Call withdrewDelegation of stakingContract", "txHash", txHash.Hex(),
 		"blockNumber", blockNumber.Uint64(), "delAddr", from, "nodeId", nodeId.String(),
 		"stakingNum", stakingBlockNum, "amount", amount)
 
-	if !stkc.Contract.UseGas(params.WithdrewDelegateGas) {
+	if !stkc.Contract.UseGas(params.WithdrewDelegationGas) {
 		return nil, ErrOutOfGas
 	}
 
 	del, err := stkc.Plugin.GetDelegateInfo(blockHash, from, nodeId, stakingBlockNum)
 	if snapshotdb.NonDbNotFoundErr(err) {
-		log.Error("Failed to withdrewDelegate by GetDelegateInfo",
+		log.Error("Failed to withdrewDelegation by GetDelegateInfo",
 			"txHash", txHash.Hex(), "blockNumber", blockNumber, "err", err)
 		return nil, err
 	}
@@ -809,8 +809,8 @@ func (stkc *StakingContract) withdrewDelegate(stakingBlockNum uint64, nodeId dis
 		if txHash == common.ZeroHash {
 			return nil, nil
 		} else {
-			return txResultHandler(vm.StakingContractAddr, stkc.Evm, "withdrewDelegate",
-				"del is nil", TxWithdrewDelegate, staking.ErrDelegateNoExist)
+			return txResultHandler(vm.StakingContractAddr, stkc.Evm, "withdrewDelegation",
+				"del is nil", TxWithdrewDelegation, staking.ErrDelegateNoExist)
 		}
 	}
 
@@ -827,30 +827,30 @@ func (stkc *StakingContract) withdrewDelegate(stakingBlockNum uint64, nodeId dis
 
 	if ok, threshold := plugin.CheckOperatingThreshold(blockNumber.Uint64(), blockHash, amount); !ok {
 
-		return txResultHandler(vm.StakingContractAddr, stkc.Evm, "withdrewDelegate",
-			fmt.Sprintf("withdrewDelegate threshold: %d, deposit: %d", threshold, amount),
-			TxWithdrewDelegate, staking.ErrWithdrewDelegateVonTooLow)
+		return txResultHandler(vm.StakingContractAddr, stkc.Evm, "withdrewDelegation",
+			fmt.Sprintf("withdrewDelegation threshold: %d, deposit: %d", threshold, amount),
+			TxWithdrewDelegation, staking.ErrWithdrewDelegationVonTooLow)
 	}
 
 	if txHash == common.ZeroHash {
 		return nil, nil
 	}
 
-	issueIncome, err := stkc.Plugin.WithdrewDelegate(state, blockHash, blockNumber, amount, from, nodeId, stakingBlockNum, del, delegateRewardPerList)
+	issueIncome, err := stkc.Plugin.WithdrewDelegation(state, blockHash, blockNumber, amount, from, nodeId, stakingBlockNum, del, delegateRewardPerList)
 	if nil != err {
 		if bizErr, ok := err.(*common.BizError); ok {
 
-			return txResultHandler(vm.StakingContractAddr, stkc.Evm, "withdrewDelegate",
-				bizErr.Error(), TxWithdrewDelegate, bizErr)
+			return txResultHandler(vm.StakingContractAddr, stkc.Evm, "withdrewDelegation",
+				bizErr.Error(), TxWithdrewDelegation, bizErr)
 
 		} else {
-			log.Error("Failed to withdrewDelegate by WithdrewDelegate", "txHash", txHash, "blockNumber", blockNumber, "err", err)
+			log.Error("Failed to withdrewDelegation by WithdrewDelegation", "txHash", txHash, "blockNumber", blockNumber, "err", err)
 			return nil, err
 		}
 	}
 
 	return txResultHandlerWithRes(vm.StakingContractAddr, stkc.Evm, "",
-		"", TxWithdrewDelegate, int(common.NoErr.Code), issueIncome), nil
+		"", TxWithdrewDelegation, int(common.NoErr.Code), issueIncome), nil
 }
 
 func (stkc *StakingContract) calcRewardPerUseGas(delegateRewardPerList []*reward.DelegateRewardPer, del *staking.Delegation) ([]byte, error) {

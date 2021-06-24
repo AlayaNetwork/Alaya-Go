@@ -27,35 +27,35 @@ import (
 	"strings"
 	"time"
 
-	"github.com/PlatONnetwork/PlatON-Go/core/snapshotdb"
+	"github.com/AlayaNetwork/Alaya-Go/core/snapshotdb"
 
 	"gopkg.in/urfave/cli.v1"
 
-	"github.com/PlatONnetwork/PlatON-Go/accounts"
-	"github.com/PlatONnetwork/PlatON-Go/accounts/keystore"
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	"github.com/PlatONnetwork/PlatON-Go/common/fdlimit"
-	"github.com/PlatONnetwork/PlatON-Go/consensus"
-	"github.com/PlatONnetwork/PlatON-Go/consensus/cbft/types"
-	"github.com/PlatONnetwork/PlatON-Go/core"
-	"github.com/PlatONnetwork/PlatON-Go/core/vm"
-	"github.com/PlatONnetwork/PlatON-Go/crypto"
-	"github.com/PlatONnetwork/PlatON-Go/crypto/bls"
-	"github.com/PlatONnetwork/PlatON-Go/eth"
-	"github.com/PlatONnetwork/PlatON-Go/eth/downloader"
-	"github.com/PlatONnetwork/PlatON-Go/eth/gasprice"
-	"github.com/PlatONnetwork/PlatON-Go/ethdb"
-	"github.com/PlatONnetwork/PlatON-Go/ethstats"
-	"github.com/PlatONnetwork/PlatON-Go/les"
-	"github.com/PlatONnetwork/PlatON-Go/log"
-	"github.com/PlatONnetwork/PlatON-Go/metrics"
-	"github.com/PlatONnetwork/PlatON-Go/metrics/influxdb"
-	"github.com/PlatONnetwork/PlatON-Go/node"
-	"github.com/PlatONnetwork/PlatON-Go/p2p"
-	"github.com/PlatONnetwork/PlatON-Go/p2p/discover"
-	"github.com/PlatONnetwork/PlatON-Go/p2p/nat"
-	"github.com/PlatONnetwork/PlatON-Go/p2p/netutil"
-	"github.com/PlatONnetwork/PlatON-Go/params"
+	"github.com/AlayaNetwork/Alaya-Go/accounts"
+	"github.com/AlayaNetwork/Alaya-Go/accounts/keystore"
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/common/fdlimit"
+	"github.com/AlayaNetwork/Alaya-Go/consensus"
+	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/types"
+	"github.com/AlayaNetwork/Alaya-Go/core"
+	"github.com/AlayaNetwork/Alaya-Go/core/vm"
+	"github.com/AlayaNetwork/Alaya-Go/crypto"
+	"github.com/AlayaNetwork/Alaya-Go/crypto/bls"
+	"github.com/AlayaNetwork/Alaya-Go/eth"
+	"github.com/AlayaNetwork/Alaya-Go/eth/downloader"
+	"github.com/AlayaNetwork/Alaya-Go/eth/gasprice"
+	"github.com/AlayaNetwork/Alaya-Go/ethdb"
+	"github.com/AlayaNetwork/Alaya-Go/ethstats"
+	"github.com/AlayaNetwork/Alaya-Go/les"
+	"github.com/AlayaNetwork/Alaya-Go/log"
+	"github.com/AlayaNetwork/Alaya-Go/metrics"
+	"github.com/AlayaNetwork/Alaya-Go/metrics/influxdb"
+	"github.com/AlayaNetwork/Alaya-Go/node"
+	"github.com/AlayaNetwork/Alaya-Go/p2p"
+	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
+	"github.com/AlayaNetwork/Alaya-Go/p2p/nat"
+	"github.com/AlayaNetwork/Alaya-Go/p2p/netutil"
+	"github.com/AlayaNetwork/Alaya-Go/params"
 )
 
 var (
@@ -132,21 +132,13 @@ var (
 		Usage: "Network identifier (integer, 1=Frontier, 2=Morden (disused), 3=Ropsten, 4=Rinkeby)",
 		Value: eth.DefaultConfig.NetworkId,
 	}
-	MainFlag = cli.BoolFlag{
-		Name:  "main",
-		Usage: "Mainnet network: pre-configured main network (default network)",
-	}
-	TestnetFlag = cli.BoolFlag{
-		Name:  "testnet",
-		Usage: "Testnet network: pre-configured test network",
-	}
 	AlayaNetFlag = cli.BoolFlag{
 		Name:  "alaya",
 		Usage: "alaya network: pre-configured alaya network",
 	}
-	AlayaTestNetFlag = cli.BoolFlag{
-		Name:  "alayatestnet",
-		Usage: "alaya test network: pre-configured alaya test network",
+	AddressHRPFlag = cli.StringFlag{
+		Name:  "addressHRP",
+		Usage: "set the address hrp,if not set,use default address hrp",
 	}
 	DeveloperPeriodFlag = cli.IntFlag{
 		Name:  "dev.period",
@@ -381,7 +373,7 @@ var (
 	MaxPeersFlag = cli.IntFlag{
 		Name:  "maxpeers",
 		Usage: "Maximum number of network peers (network disabled if set to 0)",
-		Value: 50,
+		Value: 80,
 	}
 	MaxConsensusPeersFlag = cli.IntFlag{
 		Name:  "maxconsensuspeers",
@@ -490,7 +482,7 @@ var (
 	MetricsInfluxDBDatabaseFlag = cli.StringFlag{
 		Name:  "metrics.influxdb.database",
 		Usage: "InfluxDB database name to push reported metrics to",
-		Value: "platon",
+		Value: "alaya",
 	}
 	MetricsInfluxDBUsernameFlag = cli.StringFlag{
 		Name:  "metrics.influxdb.username",
@@ -624,15 +616,7 @@ var (
 // the a subdirectory of the specified datadir will be used.
 func MakeDataDir(ctx *cli.Context) string {
 	if path := ctx.GlobalString(DataDirFlag.Name); path != "" {
-
-		if ctx.GlobalBool(TestnetFlag.Name) {
-			return filepath.Join(path, "testnet")
-		} else if ctx.GlobalBool(AlayaNetFlag.Name) {
-			return filepath.Join(path, "alayanet")
-		} else if ctx.GlobalBool(AlayaTestNetFlag.Name) {
-			return filepath.Join(path, "alayatestnet")
-		}
-		return path
+		return filepath.Join(path, "alayanet")
 	}
 	Fatalf("Cannot determine default data directory, please set manually (--datadir)")
 	return ""
@@ -674,7 +658,7 @@ func setNodeUserIdent(ctx *cli.Context, cfg *node.Config) {
 // setBootstrapNodes creates a list of bootstrap nodes from the command line
 // flags, reverting to pre-configured ones if none have been specified.
 func setBootstrapNodes(ctx *cli.Context, cfg *p2p.Config) {
-	urls := params.MainnetBootnodes
+	urls := params.AlayanetBootnodes
 
 	switch {
 	case ctx.GlobalIsSet(BootnodesFlag.Name) || ctx.GlobalIsSet(BootnodesV4Flag.Name):
@@ -685,10 +669,6 @@ func setBootstrapNodes(ctx *cli.Context, cfg *p2p.Config) {
 		}
 	case ctx.GlobalBool(AlayaNetFlag.Name):
 		urls = params.AlayanetBootnodes
-	case ctx.GlobalBool(AlayaTestNetFlag.Name):
-		urls = params.AlayaTestnetBootnodes
-	case ctx.GlobalBool(TestnetFlag.Name):
-		urls = params.TestnetBootnodes
 	case cfg.BootstrapNodes != nil:
 		return // already set, don't apply defaults.
 	}
@@ -847,7 +827,7 @@ func MakeAddress(ks *keystore.KeyStore, account string) (accounts.Account, error
 	log.Warn("-------------------------------------------------------------------")
 	log.Warn("Referring to accounts by order in the keystore folder is dangerous!")
 	log.Warn("This functionality is deprecated and will be removed in the future!")
-	log.Warn("Please use explicit addresses! (can search via `platon account list`)")
+	log.Warn("Please use explicit addresses! (can search via `alaya account list`)")
 	log.Warn("-------------------------------------------------------------------")
 
 	accs := ks.Accounts()
@@ -954,12 +934,8 @@ func SetNodeConfig(ctx *cli.Context, cfg *node.Config) {
 	switch {
 	case ctx.GlobalIsSet(DataDirFlag.Name):
 		cfg.DataDir = ctx.GlobalString(DataDirFlag.Name)
-	case ctx.GlobalBool(TestnetFlag.Name):
-		cfg.DataDir = filepath.Join(node.DefaultDataDir(), "testnet")
 	case ctx.GlobalBool(AlayaNetFlag.Name):
 		cfg.DataDir = filepath.Join(node.DefaultDataDir(), "alayanet")
-	case ctx.GlobalBool(AlayaTestNetFlag.Name):
-		cfg.DataDir = filepath.Join(node.DefaultDataDir(), "alayatestnet")
 	}
 
 	if ctx.GlobalIsSet(KeyStoreDirFlag.Name) {
@@ -1119,7 +1095,7 @@ func checkExclusive(ctx *cli.Context, args ...interface{}) {
 // SetEthConfig applies eth-related command line flags to the config.
 func SetEthConfig(ctx *cli.Context, stack *node.Node, cfg *eth.Config) {
 	// Avoid conflicting network flags
-	checkExclusive(ctx, TestnetFlag, AlayaNetFlag, AlayaTestNetFlag)
+	checkExclusive(ctx, AlayaNetFlag)
 	checkExclusive(ctx, LightServFlag, SyncModeFlag, "light")
 
 	setGPO(ctx, &cfg.GPO)
@@ -1180,23 +1156,11 @@ func SetEthConfig(ctx *cli.Context, stack *node.Node, cfg *eth.Config) {
 
 	// Override any default configs for hard coded networks.
 	switch {
-
 	case ctx.GlobalBool(AlayaNetFlag.Name):
 		if !ctx.GlobalIsSet(NetworkIdFlag.Name) {
 			cfg.NetworkId = 1
 		}
 		cfg.Genesis = core.DefaultAlayaGenesisBlock()
-	case ctx.GlobalBool(AlayaTestNetFlag.Name):
-		if !ctx.GlobalIsSet(NetworkIdFlag.Name) {
-			cfg.NetworkId = 1
-		}
-		cfg.Genesis = core.DefaultAlayaTestGenesisBlock()
-	// Test NetWork
-	case ctx.GlobalBool(TestnetFlag.Name):
-		if !ctx.GlobalIsSet(NetworkIdFlag.Name) {
-			cfg.NetworkId = 2000
-		}
-		cfg.Genesis = core.DefaultTestnetGenesisBlock()
 	}
 	if ctx.GlobalIsSet(DBNoGCFlag.Name) {
 		cfg.DBDisabledGC = ctx.GlobalBool(DBNoGCFlag.Name)
@@ -1296,7 +1260,7 @@ func RegisterEthService(stack *node.Node, cfg *eth.Config) {
 		})
 	}
 	if err != nil {
-		Fatalf("Failed to register the PlatON-Go service: %v", err)
+		Fatalf("Failed to register the Alaya-Go service: %v", err)
 	}
 }
 
@@ -1322,7 +1286,7 @@ func RegisterEthStatsService(stack *node.Node, url string) {
 
 		return ethstats.New(url, ethServ, lesServ)
 	}); err != nil {
-		Fatalf("Failed to register the PlatON-Go Stats service: %v", err)
+		Fatalf("Failed to register the Alaya-Go Stats service: %v", err)
 	}
 }
 
@@ -1340,7 +1304,7 @@ func SetupMetrics(ctx *cli.Context) {
 
 		if enableExport {
 			log.Info("Enabling metrics export to InfluxDB")
-			go influxdb.InfluxDBWithTags(metrics.DefaultRegistry, 10*time.Second, endpoint, database, username, password, "platon.", map[string]string{
+			go influxdb.InfluxDBWithTags(metrics.DefaultRegistry, 10*time.Second, endpoint, database, username, password, "alaya.", map[string]string{
 				"host": hosttag,
 			})
 		}
@@ -1367,12 +1331,8 @@ func MakeChainDatabase(ctx *cli.Context, stack *node.Node) ethdb.Database {
 func MakeGenesis(ctx *cli.Context) *core.Genesis {
 	var genesis *core.Genesis
 	switch {
-	case ctx.GlobalBool(TestnetFlag.Name):
-		genesis = core.DefaultTestnetGenesisBlock()
 	case ctx.GlobalBool(AlayaNetFlag.Name):
 		genesis = core.DefaultAlayaGenesisBlock()
-	case ctx.GlobalBool(AlayaTestNetFlag.Name):
-		genesis = core.DefaultAlayaTestGenesisBlock()
 	}
 	return genesis
 }
@@ -1481,11 +1441,11 @@ func MakeConsolePreloads(ctx *cli.Context) []string {
 // This is a temporary function used for migrating old command/flags to the
 // new format.
 //
-// e.g. platon account new --keystore /tmp/mykeystore --lightkdf
+// e.g. alaya account new --keystore /tmp/mykeystore --lightkdf
 //
 // is equivalent after calling this method with:
 //
-// platon --keystore /tmp/mykeystore --lightkdf account new
+// alaya --keystore /tmp/mykeystore --lightkdf account new
 //
 // This allows the use of the existing configuration functionality.
 // When all flags are migrated this function can be removed and the existing

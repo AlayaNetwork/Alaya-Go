@@ -22,11 +22,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	"github.com/PlatONnetwork/PlatON-Go/core/types"
-	"github.com/PlatONnetwork/PlatON-Go/eth/downloader"
-	"github.com/PlatONnetwork/PlatON-Go/log"
-	"github.com/PlatONnetwork/PlatON-Go/p2p/discover"
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/core/types"
+	"github.com/AlayaNetwork/Alaya-Go/eth/downloader"
+	"github.com/AlayaNetwork/Alaya-Go/log"
+	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
 )
 
 const (
@@ -135,7 +135,9 @@ func (pm *ProtocolManager) txsyncLoop() {
 func (pm *ProtocolManager) syncer() {
 	// Start and ensure cleanup of sync mechanisms
 	pm.fetcher.Start()
+	pm.txFetcher.Start()
 	defer pm.fetcher.Stop()
+	defer pm.txFetcher.Stop()
 	defer pm.downloader.Terminate()
 
 	// Wait for different events to fire synchronisation operations
@@ -172,13 +174,17 @@ func (pm *ProtocolManager) synchronise(peer *peer) {
 	bn := currentBlock.Number()
 
 	pHead, pBn := peer.Head()
-	//modified by platon
+	//modified by alaya
 	diff := new(big.Int).Sub(pBn, bn)
 	if diff.Cmp(big.NewInt(2)) < 0 {
 		return
 	}
 	// Otherwise try to sync with the downloader
 	mode := downloader.FullSync
+	if currentBlock.NumberU64() > 0 {
+		log.Info("Blockchain not empty, auto disabling fast sync")
+		atomic.StoreUint32(&pm.fastSync, 0)
+	}
 	if atomic.LoadUint32(&pm.fastSync) == 1 {
 		// Fast sync was explicitly requested, and explicitly granted
 		mode = downloader.FastSync
