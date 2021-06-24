@@ -22,9 +22,9 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
-	"github.com/PlatONnetwork/PlatON-Go/eth"
-	"github.com/PlatONnetwork/PlatON-Go/node"
-	"github.com/PlatONnetwork/PlatON-Go/params"
+	"github.com/AlayaNetwork/Alaya-Go/eth"
+	"github.com/AlayaNetwork/Alaya-Go/node"
+	"github.com/AlayaNetwork/Alaya-Go/params"
 	"math/big"
 	mrand "math/rand"
 	"strconv"
@@ -3306,9 +3306,9 @@ func TestStakingPlugin_GetHistoryValidatorList(t *testing.T) {
 
 		if j < 101 {
 			v := &staking.Validator{
-				NodeAddress: canAddr,
-				NodeId:      canTmp.NodeId,
-				BlsPubKey:   canTmp.BlsPubKey,
+				NodeAddress:   canAddr,
+				NodeId:        canTmp.NodeId,
+				BlsPubKey:     canTmp.BlsPubKey,
 				ValidatorTerm: 0,
 			}
 			validatorQueue[j] = v
@@ -3405,7 +3405,7 @@ func TestStakingPlugin_GetHistoryValidatorList(t *testing.T) {
 						StakingAddress:  sender,
 						BenefitAddress:  addr,
 						StakingBlockNum: uint64(1),
-						StakingTxIndex:  uint32(i+1),
+						StakingTxIndex:  uint32(i + 1),
 						ProgramVersion:  xutil.CalcVersion(initProgramVersion),
 
 						Description: staking.Description{
@@ -3431,8 +3431,8 @@ func TestStakingPlugin_GetHistoryValidatorList(t *testing.T) {
 				stakingDB.SetCandidateStore(curr_Hash, canAddr, canTmp)
 
 				v := &staking.Validator{
-					NodeAddress: canAddr,
-					NodeId:      canTmp.NodeId,
+					NodeAddress:   canAddr,
+					NodeId:        canTmp.NodeId,
 					ValidatorTerm: 0,
 				}
 				validatorQueue[j] = v
@@ -3566,11 +3566,10 @@ func TestStakingPlugin_GetHistoryValidatorList(t *testing.T) {
 
 	// Request th opening/creation of an ephemeral database and ensure it's not persisted
 	ctx := node.NewServiceContext(&node.Config{DataDir: ""}, nil, new(event.TypeMux), nil)
-	config := &eth.Config{
-	}
+	config := &eth.Config{}
 	hDB, _ := eth.CreateDB(ctx, config, "historydata")
 	STAKING_DB = &StakingDB{
-		HistoryDB:  hDB,
+		HistoryDB: hDB,
 	}
 
 	blockSwitch := types.NewBlock(headerMap[switchNum], nil, nil)
@@ -3592,7 +3591,6 @@ func TestStakingPlugin_GetHistoryValidatorList(t *testing.T) {
 
 	validatorExArr, _ := json.Marshal(validatorExQueue)
 	t.Log("GetHistoryValidatorList by QueryStartNotIrr:", string(validatorExArr))
-
 
 }
 
@@ -3851,8 +3849,8 @@ func TestStakingPlugin_GetHistoryVerifierList(t *testing.T) {
 				stakingDB.SetCandidateStore(curr_Hash, canAddr, canTmp)
 
 				v := &staking.Validator{
-					NodeAddress: canAddr,
-					NodeId:      canTmp.NodeId,
+					NodeAddress:   canAddr,
+					NodeId:        canTmp.NodeId,
 					ValidatorTerm: 0,
 				}
 				validatorQueue[j] = v
@@ -3986,17 +3984,16 @@ func TestStakingPlugin_GetHistoryVerifierList(t *testing.T) {
 
 	// Request th opening/creation of an ephemeral database and ensure it's not persisted
 	ctx := node.NewServiceContext(&node.Config{DataDir: ""}, nil, new(event.TypeMux), nil)
-	config := &eth.Config{
-	}
+	config := &eth.Config{}
 	hDB, _ := eth.CreateDB(ctx, config, "historydata")
 	STAKING_DB = &StakingDB{
-		HistoryDB:  hDB,
+		HistoryDB: hDB,
 	}
 
 	blockSwitch := types.NewBlock(headerMap[switchNum], nil, nil)
 	//blockElection := types.NewBlock(headerMap[electionNum], nil, nil)
 	var dn discover.NodeID
-	err = StakingInstance().Confirmed(dn,blockSwitch)
+	err = StakingInstance().Confirmed(dn, blockSwitch)
 	if nil != err {
 		return
 	}
@@ -4012,7 +4009,6 @@ func TestStakingPlugin_GetHistoryVerifierList(t *testing.T) {
 
 	validatorExArr, _ := json.Marshal(validatorExQueue)
 	t.Log("GetHistoryVerifierList by QueryStartNotIrr:", string(validatorExArr))
-
 
 }
 

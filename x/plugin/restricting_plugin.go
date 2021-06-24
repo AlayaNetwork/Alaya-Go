@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
-
 package plugin
 
 import (
@@ -764,8 +763,8 @@ func (rp *RestrictingPlugin) GetRestrictingBalance(account common.Address, state
 
 	if gov.Gte0140VersionState(state) {
 		if totalLeft.Cmp(info.CachePlanAmount) < 0 {
-			if totalLeft.Cmp(info.StakingAmount) < 0 {
-				result.LockBalance = (*hexutil.Big)(info.StakingAmount)
+			if totalLeft.Cmp(info.AdvanceAmount) < 0 {
+				result.LockBalance = (*hexutil.Big)(info.AdvanceAmount)
 			} else {
 				result.LockBalance = (*hexutil.Big)(totalLeft)
 			}
@@ -776,7 +775,7 @@ func (rp *RestrictingPlugin) GetRestrictingBalance(account common.Address, state
 		result.LockBalance = (*hexutil.Big)(info.CachePlanAmount)
 	}
 
-	result.PledgeBalance = (*hexutil.Big)(info.StakingAmount)
+	result.PledgeBalance = (*hexutil.Big)(info.AdvanceAmount)
 
 	log.Trace("get restricting result", "account", account.String(), "result", result)
 

@@ -14,11 +14,10 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
-
 package restricting
 
 import (
-	"github.com/PlatONnetwork/PlatON-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/common"
 	"math/big"
 
 	"github.com/AlayaNetwork/Alaya-Go/common/hexutil"
@@ -61,8 +60,8 @@ type Result struct {
 	Pledge  *hexutil.Big        `json:"Pledge"`
 }
 type BalanceResult struct {
-	Account common.Address `json:"account"`
-	FreeBalance *hexutil.Big `json:"freeBalance"`
-	LockBalance *hexutil.Big `json:"lockBalance"`
-	PledgeBalance *hexutil.Big `json:"pledgeBalance"`
+	Account       common.Address `json:"account"`
+	FreeBalance   *hexutil.Big   `json:"freeBalance"`
+	LockBalance   *hexutil.Big   `json:"lockBalance"`
+	PledgeBalance *hexutil.Big   `json:"pledgeBalance"`
 }
