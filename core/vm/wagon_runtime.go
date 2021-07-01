@@ -3,6 +3,7 @@ package vm
 import (
 	"crypto/sha256"
 	"encoding/binary"
+	"github.com/PlatONnetwork/poseidon/constants"
 
 	"github.com/PlatONnetwork/PlatON-Go/crypto/bls12381"
 
@@ -24,7 +25,7 @@ import (
 
 	"github.com/PlatONnetwork/PlatON-Go/crypto"
 	"github.com/PlatONnetwork/PlatON-Go/params"
-
+	"github.com/PlatONnetwork/poseidon"
 	"math/big"
 	"reflect"
 )
@@ -1197,6 +1198,23 @@ func NewHostModule() *wasm.Module {
 		},
 		wasm.ExportEntry{
 			FieldStr: "bls12381_map_g2",
+			Kind:     wasm.ExternalFunction,
+		},
+	)
+
+	// PoseidonHash int poseidon_hash(byte curve, byte* input[], size_t len, byte hash[32]);
+	// func $poseidon_hash(param $0 i32) (param $1 i32) (param $2 i32) (param $3 i32) (result i32)
+	addFuncExport(m,
+		wasm.FunctionSig{
+			ParamTypes:  []wasm.ValueType{wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32, wasm.ValueTypeI32},
+			ReturnTypes: []wasm.ValueType{wasm.ValueTypeI32},
+		},
+		wasm.Function{
+			Host: reflect.ValueOf(PoseidonHash),
+			Body: &wasm.FunctionBody{},
+		},
+		wasm.ExportEntry{
+			FieldStr: "poseidon_hash",
 			Kind:     wasm.ExternalFunction,
 		},
 	)
@@ -3740,5 +3758,50 @@ func Bls12381MapG2(proc *exec.Process, c0, c1, x1, x2, y1, y2 uint32) int32 {
 	mustWriteAt(proc, x12, int64(x2))
 	mustWriteAt(proc, y11, int64(y1))
 	mustWriteAt(proc, y12, int64(y2))
+	return 0
+}
+
+
+// PoseidonHash int poseidon_hash(byte curve, byte* input[], size_t len, byte hash[32]);
+// func $poseidon_hash(param $0 i32) (param $1 i32) (param $2 i32) (param $3 i32) (result i32)
+func PoseidonHash(proc *exec.Process, curve uint32, input uint32, size uint32, hash uint32) int32 {
+	const MaxInputSize = 6
+	if size == 0 ||size > MaxInputSize || curve != uint32(constants.Bn256){
+		return -1
+	}
+	ctx := proc.HostCtx().(*VMContext)
+	var (
+		gas      uint64
+		overflow bool
+	)
+
+	if gas, overflow = imath.SafeMul(uint64(size), params.PoseidonPerWordGas); overflow {
+		panic(errGasUintOverflow)
+	}
+
+	if gas, overflow = imath.SafeAdd(gas, params.PoseidonBaseGas); overflow {
+		panic(errGasUintOverflow)
+	}
+	checkGas(ctx, gas)
+
+
+	var p *poseidon.Poseidon
+	var err error
+	if p, err = poseidon.NewRate(int(size)); err != nil {
+		return -1
+	}
+
+	inputArray := make([]byte, size*ptrSize)
+	mustReadAt(proc, inputArray[:], int64(input))
+
+	for i := 0; i < int(size); i++ {
+		var element [32]byte
+		mustReadAt(proc, element[:], int64(binary.LittleEndian.Uint32(inputArray[i*4:(i+1)*4])))
+		p.Write(element[:])
+	}
+
+	res := p.Sum(nil)
+
+	mustWriteAt(proc, res, int64(hash))
 	return 0
 }

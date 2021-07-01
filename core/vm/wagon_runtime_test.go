@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/PlatONnetwork/poseidon/ff"
 	"hash/fnv"
 	"io/ioutil"
 	"math/big"
@@ -2500,5 +2501,56 @@ func TestBls(t *testing.T)  {
 	testBlsG2Map(t, "testdata/wasm/fail_bls_map_g2.json")
 	testBlsPairing(t, "testdata/wasm/bls_pairing.json")
 	testBlsPairing(t, "testdata/wasm/fail_bls_pairing.json")
+
+}
+
+func TestPoseidonHash(t *testing.T) {
+
+	exec := func(curve int, inputs [][]byte, expect []byte, res int) {
+		process := exec.NewProcess(newTestVM())
+
+		inputPos := 1000
+		dataPos := 10000
+		returnPos := 20000
+		ptr := make([]byte, 0, len(inputs)*4)
+		data := make([]byte, 0, len(inputs)*32)
+		toBinary := func(i uint32) []byte {
+			var buf [4]byte
+			binary.LittleEndian.PutUint32(buf[:], i)
+			return buf[:]
+		}
+		for i, input := range inputs {
+			ptr = append(ptr, toBinary(uint32(dataPos+i*32))...)
+			data = append(data, input...)
+		}
+		process.WriteAt(ptr, int64(inputPos))
+		process.WriteAt(data, int64(dataPos))
+
+		r := PoseidonHash(process, uint32(curve), uint32(inputPos), uint32(len(inputs)), uint32(returnPos))
+		assert.EqualValues(t, res, r)
+		if res == 0 {
+			checkGasCost(t, process, uint64(len(inputs))*params.PoseidonPerWordGas + params.PoseidonBaseGas, )
+			var hash [32]byte
+			process.ReadAt(hash[:], int64(returnPos))
+			assert.Equal(t, expect, hash[:])
+		}
+	}
+
+	b0, b1, b2 := [32]byte{}, [32]byte{}, [32]byte{}
+	b1[31], b2[31] = 1, 2
+
+	newString := func(s string) []byte{
+		b , _ := ff.NewString(s)
+		return b.Bytes()
+	}
+	exec(2, [][]byte{}, []byte{}, -1)
+	exec(1, [][]byte{}, []byte{}, -1)
+	exec(1, [][]byte{b1[:],b1[:],b1[:],b1[:],b1[:],b1[:],b1[:]}, []byte{}, -1)
+
+
+	exec(1, [][]byte{b1[:]}, newString("18586133768512220936620570745912940619677854269274689475585506675881198879027"), 0)
+	exec(1, [][]byte{b1[:], b2[:]}, newString("7853200120776062878684798364095072458815029376092732009249414926327459813530"), 0)
+	exec(1, [][]byte{b1[:], b2[:], b0[:], b0[:], b0[:]}, newString("1018317224307729531995786483840663576608797660851238720571059489595066344487"), 0)
+	exec(1, [][]byte{b1[:], b2[:], b0[:], b0[:], b0[:], b0[:]}, newString("15336558801450556532856248569924170992202208561737609669134139141992924267169"), 0)
 
 }
