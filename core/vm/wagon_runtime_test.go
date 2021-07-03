@@ -2545,6 +2545,7 @@ func TestPoseidonHash(t *testing.T) {
 	}
 	exec(2, [][]byte{}, []byte{}, -1)
 	exec(1, [][]byte{}, []byte{}, -1)
+	exec(1, [][]byte{hexutil.MustDecode("0xbc36789e7a1e281436464229828f817d6612f7b477d66591ff96a9e064bcc98a")}, []byte{}, -2)
 	exec(1, [][]byte{b1[:],b1[:],b1[:],b1[:],b1[:],b1[:],b1[:]}, []byte{}, -1)
 
 

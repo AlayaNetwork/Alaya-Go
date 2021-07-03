@@ -3797,7 +3797,9 @@ func PoseidonHash(proc *exec.Process, curve uint32, input uint32, size uint32, h
 	for i := 0; i < int(size); i++ {
 		var element [32]byte
 		mustReadAt(proc, element[:], int64(binary.LittleEndian.Uint32(inputArray[i*4:(i+1)*4])))
-		p.Write(element[:])
+		if _, err := p.Write(element[:]); err != nil {
+			return -2
+		}
 	}
 
 	res := p.Sum(nil)
