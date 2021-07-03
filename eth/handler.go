@@ -56,8 +56,9 @@ const (
 	// The number is referenced from the size of tx pool.
 	txChanSize = 4096
 
-	numBroadcastTxPeers    = 8 // Maximum number of peers for broadcast transactions
-	numBroadcastBlockPeers = 5 // Maximum number of peers for broadcast new block
+	numBroadcastTxPeers     = 5 // Maximum number of peers for broadcast transactions
+	numBroadcastTxHashPeers = 5 // Maximum number of peers for broadcast transactions hash
+	numBroadcastBlockPeers  = 5 // Maximum number of peers for broadcast new block
 
 	defaultTxsCacheSize      = 20
 	defaultBroadcastInterval = 100 * time.Millisecond
@@ -292,7 +293,7 @@ func (pm *ProtocolManager) newPeer(pv int, p *p2p.Peer, rw p2p.MsgReadWriter) *p
 // this function terminates, the peer is disconnected.
 func (pm *ProtocolManager) handle(p *peer) error {
 	// Ignore maxPeers if this is a trusted peer
-	if pm.peers.Len() >= pm.maxPeers && !p.Peer.Info().Network.Trusted && !p.Peer.Info().Network.Consensus {
+	if pm.peers.Len() >= pm.maxPeers && !p.Peer.Info().Network.Trusted && !p.Peer.Info().Network.Static {
 		return p2p.DiscTooManyPeers
 	}
 	p.Log().Debug("PlatON peer connected", "name", p.Name())
@@ -354,7 +355,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		// Status messages should never arrive after the handshake
 		return errResp(ErrExtraStatusMsg, "uncontrolled status message")
 
-	// Block header query, collect the requested headers and reply
+		// Block header query, collect the requested headers and reply
 	case msg.Code == GetBlockHeadersMsg:
 		// Decode the complex header query
 		var query getBlockHeadersData
@@ -471,7 +472,6 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			return err
 		}
 	case p.version >= eth63 && msg.Code == OriginAndPivotMsg:
-
 		p.Log().Debug("[OriginAndPivotMsg]Received a broadcast message")
 		var data []*types.Header
 		if err := msg.Decode(&data); err != nil {
@@ -790,6 +790,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			if trueBn.Cmp(currentBlock.Number()) > 0 {
 				go pm.synchronise(p)
 			}
+
 		}
 
 	case msg.Code == TxMsg:
@@ -943,13 +944,19 @@ func (pm *ProtocolManager) BroadcastTxs(txs types.Transactions) {
 			}
 		} else {
 			indexes := rand.Perm(len(peers))
-			for i, c := 0, 0; i < len(peers); i, c = i+1, c+1 {
+			numAnnos := int(math.Sqrt(float64(len(peers) - numBroadcastTxPeers)))
+			countAnnos := 0
+			if numAnnos > numBroadcastTxHashPeers {
+				numAnnos = numBroadcastTxHashPeers
+			}
+			for i, c := 0, 0; i < len(peers) && countAnnos < numAnnos; i, c = i+1, c+1 {
 				peer := peers[indexes[i]]
 				if c < numBroadcastTxPeers {
 					txset[peer] = append(txset[peer], tx)
 				} else {
 					// For the remaining peers, send announcement only
 					annos[peer] = append(annos[peer], tx.Hash())
+					countAnnos++
 				}
 			}
 		}
