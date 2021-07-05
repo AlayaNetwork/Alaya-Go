@@ -30,6 +30,7 @@ jobs:
         run: |
           go get -v -t -d ./...
           go mod download
+          go get golang.org/x/mobile/bind
 
 
       - name: Build
