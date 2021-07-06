@@ -8,8 +8,6 @@ import (
 	"github.com/PlatONnetwork/PlatON-Go/crypto/bls12381"
 
 	"github.com/PlatONnetwork/PlatON-Go/crypto/bn256"
-	"github.com/PlatONnetwork/PlatON-Go/crypto/bulletproof/tx"
-
 	"github.com/holiman/uint256"
 
 	"golang.org/x/crypto/ripemd160"
@@ -822,42 +820,6 @@ func NewHostModule() *wasm.Module {
 		},
 		wasm.ExportEntry{
 			FieldStr: "platon_clone",
-			Kind:     wasm.ExternalFunction,
-		},
-	)
-
-	// int32_t platon_confidential_tx_verify(const uint8_t *tx_data, size_t tx_len);
-	// func $platon_confidential_tx_verify (param $0 i32) (param $1 i32) (result i32)
-	addFuncExport(m,
-		wasm.FunctionSig{
-			ParamTypes:  []wasm.ValueType{wasm.ValueTypeI32, wasm.ValueTypeI32},
-			ReturnTypes: []wasm.ValueType{wasm.ValueTypeI32},
-		},
-		wasm.Function{
-
-			Host: reflect.ValueOf(ConfidentialTxVerify),
-			Body: &wasm.FunctionBody{},
-		},
-		wasm.ExportEntry{
-			FieldStr: "platon_confidential_tx_verify",
-			Kind:     wasm.ExternalFunction,
-		},
-	)
-
-	// int32_t platon_variable_length_result(uint8_t *result, size_t result_len);
-	// func $platon_variable_length_result(param $0 i32) (param $1 i32) (result i32)
-	addFuncExport(m,
-		wasm.FunctionSig{
-			ParamTypes:  []wasm.ValueType{wasm.ValueTypeI32, wasm.ValueTypeI32},
-			ReturnTypes: []wasm.ValueType{wasm.ValueTypeI32},
-		},
-		wasm.Function{
-
-			Host: reflect.ValueOf(VariableLengthResult),
-			Body: &wasm.FunctionBody{},
-		},
-		wasm.ExportEntry{
-			FieldStr: "platon_variable_length_result",
 			Kind:     wasm.ExternalFunction,
 		},
 	)
@@ -2723,47 +2685,6 @@ func PlatonClone(proc *exec.Process, oldAddr, newAddr, args, argsLen, val, valLe
 	return CreateContract(proc, newAddr, val, valLen, callCost, callCostLen, realInput)
 }
 
-// size_t platon_confidential_tx_verify(const uint8_t *tx_data, size_t tx_len);
-// func $platon_confidential_tx_verify (param $0 i32) (param $1 i32) (result i32)
-func ConfidentialTxVerify(proc *exec.Process, txData uint32, txLen uint32) int32 {
-	ctx := proc.HostCtx().(*VMContext)
-
-	checkGas(ctx, params.ConfidentialTxVerifyBaseGas+uint64(txLen/256)*params.ConfidentialTxPerNoteGas)
-
-	// read data
-	dataBuf := make([]byte, txLen)
-	_, err := proc.ReadAt(dataBuf, int64(txData))
-	if nil != err {
-		panic(err)
-	}
-
-	if result, err := tx.VerifyConfidentialTx(dataBuf); nil != err {
-		return -1
-	} else {
-		ctx.VariableResult = result
-		return int32(len(result))
-	}
-
-}
-
-// int32_t platon_variable_length_result(uint8_t *result, size_t result_len);
-// func $platon_variable_length_result(param $0 i32) (param $1 i32) (result i32)
-func VariableLengthResult(proc *exec.Process, result uint32, resultLen uint32) int32 {
-	ctx := proc.HostCtx().(*VMContext)
-
-	checkGas(ctx, ctx.gasTable.SLoad)
-
-	if nil == ctx.VariableResult || len(ctx.VariableResult) != int(resultLen) {
-		return -1
-	}
-
-	_, err := proc.WriteAt(ctx.VariableResult, int64(result))
-	if nil != err {
-		panic(err)
-	}
-
-	return int32(len(ctx.VariableResult))
-}
 
 // int bn256_g1_add(byte x1[32], byte y1[32], byte x2[32], byte y2[32], byte x3[32], byte y3[32]);
 // func $bn256_g1_add(param $0 i32) (param $1 i32) (param $2 i32) (param $3 i32) (param $4 i32) (param $5 i32) (result i32)
