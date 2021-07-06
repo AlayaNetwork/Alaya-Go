@@ -3,7 +3,7 @@ package bls12381
 import (
 	"bytes"
 	"crypto/rand"
-	"github.com/PlatONnetwork/PlatON-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/common"
 	"math/big"
 	"testing"
 	)
