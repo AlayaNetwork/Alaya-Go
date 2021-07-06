@@ -1,7 +1,7 @@
 package bls12381
 
 import (
-	"github.com/PlatONnetwork/PlatON-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/common"
 	"math/big"
 	"testing"
 
