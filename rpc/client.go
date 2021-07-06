@@ -32,7 +32,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/PlatONnetwork/PlatON-Go/log"
+	"github.com/AlayaNetwork/Alaya-Go/log"
 )
 
 var (
@@ -352,7 +352,7 @@ func (c *Client) BatchCallContext(ctx context.Context, b []BatchElem) error {
 	return err
 }
 
-// EthSubscribe registers a subscripion under the "platon" namespace.
+// EthSubscribe registers a subscripion under the "alaya" namespace.
 func (c *Client) EthSubscribe(ctx context.Context, channel interface{}, args ...interface{}) (*ClientSubscription, error) {
 	return c.Subscribe(ctx, "platon", channel, args...)
 }

@@ -5,25 +5,26 @@ import (
 	"encoding/binary"
 	"github.com/PlatONnetwork/poseidon/constants"
 
-	"github.com/PlatONnetwork/PlatON-Go/crypto/bls12381"
+	"github.com/AlayaNetwork/Alaya-Go/crypto/bls12381"
 
-	"github.com/PlatONnetwork/PlatON-Go/crypto/bn256"
+	"github.com/AlayaNetwork/Alaya-Go/crypto/bn256"
 	"github.com/holiman/uint256"
 
 	"golang.org/x/crypto/ripemd160"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	"github.com/PlatONnetwork/PlatON-Go/common/math"
-	imath "github.com/PlatONnetwork/PlatON-Go/common/math"
-	"github.com/PlatONnetwork/PlatON-Go/core/types"
-	"github.com/PlatONnetwork/PlatON-Go/rlp"
+
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	imath "github.com/AlayaNetwork/Alaya-Go/common/math"
+	"github.com/AlayaNetwork/Alaya-Go/core/types"
+	"github.com/AlayaNetwork/Alaya-Go/rlp"
 
 	"github.com/PlatONnetwork/wagon/exec"
 	"github.com/PlatONnetwork/wagon/wasm"
 
-	"github.com/PlatONnetwork/PlatON-Go/crypto"
-	"github.com/PlatONnetwork/PlatON-Go/params"
+	"github.com/AlayaNetwork/Alaya-Go/crypto"
+	"github.com/AlayaNetwork/Alaya-Go/params"
 	"github.com/PlatONnetwork/poseidon"
+
 	"math/big"
 	"reflect"
 )
@@ -1216,7 +1217,28 @@ func GasPrice(proc *exec.Process, gasPrice uint32) uint32 {
 func BlockHash(proc *exec.Process, num uint64, dst uint32) {
 	ctx := proc.HostCtx().(*VMContext)
 	checkGas(ctx, GasExtStep)
-	blockHash := ctx.evm.GetHash(num)
+
+	// get current version
+	currentValue := ctx.evm.StateDB.GetCurrentActiveVersion()
+
+	// get block hash
+	var blockHash common.Hash
+	if currentValue >= params.FORKVERSION_0_16_0 {
+		// Add get block height limit, same as evm opBlockhash
+		var upper, lower uint64
+		upper = ctx.evm.BlockNumber.Uint64()
+		if upper < 257 {
+			lower = 0
+		} else {
+			lower = upper - 256
+		}
+		if num >= lower && num < upper {
+			blockHash = ctx.evm.GetHash(num)
+		}
+	} else {
+		blockHash = ctx.evm.GetHash(num)
+	}
+
 	_, err := proc.WriteAt(blockHash.Bytes(), int64(dst))
 	if nil != err {
 		panic(err)
@@ -1285,7 +1307,17 @@ func Origin(proc *exec.Process, dst uint32) {
 func Caller(proc *exec.Process, dst uint32) {
 	ctx := proc.HostCtx().(*VMContext)
 	checkGas(ctx, GasQuickStep)
-	_, err := proc.WriteAt(ctx.contract.caller.Address().Bytes(), int64(dst))
+
+	// get current version
+	currentValue := ctx.evm.StateDB.GetCurrentActiveVersion()
+
+	// get caller address
+	callerAddress := ctx.contract.caller.Address().Bytes()
+	if currentValue >= params.FORKVERSION_0_16_0 {
+		callerAddress = ctx.contract.Caller().Bytes()
+	}
+
+	_, err := proc.WriteAt(callerAddress, int64(dst))
 	if nil != err {
 		panic(err)
 	}
@@ -3030,7 +3062,7 @@ func BigintExpMod(proc *exec.Process, left uint32, leftNegative uint32, leftArrS
 		gas      = expByteLen * ctx.gasTable.ExpByte // no overflow check required. Max is 256 * ExpByte gas
 		overflow bool
 	)
-	if gas, overflow = math.SafeAdd(gas, GasSlowStep); overflow {
+	if gas, overflow = imath.SafeAdd(gas, GasSlowStep); overflow {
 		panic(errGasUintOverflow)
 	}
 	checkGas(ctx, gas)

@@ -26,11 +26,11 @@ import (
 
 	"github.com/VictoriaMetrics/fastcache"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	"github.com/PlatONnetwork/PlatON-Go/ethdb"
-	"github.com/PlatONnetwork/PlatON-Go/log"
-	"github.com/PlatONnetwork/PlatON-Go/metrics"
-	"github.com/PlatONnetwork/PlatON-Go/rlp"
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/ethdb"
+	"github.com/AlayaNetwork/Alaya-Go/log"
+	"github.com/AlayaNetwork/Alaya-Go/metrics"
+	"github.com/AlayaNetwork/Alaya-Go/rlp"
 )
 
 const (

@@ -28,9 +28,9 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/PlatONnetwork/PlatON-Go/internal/jsre"
-	"github.com/PlatONnetwork/PlatON-Go/internal/web3ext"
-	"github.com/PlatONnetwork/PlatON-Go/rpc"
+	"github.com/AlayaNetwork/Alaya-Go/internal/jsre"
+	"github.com/AlayaNetwork/Alaya-Go/internal/web3ext"
+	"github.com/AlayaNetwork/Alaya-Go/rpc"
 	"github.com/mattn/go-colorable"
 	"github.com/peterh/liner"
 	"github.com/robertkrimen/otto"
@@ -275,7 +275,7 @@ func (c *Console) AutoCompleteInput(line string, pos int) (string, []string, str
 // console's available modules.
 func (c *Console) Welcome() {
 	// Print some generic Geth metadata
-	fmt.Fprintf(c.printer, "Welcome to the PlatON JavaScript console!\n\n")
+	fmt.Fprintf(c.printer, "Welcome to the Alaya JavaScript console!\n\n")
 	c.jsre.Run(`
 		console.log("instance: " + web3.version.node);
 		console.log("at block: " + platon.blockNumber + " (" + new Date(1000 * platon.getBlock(platon.blockNumber).timestamp) + ")");

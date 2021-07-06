@@ -33,9 +33,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	"github.com/PlatONnetwork/PlatON-Go/crypto"
-	"github.com/PlatONnetwork/PlatON-Go/rlp"
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/crypto"
+	"github.com/AlayaNetwork/Alaya-Go/rlp"
 	"github.com/davecgh/go-spew/spew"
 )
 

@@ -20,9 +20,9 @@ import (
 	"container/ring"
 	"sync"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	"github.com/PlatONnetwork/PlatON-Go/core/types"
-	"github.com/PlatONnetwork/PlatON-Go/log"
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/core/types"
+	"github.com/AlayaNetwork/Alaya-Go/log"
 )
 
 // chainRetriever is used by the unconfirmed block set to verify whether a previously

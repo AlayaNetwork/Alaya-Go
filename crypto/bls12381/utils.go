@@ -18,7 +18,7 @@ package bls12381
 
 import (
 	"errors"
-	"github.com/PlatONnetwork/PlatON-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/common"
 	"math/big"
 	)
 

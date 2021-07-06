@@ -25,11 +25,11 @@ import (
 	"sync"
 	"time"
 
-	ethereum "github.com/PlatONnetwork/PlatON-Go"
-	"github.com/PlatONnetwork/PlatON-Go/accounts"
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	"github.com/PlatONnetwork/PlatON-Go/core/types"
-	"github.com/PlatONnetwork/PlatON-Go/log"
+	ethereum "github.com/AlayaNetwork/Alaya-Go"
+	"github.com/AlayaNetwork/Alaya-Go/accounts"
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/core/types"
+	"github.com/AlayaNetwork/Alaya-Go/log"
 	"github.com/karalabe/hid"
 )
 

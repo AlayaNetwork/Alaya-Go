@@ -17,10 +17,10 @@
 package runtime
 
 import (
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	"github.com/PlatONnetwork/PlatON-Go/core"
-	"github.com/PlatONnetwork/PlatON-Go/core/snapshotdb"
-	"github.com/PlatONnetwork/PlatON-Go/core/vm"
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/core"
+	"github.com/AlayaNetwork/Alaya-Go/core/snapshotdb"
+	"github.com/AlayaNetwork/Alaya-Go/core/vm"
 )
 
 func NewEnv(cfg *Config) *vm.EVM {

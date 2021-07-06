@@ -1,18 +1,19 @@
-// Copyright 2018-2020 The PlatON Network Authors
-// This file is part of the PlatON-Go library.
+// Copyright 2021 The Alaya Network Authors
+// This file is part of the Alaya-Go library.
 //
-// The PlatON-Go library is free software: you can redistribute it and/or modify
+// The Alaya-Go library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The PlatON-Go library is distributed in the hope that it will be useful,
+// The Alaya-Go library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the PlatON-Go library. If not, see <http://www.gnu.org/licenses/>.
+// along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
+
 
 package gov
 
@@ -23,17 +24,17 @@ import (
 	"math/big"
 	"strconv"
 
-	"github.com/PlatONnetwork/PlatON-Go/common/vm"
-	"github.com/PlatONnetwork/PlatON-Go/params"
+	"github.com/AlayaNetwork/Alaya-Go/common/vm"
+	"github.com/AlayaNetwork/Alaya-Go/params"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	"github.com/PlatONnetwork/PlatON-Go/common/byteutil"
-	"github.com/PlatONnetwork/PlatON-Go/log"
-	"github.com/PlatONnetwork/PlatON-Go/node"
-	"github.com/PlatONnetwork/PlatON-Go/p2p/discover"
-	"github.com/PlatONnetwork/PlatON-Go/x/staking"
-	"github.com/PlatONnetwork/PlatON-Go/x/xcom"
-	"github.com/PlatONnetwork/PlatON-Go/x/xutil"
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/common/byteutil"
+	"github.com/AlayaNetwork/Alaya-Go/log"
+	"github.com/AlayaNetwork/Alaya-Go/node"
+	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
+	"github.com/AlayaNetwork/Alaya-Go/x/staking"
+	"github.com/AlayaNetwork/Alaya-Go/x/xcom"
+	"github.com/AlayaNetwork/Alaya-Go/x/xutil"
 )
 
 type Staking interface {
@@ -89,6 +90,14 @@ func Gte0150VersionState(state xcom.StateDB) bool {
 
 func Gte0150Version(version uint32) bool {
 	return version >= params.FORKVERSION_0_15_0
+}
+
+func Gte0160VersionState(state xcom.StateDB) bool {
+	return Gte0160Version(GetCurrentActiveVersion(state))
+}
+
+func Gte0160Version(version uint32) bool {
+	return version >= params.FORKVERSION_0_16_0
 }
 
 func WriteEcHash0140(state xcom.StateDB) error {

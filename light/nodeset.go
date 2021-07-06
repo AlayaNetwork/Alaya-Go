@@ -20,10 +20,10 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	"github.com/PlatONnetwork/PlatON-Go/crypto"
-	"github.com/PlatONnetwork/PlatON-Go/ethdb"
-	"github.com/PlatONnetwork/PlatON-Go/rlp"
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/crypto"
+	"github.com/AlayaNetwork/Alaya-Go/ethdb"
+	"github.com/AlayaNetwork/Alaya-Go/rlp"
 )
 
 // NodeSet stores a set of trie nodes. It implements trie.Database and can also

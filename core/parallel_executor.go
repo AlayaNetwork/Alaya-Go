@@ -9,12 +9,12 @@ import (
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/panjf2000/ants/v2"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	"github.com/PlatONnetwork/PlatON-Go/core/state"
-	"github.com/PlatONnetwork/PlatON-Go/core/types"
-	"github.com/PlatONnetwork/PlatON-Go/core/vm"
-	"github.com/PlatONnetwork/PlatON-Go/log"
-	"github.com/PlatONnetwork/PlatON-Go/params"
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/core/state"
+	"github.com/AlayaNetwork/Alaya-Go/core/types"
+	"github.com/AlayaNetwork/Alaya-Go/core/vm"
+	"github.com/AlayaNetwork/Alaya-Go/log"
+	"github.com/AlayaNetwork/Alaya-Go/params"
 )
 
 const (

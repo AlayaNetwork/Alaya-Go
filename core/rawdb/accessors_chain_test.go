@@ -23,12 +23,12 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/PlatONnetwork/PlatON-Go/params"
+	"github.com/AlayaNetwork/Alaya-Go/params"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	"github.com/PlatONnetwork/PlatON-Go/core/types"
-	"github.com/PlatONnetwork/PlatON-Go/crypto/sha3"
-	"github.com/PlatONnetwork/PlatON-Go/rlp"
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/core/types"
+	"github.com/AlayaNetwork/Alaya-Go/crypto/sha3"
+	"github.com/AlayaNetwork/Alaya-Go/rlp"
 )
 
 // Tests block header storage and retrieval operations.

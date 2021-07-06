@@ -1,18 +1,19 @@
-// Copyright 2018-2020 The PlatON Network Authors
-// This file is part of the PlatON-Go library.
+// Copyright 2021 The Alaya Network Authors
+// This file is part of Alaya-Go.
 //
-// The PlatON-Go library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Lesser General Public License as published by
+// Alaya-Go is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The PlatON-Go library is distributed in the hope that it will be useful,
+// Alaya-Go is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU Lesser General Public License for more details.
+// GNU General Public License for more details.
 //
-// You should have received a copy of the GNU Lesser General Public License
-// along with the PlatON-Go library. If not, see <http://www.gnu.org/licenses/>.
+// You should have received a copy of the GNU General Public License
+// along with Alaya-Go. If not, see <http://www.gnu.org/licenses/>.
+
 
 package main
 
@@ -21,11 +22,11 @@ import (
 	"os"
 	"sort"
 
-	"github.com/PlatONnetwork/PlatON-Go/cmd/ctool/core"
+	"github.com/AlayaNetwork/Alaya-Go/cmd/ctool/core"
 
 	"gopkg.in/urfave/cli.v1"
 
-	"github.com/PlatONnetwork/PlatON-Go/cmd/ctool/ppos"
+	"github.com/AlayaNetwork/Alaya-Go/cmd/ctool/ppos"
 )
 
 var (
@@ -44,6 +45,7 @@ func init() {
 		core.GetTxReceiptCmd,
 		core.StabilityCmd,
 		core.StabPrepareCmd,
+		core.AnalyzeStressTestCmd,
 		ppos.GovCmd,
 		ppos.SlashingCmd,
 		ppos.StakingCmd,

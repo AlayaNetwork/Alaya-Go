@@ -24,7 +24,7 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/PlatONnetwork/PlatON-Go/accounts/abi"
+	"github.com/AlayaNetwork/Alaya-Go/accounts/abi"
 
 	"strings"
 
@@ -32,21 +32,21 @@ import (
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/util"
 
-	"github.com/PlatONnetwork/PlatON-Go/accounts"
-	"github.com/PlatONnetwork/PlatON-Go/accounts/keystore"
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	"github.com/PlatONnetwork/PlatON-Go/common/hexutil"
-	"github.com/PlatONnetwork/PlatON-Go/common/math"
-	"github.com/PlatONnetwork/PlatON-Go/core"
-	"github.com/PlatONnetwork/PlatON-Go/core/rawdb"
-	"github.com/PlatONnetwork/PlatON-Go/core/types"
-	"github.com/PlatONnetwork/PlatON-Go/core/vm"
-	"github.com/PlatONnetwork/PlatON-Go/crypto"
-	"github.com/PlatONnetwork/PlatON-Go/log"
-	"github.com/PlatONnetwork/PlatON-Go/p2p"
-	"github.com/PlatONnetwork/PlatON-Go/params"
-	"github.com/PlatONnetwork/PlatON-Go/rlp"
-	"github.com/PlatONnetwork/PlatON-Go/rpc"
+	"github.com/AlayaNetwork/Alaya-Go/accounts"
+	"github.com/AlayaNetwork/Alaya-Go/accounts/keystore"
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/common/hexutil"
+	"github.com/AlayaNetwork/Alaya-Go/common/math"
+	"github.com/AlayaNetwork/Alaya-Go/core"
+	"github.com/AlayaNetwork/Alaya-Go/core/rawdb"
+	"github.com/AlayaNetwork/Alaya-Go/core/types"
+	"github.com/AlayaNetwork/Alaya-Go/core/vm"
+	"github.com/AlayaNetwork/Alaya-Go/crypto"
+	"github.com/AlayaNetwork/Alaya-Go/log"
+	"github.com/AlayaNetwork/Alaya-Go/p2p"
+	"github.com/AlayaNetwork/Alaya-Go/params"
+	"github.com/AlayaNetwork/Alaya-Go/rlp"
+	"github.com/AlayaNetwork/Alaya-Go/rpc"
 )
 
 // PublicEthereumAPI provides an API to access Ethereum related information.
@@ -509,6 +509,15 @@ func NewPublicBlockChainAPI(b Backend) *PublicBlockChainAPI {
 //
 //	return nil
 //}
+
+// ChainId is the EIP-155 replay-protection chain id for the current ethereum chain config.
+func (s *PublicBlockChainAPI) ChainId() (*hexutil.Big, error) {
+	// if current block is at or past the EIP-155 replay-protection fork block, return chainID from config
+	if config := s.b.ChainConfig(); config.IsEIP155(s.b.CurrentBlock().Number()) {
+		return (*hexutil.Big)(config.ChainID), nil
+	}
+	return nil, fmt.Errorf("chain not synced beyond EIP-155 replay-protection fork block")
+}
 
 // BlockNumber returns the block number of the chain head.
 func (s *PublicBlockChainAPI) BlockNumber() hexutil.Uint64 {

@@ -1,6 +1,6 @@
-module github.com/PlatONnetwork/PlatON-Go
+module github.com/AlayaNetwork/Alaya-Go
 
-go 1.13
+go 1.14
 
 require (
 	github.com/Azure/azure-pipeline-go v0.0.0-20180607212504-7571e8eb0876 // indirect
@@ -9,7 +9,6 @@ require (
 	github.com/PlatONnetwork/wagon v0.6.1-0.20201026015350-67507c2a7b96
 	github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d // indirect
 	github.com/VictoriaMetrics/fastcache v1.5.7
-	github.com/aristanetworks/goarista v0.0.0-20170210015632-ea17b1a17847
 	github.com/btcsuite/btcd v0.20.1-beta
 	github.com/btcsuite/btcutil v1.0.2
 	github.com/cespare/cp v0.1.0

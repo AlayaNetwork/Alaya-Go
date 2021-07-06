@@ -27,19 +27,19 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/PlatONnetwork/PlatON-Go/params"
+	"github.com/AlayaNetwork/Alaya-Go/params"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	"github.com/PlatONnetwork/PlatON-Go/common/mclock"
-	"github.com/PlatONnetwork/PlatON-Go/core/cbfttypes"
-	"github.com/PlatONnetwork/PlatON-Go/crypto/bls"
-	"github.com/PlatONnetwork/PlatON-Go/crypto/sha3"
-	"github.com/PlatONnetwork/PlatON-Go/event"
-	"github.com/PlatONnetwork/PlatON-Go/log"
-	"github.com/PlatONnetwork/PlatON-Go/p2p/discover"
-	"github.com/PlatONnetwork/PlatON-Go/p2p/discv5"
-	"github.com/PlatONnetwork/PlatON-Go/p2p/nat"
-	"github.com/PlatONnetwork/PlatON-Go/p2p/netutil"
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/common/mclock"
+	"github.com/AlayaNetwork/Alaya-Go/core/cbfttypes"
+	"github.com/AlayaNetwork/Alaya-Go/crypto/bls"
+	"github.com/AlayaNetwork/Alaya-Go/crypto/sha3"
+	"github.com/AlayaNetwork/Alaya-Go/event"
+	"github.com/AlayaNetwork/Alaya-Go/log"
+	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
+	"github.com/AlayaNetwork/Alaya-Go/p2p/discv5"
+	"github.com/AlayaNetwork/Alaya-Go/p2p/nat"
+	"github.com/AlayaNetwork/Alaya-Go/p2p/netutil"
 )
 
 const (
@@ -1028,9 +1028,19 @@ func (srv *Server) protoHandshakeChecks(peers map[discover.NodeID]*Peer, inbound
 	return srv.encHandshakeChecks(peers, inboundCount, c)
 }
 
+func (srv *Server) numConsensusPeer(peers map[discover.NodeID]*Peer) int {
+	c := 0
+	for _, p := range peers {
+		if p.rw.is(consensusDialedConn) {
+			c++
+		}
+	}
+	return c
+}
+
 func (srv *Server) encHandshakeChecks(peers map[discover.NodeID]*Peer, inboundCount int, c *conn) error {
 	// Disconnect over limit non-consensus node.
-	if srv.consensus && len(peers) >= srv.MaxPeers && c.is(consensusDialedConn) {
+	if srv.consensus && len(peers) >= srv.MaxPeers && c.is(consensusDialedConn) && srv.numConsensusPeer(peers) < srv.MaxConsensusPeers {
 		for _, p := range peers {
 			if p.rw.is(inboundConn|dynDialedConn) && !p.rw.is(trustedConn|staticDialedConn|consensusDialedConn) {
 				log.Debug("Disconnect over limit connection", "peer", p.ID(), "flags", p.rw.flags, "peers", len(peers))
@@ -1041,6 +1051,10 @@ func (srv *Server) encHandshakeChecks(peers map[discover.NodeID]*Peer, inboundCo
 	}
 
 	switch {
+	case c.is(consensusDialedConn) && srv.numConsensusPeer(peers) >= srv.MaxConsensusPeers:
+		return DiscTooManyConsensusPeers
+	case !srv.consensus && c.is(consensusDialedConn) && len(peers) >= srv.MaxPeers:
+		return DiscTooManyPeers
 	case !c.is(trustedConn|staticDialedConn|consensusDialedConn) && len(peers) >= srv.MaxPeers:
 		return DiscTooManyPeers
 	case !c.is(trustedConn|consensusDialedConn) && c.is(inboundConn) && inboundCount >= srv.maxInboundConns():

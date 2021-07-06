@@ -6,10 +6,10 @@ package contract
 import (
 	"strings"
 
-	"github.com/PlatONnetwork/PlatON-Go/accounts/abi"
-	"github.com/PlatONnetwork/PlatON-Go/accounts/abi/bind"
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	"github.com/PlatONnetwork/PlatON-Go/core/types"
+	"github.com/AlayaNetwork/Alaya-Go/accounts/abi"
+	"github.com/AlayaNetwork/Alaya-Go/accounts/abi/bind"
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/core/types"
 )
 
 // FIFSRegistrarABI is the input ABI used to generate the binding from.

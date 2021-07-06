@@ -18,11 +18,11 @@ package state
 
 import (
 	"bytes"
-	"github.com/PlatONnetwork/PlatON-Go/common/vm"
+	"github.com/AlayaNetwork/Alaya-Go/common/vm"
 	"testing"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	"github.com/PlatONnetwork/PlatON-Go/ethdb"
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/ethdb"
 )
 
 var TestPlatONPrecompiledContracts = map[common.Address]interface{}{

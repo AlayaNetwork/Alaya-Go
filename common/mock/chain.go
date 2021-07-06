@@ -1,36 +1,38 @@
-// Copyright 2018-2020 The PlatON Network Authors
-// This file is part of the PlatON-Go library.
+// Copyright 2021 The Alaya Network Authors
+// This file is part of the Alaya-Go library.
 //
-// The PlatON-Go library is free software: you can redistribute it and/or modify
+// The Alaya-Go library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The PlatON-Go library is distributed in the hope that it will be useful,
+// The Alaya-Go library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the PlatON-Go library. If not, see <http://www.gnu.org/licenses/>.
+// along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
 package mock
 
 import (
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"math/rand"
 	"reflect"
 	"time"
 
-	"github.com/PlatONnetwork/PlatON-Go/crypto"
-	"github.com/PlatONnetwork/PlatON-Go/crypto/sha3"
-	"github.com/PlatONnetwork/PlatON-Go/rlp"
+	"github.com/AlayaNetwork/Alaya-Go/common/vm"
+	"github.com/AlayaNetwork/Alaya-Go/crypto"
+	"github.com/AlayaNetwork/Alaya-Go/crypto/sha3"
+	"github.com/AlayaNetwork/Alaya-Go/rlp"
 
-	"github.com/PlatONnetwork/PlatON-Go/core/snapshotdb"
+	"github.com/AlayaNetwork/Alaya-Go/core/snapshotdb"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	"github.com/PlatONnetwork/PlatON-Go/core/types"
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/core/types"
 )
 
 const (
@@ -609,4 +611,24 @@ func (lhs *MockStateDB) DeepCopy(rhs *MockStateDB) {
 			lhs.Logs[oneAddress] = tempLogs
 		}
 	}
+}
+
+type ActiveVersionValue struct {
+	ActiveVersion uint32 `json:"ActiveVersion"`
+	ActiveBlock   uint64 `json:"ActiveBlock"`
+}
+
+func (state *MockStateDB) GetCurrentActiveVersion() uint32 {
+
+	avListBytes := state.GetState(vm.GovContractAddr, []byte("ActVers"))
+	if len(avListBytes) == 0 {
+		panic("Cannot find active version list")
+	}
+	var avList []ActiveVersionValue
+	if err := json.Unmarshal(avListBytes, &avList); err != nil {
+		panic("invalid active version information")
+	}
+
+	return avList[0].ActiveVersion
+
 }

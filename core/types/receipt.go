@@ -24,12 +24,12 @@ import (
 	"math/big"
 	"unsafe"
 
-	"github.com/PlatONnetwork/PlatON-Go/crypto"
-	"github.com/PlatONnetwork/PlatON-Go/params"
+	"github.com/AlayaNetwork/Alaya-Go/crypto"
+	"github.com/AlayaNetwork/Alaya-Go/params"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	"github.com/PlatONnetwork/PlatON-Go/common/hexutil"
-	"github.com/PlatONnetwork/PlatON-Go/rlp"
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/common/hexutil"
+	"github.com/AlayaNetwork/Alaya-Go/rlp"
 )
 
 //go:generate gencodec -type Receipt -field-override receiptMarshaling -out gen_receipt_json.go
@@ -90,16 +90,6 @@ type storedReceiptRLP struct {
 	PostStateOrStatus []byte
 	CumulativeGasUsed uint64
 	Logs              []*LogForStorage
-}
-
-type v3StoredReceiptRLP struct {
-	PostStateOrStatus []byte
-	CumulativeGasUsed uint64
-	Bloom             Bloom
-	TxHash            common.Hash
-	ContractAddress   common.Address
-	Logs              []*LogForStorage
-	GasUsed           uint64
 }
 
 // NewReceipt creates a barebone transaction receipt, copying the init fields.
@@ -199,9 +189,6 @@ func (r *ReceiptForStorage) DecodeRLP(s *rlp.Stream) error {
 	// for old nodes that just upgraded.
 	if err := decodeStoredReceiptRLP(r, blob); err == nil {
 		return nil
-	}
-	if err := decodeV3StoredReceiptRLP(r, blob); err == nil {
-		return nil
 	} else {
 		return err
 	}
@@ -222,26 +209,6 @@ func decodeStoredReceiptRLP(r *ReceiptForStorage, blob []byte) error {
 	}
 	r.Bloom = CreateBloom(Receipts{(*Receipt)(r)})
 
-	return nil
-}
-
-func decodeV3StoredReceiptRLP(r *ReceiptForStorage, blob []byte) error {
-	var stored v3StoredReceiptRLP
-	if err := rlp.DecodeBytes(blob, &stored); err != nil {
-		return err
-	}
-	if err := (*Receipt)(r).setStatus(stored.PostStateOrStatus); err != nil {
-		return err
-	}
-	r.CumulativeGasUsed = stored.CumulativeGasUsed
-	r.Bloom = stored.Bloom
-	r.TxHash = stored.TxHash
-	r.ContractAddress = stored.ContractAddress
-	r.GasUsed = stored.GasUsed
-	r.Logs = make([]*Log, len(stored.Logs))
-	for i, log := range stored.Logs {
-		r.Logs[i] = (*Log)(log)
-	}
 	return nil
 }
 

@@ -27,7 +27,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/common"
 )
 
 // TestPack tests the general pack/unpack tests in packing_test.go

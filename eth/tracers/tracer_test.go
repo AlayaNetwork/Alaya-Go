@@ -21,14 +21,14 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"github.com/PlatONnetwork/PlatON-Go/core/state"
+	"github.com/AlayaNetwork/Alaya-Go/core/state"
 	"math/big"
 	"testing"
 	"time"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	"github.com/PlatONnetwork/PlatON-Go/core/vm"
-	"github.com/PlatONnetwork/PlatON-Go/params"
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/core/vm"
+	"github.com/AlayaNetwork/Alaya-Go/params"
 )
 
 type account struct{}

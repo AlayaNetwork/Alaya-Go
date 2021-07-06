@@ -1,18 +1,19 @@
-// Copyright 2018-2020 The PlatON Network Authors
-// This file is part of the PlatON-Go library.
+// Copyright 2021 The Alaya Network Authors
+// This file is part of the Alaya-Go library.
 //
-// The PlatON-Go library is free software: you can redistribute it and/or modify
+// The Alaya-Go library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The PlatON-Go library is distributed in the hope that it will be useful,
+// The Alaya-Go library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the PlatON-Go library. If not, see <http://www.gnu.org/licenses/>.
+// along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
+
 
 package plugin
 
@@ -22,25 +23,25 @@ import (
 	"math/big"
 	"sort"
 
-	"github.com/PlatONnetwork/PlatON-Go/p2p/discover"
+	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
 
-	"github.com/PlatONnetwork/PlatON-Go/params"
+	"github.com/AlayaNetwork/Alaya-Go/params"
 
-	"github.com/PlatONnetwork/PlatON-Go/log"
+	"github.com/AlayaNetwork/Alaya-Go/log"
 
-	"github.com/PlatONnetwork/PlatON-Go/common/vm"
+	"github.com/AlayaNetwork/Alaya-Go/common/vm"
 
-	"github.com/PlatONnetwork/PlatON-Go/x/xutil"
+	"github.com/AlayaNetwork/Alaya-Go/x/xutil"
 
-	"github.com/PlatONnetwork/PlatON-Go/rlp"
+	"github.com/AlayaNetwork/Alaya-Go/rlp"
 
-	"github.com/PlatONnetwork/PlatON-Go/x/staking"
+	"github.com/AlayaNetwork/Alaya-Go/x/staking"
 
-	"github.com/PlatONnetwork/PlatON-Go/core/snapshotdb"
+	"github.com/AlayaNetwork/Alaya-Go/core/snapshotdb"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	"github.com/PlatONnetwork/PlatON-Go/core/types"
-	"github.com/PlatONnetwork/PlatON-Go/x/xcom"
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/core/types"
+	"github.com/AlayaNetwork/Alaya-Go/x/xcom"
 )
 
 func NewFixIssue1625Plugin(sdb snapshotdb.DB) *FixIssue1625Plugin {
@@ -74,7 +75,7 @@ func (a *FixIssue1625Plugin) fix(blockHash common.Hash, head *types.Header, stat
 			return fmt.Errorf("the account restrictInfo seems not right")
 		}
 
-		wrongStakingAmount := new(big.Int).Sub(restrictInfo.StakingAmount, actualRestrictingAmount)
+		wrongStakingAmount := new(big.Int).Sub(restrictInfo.AdvanceAmount, actualRestrictingAmount)
 		if wrongStakingAmount.Cmp(common.Big0) > 0 {
 			//If the user uses the wrong amount,Roll back the unused part first
 			//优先回滚没有使用的那部分锁仓余额
@@ -98,7 +99,7 @@ func (a *FixIssue1625Plugin) fix(blockHash common.Hash, head *types.Header, stat
 		} else {
 			//当用户没有使用因为漏洞产生的钱，直接减去漏洞的钱就是正确的余额
 			restrictInfo.CachePlanAmount.Sub(restrictInfo.CachePlanAmount, issue1625Account.amount)
-			if restrictInfo.StakingAmount.Cmp(common.Big0) == 0 &&
+			if restrictInfo.AdvanceAmount.Cmp(common.Big0) == 0 &&
 				len(restrictInfo.ReleaseList) == 0 && restrictInfo.CachePlanAmount.Cmp(common.Big0) == 0 {
 				state.SetState(vm.RestrictingContractAddr, restrictingKey, []byte{})
 				log.Debug("fix issue 1625 finished,set info empty", "account", issue1625Account.addr, "fix amount", issue1625Account.amount)

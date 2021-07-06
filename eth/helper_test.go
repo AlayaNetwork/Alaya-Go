@@ -27,22 +27,22 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/PlatONnetwork/PlatON-Go/core/rawdb"
+	"github.com/AlayaNetwork/Alaya-Go/core/rawdb"
 
-	"github.com/PlatONnetwork/PlatON-Go/consensus"
-	"github.com/PlatONnetwork/PlatON-Go/x/xcom"
+	"github.com/AlayaNetwork/Alaya-Go/consensus"
+	"github.com/AlayaNetwork/Alaya-Go/x/xcom"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	"github.com/PlatONnetwork/PlatON-Go/core"
-	"github.com/PlatONnetwork/PlatON-Go/core/types"
-	"github.com/PlatONnetwork/PlatON-Go/crypto"
-	"github.com/PlatONnetwork/PlatON-Go/eth/downloader"
-	"github.com/PlatONnetwork/PlatON-Go/ethdb"
-	"github.com/PlatONnetwork/PlatON-Go/event"
-	"github.com/PlatONnetwork/PlatON-Go/p2p"
-	"github.com/PlatONnetwork/PlatON-Go/p2p/discover"
-	"github.com/PlatONnetwork/PlatON-Go/params"
-	_ "github.com/PlatONnetwork/PlatON-Go/x/xcom"
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/core"
+	"github.com/AlayaNetwork/Alaya-Go/core/types"
+	"github.com/AlayaNetwork/Alaya-Go/crypto"
+	"github.com/AlayaNetwork/Alaya-Go/eth/downloader"
+	"github.com/AlayaNetwork/Alaya-Go/ethdb"
+	"github.com/AlayaNetwork/Alaya-Go/event"
+	"github.com/AlayaNetwork/Alaya-Go/p2p"
+	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
+	"github.com/AlayaNetwork/Alaya-Go/params"
+	_ "github.com/AlayaNetwork/Alaya-Go/x/xcom"
 )
 
 var (
@@ -108,6 +108,34 @@ type testTxPool struct {
 	added  chan<- []*types.Transaction // Notification channel for new transactions
 
 	lock sync.RWMutex // Protects the transaction pool
+}
+
+// Has returns an indicator whether txpool has a transaction
+// cached with the given hash.
+func (p *testTxPool) Has(hash common.Hash) bool {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
+	for _, tx := range p.pool{
+		if tx.Hash() == hash{
+			return true
+		}
+	}
+	return false
+}
+
+// Get retrieves the transaction from local txpool with given
+// tx hash.
+func (p *testTxPool) Get(hash common.Hash) *types.Transaction {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
+	for _, tx := range p.pool{
+		if tx.Hash() == hash{
+			return tx
+		}
+	}
+	return nil
 }
 
 // AddRemotes appends a batch of transactions to the pool, and notifies any

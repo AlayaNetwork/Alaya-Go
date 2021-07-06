@@ -22,11 +22,11 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	"github.com/PlatONnetwork/PlatON-Go/common/prque"
-	"github.com/PlatONnetwork/PlatON-Go/consensus"
-	"github.com/PlatONnetwork/PlatON-Go/core/types"
-	"github.com/PlatONnetwork/PlatON-Go/log"
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/common/prque"
+	"github.com/AlayaNetwork/Alaya-Go/consensus"
+	"github.com/AlayaNetwork/Alaya-Go/core/types"
+	"github.com/AlayaNetwork/Alaya-Go/log"
 )
 
 const (

@@ -25,11 +25,11 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/PlatONnetwork/PlatON-Go/crypto"
-	"github.com/PlatONnetwork/PlatON-Go/node"
-	"github.com/PlatONnetwork/PlatON-Go/p2p"
-	"github.com/PlatONnetwork/PlatON-Go/p2p/discover"
-	"github.com/PlatONnetwork/PlatON-Go/rpc"
+	"github.com/AlayaNetwork/Alaya-Go/crypto"
+	"github.com/AlayaNetwork/Alaya-Go/node"
+	"github.com/AlayaNetwork/Alaya-Go/p2p"
+	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
+	"github.com/AlayaNetwork/Alaya-Go/rpc"
 	"github.com/docker/docker/pkg/reexec"
 )
 

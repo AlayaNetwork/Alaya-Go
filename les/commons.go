@@ -19,14 +19,14 @@ package les
 import (
 	"fmt"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	"github.com/PlatONnetwork/PlatON-Go/core"
-	"github.com/PlatONnetwork/PlatON-Go/eth"
-	"github.com/PlatONnetwork/PlatON-Go/ethdb"
-	"github.com/PlatONnetwork/PlatON-Go/light"
-	"github.com/PlatONnetwork/PlatON-Go/p2p"
-	"github.com/PlatONnetwork/PlatON-Go/p2p/discover"
-	"github.com/PlatONnetwork/PlatON-Go/params"
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/core"
+	"github.com/AlayaNetwork/Alaya-Go/eth"
+	"github.com/AlayaNetwork/Alaya-Go/ethdb"
+	"github.com/AlayaNetwork/Alaya-Go/light"
+	"github.com/AlayaNetwork/Alaya-Go/p2p"
+	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
+	"github.com/AlayaNetwork/Alaya-Go/params"
 )
 
 // lesCommons contains fields needed by both server and client.

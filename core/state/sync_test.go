@@ -21,12 +21,12 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/PlatONnetwork/PlatON-Go/core/rawdb"
+	"github.com/AlayaNetwork/Alaya-Go/core/rawdb"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	"github.com/PlatONnetwork/PlatON-Go/crypto"
-	"github.com/PlatONnetwork/PlatON-Go/ethdb"
-	"github.com/PlatONnetwork/PlatON-Go/trie"
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/crypto"
+	"github.com/AlayaNetwork/Alaya-Go/ethdb"
+	"github.com/AlayaNetwork/Alaya-Go/trie"
 )
 
 // testAccount is the data associated with an account used by the state tests.

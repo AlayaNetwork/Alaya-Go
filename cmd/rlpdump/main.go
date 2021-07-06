@@ -27,21 +27,21 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/PlatONnetwork/PlatON-Go/x/gov"
+	"github.com/AlayaNetwork/Alaya-Go/x/gov"
 
-	"github.com/PlatONnetwork/PlatON-Go/x/restricting"
+	"github.com/AlayaNetwork/Alaya-Go/x/restricting"
 
-	"github.com/PlatONnetwork/PlatON-Go/x/slashing"
+	"github.com/AlayaNetwork/Alaya-Go/x/slashing"
 
-	"github.com/PlatONnetwork/PlatON-Go/x/staking"
+	"github.com/AlayaNetwork/Alaya-Go/x/staking"
 
-	"github.com/PlatONnetwork/PlatON-Go/common/hexutil"
-	"github.com/PlatONnetwork/PlatON-Go/rlp"
+	"github.com/AlayaNetwork/Alaya-Go/common/hexutil"
+	"github.com/AlayaNetwork/Alaya-Go/rlp"
 )
 
 var (
-	errCode = flag.String("errCode", "", "dump given platon ppos tx receipt errCode description")
-	inner   = flag.String("inner", "", "dump given platon inner contract data with `platon.Call`")
+	errCode = flag.String("errCode", "", "dump given alaya ppos tx receipt errCode description")
+	inner   = flag.String("inner", "", "dump given alaya inner contract data with `alaya.Call`")
 	hexMode = flag.String("hex", "", "dump given hex data")
 	noASCII = flag.Bool("noascii", false, "don't print ASCII strings readably")
 	single  = flag.Bool("single", false, "print only the first element, discard the rest")
@@ -60,7 +60,7 @@ If the filename is omitted, data is read from stdin.`)
 func main() {
 	flag.Parse()
 
-	// parse platon ppos tx receipt errCode
+	// parse alaya ppos tx receipt errCode
 
 	if *errCode != "" {
 		data, err := hex.DecodeString(strings.TrimPrefix(*errCode, "0x"))
@@ -74,39 +74,39 @@ func main() {
 		}
 
 		stakingErrCode := map[uint32]string{
-			staking.ErrWrongBlsPubKey.Code:            staking.ErrWrongBlsPubKey.Msg,
-			staking.ErrWrongBlsPubKeyProof.Code:       staking.ErrWrongBlsPubKeyProof.Msg,
-			staking.ErrDescriptionLen.Code:            staking.ErrDescriptionLen.Msg,
-			staking.ErrWrongProgramVersionSign.Code:   staking.ErrWrongProgramVersionSign.Msg,
-			staking.ErrProgramVersionTooLow.Code:      staking.ErrProgramVersionTooLow.Msg,
-			staking.ErrDeclVsFialedCreateCan.Code:     staking.ErrDeclVsFialedCreateCan.Msg,
-			staking.ErrNoSameStakingAddr.Code:         staking.ErrNoSameStakingAddr.Msg,
-			staking.ErrStakeVonTooLow.Code:            staking.ErrStakeVonTooLow.Msg,
-			staking.ErrCanAlreadyExist.Code:           staking.ErrCanAlreadyExist.Msg,
-			staking.ErrCanNoExist.Code:                staking.ErrCanNoExist.Msg,
-			staking.ErrCanStatusInvalid.Code:          staking.ErrCanStatusInvalid.Msg,
-			staking.ErrIncreaseStakeVonTooLow.Code:    staking.ErrIncreaseStakeVonTooLow.Msg,
-			staking.ErrDelegateVonTooLow.Code:         staking.ErrDelegateVonTooLow.Msg,
-			staking.ErrAccountNoAllowToDelegate.Code:  staking.ErrAccountNoAllowToDelegate.Msg,
-			staking.ErrCanNoAllowDelegate.Code:        staking.ErrCanNoAllowDelegate.Msg,
-			staking.ErrWithdrewDelegateVonTooLow.Code: staking.ErrWithdrewDelegateVonTooLow.Msg,
-			staking.ErrDelegateNoExist.Code:           staking.ErrDelegateNoExist.Msg,
-			staking.ErrWrongVonOptType.Code:           staking.ErrWrongVonOptType.Msg,
-			staking.ErrAccountVonNoEnough.Code:        staking.ErrAccountVonNoEnough.Msg,
-			staking.ErrBlockNumberDisordered.Code:     staking.ErrBlockNumberDisordered.Msg,
-			staking.ErrDelegateVonNoEnough.Code:       staking.ErrDelegateVonNoEnough.Msg,
-			staking.ErrWrongWithdrewDelVonCalc.Code:   staking.ErrWrongWithdrewDelVonCalc.Msg,
-			staking.ErrValidatorNoExist.Code:          staking.ErrValidatorNoExist.Msg,
-			staking.ErrWrongFuncParams.Code:           staking.ErrWrongFuncParams.Msg,
-			staking.ErrWrongSlashType.Code:            staking.ErrWrongSlashType.Msg,
-			staking.ErrSlashVonOverflow.Code:          staking.ErrSlashVonOverflow.Msg,
-			staking.ErrWrongSlashVonCalc.Code:         staking.ErrWrongSlashVonCalc.Msg,
-			staking.ErrGetVerifierList.Code:           staking.ErrGetVerifierList.Msg,
-			staking.ErrGetValidatorList.Code:          staking.ErrGetValidatorList.Msg,
-			staking.ErrGetCandidateList.Code:          staking.ErrGetCandidateList.Msg,
-			staking.ErrGetDelegateRelated.Code:        staking.ErrGetDelegateRelated.Msg,
-			staking.ErrQueryCandidateInfo.Code:        staking.ErrQueryCandidateInfo.Msg,
-			staking.ErrQueryDelegateInfo.Code:         staking.ErrQueryDelegateInfo.Msg,
+			staking.ErrWrongBlsPubKey.Code:              staking.ErrWrongBlsPubKey.Msg,
+			staking.ErrWrongBlsPubKeyProof.Code:         staking.ErrWrongBlsPubKeyProof.Msg,
+			staking.ErrDescriptionLen.Code:              staking.ErrDescriptionLen.Msg,
+			staking.ErrWrongProgramVersionSign.Code:     staking.ErrWrongProgramVersionSign.Msg,
+			staking.ErrProgramVersionTooLow.Code:        staking.ErrProgramVersionTooLow.Msg,
+			staking.ErrDeclVsFialedCreateCan.Code:       staking.ErrDeclVsFialedCreateCan.Msg,
+			staking.ErrNoSameStakingAddr.Code:           staking.ErrNoSameStakingAddr.Msg,
+			staking.ErrStakeVonTooLow.Code:              staking.ErrStakeVonTooLow.Msg,
+			staking.ErrCanAlreadyExist.Code:             staking.ErrCanAlreadyExist.Msg,
+			staking.ErrCanNoExist.Code:                  staking.ErrCanNoExist.Msg,
+			staking.ErrCanStatusInvalid.Code:            staking.ErrCanStatusInvalid.Msg,
+			staking.ErrIncreaseStakeVonTooLow.Code:      staking.ErrIncreaseStakeVonTooLow.Msg,
+			staking.ErrDelegateVonTooLow.Code:           staking.ErrDelegateVonTooLow.Msg,
+			staking.ErrAccountNoAllowToDelegate.Code:    staking.ErrAccountNoAllowToDelegate.Msg,
+			staking.ErrCanNoAllowDelegate.Code:          staking.ErrCanNoAllowDelegate.Msg,
+			staking.ErrWithdrewDelegationVonTooLow.Code: staking.ErrWithdrewDelegationVonTooLow.Msg,
+			staking.ErrDelegateNoExist.Code:             staking.ErrDelegateNoExist.Msg,
+			staking.ErrWrongVonOptType.Code:             staking.ErrWrongVonOptType.Msg,
+			staking.ErrAccountVonNoEnough.Code:          staking.ErrAccountVonNoEnough.Msg,
+			staking.ErrBlockNumberDisordered.Code:       staking.ErrBlockNumberDisordered.Msg,
+			staking.ErrDelegateVonNoEnough.Code:         staking.ErrDelegateVonNoEnough.Msg,
+			staking.ErrWrongWithdrewDelVonCalc.Code:     staking.ErrWrongWithdrewDelVonCalc.Msg,
+			staking.ErrValidatorNoExist.Code:            staking.ErrValidatorNoExist.Msg,
+			staking.ErrWrongFuncParams.Code:             staking.ErrWrongFuncParams.Msg,
+			staking.ErrWrongSlashType.Code:              staking.ErrWrongSlashType.Msg,
+			staking.ErrSlashVonOverflow.Code:            staking.ErrSlashVonOverflow.Msg,
+			staking.ErrWrongSlashVonCalc.Code:           staking.ErrWrongSlashVonCalc.Msg,
+			staking.ErrGetVerifierList.Code:             staking.ErrGetVerifierList.Msg,
+			staking.ErrGetValidatorList.Code:            staking.ErrGetValidatorList.Msg,
+			staking.ErrGetCandidateList.Code:            staking.ErrGetCandidateList.Msg,
+			staking.ErrGetDelegateRelated.Code:          staking.ErrGetDelegateRelated.Msg,
+			staking.ErrQueryCandidateInfo.Code:          staking.ErrQueryCandidateInfo.Msg,
+			staking.ErrQueryDelegateInfo.Code:           staking.ErrQueryDelegateInfo.Msg,
 		}
 
 		slashingErrCode := map[uint32]string{
@@ -124,19 +124,19 @@ func main() {
 		}
 
 		restrictingErrCode := map[uint32]string{
-			restricting.ErrParamEpochInvalid.Code:                 restricting.ErrParamEpochInvalid.Msg,
-			restricting.ErrCountRestrictPlansInvalid.Code:         restricting.ErrCountRestrictPlansInvalid.Msg,
-			restricting.ErrLockedAmountTooLess.Code:               restricting.ErrLockedAmountTooLess.Msg,
-			restricting.ErrBalanceNotEnough.Code:                  restricting.ErrBalanceNotEnough.Msg,
-			restricting.ErrAccountNotFound.Code:                   restricting.ErrAccountNotFound.Msg,
-			restricting.ErrSlashingTooMuch.Code:                   restricting.ErrSlashingTooMuch.Msg,
-			restricting.ErrStakingAmountEmpty.Code:                restricting.ErrStakingAmountEmpty.Msg,
-			restricting.ErrPledgeLockFundsAmountLessThanZero.Code: restricting.ErrPledgeLockFundsAmountLessThanZero.Msg,
-			restricting.ErrReturnLockFundsAmountLessThanZero.Code: restricting.ErrReturnLockFundsAmountLessThanZero.Msg,
-			restricting.ErrSlashingAmountLessThanZero.Code:        restricting.ErrSlashingAmountLessThanZero.Msg,
-			restricting.ErrCreatePlanAmountLessThanZero.Code:      restricting.ErrCreatePlanAmountLessThanZero.Msg,
-			restricting.ErrStakingAmountInvalid.Code:              restricting.ErrStakingAmountInvalid.Msg,
-			restricting.ErrRestrictBalanceNotEnough.Code:          restricting.ErrRestrictBalanceNotEnough.Msg,
+			restricting.ErrParamEpochInvalid.Code:                    restricting.ErrParamEpochInvalid.Msg,
+			restricting.ErrCountRestrictPlansInvalid.Code:            restricting.ErrCountRestrictPlansInvalid.Msg,
+			restricting.ErrLockedAmountTooLess.Code:                  restricting.ErrLockedAmountTooLess.Msg,
+			restricting.ErrBalanceNotEnough.Code:                     restricting.ErrBalanceNotEnough.Msg,
+			restricting.ErrAccountNotFound.Code:                      restricting.ErrAccountNotFound.Msg,
+			restricting.ErrSlashingTooMuch.Code:                      restricting.ErrSlashingTooMuch.Msg,
+			restricting.ErrStakingAmountEmpty.Code:                   restricting.ErrStakingAmountEmpty.Msg,
+			restricting.ErrAdvanceLockedFundsAmountLessThanZero.Code: restricting.ErrAdvanceLockedFundsAmountLessThanZero.Msg,
+			restricting.ErrReturnLockFundsAmountLessThanZero.Code:    restricting.ErrReturnLockFundsAmountLessThanZero.Msg,
+			restricting.ErrSlashingAmountLessThanZero.Code:           restricting.ErrSlashingAmountLessThanZero.Msg,
+			restricting.ErrCreatePlanAmountLessThanZero.Code:         restricting.ErrCreatePlanAmountLessThanZero.Msg,
+			restricting.ErrStakingAmountInvalid.Code:                 restricting.ErrStakingAmountInvalid.Msg,
+			restricting.ErrRestrictBalanceNotEnough.Code:             restricting.ErrRestrictBalanceNotEnough.Msg,
 		}
 
 		govErrCode := map[uint32]string{
@@ -203,7 +203,7 @@ func main() {
 		return
 	}
 
-	// parse platon inner contract data
+	// parse alaya inner contract data
 	if *inner != "" {
 		rlpByte, err := hexutil.Decode(*inner)
 		if nil != err {

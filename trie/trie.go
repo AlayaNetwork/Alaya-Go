@@ -20,11 +20,11 @@ package trie
 import (
 	"bytes"
 	"fmt"
-	"github.com/PlatONnetwork/PlatON-Go/common/byteutil"
+	"github.com/AlayaNetwork/Alaya-Go/common/byteutil"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	"github.com/PlatONnetwork/PlatON-Go/crypto"
-	"github.com/PlatONnetwork/PlatON-Go/log"
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/crypto"
+	"github.com/AlayaNetwork/Alaya-Go/log"
 )
 
 var (

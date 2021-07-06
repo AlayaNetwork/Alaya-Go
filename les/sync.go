@@ -20,8 +20,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/PlatONnetwork/PlatON-Go/eth/downloader"
-	"github.com/PlatONnetwork/PlatON-Go/light"
+	"github.com/AlayaNetwork/Alaya-Go/eth/downloader"
+	"github.com/AlayaNetwork/Alaya-Go/light"
 	"math/big"
 )
 

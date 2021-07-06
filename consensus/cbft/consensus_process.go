@@ -1,18 +1,18 @@
-// Copyright 2018-2020 The PlatON Network Authors
-// This file is part of the PlatON-Go library.
+// Copyright 2021 The Alaya Network Authors
+// This file is part of the Alaya-Go library.
 //
-// The PlatON-Go library is free software: you can redistribute it and/or modify
+// The Alaya-Go library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The PlatON-Go library is distributed in the hope that it will be useful,
+// The Alaya-Go library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the PlatON-Go library. If not, see <http://www.gnu.org/licenses/>.
+// along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
 package cbft
 
@@ -22,21 +22,21 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/PlatONnetwork/PlatON-Go/crypto/bls"
+	"github.com/AlayaNetwork/Alaya-Go/crypto/bls"
 
-	"github.com/PlatONnetwork/PlatON-Go/consensus/cbft/utils"
+	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/utils"
 
-	"github.com/PlatONnetwork/PlatON-Go/consensus/cbft/executor"
+	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/executor"
 
-	"github.com/PlatONnetwork/PlatON-Go/log"
+	"github.com/AlayaNetwork/Alaya-Go/log"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	"github.com/PlatONnetwork/PlatON-Go/common/math"
-	"github.com/PlatONnetwork/PlatON-Go/consensus/cbft/protocols"
-	"github.com/PlatONnetwork/PlatON-Go/consensus/cbft/state"
-	ctypes "github.com/PlatONnetwork/PlatON-Go/consensus/cbft/types"
-	"github.com/PlatONnetwork/PlatON-Go/core/cbfttypes"
-	"github.com/PlatONnetwork/PlatON-Go/core/types"
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/common/math"
+	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/protocols"
+	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/state"
+	ctypes "github.com/AlayaNetwork/Alaya-Go/consensus/cbft/types"
+	"github.com/AlayaNetwork/Alaya-Go/core/cbfttypes"
+	"github.com/AlayaNetwork/Alaya-Go/core/types"
 )
 
 // OnPrepareBlock performs security rule verification，store in blockTree,
@@ -85,7 +85,7 @@ func (cbft *Cbft) OnPrepareBlock(id string, msg *protocols.PrepareBlock) error {
 			} else {
 				block, qc = cbft.blockTree.FindBlockAndQC(msg.Block.ParentHash(), msg.Block.NumberU64()-1)
 			}
-			cbft.log.Info("Receive new view's block, change view", "newEpoch", msg.Epoch, "newView", msg.ViewNumber)
+			cbft.log.Debug("Receive new view's block, change view", "newEpoch", msg.Epoch, "newView", msg.ViewNumber)
 			cbft.changeView(msg.Epoch, msg.ViewNumber, block, qc, msg.ViewChangeQC)
 		}
 	}
@@ -97,7 +97,7 @@ func (cbft *Cbft) OnPrepareBlock(id string, msg *protocols.PrepareBlock) error {
 	}
 	// The new block is notified by the PrepareBlockHash to the nodes in the network.
 	cbft.state.AddPrepareBlock(msg)
-	cbft.log.Info("Receive new prepareBlock", "msgHash", msg.MsgHash(), "prepare", msg.String())
+	cbft.log.Debug("Receive new prepareBlock", "msgHash", msg.MsgHash(), "prepare", msg.String())
 	cbft.findExecutableBlock()
 	return nil
 }
@@ -137,7 +137,7 @@ func (cbft *Cbft) OnPrepareVote(id string, msg *protocols.PrepareVote) error {
 	}
 
 	cbft.state.AddPrepareVote(uint32(node.Index), msg)
-	cbft.log.Info("Receive new prepareVote", "msgHash", msg.MsgHash(), "vote", msg.String(), "votes", cbft.state.PrepareVoteLenByIndex(msg.BlockIndex))
+	cbft.log.Debug("Receive new prepareVote", "msgHash", msg.MsgHash(), "vote", msg.String(), "votes", cbft.state.PrepareVoteLenByIndex(msg.BlockIndex))
 
 	cbft.insertPrepareQC(msg.ParentQC)
 	cbft.findQCBlock()
@@ -166,7 +166,7 @@ func (cbft *Cbft) OnViewChange(id string, msg *protocols.ViewChange) error {
 	}
 
 	cbft.state.AddViewChange(uint32(node.Index), msg)
-	cbft.log.Info("Receive new viewChange", "msgHash", msg.MsgHash(), "viewChange", msg.String(), "total", cbft.state.ViewChangeLen())
+	cbft.log.Debug("Receive new viewChange", "msgHash", msg.MsgHash(), "viewChange", msg.String(), "total", cbft.state.ViewChangeLen())
 	// It is possible to achieve viewchangeQC every time you add viewchange
 	cbft.tryChangeView()
 	return nil

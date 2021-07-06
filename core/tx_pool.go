@@ -26,14 +26,14 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	"github.com/PlatONnetwork/PlatON-Go/common/prque"
-	"github.com/PlatONnetwork/PlatON-Go/core/state"
-	"github.com/PlatONnetwork/PlatON-Go/core/types"
-	"github.com/PlatONnetwork/PlatON-Go/event"
-	"github.com/PlatONnetwork/PlatON-Go/log"
-	"github.com/PlatONnetwork/PlatON-Go/metrics"
-	"github.com/PlatONnetwork/PlatON-Go/params"
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/common/prque"
+	"github.com/AlayaNetwork/Alaya-Go/core/state"
+	"github.com/AlayaNetwork/Alaya-Go/core/types"
+	"github.com/AlayaNetwork/Alaya-Go/event"
+	"github.com/AlayaNetwork/Alaya-Go/log"
+	"github.com/AlayaNetwork/Alaya-Go/metrics"
+	"github.com/AlayaNetwork/Alaya-Go/params"
 )
 
 const (
@@ -272,7 +272,6 @@ type TxPool struct {
 	gasPrice *big.Int
 	txFeed   event.Feed
 	scope    event.SubscriptionScope
-	// modified by PlatON
 
 	signer types.Signer
 	mu     sync.RWMutex
@@ -452,7 +451,6 @@ func (pool *TxPool) loop() {
 	}
 }
 
-// added by PlatON
 func (pool *TxPool) Reset(newBlock *types.Block) {
 	startTime := time.Now()
 	if pool == nil {
@@ -464,7 +462,7 @@ func (pool *TxPool) Reset(newBlock *types.Block) {
 
 	if newBlock != nil {
 		//	pool.mu.Lock()
-		pool.requestReset(pool.resetHead.Header(), newBlock.Header())
+		<-pool.requestReset(pool.resetHead.Header(), newBlock.Header())
 		pool.resetHead = newBlock
 
 		//	pool.mu.Unlock()
@@ -927,6 +925,17 @@ func (pool *TxPool) AddLocal(tx *types.Transaction) error {
 	return errs[0]
 }
 
+// Get returns a transaction if it is contained in the pool and nil otherwise.
+func (pool *TxPool) Get(hash common.Hash) *types.Transaction {
+	return pool.all.Get(hash)
+}
+
+// Has returns an indicator whether txpool has a transaction cached with the
+// given hash.
+func (pool *TxPool) Has(hash common.Hash) bool {
+	return pool.all.Get(hash) != nil
+}
+
 // AddRemotes enqueues a batch of transactions into the pool if they are valid. If the
 // senders are not among the locally tracked ones, full pricing constraints will apply.
 //
@@ -1021,6 +1030,7 @@ func (pool *TxPool) addTxs(txs []*types.Transaction, local, sync bool) []error {
 			nilSlot++
 		}
 		errs[nilSlot] = err
+		nilSlot++
 	}
 
 	if request {
@@ -1071,11 +1081,6 @@ func (pool *TxPool) Status(hashes []common.Hash) []TxStatus {
 		pool.mu.RUnlock()
 	}
 	return status
-}
-
-// Get returns a transaction if it is contained in the pool and nil otherwise.
-func (pool *TxPool) Get(hash common.Hash) *types.Transaction {
-	return pool.all.Get(hash)
 }
 
 // removeTx removes a single transaction from the queue, moving all subsequent

@@ -24,14 +24,14 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/PlatONnetwork/PlatON-Go/params"
+	"github.com/AlayaNetwork/Alaya-Go/params"
 
-	platon "github.com/PlatONnetwork/PlatON-Go"
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	"github.com/PlatONnetwork/PlatON-Go/common/hexutil"
-	"github.com/PlatONnetwork/PlatON-Go/core/types"
-	"github.com/PlatONnetwork/PlatON-Go/rlp"
-	"github.com/PlatONnetwork/PlatON-Go/rpc"
+	platon "github.com/AlayaNetwork/Alaya-Go"
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/common/hexutil"
+	"github.com/AlayaNetwork/Alaya-Go/core/types"
+	"github.com/AlayaNetwork/Alaya-Go/rlp"
+	"github.com/AlayaNetwork/Alaya-Go/rpc"
 )
 
 // Client defines typed wrappers for the Ethereum RPC API.
@@ -62,6 +62,15 @@ func (ec *Client) Close() {
 }
 
 // Blockchain Access
+// ChainId retrieves the current chain ID for transaction replay protection.
+func (ec *Client) ChainID(ctx context.Context) (*big.Int, error) {
+	var result hexutil.Big
+	err := ec.c.CallContext(ctx, &result, "platon_chainId")
+	if err != nil {
+		return nil, err
+	}
+	return (*big.Int)(&result), err
+}
 
 // BlockByHash returns the given full block.
 //

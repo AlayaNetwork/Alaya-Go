@@ -15,9 +15,9 @@ import (
 	"strings"
 	"unsafe"
 
-	"github.com/PlatONnetwork/PlatON-Go/rlp"
+	"github.com/AlayaNetwork/Alaya-Go/rlp"
 
-	"github.com/PlatONnetwork/PlatON-Go/crypto"
+	"github.com/AlayaNetwork/Alaya-Go/crypto"
 )
 
 // Init --

@@ -21,8 +21,8 @@ package platon
 import (
 	"math/big"
 
-	"github.com/PlatONnetwork/PlatON-Go/core/types"
-	"github.com/PlatONnetwork/PlatON-Go/ethclient"
+	"github.com/AlayaNetwork/Alaya-Go/core/types"
+	"github.com/AlayaNetwork/Alaya-Go/ethclient"
 )
 
 // EthereumClient provides access to the Ethereum APIs.
