@@ -38,7 +38,6 @@ type VMContext struct {
 	Input          []byte
 	CallOut        []byte
 	Output         []byte
-	VariableResult []byte
 	readOnly       bool // Whether to throw on stateful modifications
 	Revert         bool
 	Log            *WasmLogger
