@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
-
 package wal
 
 import (
@@ -269,4 +268,23 @@ func TestWalDecoder(t *testing.T) {
 	assert.Nil(t, err)
 	_, err = WALDecode(data, protocols.SendPrepareBlockMsg)
 	assert.NotNil(t, err)
+}
+
+func TestWalProtocalMsg(t *testing.T) {
+	vc := &protocols.ConfirmedViewChange{
+		Epoch:        epoch,
+		ViewNumber:   viewNumber,
+		Block:        newBlock(),
+		QC:           nil,
+		ViewChangeQC: buildViewChangeQC(),
+	}
+	m := &Message{
+		Timestamp: uint64(time.Now().UnixNano()),
+		Data:      vc,
+	}
+	b, err := encodeJournal(m)
+	assert.Nil(t, err)
+	msgInfo, err := WALDecode(b[10:], protocols.ConfirmedViewChangeMsg)
+	assert.Nil(t, err)
+	assert.Nil(t, msgInfo.(*protocols.ConfirmedViewChange).QC)
 }
