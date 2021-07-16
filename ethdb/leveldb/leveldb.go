@@ -41,17 +41,17 @@ import (
 )
 
 const (
-	// leveldbDegradationWarnInterval specifies how often warning should be printed
-	// if the leveldb database cannot keep up with requested writes.
-	leveldbDegradationWarnInterval = time.Minute
+	// degradationWarnInterval specifies how often warning should be printed if the
+	// leveldb database cannot keep up with requested writes.
+	degradationWarnInterval = time.Minute
 
-	// MinCache is the minimum amount of memory in megabytes to allocate to
-	// leveldb read and write caching, split half and half.
-	MinCache = 16
+	// minCache is the minimum amount of memory in megabytes to allocate to leveldb
+	// read and write caching, split half and half.
+	minCache = 16
 
-	// MinHandles is the minimum number of files handles to allocate to the
-	// open database files.
-	MinHandles = 16
+	// minHandles is the minimum number of files handles to allocate to the open
+	// database files.
+	minHandles = 16
 
 	// metricsGatheringInterval specifies the interval to retrieve leveldb database
 	// compaction, io and pause stats to report to the user.
@@ -88,11 +88,11 @@ type Database struct {
 // metrics reporting should use for surfacing internal stats.
 func New(file string, cache int, handles int, namespace string) (*Database, error) {
 	// Ensure we have some minimal caching and file guarantees
-	if cache < MinCache {
-		cache = MinCache
+	if cache < minCache {
+		cache = minCache
 	}
-	if handles < MinHandles {
-		handles = MinHandles
+	if handles < minHandles {
+		handles = minHandles
 	}
 	logger := log.New("database", file)
 	logger.Info("Allocated cache and file handles", "cache", common.StorageSize(cache*1024*1024), "handles", handles)
@@ -370,7 +370,7 @@ func (db *Database) meter(refresh time.Duration) {
 		// If a warning that db is performing compaction has been displayed, any subsequent
 		// warnings will be withheld for one minute not to overwhelm the user.
 		if paused && delayN-delaystats[0] == 0 && duration.Nanoseconds()-delaystats[1] == 0 &&
-			time.Now().After(lastWritePaused.Add(leveldbDegradationWarnInterval)) {
+			time.Now().After(lastWritePaused.Add(degradationWarnInterval)) {
 			db.log.Warn("Database compacting, degraded performance")
 			lastWritePaused = time.Now()
 		}
@@ -452,8 +452,8 @@ func (db *Database) meter(refresh time.Duration) {
 	errc <- merr
 }
 
-// levelDBBatch is a write-only leveldb batch that commits changes to its host
-// database when Write is called. A batch cannot be used concurrently.
+// batch is a write-only leveldb batch that commits changes to its host database
+// when Write is called. A batch cannot be used concurrently.
 type batch struct {
 	db   *leveldb.DB
 	b    *leveldb.Batch
@@ -470,7 +470,7 @@ func (b *batch) Put(key, value []byte) error {
 // Delete inserts the a key removal into the batch for later committing.
 func (b *batch) Delete(key []byte) error {
 	b.b.Delete(key)
-	b.size += 1
+	b.size++
 	return nil
 }
 
