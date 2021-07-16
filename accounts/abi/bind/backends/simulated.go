@@ -196,6 +196,12 @@ func (b *SimulatedBackend) CallContract(ctx context.Context, call ethereum.CallM
 	return rval.Return(), nil
 }
 
+
+// ChainId to detect the chain id
+func (b *SimulatedBackend) ChainID(ctx context.Context) (*big.Int, error) {
+	return b.config.ChainID, nil
+}
+
 // PendingCallContract executes a contract call on the pending state.
 func (b *SimulatedBackend) PendingCallContract(ctx context.Context, call ethereum.CallMsg) ([]byte, error) {
 	b.mu.Lock()
