@@ -265,6 +265,7 @@ func TestBlockReceiptStorage(t *testing.T) {
 		GasUsed:         111111,
 	}
 	receipt1.Bloom = types.CreateBloom(types.Receipts{receipt1})
+
 	receipt2 := &types.Receipt{
 		PostState:         common.Hash{2}.Bytes(),
 		CumulativeGasUsed: 2,

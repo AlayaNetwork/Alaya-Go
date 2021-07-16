@@ -34,7 +34,6 @@ import (
 // ReadCanonicalHash retrieves the hash assigned to a canonical block number.
 func ReadCanonicalHash(db ethdb.Reader, number uint64) common.Hash {
 	data, _ := db.Get(headerHashKey(number))
-
 	if len(data) == 0 {
 		return common.Hash{}
 	}
@@ -43,7 +42,6 @@ func ReadCanonicalHash(db ethdb.Reader, number uint64) common.Hash {
 
 // WriteCanonicalHash stores the hash assigned to a canonical block number.
 func WriteCanonicalHash(db ethdb.Writer, hash common.Hash, number uint64) {
-
 	if err := db.Put(headerHashKey(number), hash.Bytes()); err != nil {
 		log.Crit("Failed to store number to hash mapping", "err", err)
 	}
@@ -251,13 +249,27 @@ func DeleteBody(db ethdb.Writer, hash common.Hash, number uint64) {
 	}
 }
 
+// HasReceipts verifies the existence of all the transaction receipts belonging
+// to a block.
+func HasReceipts(db ethdb.Reader, hash common.Hash, number uint64) bool {
+	if has, err := db.Has(blockReceiptsKey(number, hash)); !has || err != nil {
+		return false
+	}
+	return true
+}
+
+// ReadReceiptsRLP retrieves all the transaction receipts belonging to a block in RLP encoding.
+func ReadReceiptsRLP(db ethdb.Reader, hash common.Hash, number uint64) rlp.RawValue {
+	data, _ := db.Get(blockReceiptsKey(number, hash))
+	return data
+}
+
 // ReadRawReceipts retrieves all the transaction receipts belonging to a block.
 // The receipt metadata fields are not guaranteed to be populated, so they
 // should not be used. Use ReadReceipts instead if the metadata is needed.
 func ReadRawReceipts(db ethdb.Reader, hash common.Hash, number uint64) types.Receipts {
 	// Retrieve the flattened receipt slice
-	// We're deriving many fields from the block body, retrieve beside the receipt
-	data, _ := db.Get(blockReceiptsKey(number, hash))
+	data := ReadReceiptsRLP(db, hash, number)
 	if len(data) == 0 {
 		return nil
 	}
@@ -274,10 +286,19 @@ func ReadRawReceipts(db ethdb.Reader, hash common.Hash, number uint64) types.Rec
 	return receipts
 }
 
-// ReadReceipts retrieves all the transaction receipts belonging to a block.
+// ReadReceipts retrieves all the transaction receipts belonging to a block, including
+// its correspoinding metadata fields. If it is unable to populate these metadata
+// fields then nil is returned.
+//
+// The current implementation populates these metadata fields by reading the receipts'
+// corresponding block body, so if the block body is not found it will return nil even
+// if the receipt itself is stored.
 func ReadReceipts(db ethdb.Reader, hash common.Hash, number uint64, config *params.ChainConfig) types.Receipts {
 	// We're deriving many fields from the block body, retrieve beside the receipt
 	receipts := ReadRawReceipts(db, hash, number)
+	if receipts == nil {
+		return nil
+	}
 	body := ReadBody(db, hash, number)
 	if body == nil {
 		log.Error("Missing body but have receipt", "hash", hash, "number", number)
@@ -368,6 +389,14 @@ func WriteBlock(db ethdb.Writer, block *types.Block) {
 func DeleteBlock(db ethdb.Writer, hash common.Hash, number uint64) {
 	DeleteReceipts(db, hash, number)
 	DeleteHeader(db, hash, number)
+	DeleteBody(db, hash, number)
+}
+
+// deleteBlockWithoutNumber removes all block data associated with a hash, except
+// the hash to number mapping.
+func deleteBlockWithoutNumber(db ethdb.Writer, hash common.Hash, number uint64) {
+	DeleteReceipts(db, hash, number)
+	deleteHeaderWithoutNumber(db, hash, number)
 	DeleteBody(db, hash, number)
 }
 
