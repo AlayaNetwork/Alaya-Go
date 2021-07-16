@@ -90,6 +90,15 @@ type MiningConfig struct {
 
 const (
 	receiptsCacheLimit  = 32
+
+	// BlockChainVersion ensures that an incompatible database forces a resync from scratch.
+	//
+	// During the process of upgrading the database version from 3 to 4,
+	// the following incompatible database changes were added.
+	// * the `BlockNumber`, `TxHash`, `TxIndex`, `BlockHash` and `Index` fields of log are deleted
+	// * the `Bloom` field of receipt is deleted
+	// * the `BlockIndex` and `TxIndex` fields of txlookup are deleted
+	BlockChainVersion uint64 = 4
 )
 
 
