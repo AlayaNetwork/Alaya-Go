@@ -88,6 +88,11 @@ type MiningConfig struct {
 	DefaultCommitRatio     float64
 }
 
+const (
+	receiptsCacheLimit  = 32
+)
+
+
 // BlockChain represents the canonical chain given a database with a genesis
 // block. The Blockchain manages chain imports, reverts, chain reorganisations.
 //
@@ -133,6 +138,7 @@ type BlockChain struct {
 	stateCache   state.Database // State database to reuse between imports (contains state cache)
 	bodyCache    *lru.Cache     // Cache for the most recent block bodies
 	bodyRLPCache *lru.Cache     // Cache for the most recent block bodies in RLP encoded format
+	receiptsCache *lru.Cache     // Cache for the most recent receipts per block
 	blockCache   *lru.Cache     // Cache for the most recent entire blocks
 	futureBlocks *lru.Cache     // future blocks are blocks added for later processing
 
@@ -173,6 +179,7 @@ func NewBlockChain(db ethdb.Database, cacheConfig *CacheConfig, chainConfig *par
 	}
 	bodyCache, _ := lru.New(cacheConfig.BodyCacheLimit)
 	bodyRLPCache, _ := lru.New(cacheConfig.BodyCacheLimit)
+	receiptsCache, _ := lru.New(receiptsCacheLimit)
 	blockCache, _ := lru.New(cacheConfig.BlockCacheLimit)
 	futureBlocks, _ := lru.New(cacheConfig.MaxFutureBlocks)
 	badBlocks, _ := lru.New(cacheConfig.BadBlockLimit)
@@ -187,6 +194,7 @@ func NewBlockChain(db ethdb.Database, cacheConfig *CacheConfig, chainConfig *par
 		shouldPreserve: shouldPreserve,
 		bodyCache:      bodyCache,
 		bodyRLPCache:   bodyRLPCache,
+		receiptsCache:  receiptsCache,
 		blockCache:     blockCache,
 		futureBlocks:   futureBlocks,
 		engine:         engine,
@@ -322,6 +330,7 @@ func (bc *BlockChain) SetHead(head uint64) error {
 	// Clear out any stale content from the caches
 	bc.bodyCache.Purge()
 	bc.bodyRLPCache.Purge()
+	bc.receiptsCache.Purge()
 	bc.blockCache.Purge()
 	bc.futureBlocks.Purge()
 
@@ -657,13 +666,19 @@ func (bc *BlockChain) GetBlockByNumber(number uint64) *types.Block {
 	return bc.GetBlock(hash, number)
 }
 
-// GetReceiptsByHash retrieves the receipts for all transactions in a given block.
 func (bc *BlockChain) GetReceiptsByHash(hash common.Hash) types.Receipts {
+	if receipts, ok := bc.receiptsCache.Get(hash); ok {
+		return receipts.(types.Receipts)
+	}
+
 	number := rawdb.ReadHeaderNumber(bc.db, hash)
 	if number == nil {
 		return nil
 	}
-	return rawdb.ReadReceipts(bc.db, hash, *number, bc.Config())
+
+	receipts := rawdb.ReadReceipts(bc.db, hash, *number,bc.Config())
+	bc.receiptsCache.Add(hash, receipts)
+	return receipts
 }
 
 // GetBlocksFromHash returns the block corresponding to hash and up to n-1 ancestors.
