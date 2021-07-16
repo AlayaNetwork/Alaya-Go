@@ -22,8 +22,6 @@ import (
 
 	"github.com/AlayaNetwork/Alaya-Go/core/rawdb"
 
-	"github.com/AlayaNetwork/Alaya-Go/core/vm"
-
 	"os"
 	"runtime"
 	"strconv"
@@ -140,7 +138,7 @@ The export-preimages command export hash preimages to an RLP encoded stream`,
 			utils.DataDirFlag,
 			utils.CacheFlag,
 			//	utils.SyncModeFlag,
-			utils.TestnetFlag,
+			utils.AlayaNetFlag,
 		},
 		Category: "BLOCKCHAIN COMMANDS",
 		Description: `
@@ -273,7 +271,7 @@ func importChain(ctx *cli.Context) error {
 			StaleThreshold: config.StaleThreshold, DefaultCommitRatio: config.DefaultCommitRatio,
 		}
 
-		miner := miner.New(bc, chain.Config(), minningConfig, &vm.Config{}, stack.EventMux(), c, platonConfig.Eth.MinerRecommit, platonConfig.Eth.MinerGasFloor, nil, blockChainCache, platonConfig.Eth.VmTimeoutDuration)
+		miner := miner.New(bc, chain.Config(), minningConfig, stack.EventMux(), c, platonConfig.Eth.MinerRecommit, platonConfig.Eth.MinerGasFloor, nil, blockChainCache, platonConfig.Eth.VmTimeoutDuration)
 		c.Start(chain, nil, nil, agency)
 		defer c.Close()
 		defer miner.Stop()

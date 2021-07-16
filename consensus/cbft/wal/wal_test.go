@@ -1,4 +1,4 @@
-// Copyright 2018-2020 The PlatON Network Authors
+// Copyright 2021 The Alaya Network Authors
 // This file is part of the Alaya-Go library.
 //
 // The Alaya-Go library is free software: you can redistribute it and/or modify
@@ -268,4 +268,23 @@ func TestWalDecoder(t *testing.T) {
 	assert.Nil(t, err)
 	_, err = WALDecode(data, protocols.SendPrepareBlockMsg)
 	assert.NotNil(t, err)
+}
+
+func TestWalProtocalMsg(t *testing.T) {
+	vc := &protocols.ConfirmedViewChange{
+		Epoch:        epoch,
+		ViewNumber:   viewNumber,
+		Block:        newBlock(),
+		QC:           nil,
+		ViewChangeQC: buildViewChangeQC(),
+	}
+	m := &Message{
+		Timestamp: uint64(time.Now().UnixNano()),
+		Data:      vc,
+	}
+	b, err := encodeJournal(m)
+	assert.Nil(t, err)
+	msgInfo, err := WALDecode(b[10:], protocols.ConfirmedViewChangeMsg)
+	assert.Nil(t, err)
+	assert.Nil(t, msgInfo.(*protocols.ConfirmedViewChange).QC)
 }

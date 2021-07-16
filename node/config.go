@@ -241,7 +241,7 @@ func DefaultWSEndpoint() string {
 // NodeName returns the devp2p node identifier.
 func (c *Config) NodeName() string {
 	name := c.name()
-	if name == "alaya" || name == "alaya-testnet" || name == "alaya-betanet" || name == "alaya-innertestnet" || name == "alaya-innerdevnet" {
+	if name == "platon" || name == "alaya" || name == "alaya-testnet" || name == "alaya-betanet" || name == "alaya-innertestnet" || name == "alaya-innerdevnet" {
 		name = "AlayaNetwork"
 	}
 	if c.UserIdent != "" {
@@ -291,7 +291,7 @@ func (c *Config) ResolvePath(path string) string {
 	// by alaya 1.4 are used if they exist.
 	if warn, isOld := isOldPlatONResource[path]; isOld {
 		oldpath := ""
-		if c.name() == "alaya" {
+		if c.name() == "platon" {
 			oldpath = filepath.Join(c.DataDir, path)
 		}
 		if oldpath != "" && common.FileExist(oldpath) {

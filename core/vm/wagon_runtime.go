@@ -828,16 +828,24 @@ func BlockHash(proc *exec.Process, num uint64, dst uint32) {
 	ctx := proc.HostCtx().(*VMContext)
 	checkGas(ctx, GasExtStep)
 
-	// Add get block height limit, same as evm opBlockhash
-	var upper, lower uint64
-	upper = ctx.evm.BlockNumber.Uint64()
-	if upper < 257 {
-		lower = 0
-	} else {
-		lower = upper - 256
-	}
+	// get current version
+	currentValue := ctx.evm.StateDB.GetCurrentActiveVersion()
+
+	// get block hash
 	var blockHash common.Hash
-	if num >= lower && num < upper {
+	if currentValue >= params.FORKVERSION_0_16_0 {
+		// Add get block height limit, same as evm opBlockhash
+		var upper, lower uint64
+		upper = ctx.evm.BlockNumber.Uint64()
+		if upper < 257 {
+			lower = 0
+		} else {
+			lower = upper - 256
+		}
+		if num >= lower && num < upper {
+			blockHash = ctx.evm.GetHash(num)
+		}
+	} else {
 		blockHash = ctx.evm.GetHash(num)
 	}
 
@@ -909,7 +917,17 @@ func Origin(proc *exec.Process, dst uint32) {
 func Caller(proc *exec.Process, dst uint32) {
 	ctx := proc.HostCtx().(*VMContext)
 	checkGas(ctx, GasQuickStep)
-	_, err := proc.WriteAt(ctx.contract.caller.Address().Bytes(), int64(dst))
+
+	// get current version
+	currentValue := ctx.evm.StateDB.GetCurrentActiveVersion()
+
+	// get caller address
+	callerAddress := ctx.contract.caller.Address().Bytes()
+	if currentValue >= params.FORKVERSION_0_16_0 {
+		callerAddress = ctx.contract.Caller().Bytes()
+	}
+
+	_, err := proc.WriteAt(callerAddress, int64(dst))
 	if nil != err {
 		panic(err)
 	}

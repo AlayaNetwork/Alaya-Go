@@ -1,4 +1,4 @@
-// Copyright 2018-2020 The PlatON Network Authors
+// Copyright 2021 The Alaya Network Authors
 // This file is part of the Alaya-Go library.
 //
 // The Alaya-Go library is free software: you can redistribute it and/or modify
@@ -1181,7 +1181,7 @@ func TestStakingContract_delegate(t *testing.T) {
 
 }
 
-func TestStakingContract_withdrewDelegate(t *testing.T) {
+func TestStakingContract_withdrewDelegation(t *testing.T) {
 
 	state, genesis, _ := newChainState()
 	newPlugins()
@@ -1240,7 +1240,7 @@ func TestStakingContract_withdrewDelegate(t *testing.T) {
 
 	state.Prepare(txHashArr[2], blockHash2, 0)
 
-	// withdrewDelegate
+	// withdrewDelegation
 	var params [][]byte
 	params = make([][]byte, 0)
 
@@ -1255,7 +1255,7 @@ func TestStakingContract_withdrewDelegate(t *testing.T) {
 	params = append(params, nodeId)
 	params = append(params, amount)
 
-	runContractSendTransaction(contract2, params, "withdrewDelegate", t)
+	runContractSendTransaction(contract2, params, "withdrewDelegation", t)
 
 	if err := sndb.Commit(blockHash2); nil != err {
 		t.Errorf("Failed to commit snapshotdb, blockNumber: %d, blockHash: %s, err: %v", blockNumber2, blockHash2.Hex(), err)

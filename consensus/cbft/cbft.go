@@ -1,4 +1,4 @@
-// Copyright 2018-2020 The PlatON Network Authors
+// Copyright 2021 The Alaya Network Authors
 // This file is part of the Alaya-Go library.
 //
 // The Alaya-Go library is free software: you can redistribute it and/or modify
@@ -13,6 +13,7 @@
 //
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
+
 
 package cbft
 
@@ -646,6 +647,11 @@ func (cbft *Cbft) VerifyHeader(chain consensus.ChainReader, header *types.Header
 	if len(header.Extra) < consensus.ExtraSeal+int(params.MaximumExtraDataSize) {
 		cbft.log.Error("Verify header fail, missing signature", "number", header.Number, "hash", header.Hash)
 		return fmt.Errorf("verify header fail, missing signature, number:%d, hash:%s", header.Number.Uint64(), header.Hash().String())
+	}
+
+	if header.IsInvalid() {
+		cbft.log.Error("Verify header fail, Extra field is too long", "number", header.Number, "hash", header.CacheHash())
+		return fmt.Errorf("verify header fail, Extra field is too long, number:%d, hash:%s", header.Number.Uint64(), header.CacheHash().String())
 	}
 
 	if err := cbft.validatorPool.VerifyHeader(header); err != nil {
@@ -1584,9 +1590,14 @@ func (cbft *Cbft) Pause() {
 	cbft.log.Info("Pause cbft consensus")
 	utils.SetTrue(&cbft.syncing)
 }
+
 func (cbft *Cbft) Resume() {
 	cbft.log.Info("Resume cbft consensus")
 	utils.SetFalse(&cbft.syncing)
+}
+
+func (cbft *Cbft) Syncing() bool {
+	return utils.True(&cbft.syncing)
 }
 
 func (cbft *Cbft) generatePrepareQC(votes map[uint32]*protocols.PrepareVote) *ctypes.QuorumCert {

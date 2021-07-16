@@ -1,4 +1,4 @@
-// Copyright 2018-2020 The PlatON Network Authors
+// Copyright 2021 The Alaya Network Authors
 // This file is part of the Alaya-Go library.
 //
 // The Alaya-Go library is free software: you can redistribute it and/or modify
@@ -13,6 +13,7 @@
 //
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
+
 
 package snapshotdb
 
@@ -84,7 +85,7 @@ func (s *snapshotDB) recover() error {
 	sort.Sort(sortBlockWals)
 	if len(sortBlockWals) > 0 {
 		if sortBlockWals[0].Number > baseNum.Uint64()+1 {
-			return fmt.Errorf("wal is not enough,want recover  from %v,have %v", baseNum.Uint64()+1, s.committed[0].Number.Uint64())
+			return fmt.Errorf("wal is not enough,want recover  from %v,have %v", baseNum.Uint64()+1, sortBlockWals[0].Number)
 		}
 		var journalBrokenNum uint64
 

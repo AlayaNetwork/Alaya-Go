@@ -1,4 +1,4 @@
-// Copyright 2018-2020 The PlatON Network Authors
+// Copyright 2021 The Alaya Network Authors
 // This file is part of the Alaya-Go library.
 //
 // The Alaya-Go library is free software: you can redistribute it and/or modify
@@ -13,6 +13,7 @@
 //
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
+
 
 package gov
 
@@ -89,6 +90,14 @@ func Gte0150VersionState(state xcom.StateDB) bool {
 
 func Gte0150Version(version uint32) bool {
 	return version >= params.FORKVERSION_0_15_0
+}
+
+func Gte0160VersionState(state xcom.StateDB) bool {
+	return Gte0160Version(GetCurrentActiveVersion(state))
+}
+
+func Gte0160Version(version uint32) bool {
+	return version >= params.FORKVERSION_0_16_0
 }
 
 func WriteEcHash0140(state xcom.StateDB) error {

@@ -1,4 +1,4 @@
-// Copyright 2018-2020 The PlatON Network Authors
+// Copyright 2021 The Alaya Network Authors
 // This file is part of the Alaya-Go library.
 //
 // The Alaya-Go library is free software: you can redistribute it and/or modify
@@ -926,7 +926,7 @@ func buildDbRestrictingPlan(t *testing.T, account common.Address, balance *big.I
 	var user restricting.RestrictingInfo
 	user.ReleaseList = list
 	user.CachePlanAmount = lockAmount
-	user.StakingAmount = big.NewInt(0)
+	user.AdvanceAmount = big.NewInt(0)
 	user.NeedRelease = big.NewInt(0)
 
 	bUser, err := rlp.EncodeToBytes(user)

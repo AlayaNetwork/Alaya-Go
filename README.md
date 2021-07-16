@@ -18,20 +18,20 @@ The requirements to build Alaya-Go are:
 - [Golang](https://golang.org/doc/install) :version 1.14+
 - [cmake](https://cmake.org/) :version 3.0+
 - [g++&gcc](http://gcc.gnu.org/) :version 7.4.0+
-> The 'cmake' and 'gcc&g++' are usually included in Ubuntu18.04
+> The 'cmake' and 'gcc&g++' are usually built-in with Ubuntu
 
 In addition, the following libraries needs to be installed manually
 
 ```
 sudo apt install libgmp-dev libssl-dev
 ```
-Then, clone the repository
+Then, clone the repository and download dependency
 
 ```
 git clone https://github.com/AlayaNetwork/Alaya-Go.git --recursive
-```
 
-Switch to the Alaya-Go repository root directory.
+cd Alaya-Go && go mod download
+```
 
 Ubuntu:
 
@@ -45,7 +45,7 @@ Windows:
 go run build\ci.go install 
 ```
 
-The resulting binary will be placed in '$Alaya-Go/build/bin'(Ubuntu) or in '%GOPATH%\bin'(Windows) .
+The resulting binary will be placed in '$Alaya-Go/build/bin' .
 
 ## Getting Started
 
@@ -117,7 +117,7 @@ Address: {apt1anp4tzmdggdrcf39qvshfq3glacjxcd5mayaa8}
 Run the following command to launch a Alaya node connecting to the Alaya's mainnet:
 
 ```
-$ ./alaya --identity "alaya" --datadir ./data --port {your-p2p-port} --rpcaddr 127.0.0.1 --rpcport {your-rpc-port} --rpcapi "db,platon,net,web3,admin,personal" --rpc --nodiscover --nodekey ./data/nodekey --cbft.blskey ./data/blskey
+alaya --identity "alaya" --datadir ./data --port {your-p2p-port} --rpcaddr 127.0.0.1 --rpcport {your-rpc-port} --rpcapi "db,platon,net,web3,admin,personal" --rpc --nodiscover --nodekey ./data/nodekey --cbft.blskey ./data/blskey
 ```
 
 OK, it seems that the chain is running correctly, we can check it as follow:

@@ -1,4 +1,4 @@
-// Copyright 2018-2020 The PlatON Network Authors
+// Copyright 2021 The Alaya Network Authors
 // This file is part of the Alaya-Go library.
 //
 // The Alaya-Go library is free software: you can redistribute it and/or modify
@@ -1544,7 +1544,7 @@ func TestStakingPlugin_HandleUnCandidateItem(t *testing.T) {
 	assert.True(t, recoveryCan.IsValid())
 
 	// The simulation first punishes the low block rate, and then the double sign punishment.
-	// After the lock-up period of the low block rate penalty expires, the double-signing pledge freeze
+	// After the lock-up period of the low block rate penalty expires, the double-signing staking freeze
 	index++
 	if err := create_staking(state, blockNumber2, blockHash2, index, 0, t); nil != err {
 		t.Fatal(err)
@@ -1575,7 +1575,7 @@ func TestStakingPlugin_HandleUnCandidateItem(t *testing.T) {
 	assert.True(t, recoveryCan2.IsInvalidDuplicateSign())
 	assert.False(t, recoveryCan2.IsInvalidLowRatio())
 
-	// Handle double-signature freeze and release pledge, delete nodes
+	// Handle double-signature freeze and release staking, delete nodes
 	newBlockNumber.Add(newBlockNumber, new(big.Int).SetUint64(xutil.CalcBlocksEachEpoch()*xcom.UnStakeFreezeDuration()))
 	err = StakingInstance().HandleUnCandidateItem(state, newBlockNumber.Uint64(), blockHash2, xcom.UnStakeFreezeDuration()+epoch)
 	assert.Nil(t, err)
@@ -1690,7 +1690,7 @@ func TestStakingPlugin_Delegate(t *testing.T) {
 
 }
 
-func TestStakingPlugin_WithdrewDelegate(t *testing.T) {
+func TestStakingPlugin_WithdrewDelegation(t *testing.T) {
 
 	state, genesis, err := newChainState()
 	if nil != err {
@@ -1759,17 +1759,17 @@ func TestStakingPlugin_WithdrewDelegate(t *testing.T) {
 	*/
 	amount := common.Big257
 	delegateTotalHes := can.DelegateTotalHes
-	_, err = StakingInstance().WithdrewDelegate(state, blockHash2, blockNumber2, amount, addrArr[index+1],
+	_, err = StakingInstance().WithdrewDelegation(state, blockHash2, blockNumber2, amount, addrArr[index+1],
 		nodeIdArr[index], blockNumber.Uint64(), del, make([]*reward.DelegateRewardPer, 0))
 
-	if !assert.Nil(t, err, fmt.Sprintf("Failed to WithdrewDelegate: %v", err)) {
+	if !assert.Nil(t, err, fmt.Sprintf("Failed to WithdrewDelegation: %v", err)) {
 		return
 	}
 
 	if err := sndb.Commit(blockHash2); nil != err {
 		t.Error("Commit 2 err", err)
 	}
-	t.Log("Finish WithdrewDelegate ~~", del)
+	t.Log("Finish WithdrewDelegation ~~", del)
 	can, err = getCandidate(blockHash2, index)
 
 	assert.Nil(t, err, fmt.Sprintf("Failed to getCandidate: %v", err))
@@ -1804,10 +1804,10 @@ func TestStakingPlugin_WithdrewDelegate(t *testing.T) {
 	expectedIssueIncome := delegateRewardPerList[1].CalDelegateReward(del.ReleasedHes)
 	expectedBalance := new(big.Int).Add(state.GetBalance(addrArr[index+1]), expectedIssueIncome)
 	expectedBalance = new(big.Int).Add(expectedBalance, del.ReleasedHes)
-	issueIncome, err := StakingInstance().WithdrewDelegate(state, blockHash3, curBlockNumber, del.ReleasedHes, addrArr[index+1],
+	issueIncome, err := StakingInstance().WithdrewDelegation(state, blockHash3, curBlockNumber, del.ReleasedHes, addrArr[index+1],
 		nodeIdArr[index], blockNumber.Uint64(), del, delegateRewardPerList)
 
-	if !assert.Nil(t, err, fmt.Sprintf("Failed to WithdrewDelegate: %v", err)) {
+	if !assert.Nil(t, err, fmt.Sprintf("Failed to WithdrewDelegation: %v", err)) {
 		return
 	}
 

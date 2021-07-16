@@ -1,4 +1,4 @@
-// Copyright 2018-2020 The PlatON Network Authors
+// Copyright 2021 The Alaya Network Authors
 // This file is part of the Alaya-Go library.
 //
 // The Alaya-Go library is free software: you can redistribute it and/or modify
@@ -17,12 +17,14 @@
 package mock
 
 import (
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"math/rand"
 	"reflect"
 	"time"
 
+	"github.com/AlayaNetwork/Alaya-Go/common/vm"
 	"github.com/AlayaNetwork/Alaya-Go/crypto"
 	"github.com/AlayaNetwork/Alaya-Go/crypto/sha3"
 	"github.com/AlayaNetwork/Alaya-Go/rlp"
@@ -609,4 +611,24 @@ func (lhs *MockStateDB) DeepCopy(rhs *MockStateDB) {
 			lhs.Logs[oneAddress] = tempLogs
 		}
 	}
+}
+
+type ActiveVersionValue struct {
+	ActiveVersion uint32 `json:"ActiveVersion"`
+	ActiveBlock   uint64 `json:"ActiveBlock"`
+}
+
+func (state *MockStateDB) GetCurrentActiveVersion() uint32 {
+
+	avListBytes := state.GetState(vm.GovContractAddr, []byte("ActVers"))
+	if len(avListBytes) == 0 {
+		panic("Cannot find active version list")
+	}
+	var avList []ActiveVersionValue
+	if err := json.Unmarshal(avListBytes, &avList); err != nil {
+		panic("invalid active version information")
+	}
+
+	return avList[0].ActiveVersion
+
 }

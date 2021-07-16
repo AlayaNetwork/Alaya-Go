@@ -1,4 +1,4 @@
-// Copyright 2018-2020 The PlatON Network Authors
+// Copyright 2021 The Alaya Network Authors
 // This file is part of the Alaya-Go library.
 //
 // The Alaya-Go library is free software: you can redistribute it and/or modify
@@ -67,7 +67,7 @@ func (rc *RestrictingContract) CheckGasPrice(gasPrice *big.Int, fcode uint16) er
 	return nil
 }
 
-// createRestrictingPlan is a PlatON precompiled contract function, used for create a restricting plan
+// createRestrictingPlan is a Alaya precompiled contract function, used for create a restricting plan
 func (rc *RestrictingContract) createRestrictingPlan(account common.Address, plans []restricting.RestrictingPlan) ([]byte, error) {
 
 	//sender := rc.Contract.Caller()
@@ -103,7 +103,7 @@ func (rc *RestrictingContract) createRestrictingPlan(account common.Address, pla
 	}
 }
 
-// createRestrictingPlan is a PlatON precompiled contract function, used for getting restricting info.
+// createRestrictingPlan is a Alaya precompiled contract function, used for getting restricting info.
 // first output param is a slice of byte of restricting info;
 // the secend output param is the result what plugin executed GetRestrictingInfo returns.
 func (rc *RestrictingContract) getRestrictingInfo(account common.Address) ([]byte, error) {
