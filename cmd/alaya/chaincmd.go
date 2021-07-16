@@ -18,6 +18,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/AlayaNetwork/Alaya-Go/trie"
 	"io"
 
 	"github.com/AlayaNetwork/Alaya-Go/core/rawdb"
@@ -444,9 +445,11 @@ func copyDb(ctx *cli.Context) error {
 	//		*utils.GlobalTextMarshaler(ctx, utils.SyncModeFlag.Name).(*downloader.SyncMode)
 	localSnapshotDB := snapshotdb.Instance()
 
-	dl := downloader.New(syncmode, chainDb, localSnapshotDB, new(event.TypeMux), chain, nil, nil, nil)
+	syncBloom := trie.NewSyncBloom(uint64(ctx.GlobalInt(utils.CacheFlag.Name)/2), chainDb)
+
+	dl := downloader.New( chainDb, localSnapshotDB,syncBloom, new(event.TypeMux), chain, nil, nil, nil)
 	// Create a source peer to satisfy downloader requests from
-	db, err := rawdb.NewLevelDBDatabase(ctx.Args().First(), ctx.GlobalInt(utils.CacheFlag.Name), 256, "")
+	db, err := rawdb.NewLevelDBDatabase(ctx.Args().First(), ctx.GlobalInt(utils.CacheFlag.Name)/2, 256, "")
 	if err != nil {
 		return err
 	}

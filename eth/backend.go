@@ -242,10 +242,10 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 			ConsoleOutput: config.Debug,
 			WasmType:      vm.Str2WasmType(config.VMWasmType),
 		}
-		cacheConfig = &core.CacheConfig{Disabled: config.NoPruning, TrieNodeLimit: config.TrieCache, TrieTimeLimit: config.TrieTimeout,
+		cacheConfig = &core.CacheConfig{Disabled: config.NoPruning, TrieDirtyLimit: config.TrieCache, TrieTimeLimit: config.TrieTimeout,
 			BodyCacheLimit: config.BodyCacheLimit, BlockCacheLimit: config.BlockCacheLimit,
 			MaxFutureBlocks: config.MaxFutureBlocks, BadBlockLimit: config.BadBlockLimit,
-			TriesInMemory: config.TriesInMemory, TrieDBCache: config.TrieDBCache,
+			TriesInMemory: config.TriesInMemory, TrieCleanLimit: config.TrieDBCache,
 			DBGCInterval: config.DBGCInterval, DBGCTimeout: config.DBGCTimeout,
 			DBGCMpt: config.DBGCMpt, DBGCBlock: config.DBGCBlock,
 		}
@@ -366,10 +366,11 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 		}
 	}
 
-	if eth.protocolManager, err = NewProtocolManager(eth.chainConfig, config.SyncMode, config.NetworkId, eth.eventMux, eth.txPool, eth.engine, eth.blockchain, chainDb); err != nil {
+	// Permit the downloader to use the trie cache allowance during fast sync
+	cacheLimit := cacheConfig.TrieCleanLimit + cacheConfig.TrieDirtyLimit
+	if eth.protocolManager, err = NewProtocolManager(eth.chainConfig, config.SyncMode, config.NetworkId, eth.eventMux, eth.txPool, eth.engine, eth.blockchain, chainDb,cacheLimit); err != nil {
 		return nil, err
 	}
-
 	eth.APIBackend = &EthAPIBackend{eth, nil}
 	gpoParams := config.GPO
 	if gpoParams.Default == nil {

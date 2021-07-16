@@ -54,9 +54,10 @@ var (
 // that's resident in a blockchain.
 type CacheConfig struct {
 	Disabled      bool          // Whether to disable trie write caching (archive node)
-	TrieNodeLimit int           // Memory limit (MB) at which to flush the current in-memory trie to disk
-	TrieTimeLimit time.Duration // Time limit after which to flush the current in-memory trie to disk
-	TrieDBCache   int
+
+	TrieCleanLimit int           // Memory allowance (MB) to use for caching trie nodes in memory
+	TrieDirtyLimit int // Memory limit (MB) at which to flush the current in-memory trie to disk
+	TrieTimeLimit  time.Duration // Time limit after which to flush the current in-memory trie to disk
 
 	BodyCacheLimit  int
 	BlockCacheLimit int
@@ -158,14 +159,14 @@ type BlockChain struct {
 func NewBlockChain(db ethdb.Database, cacheConfig *CacheConfig, chainConfig *params.ChainConfig, engine consensus.Engine, vmConfig vm.Config, shouldPreserve func(block *types.Block) bool) (*BlockChain, error) {
 	if cacheConfig == nil {
 		cacheConfig = &CacheConfig{
-			TrieNodeLimit:   256 * 1024 * 1024,
+			TrieCleanLimit:  512,
+			TrieDirtyLimit:  256 * 1024 * 1024,
 			TrieTimeLimit:   5 * time.Minute,
 			BodyCacheLimit:  256,
 			BlockCacheLimit: 256,
 			MaxFutureBlocks: 256,
 			BadBlockLimit:   10,
 			TriesInMemory:   128,
-			TrieDBCache:     512,
 			DBGCInterval:    86400,
 			DBGCTimeout:     time.Minute,
 		}
@@ -181,7 +182,7 @@ func NewBlockChain(db ethdb.Database, cacheConfig *CacheConfig, chainConfig *par
 		cacheConfig:    cacheConfig,
 		db:             db,
 		triegc:         prque.New(nil),
-		stateCache:     state.NewDatabaseWithCache(db, cacheConfig.TrieDBCache),
+		stateCache:     state.NewDatabaseWithCache(db, cacheConfig.TrieCleanLimit),
 		quit:           make(chan struct{}),
 		shouldPreserve: shouldPreserve,
 		bodyCache:      bodyCache,
@@ -958,7 +959,7 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts []*types.
 
 	// If we're running an archive node, always flush
 	if bc.cacheConfig.Disabled {
-		limit := common.StorageSize(bc.cacheConfig.TrieNodeLimit) * 1024 * 1024
+		limit := common.StorageSize(bc.cacheConfig.TrieDirtyLimit) * 1024 * 1024
 		oversize := false
 		if !(bc.cacheConfig.DBGCMpt && !bc.cacheConfig.DBDisabledGC.IsSet()) {
 			triedb.ReferenceVersion(root)
@@ -1005,7 +1006,7 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts []*types.
 			// If we exceeded our memory allowance, flush matured singleton nodes to disk
 			var (
 				nodes, imgs = triedb.Size()
-				limit       = common.StorageSize(bc.cacheConfig.TrieNodeLimit) * 1024 * 1024
+				limit       = common.StorageSize(bc.cacheConfig.TrieDirtyLimit) * 1024 * 1024
 			)
 			if nodes > limit || imgs > 4*1024*1024 {
 				triedb.Cap(limit - ethdb.IdealBatchSize)

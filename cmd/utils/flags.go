@@ -1344,7 +1344,7 @@ func MakeChain(ctx *cli.Context, stack *node.Node) (chain *core.BlockChain, chai
 
 	cache := &core.CacheConfig{
 		Disabled:        true,
-		TrieNodeLimit:   eth.DefaultConfig.TrieCache,
+		TrieDirtyLimit:  eth.DefaultConfig.TrieCache,
 		TrieTimeLimit:   eth.DefaultConfig.TrieTimeout,
 		BodyCacheLimit:  eth.DefaultConfig.BodyCacheLimit,
 		BlockCacheLimit: eth.DefaultConfig.BlockCacheLimit,
@@ -1353,7 +1353,7 @@ func MakeChain(ctx *cli.Context, stack *node.Node) (chain *core.BlockChain, chai
 		TriesInMemory:   eth.DefaultConfig.TriesInMemory,
 	}
 	if ctx.GlobalIsSet(CacheFlag.Name) || ctx.GlobalIsSet(CacheGCFlag.Name) {
-		cache.TrieNodeLimit = ctx.GlobalInt(CacheFlag.Name) * ctx.GlobalInt(CacheGCFlag.Name) / 100
+		cache.TrieDirtyLimit = ctx.GlobalInt(CacheFlag.Name) * ctx.GlobalInt(CacheGCFlag.Name) / 100
 	}
 	vmcfg := vm.Config{}
 	chain, err = core.NewBlockChain(chainDb, cache, config, engine, vmcfg, nil)
@@ -1387,7 +1387,7 @@ func MakeChainForCBFT(ctx *cli.Context, stack *node.Node, cfg *eth.Config, nodeC
 
 	cache := &core.CacheConfig{
 		Disabled:        true,
-		TrieNodeLimit:   eth.DefaultConfig.TrieCache,
+		TrieDirtyLimit:  eth.DefaultConfig.TrieCache,
 		TrieTimeLimit:   eth.DefaultConfig.TrieTimeout,
 		BodyCacheLimit:  eth.DefaultConfig.BodyCacheLimit,
 		BlockCacheLimit: eth.DefaultConfig.BlockCacheLimit,
@@ -1396,7 +1396,7 @@ func MakeChainForCBFT(ctx *cli.Context, stack *node.Node, cfg *eth.Config, nodeC
 		TriesInMemory:   eth.DefaultConfig.TriesInMemory,
 	}
 	if ctx.GlobalIsSet(CacheFlag.Name) || ctx.GlobalIsSet(CacheGCFlag.Name) {
-		cache.TrieNodeLimit = ctx.GlobalInt(CacheFlag.Name) * ctx.GlobalInt(CacheGCFlag.Name) / 100
+		cache.TrieDirtyLimit = ctx.GlobalInt(CacheFlag.Name) * ctx.GlobalInt(CacheGCFlag.Name) / 100
 	}
 	vmcfg := vm.Config{}
 	chain, err = core.NewBlockChain(chainDb, cache, config, engine, vmcfg, nil)

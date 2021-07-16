@@ -48,6 +48,8 @@ require (
 	github.com/rs/cors v0.0.0-20160617231935-a62a804a8a00
 	github.com/rs/xhandler v0.0.0-20160618193221-ed27b6fd6521 // indirect
 	github.com/shirou/gopsutil v2.20.5+incompatible
+	github.com/steakknife/bloomfilter v0.0.0-20180922174646-6819c0d2a570 // indirect
+	github.com/steakknife/hamming v0.0.0-20180906055917-c99c65617cd3 // indirect
 	github.com/stretchr/testify v1.4.0
 	github.com/syndtr/goleveldb v1.0.1-0.20190923125748-758128399b1d
 	github.com/tealeg/xlsx v1.0.5

@@ -224,7 +224,7 @@ func GenerateBlockChain2(config *params.ChainConfig, parent *types.Block, engine
 	}
 	cacheConfig := &CacheConfig{
 		Disabled:        true,
-		TrieNodeLimit:   256 * 1024 * 1024,
+		TrieDirtyLimit:  256 * 1024 * 1024,
 		TrieTimeLimit:   5 * time.Minute,
 		BodyCacheLimit:  256,
 		BlockCacheLimit: 256,
@@ -278,7 +278,7 @@ func GenerateBlockChain(config *params.ChainConfig, parent *types.Block, engine 
 	}
 	cacheConfig := &CacheConfig{
 		Disabled:        true,
-		TrieNodeLimit:   256 * 1024 * 1024,
+		TrieDirtyLimit:  256 * 1024 * 1024,
 		TrieTimeLimit:   5 * time.Minute,
 		BodyCacheLimit:  256,
 		BlockCacheLimit: 256,
