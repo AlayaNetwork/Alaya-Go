@@ -328,31 +328,6 @@ func WriteReceipts(db ethdb.Writer, hash common.Hash, number uint64, receipts ty
 	}
 }
 
-// ReadBlockConfirmSigns retrieves all the block confirmSigns belonging to a block.
-func ReadBlockConfirmSigns(db ethdb.Reader, hash common.Hash, number uint64) []*common.BlockConfirmSign {
-	data, _ := db.Get(blockConfirmSignsKey(number, hash))
-	if len(data) == 0 {
-		return nil
-	}
-	blockConfirmSigns := []*common.BlockConfirmSign{}
-	if err := rlp.DecodeBytes(data, &blockConfirmSigns); err != nil {
-		log.Error("Invalid block confirmSign array RLP", "hash", hash, "err", err)
-		return nil
-	}
-	return blockConfirmSigns
-}
-
-// WriteBlockConfirmSigns stores all the block confirmSigns belonging to a block.
-//func WriteBlockConfirmSigns(db ethdb.Writer, hash common.Hash, number uint64, blockConfirmSigns []common.BlockConfirmSign) {
-//	bytes, err := rlp.EncodeToBytes(blockConfirmSigns)
-//	if err != nil {
-//		log.Crit("Failed to encode block confirmSigns", "err", err)
-//	}
-//	// Store the flattened receipt slice
-//	if err := db.Put(blockConfirmSignsKey(number, hash), bytes); err != nil {
-//		log.Crit("Failed to store block confirmSigns", "err", err)
-//	}
-//}
 
 // DeleteReceipts removes all receipt data associated with a block hash.
 func DeleteReceipts(db ethdb.Writer, hash common.Hash, number uint64) {
