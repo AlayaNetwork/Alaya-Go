@@ -18,8 +18,10 @@ package main
 
 import (
 	"fmt"
-	"github.com/AlayaNetwork/Alaya-Go/trie"
 	"io"
+	"path/filepath"
+
+	"github.com/AlayaNetwork/Alaya-Go/trie"
 
 	"github.com/AlayaNetwork/Alaya-Go/core/rawdb"
 
@@ -171,6 +173,19 @@ Remove blockchain and state databases`,
 		Description: `
 The arguments are interpreted as block numbers or hashes.
 Use "ethereum dump 0" to dump the genesis block.`,
+	}
+	inspectCommand = cli.Command{
+		Action:    utils.MigrateFlags(inspect),
+		Name:      "inspect",
+		Usage:     "Inspect the storage size for each type of data in the database",
+		ArgsUsage: " ",
+		Flags: []cli.Flag{
+			utils.DataDirFlag,
+			utils.AncientFlag,
+			utils.CacheFlag,
+			utils.SyncModeFlag,
+		},
+		Category: "BLOCKCHAIN COMMANDS",
 	}
 )
 
@@ -433,8 +448,15 @@ func exportPreimages(ctx *cli.Context) error {
 
 func copyDb(ctx *cli.Context) error {
 	// Ensure we have a source chain directory to copy
-	if len(ctx.Args()) != 2 {
-		utils.Fatalf("invalid arguments, please specify both <sourceChaindataDir> (path to a local chain database), <sourceSnapshotDBDir> (path to a local ppos database)")
+	if len(ctx.Args()) < 1 {
+		utils.Fatalf("Source chaindata directory path argument missing")
+	}
+	if len(ctx.Args()) < 2 {
+		utils.Fatalf("Source ancient chain directory path argument missing")
+	}
+	// Ensure we have a source chain directory to copy
+	if len(ctx.Args()) < 3 {
+		utils.Fatalf("Source SnapshotDBD directory (path to a local ppos database) path argument missing")
 	}
 	// Initialize a new chain for the running node to sync into
 	stack := makeFullNode(ctx)
@@ -447,9 +469,9 @@ func copyDb(ctx *cli.Context) error {
 
 	syncBloom := trie.NewSyncBloom(uint64(ctx.GlobalInt(utils.CacheFlag.Name)/2), chainDb)
 
-	dl := downloader.New( chainDb, localSnapshotDB,syncBloom, new(event.TypeMux), chain, nil, nil, nil)
+	dl := downloader.New(chainDb, localSnapshotDB, syncBloom, new(event.TypeMux), chain, nil, nil, nil)
 	// Create a source peer to satisfy downloader requests from
-	db, err := rawdb.NewLevelDBDatabase(ctx.Args().First(), ctx.GlobalInt(utils.CacheFlag.Name)/2, 256, "")
+	db, err := rawdb.NewLevelDBDatabaseWithFreezer(ctx.Args().First(), ctx.GlobalInt(utils.CacheFlag.Name)/2, 256, ctx.Args().Get(1), "")
 	if err != nil {
 		return err
 	}
@@ -457,7 +479,7 @@ func copyDb(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	peerSnapshotDB, err := snapshotdb.Open(ctx.Args().Get(1), ctx.GlobalInt(utils.CacheFlag.Name), 256, false)
+	peerSnapshotDB, err := snapshotdb.Open(ctx.Args().Get(2), ctx.GlobalInt(utils.CacheFlag.Name), 256, false)
 	if err != nil {
 		return err
 	}
@@ -489,32 +511,63 @@ func copyDb(ctx *cli.Context) error {
 }
 
 func removeDB(ctx *cli.Context) error {
-	stack, _ := makeConfigNode(ctx)
+	stack, config := makeConfigNode(ctx)
 
-	for _, name := range []string{"chaindata", "lightchaindata"} {
-		// Ensure the database exists in the first place
-		logger := log.New("database", name)
-
-		dbdir := stack.ResolvePath(name)
-		if !common.FileExist(dbdir) {
-			logger.Info("Database doesn't exist, skipping", "path", dbdir)
-			continue
-		}
-		// Confirm removal and execute
-		fmt.Println(dbdir)
-		confirm, err := console.Stdin.PromptConfirm("Remove this database?")
-		switch {
-		case err != nil:
-			utils.Fatalf("%v", err)
-		case !confirm:
-			logger.Warn("Database deletion aborted")
-		default:
-			start := time.Now()
-			os.RemoveAll(dbdir)
-			logger.Info("Database successfully deleted", "elapsed", common.PrettyDuration(time.Since(start)))
-		}
+	// Remove the full node state database
+	path := stack.ResolvePath("chaindata")
+	if common.FileExist(path) {
+		confirmAndRemoveDB(path, "full node state database")
+	} else {
+		log.Info("Full node state database missing", "path", path)
+	}
+	// Remove the full node ancient database
+	path = config.Eth.DatabaseFreezer
+	switch {
+	case path == "":
+		path = filepath.Join(stack.ResolvePath("chaindata"), "ancient")
+	case !filepath.IsAbs(path):
+		path = config.Node.ResolvePath(path)
+	}
+	if common.FileExist(path) {
+		confirmAndRemoveDB(path, "full node ancient database")
+	} else {
+		log.Info("Full node ancient database missing", "path", path)
+	}
+	// Remove the light node database
+	path = stack.ResolvePath("lightchaindata")
+	if common.FileExist(path) {
+		confirmAndRemoveDB(path, "light node database")
+	} else {
+		log.Info("Light node database missing", "path", path)
 	}
 	return nil
+}
+
+// confirmAndRemoveDB prompts the user for a last confirmation and removes the
+// folder if accepted.
+func confirmAndRemoveDB(database string, kind string) {
+	confirm, err := console.Stdin.PromptConfirm(fmt.Sprintf("Remove %s (%s)?", kind, database))
+	switch {
+	case err != nil:
+		utils.Fatalf("%v", err)
+	case !confirm:
+		log.Info("Database deletion skipped", "path", database)
+	default:
+		start := time.Now()
+		filepath.Walk(database, func(path string, info os.FileInfo, err error) error {
+			// If we're at the top level folder, recurse into
+			if path == database {
+				return nil
+			}
+			// Delete all the files, but not subfolders
+			if !info.IsDir() {
+				os.Remove(path)
+				return nil
+			}
+			return filepath.SkipDir
+		})
+		log.Info("Database successfully deleted", "path", database, "elapsed", common.PrettyDuration(time.Since(start)))
+	}
 }
 
 func dump(ctx *cli.Context) error {
@@ -543,6 +596,16 @@ func dump(ctx *cli.Context) error {
 	}
 	chainDb.Close()
 	return nil
+}
+
+func inspect(ctx *cli.Context) error {
+	node, _ := makeConfigNode(ctx)
+	defer node.Close()
+
+	_, chainDb := utils.MakeChain(ctx, node)
+	defer chainDb.Close()
+
+	return rawdb.InspectDatabase(chainDb)
 }
 
 // hashish returns true for strings that look like hashes.

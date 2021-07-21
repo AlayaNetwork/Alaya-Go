@@ -21,13 +21,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/AlayaNetwork/Alaya-Go/trie"
 	"math"
 	"math/big"
 	"math/rand"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/AlayaNetwork/Alaya-Go/trie"
 
 	"github.com/syndtr/goleveldb/leveldb/iterator"
 
@@ -185,7 +186,7 @@ func NewProtocolManager(config *params.ChainConfig, mode downloader.SyncMode, ne
 	if atomic.LoadUint32(&manager.fastSync) == 1 {
 		stateBloom = trie.NewSyncBloom(uint64(cacheLimit), chaindb)
 	}
-	manager.downloader = downloader.New( chaindb, snapshotdb.Instance(),stateBloom, manager.eventMux, blockchain, nil, manager.removePeer, decodeExtra)
+	manager.downloader = downloader.New(chaindb, snapshotdb.Instance(), stateBloom, manager.eventMux, blockchain, nil, manager.removePeer, decodeExtra)
 
 	// Construct the fetcher (short sync)
 	validator := func(header *types.Header) error {
