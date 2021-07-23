@@ -67,7 +67,7 @@ Also, please follow these guidelines when submitting code:
 
 To get it out of the way:
 
-- **[feature/bump-version-to-x.xx.x](https://github.com/AlayaNetwork/Alaya-Go/tree/feature/bump-version-to-0.16.0)** is the development for new version feature branch. All work on the next version release happens here so you should generally branch off `feature/bump-version-to-x.xx.x`. Do **NOT** use this branch for a production site.
+- **[feature/xxx](https://github.com/AlayaNetwork/Alaya-Go/tree/feature/bump-version-to-0.16.0)** is the development for new version feature branch. All work on the next version release happens here so you should generally branch off `feature/xxx`. Do **NOT** use this branch for a production site.
 - **[develop](https://github.com/AlayaNetwork/Alaya-Go/tree/develop)** is the development branch. Bug fixes of the current version can be submitted to this branch . Do **NOT** use this branch for a production site.
 - **[master](https://github.com/AlayaNetwork/Alaya-Go/tree/master)** contains the latest release of Alaya. This branch may be used in production. Do **NOT** use this branch to work on Alaya's source.
 
