@@ -29,7 +29,6 @@ Then, clone the repository and download dependency
 
 ```
 git clone https://github.com/AlayaNetwork/Alaya-Go.git --recursive
-
 cd Alaya-Go && go mod download
 ```
 
