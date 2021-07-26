@@ -1,11 +1,11 @@
 package core
 
 import (
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	dag3 "github.com/PlatONnetwork/PlatON-Go/core/dag"
-	"github.com/PlatONnetwork/PlatON-Go/core/state"
-	"github.com/PlatONnetwork/PlatON-Go/core/types"
-	"github.com/PlatONnetwork/PlatON-Go/log"
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	dag3 "github.com/AlayaNetwork/Alaya-Go/core/dag"
+	"github.com/AlayaNetwork/Alaya-Go/core/state"
+	"github.com/AlayaNetwork/Alaya-Go/core/types"
+	"github.com/AlayaNetwork/Alaya-Go/log"
 )
 
 type TxDag struct {

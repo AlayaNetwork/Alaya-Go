@@ -1,33 +1,37 @@
-// Copyright 2018-2020 The PlatON Network Authors
-// This file is part of the PlatON-Go library.
+// Copyright 2021 The Alaya Network Authors
+// This file is part of the Alaya-Go library.
 //
-// The PlatON-Go library is free software: you can redistribute it and/or modify
+// The Alaya-Go library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The PlatON-Go library is distributed in the hope that it will be useful,
+// The Alaya-Go library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the PlatON-Go library. If not, see <http://www.gnu.org/licenses/>.
+// along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
+
 
 package gov
 
 import (
 	"encoding/json"
+	"fmt"
 
-	"github.com/PlatONnetwork/PlatON-Go/rlp"
+	"github.com/AlayaNetwork/Alaya-Go/params"
 
-	"github.com/PlatONnetwork/PlatON-Go/core/snapshotdb"
+	"github.com/AlayaNetwork/Alaya-Go/rlp"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	"github.com/PlatONnetwork/PlatON-Go/common/vm"
-	"github.com/PlatONnetwork/PlatON-Go/log"
-	"github.com/PlatONnetwork/PlatON-Go/p2p/discover"
-	"github.com/PlatONnetwork/PlatON-Go/x/xcom"
+	"github.com/AlayaNetwork/Alaya-Go/core/snapshotdb"
+
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/common/vm"
+	"github.com/AlayaNetwork/Alaya-Go/log"
+	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
+	"github.com/AlayaNetwork/Alaya-Go/x/xcom"
 )
 
 var (
@@ -251,6 +255,32 @@ func AddActiveVersion(activeVersion uint32, activeBlock uint64, state xcom.State
 
 	avListBytes, _ := json.Marshal(avList)
 	state.SetState(vm.GovContractAddr, KeyActiveVersions(), avListBytes)
+	return nil
+}
+
+func Set0140Param(hash common.Hash, curVersion uint32, db snapshotdb.DB) error {
+	if curVersion == params.FORKVERSION_0_14_0 {
+		list, err := db.Get(hash, KeyParamItems())
+		if err != nil {
+			return err
+		}
+		var paramItemList []*ParamItem
+		if err := rlp.DecodeBytes(list, &paramItemList); err != nil {
+			return err
+		}
+		for _, param := range init0140VersionParam() {
+			paramItemList = append(paramItemList, param.ParamItem)
+			value := common.MustRlpEncode(param.ParamValue)
+			if err := db.Put(hash, KeyParamValue(param.ParamItem.Module, param.ParamItem.Name), value); err != nil {
+				return fmt.Errorf("failed to Store govern 0140 parameter. error:%s", err.Error())
+			}
+			RegGovernParamVerifier(param.ParamItem.Module, param.ParamItem.Name, param.ParamVerifier)
+		}
+		value := common.MustRlpEncode(paramItemList)
+		if err := db.Put(hash, KeyParamItems(), value); err != nil {
+			return fmt.Errorf("failed to Store govern 0140 parameter list. error:%s", err.Error())
+		}
+	}
 	return nil
 }
 

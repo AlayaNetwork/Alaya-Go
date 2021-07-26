@@ -26,10 +26,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/PlatONnetwork/PlatON-Go/crypto"
-	"github.com/PlatONnetwork/PlatON-Go/crypto/sha3"
-	"github.com/PlatONnetwork/PlatON-Go/log"
-	"github.com/PlatONnetwork/PlatON-Go/p2p/discover"
+	"github.com/AlayaNetwork/Alaya-Go/crypto"
+	"github.com/AlayaNetwork/Alaya-Go/crypto/sha3"
+	"github.com/AlayaNetwork/Alaya-Go/log"
+	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
 )
 
 func init() {
@@ -59,7 +59,7 @@ func (c *testTransport) doEncHandshake(prv *ecdsa.PrivateKey, dialDest *discover
 }
 
 func (c *testTransport) doProtoHandshake(our *protoHandshake) (*protoHandshake, error) {
-	return &protoHandshake{ID: c.id, Name: "test"}, nil
+	return &protoHandshake{Version: baseProtocolVersion, ID: c.id, Name: "test"}, nil
 }
 
 func (c *testTransport) close(err error) {
@@ -418,6 +418,7 @@ func TestServerAtCap(t *testing.T) {
 
 	// Try inserting a consensus connection.
 	consensusID := randomID()
+	srv.consensus = true
 	srv.AddConsensusPeer(&discover.Node{ID: consensusID})
 	c = newconn(consensusID)
 	if err := srv.checkpoint(c, srv.posthandshake); err != nil {
@@ -425,6 +426,13 @@ func TestServerAtCap(t *testing.T) {
 	}
 	if !c.is(consensusDialedConn) {
 		t.Error("Server did not set consensus flag")
+	}
+
+	// An InboundConn connection was broken in the previous step, and an InboundConn connection is added
+	time.Sleep(time.Second) // Waiting remove peer
+	c = newconn(randomID())
+	if err := srv.checkpoint(c, srv.addpeer); err != nil {
+		t.Fatalf("could not add conn: %v", err)
 	}
 
 	// Remove from consensus set and try again
@@ -442,6 +450,13 @@ func TestServerAtCap(t *testing.T) {
 	}
 	if !c.is(consensusDialedConn) {
 		t.Error("Server did not set consensus flag")
+	}
+
+	// An InboundConn connection was broken in the previous step, and an InboundConn connection is added
+	time.Sleep(time.Second) // Waiting remove peer
+	c = newconn(randomID())
+	if err := srv.checkpoint(c, srv.addpeer); err != nil {
+		t.Fatalf("could not add conn: %v", err)
 	}
 
 	// Removing non-consensus connection
@@ -632,13 +647,18 @@ func (c *setupTransport) doEncHandshake(prv *ecdsa.PrivateKey, dialDest *discove
 	c.calls += "doEncHandshake,"
 	return c.id, c.encHandshakeErr
 }
+
 func (c *setupTransport) doProtoHandshake(our *protoHandshake) (*protoHandshake, error) {
 	c.calls += "doProtoHandshake,"
+	if c.phs != nil {
+		c.phs.Version = baseProtocolVersion
+	}
 	if c.protoHandshakeErr != nil {
 		return nil, c.protoHandshakeErr
 	}
 	return c.phs, nil
 }
+
 func (c *setupTransport) close(err error) {
 	c.calls += "close,"
 	c.closeErr = err

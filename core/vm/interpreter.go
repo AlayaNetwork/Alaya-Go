@@ -21,8 +21,8 @@ import (
 	"hash"
 	"sync/atomic"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	"github.com/PlatONnetwork/PlatON-Go/common/math"
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/common/math"
 )
 
 // Config are the configuration options for the Interpreter
@@ -139,8 +139,10 @@ func (in *EVMInterpreter) Run(contract *Contract, input []byte, readOnly bool) (
 
 	go func(ctx context.Context) {
 		<-ctx.Done()
-		// shutdown vm, change th vm.abort mark
-		in.evm.Cancel()
+		if err := ctx.Err(); err != nil && context.DeadlineExceeded == err {
+			// shutdown vm, change th vm.abort mark
+			in.evm.Cancel()
+		}
 	}(in.evm.Ctx)
 
 	// Increment the call depth which is restricted to 1024

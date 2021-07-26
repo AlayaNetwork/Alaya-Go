@@ -3,12 +3,12 @@ package core
 import (
 	"time"
 
-	"github.com/PlatONnetwork/PlatON-Go/consensus"
-	"github.com/PlatONnetwork/PlatON-Go/core/state"
-	"github.com/PlatONnetwork/PlatON-Go/core/types"
-	"github.com/PlatONnetwork/PlatON-Go/core/vm"
-	"github.com/PlatONnetwork/PlatON-Go/log"
-	"github.com/PlatONnetwork/PlatON-Go/params"
+	"github.com/AlayaNetwork/Alaya-Go/consensus"
+	"github.com/AlayaNetwork/Alaya-Go/core/state"
+	"github.com/AlayaNetwork/Alaya-Go/core/types"
+	"github.com/AlayaNetwork/Alaya-Go/core/vm"
+	"github.com/AlayaNetwork/Alaya-Go/log"
+	"github.com/AlayaNetwork/Alaya-Go/params"
 )
 
 type ParallelStateProcessor struct {
@@ -36,7 +36,7 @@ func (p *ParallelStateProcessor) Process(block *types.Block, statedb *state.Stat
 
 	if bcr != nil {
 		// BeginBlocker()
-		if err := bcr.BeginBlocker(block.Header(), statedb); nil != err {
+		if err := bcr.BeginBlocker(header, statedb); nil != err {
 			log.Error("Failed to call BeginBlocker on StateProcessor", "blockNumber", block.Number(),
 				"blockHash", block.Hash(), "err", err)
 			return nil, nil, 0, err
@@ -78,7 +78,7 @@ func (p *ParallelStateProcessor) Process(block *types.Block, statedb *state.Stat
 
 	if bcr != nil {
 		// EndBlocker()
-		if err := bcr.EndBlocker(block.Header(), statedb); nil != err {
+		if err := bcr.EndBlocker(header, statedb); nil != err {
 			log.Error("Failed to call EndBlocker on StateProcessor", "blockNumber", block.Number(),
 				"blockHash", block.Hash(), "err", err)
 			return nil, nil, 0, err

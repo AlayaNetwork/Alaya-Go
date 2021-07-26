@@ -25,23 +25,23 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/PlatONnetwork/PlatON-Go/core/snapshotdb"
+	"github.com/AlayaNetwork/Alaya-Go/core/snapshotdb"
 
-	"github.com/PlatONnetwork/PlatON-Go/rlp"
-	"github.com/PlatONnetwork/PlatON-Go/x/gov"
+	"github.com/AlayaNetwork/Alaya-Go/rlp"
+	"github.com/AlayaNetwork/Alaya-Go/x/gov"
 
-	"github.com/PlatONnetwork/PlatON-Go/common/hexutil"
+	"github.com/AlayaNetwork/Alaya-Go/common/hexutil"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	"github.com/PlatONnetwork/PlatON-Go/consensus"
-	"github.com/PlatONnetwork/PlatON-Go/core"
-	"github.com/PlatONnetwork/PlatON-Go/core/cbfttypes"
-	"github.com/PlatONnetwork/PlatON-Go/core/state"
-	"github.com/PlatONnetwork/PlatON-Go/core/types"
-	"github.com/PlatONnetwork/PlatON-Go/core/vm"
-	"github.com/PlatONnetwork/PlatON-Go/event"
-	"github.com/PlatONnetwork/PlatON-Go/log"
-	"github.com/PlatONnetwork/PlatON-Go/params"
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/consensus"
+	"github.com/AlayaNetwork/Alaya-Go/core"
+	"github.com/AlayaNetwork/Alaya-Go/core/cbfttypes"
+	"github.com/AlayaNetwork/Alaya-Go/core/state"
+	"github.com/AlayaNetwork/Alaya-Go/core/types"
+	"github.com/AlayaNetwork/Alaya-Go/core/vm"
+	"github.com/AlayaNetwork/Alaya-Go/event"
+	"github.com/AlayaNetwork/Alaya-Go/log"
+	"github.com/AlayaNetwork/Alaya-Go/params"
 )
 
 // environment is the worker's current environment and holds all of the current state information.
@@ -135,7 +135,6 @@ type worker struct {
 	EmptyBlock   string
 	config       *params.ChainConfig
 	miningConfig *core.MiningConfig
-	vmConfig     *vm.Config
 	engine       consensus.Engine
 	eth          Backend
 	chain        *core.BlockChain
@@ -202,14 +201,13 @@ type worker struct {
 	vmTimeout uint64
 }
 
-func newWorker(config *params.ChainConfig, miningConfig *core.MiningConfig, vmConfig *vm.Config, engine consensus.Engine,
+func newWorker(config *params.ChainConfig, miningConfig *core.MiningConfig, engine consensus.Engine,
 	eth Backend, mux *event.TypeMux, recommit time.Duration, gasFloor uint64, isLocalBlock func(*types.Block) bool,
 	blockChainCache *core.BlockChainCache, vmTimeout uint64) *worker {
 
 	worker := &worker{
 		config:       config,
 		miningConfig: miningConfig,
-		vmConfig:     vmConfig,
 		engine:       engine,
 		eth:          eth,
 		mux:          mux,
@@ -703,6 +701,11 @@ func (w *worker) resultLoop() {
 				logs     []*types.Log
 			)
 			for i, receipt := range _receipts {
+				// add block location fields
+				receipt.BlockHash = hash
+				receipt.BlockNumber = block.Number()
+				receipt.TransactionIndex = uint(i)
+
 				receipts[i] = new(types.Receipt)
 				*receipts[i] = *receipt
 				// Update the block hash in all logs since it is now available and not when the
@@ -730,7 +733,10 @@ func (w *worker) resultLoop() {
 			log.Info("Successfully write new block", "hash", block.Hash(), "number", block.NumberU64(), "coinbase", block.Coinbase(), "time", block.Time(), "root", block.Root())
 
 			// Broadcast the block and announce chain insertion event
-			w.mux.Post(core.NewMinedBlockEvent{Block: block})
+			if !w.engine.Syncing() {
+				log.Trace("Broadcast the block and announce chain insertion event", "hash", block.Hash(), "number", block.NumberU64())
+				w.mux.Post(core.NewMinedBlockEvent{Block: block})
+			}
 
 			var events []interface{}
 			switch stat {
@@ -792,9 +798,10 @@ func (w *worker) updateSnapshot() {
 
 func (w *worker) commitTransaction(tx *types.Transaction) ([]*types.Log, error) {
 	snapForSnap, snapForState := w.current.DBSnapshot()
-
+	vmCfg := *w.chain.GetVMConfig()       // value copy
+	vmCfg.VmTimeoutDuration = w.vmTimeout // set vm execution smart contract timeout duration
 	receipt, _, err := core.ApplyTransaction(w.config, w.chain, w.current.gasPool, w.current.state,
-		w.current.header, tx, &w.current.header.GasUsed, *w.chain.GetVMConfig())
+		w.current.header, tx, &w.current.header.GasUsed, vmCfg)
 	if err != nil {
 		log.Error("Failed to commitTransaction on worker", "blockNumer", w.current.header.Number.Uint64(), "txHash", tx.Hash().String(), "err", err)
 		w.current.RevertToDBSnapshot(snapForSnap, snapForState)
@@ -1251,7 +1258,7 @@ func (w *worker) makeExtraData() []byte {
 	extra, _ := rlp.EncodeToBytes([]interface{}{
 		//uint(params.VersionMajor<<16 | params.VersionMinor<<8 | params.VersionPatch),
 		gov.GetCurrentActiveVersion(w.current.state),
-		"platon",
+		"alaya",
 		runtime.Version(),
 		runtime.GOOS,
 	})

@@ -19,14 +19,14 @@ package rawdb
 import (
 	"encoding/json"
 
-	"github.com/PlatONnetwork/PlatON-Go/ethdb"
+	"github.com/AlayaNetwork/Alaya-Go/ethdb"
 
-	"github.com/PlatONnetwork/PlatON-Go/x/xcom"
+	"github.com/AlayaNetwork/Alaya-Go/x/xcom"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	"github.com/PlatONnetwork/PlatON-Go/log"
-	"github.com/PlatONnetwork/PlatON-Go/params"
-	"github.com/PlatONnetwork/PlatON-Go/rlp"
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/log"
+	"github.com/AlayaNetwork/Alaya-Go/params"
+	"github.com/AlayaNetwork/Alaya-Go/rlp"
 )
 
 // ReadDatabaseVersion retrieves the version number of the database.
@@ -90,6 +90,21 @@ func WriteEconomicModel(db ethdb.Writer, hash common.Hash, ec *xcom.EconomicMode
 	}
 }
 
+// WriteEconomicModelExtend writes the EconomicModelExtend settings to the database.
+func WriteEconomicModelExtend(db ethdb.Writer, hash common.Hash, ec *xcom.EconomicModelExtend) {
+	if ec == nil {
+		return
+	}
+
+	data, err := json.Marshal(ec)
+	if err != nil {
+		log.Crit("Failed to JSON encode EconomicModelExtend config", "err", err)
+	}
+	if err := db.Put(economicModelExtendKey(hash), data); err != nil {
+		log.Crit("Failed to store EconomicModelExtend", "err", err)
+	}
+}
+
 // ReadEconomicModel retrieves the EconomicModel settings based on the given genesis hash.
 func ReadEconomicModel(db ethdb.Reader, hash common.Hash) *xcom.EconomicModel {
 	data, _ := db.Get(economicModelKey(hash))
@@ -101,6 +116,22 @@ func ReadEconomicModel(db ethdb.Reader, hash common.Hash) *xcom.EconomicModel {
 	// reset the global ec
 	if err := json.Unmarshal(data, &ec); err != nil {
 		log.Error("Invalid EconomicModel JSON", "hash", hash, "err", err)
+		return nil
+	}
+	return &ec
+}
+
+// ReadEconomicModelExtend retrieves the EconomicModelExtend settings based on the given genesis hash.
+func ReadEconomicModelExtend(db ethdb.Reader, hash common.Hash) *xcom.EconomicModelExtend {
+	data, _ := db.Get(economicModelExtendKey(hash))
+	if len(data) == 0 {
+		return nil
+	}
+
+	var ec xcom.EconomicModelExtend
+	// reset the global ec
+	if err := json.Unmarshal(data, &ec); err != nil {
+		log.Error("Invalid EconomicModelExtend JSON", "hash", hash, "err", err)
 		return nil
 	}
 	return &ec

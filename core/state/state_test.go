@@ -25,19 +25,19 @@ import (
 	"os"
 	"testing"
 
-	"github.com/PlatONnetwork/PlatON-Go/ethdb/leveldb"
+	"github.com/AlayaNetwork/Alaya-Go/ethdb/leveldb"
 
-	"github.com/PlatONnetwork/PlatON-Go/core/rawdb"
+	"github.com/AlayaNetwork/Alaya-Go/core/rawdb"
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/PlatONnetwork/PlatON-Go/trie"
+	"github.com/AlayaNetwork/Alaya-Go/trie"
 
 	checker "gopkg.in/check.v1"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	"github.com/PlatONnetwork/PlatON-Go/crypto"
-	"github.com/PlatONnetwork/PlatON-Go/ethdb"
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/crypto"
+	"github.com/AlayaNetwork/Alaya-Go/ethdb"
 )
 
 type StateSuite struct {
@@ -257,7 +257,7 @@ func compareStateObjects(so0, so1 *stateObject, t *testing.T) {
 }
 
 func TestEmptyByte(t *testing.T) {
-	tmpDir, _ := ioutil.TempDir("", "platon")
+	tmpDir, _ := ioutil.TempDir("", "alaya")
 	defer os.Remove(tmpDir)
 
 	db, _ := leveldb.New(tmpDir, 0, 0, "")
@@ -318,7 +318,7 @@ func TestEmptyByte(t *testing.T) {
 }
 
 func TestForEachStorage(t *testing.T) {
-	tmpDir, _ := ioutil.TempDir("", "platon")
+	tmpDir, _ := ioutil.TempDir("", "alaya")
 	defer os.Remove(tmpDir)
 	db, _ := leveldb.New(tmpDir, 0, 0, "")
 	state, _ := New(common.Hash{}, NewDatabase(db))
@@ -349,7 +349,7 @@ func TestForEachStorage(t *testing.T) {
 
 func TestMigrateStorage(t *testing.T) {
 
-	tmpDir, _ := ioutil.TempDir("", "platon")
+	tmpDir, _ := ioutil.TempDir("", "alaya")
 	defer os.Remove(tmpDir)
 	db, _ := leveldb.New(tmpDir, 0, 0, "")
 	state, _ := New(common.Hash{}, NewDatabase(db))

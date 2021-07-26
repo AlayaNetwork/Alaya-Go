@@ -27,11 +27,11 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/PlatONnetwork/PlatON-Go/crypto"
-	"github.com/PlatONnetwork/PlatON-Go/log"
-	"github.com/PlatONnetwork/PlatON-Go/p2p/nat"
-	"github.com/PlatONnetwork/PlatON-Go/p2p/netutil"
-	"github.com/PlatONnetwork/PlatON-Go/rlp"
+	"github.com/AlayaNetwork/Alaya-Go/crypto"
+	"github.com/AlayaNetwork/Alaya-Go/log"
+	"github.com/AlayaNetwork/Alaya-Go/p2p/nat"
+	"github.com/AlayaNetwork/Alaya-Go/p2p/netutil"
+	"github.com/AlayaNetwork/Alaya-Go/rlp"
 )
 
 // Errors
@@ -327,15 +327,8 @@ func (t *udp) findnode(toid NodeID, toaddr *net.UDPAddr, target NodeID) ([]*Node
 	// If we haven't seen a ping from the destination node for a while, it won't remember
 	// our endpoint proof and reject findnode. Solicit a ping first.
 	if time.Since(t.db.lastPingReceived(toid)) > nodeDBNodeExpiration {
-		nodes := make([]*Node, 0, bucketSize)
-		errping := t.ping(toid, toaddr)
-		if errping != nil {
-			return nodes, errping
-		}
-		errwaitping := t.waitping(toid)
-		if errwaitping != nil {
-			return nodes, errwaitping
-		}
+		t.ping(toid, toaddr)
+		t.waitping(toid)
 	}
 
 	nodes := make([]*Node, 0, bucketSize)

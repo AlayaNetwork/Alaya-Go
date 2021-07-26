@@ -1,51 +1,55 @@
-// Copyright 2018-2020 The PlatON Network Authors
-// This file is part of the PlatON-Go library.
+// Copyright 2021 The Alaya Network Authors
+// This file is part of the Alaya-Go library.
 //
-// The PlatON-Go library is free software: you can redistribute it and/or modify
+// The Alaya-Go library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The PlatON-Go library is distributed in the hope that it will be useful,
+// The Alaya-Go library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the PlatON-Go library. If not, see <http://www.gnu.org/licenses/>.
+// along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
+
 
 package plugin
 
 import (
 	"encoding/hex"
+	"github.com/AlayaNetwork/Alaya-Go/common/vm"
+	"github.com/AlayaNetwork/Alaya-Go/params"
+	"github.com/AlayaNetwork/Alaya-Go/x/staking"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/PlatONnetwork/PlatON-Go/node"
+	"github.com/AlayaNetwork/Alaya-Go/node"
 
-	"github.com/PlatONnetwork/PlatON-Go/crypto"
+	"github.com/AlayaNetwork/Alaya-Go/crypto"
 
-	"github.com/PlatONnetwork/PlatON-Go/common/mock"
-	//	"github.com/PlatONnetwork/PlatON-Go/core/state"
+	"github.com/AlayaNetwork/Alaya-Go/common/mock"
+	//	"github.com/AlayaNetwork/Alaya-Go/core/state"
 
-	"github.com/PlatONnetwork/PlatON-Go/rlp"
+	"github.com/AlayaNetwork/Alaya-Go/rlp"
 
-	"github.com/PlatONnetwork/PlatON-Go/p2p/discover"
+	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
 
-	"github.com/PlatONnetwork/PlatON-Go/x/xcom"
+	"github.com/AlayaNetwork/Alaya-Go/x/xcom"
 
-	"github.com/PlatONnetwork/PlatON-Go/x/xutil"
+	"github.com/AlayaNetwork/Alaya-Go/x/xutil"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	//	"github.com/PlatONnetwork/PlatON-Go/core/state"
-	//	"github.com/PlatONnetwork/PlatON-Go/core/vm"
-	"github.com/PlatONnetwork/PlatON-Go/x/gov"
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	//	"github.com/AlayaNetwork/Alaya-Go/core/state"
+	//	"github.com/AlayaNetwork/Alaya-Go/core/vm"
+	"github.com/AlayaNetwork/Alaya-Go/x/gov"
 
 	"math/big"
 
-	"github.com/PlatONnetwork/PlatON-Go/core/snapshotdb"
-	"github.com/PlatONnetwork/PlatON-Go/core/types"
+	"github.com/AlayaNetwork/Alaya-Go/core/snapshotdb"
+	"github.com/AlayaNetwork/Alaya-Go/core/types"
 )
 
 var (
@@ -183,7 +187,7 @@ func submitCancel(t *testing.T, pid, tobeCanceled common.Hash) {
 	}
 }
 
-func allVote(t *testing.T, pid common.Hash) {
+func allVote(t *testing.T, pid common.Hash, newVersion uint32) {
 	//for _, nodeID := range nodeIdArr {
 	currentValidatorList, _ := stk.ListCurrentValidatorID(lastBlockHash, lastBlockNumber)
 	voteCount := len(currentValidatorList)
@@ -198,9 +202,9 @@ func allVote(t *testing.T, pid common.Hash) {
 
 		chandler.SetPrivateKey(priKeyArr[i])
 		versionSign := common.VersionSign{}
-		versionSign.SetBytes(chandler.MustSign(promoteVersion))
+		versionSign.SetBytes(chandler.MustSign(newVersion))
 
-		err := gov.Vote(sender, vote, lastBlockHash, 1, promoteVersion, versionSign, stk, stateDB)
+		err := gov.Vote(sender, vote, lastBlockHash, 1, newVersion, versionSign, stk, stateDB)
 		if err != nil {
 			t.Fatalf("vote err: %s.", err)
 		}
@@ -971,7 +975,7 @@ func TestGovPlugin_textProposalPassed(t *testing.T) {
 
 	buildBlockNoCommit(2)
 
-	allVote(t, txHashArr[0])
+	allVote(t, txHashArr[0], promoteVersion)
 	sndb.Commit(lastBlockHash) //commit
 	sndb.Compaction()          //write to level db
 
@@ -1088,8 +1092,8 @@ func TestGovPlugin_versionProposalPreActive(t *testing.T) {
 
 	buildBlockNoCommit(2)
 
-	allVote(t, txHashArr[0])
-	allVote(t, txHashArr[1])
+	allVote(t, txHashArr[0], promoteVersion)
+	allVote(t, txHashArr[1], promoteVersion)
 	sndb.Commit(lastBlockHash)
 	sndb.Compaction()
 
@@ -1185,7 +1189,7 @@ func TestGovPlugin_versionProposalActive(t *testing.T) {
 
 	buildBlockNoCommit(2)
 	//voting
-	allVote(t, txHashArr[0])
+	allVote(t, txHashArr[0], promoteVersion)
 
 	sndb.Commit(lastBlockHash)
 	sndb.Compaction()
@@ -1303,6 +1307,57 @@ func TestGovPlugin_Test_genVersionSign(t *testing.T) {
 	for i := 0; i < 4; i++ {
 		chandler.SetPrivateKey(priKeyArr[i])
 		t.Log("0x" + hex.EncodeToString(chandler.MustSign(ver)))
+	}
+
+}
+
+func TestGovPlugin_ForkVersion0140Proposal(t *testing.T) {
+	defer setup(t)()
+
+	beginBlock(t)
+	pposHash := stateDB.GetState(vm.StakingContractAddr, staking.GetPPOSHASHKey())
+	assert.True(t, pposHash == nil)
+
+	proposal := &gov.VersionProposal{
+		ProposalID:      common.Hash{0x99},
+		ProposalType:    gov.Version,
+		PIPID:           "em2",
+		SubmitBlock:     uint64(1000),
+		EndVotingRounds: uint64(8),
+		Proposer:        discover.NodeID{},
+		NewVersion:      params.FORKVERSION_0_14_0,
+		ActiveBlock:     1,
+	}
+	if err := gov.SetProposal(proposal, stateDB); err != nil {
+		t.Fatalf("set proposal error,%s", err)
+	}
+	if err := gov.AddVotingProposalID(lastBlockHash, proposal.ProposalID); err != nil {
+		t.Fatalf("add voting proposal ID error,%s", err)
+	}
+	if err := gov.MoveVotingProposalIDToPreActive(lastBlockHash, proposal.ProposalID, proposal.NewVersion); err != nil {
+		t.Fatalf("move voting ID to pre-active ID error,%s", err)
+	}
+	tallyResult := gov.TallyResult{
+		ProposalID:    proposal.ProposalID,
+		Yeas:          15,
+		Nays:          0,
+		Abstentions:   0,
+		AccuVerifiers: 1000,
+		Status:        gov.Pass,
+	}
+
+	if err := gov.SetTallyResult(tallyResult, stateDB); err != nil {
+		t.Fatalf("set vote result error")
+	}
+	if existing, err := gov.GetExistProposal(proposal.ProposalID, stateDB); err != nil {
+		t.Fatalf("get exist proposal error,%s", err)
+	} else {
+		if existing.GetPIPID() != proposal.GetPIPID() {
+			t.Fatalf("get exist proposal error,expect %s,get %s", proposal.GetPIPID(), existing.GetPIPID())
+		}
+		beginBlock(t)
+		pposHash := stateDB.GetState(vm.StakingContractAddr, staking.GetPPOSHASHKey())
+		assert.True(t, pposHash != nil)
 	}
 
 }

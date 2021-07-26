@@ -1,34 +1,40 @@
-// Copyright 2018-2020 The PlatON Network Authors
-// This file is part of the PlatON-Go library.
+// Copyright 2021 The Alaya Network Authors
+// This file is part of the Alaya-Go library.
 //
-// The PlatON-Go library is free software: you can redistribute it and/or modify
+// The Alaya-Go library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The PlatON-Go library is distributed in the hope that it will be useful,
+// The Alaya-Go library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the PlatON-Go library. If not, see <http://www.gnu.org/licenses/>.
+// along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
+
 
 package gov
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
 	"math/big"
 	"strconv"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	"github.com/PlatONnetwork/PlatON-Go/common/byteutil"
-	"github.com/PlatONnetwork/PlatON-Go/log"
-	"github.com/PlatONnetwork/PlatON-Go/node"
-	"github.com/PlatONnetwork/PlatON-Go/p2p/discover"
-	"github.com/PlatONnetwork/PlatON-Go/x/staking"
-	"github.com/PlatONnetwork/PlatON-Go/x/xcom"
-	"github.com/PlatONnetwork/PlatON-Go/x/xutil"
+	"github.com/AlayaNetwork/Alaya-Go/common/vm"
+	"github.com/AlayaNetwork/Alaya-Go/params"
+
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/common/byteutil"
+	"github.com/AlayaNetwork/Alaya-Go/log"
+	"github.com/AlayaNetwork/Alaya-Go/node"
+	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
+	"github.com/AlayaNetwork/Alaya-Go/x/staking"
+	"github.com/AlayaNetwork/Alaya-Go/x/xcom"
+	"github.com/AlayaNetwork/Alaya-Go/x/xutil"
 )
 
 type Staking interface {
@@ -42,11 +48,12 @@ type Staking interface {
 }
 
 const (
-	ModuleStaking  = "staking"
-	ModuleSlashing = "slashing"
-	ModuleBlock    = "block"
-	ModuleTxPool   = "txPool"
-	ModuleReward   = "reward"
+	ModuleStaking     = "staking"
+	ModuleSlashing    = "slashing"
+	ModuleBlock       = "block"
+	ModuleTxPool      = "txPool"
+	ModuleReward      = "reward"
+	ModuleRestricting = "restricting"
 )
 
 const (
@@ -66,7 +73,49 @@ const (
 	KeyRewardPerChangeInterval    = "rewardPerChangeInterval"
 	KeyIncreaseIssuanceRatio      = "increaseIssuanceRatio"
 	KeyZeroProduceFreezeDuration  = "zeroProduceFreezeDuration"
+	KeyRestrictingMinimumAmount   = "minimumRelease"
 )
+
+func Gte0140VersionState(state xcom.StateDB) bool {
+	return Gte0140Version(GetCurrentActiveVersion(state))
+}
+
+func Gte0140Version(version uint32) bool {
+	return version >= params.FORKVERSION_0_14_0
+}
+
+func Gte0150VersionState(state xcom.StateDB) bool {
+	return Gte0150Version(GetCurrentActiveVersion(state))
+}
+
+func Gte0150Version(version uint32) bool {
+	return version >= params.FORKVERSION_0_15_0
+}
+
+func Gte0160VersionState(state xcom.StateDB) bool {
+	return Gte0160Version(GetCurrentActiveVersion(state))
+}
+
+func Gte0160Version(version uint32) bool {
+	return version >= params.FORKVERSION_0_16_0
+}
+
+func WriteEcHash0140(state xcom.StateDB) error {
+	if data, err := xcom.EcParams0140(); nil != err {
+		return err
+	} else {
+		SetEcParametersHash(state, data)
+	}
+	return nil
+}
+
+func SetEcParametersHash(state xcom.StateDB, rlpData []byte) {
+	pposHash := state.GetState(vm.StakingContractAddr, staking.GetPPOSHASHKey())
+	var buf bytes.Buffer
+	buf.Write(rlpData)
+	buf.Write(pposHash)
+	state.SetState(vm.StakingContractAddr, staking.GetPPOSHASHKey(), common.RlpHash(buf.Bytes()).Bytes())
+}
 
 func GetVersionForStaking(blockHash common.Hash, state xcom.StateDB) uint32 {
 	preActiveVersion := GetPreActiveVersion(blockHash)
@@ -877,4 +926,17 @@ func GovernZeroProduceFreezeDuration(blockNumber uint64, blockHash common.Hash) 
 	}
 
 	return uint64(value), nil
+}
+
+func GovernRestrictingMinimumAmount(blockNumber uint64, blockHash common.Hash) (*big.Int, error) {
+	valueStr, err := GetGovernParamValue(ModuleRestricting, KeyRestrictingMinimumAmount, blockNumber, blockHash)
+	if nil != err {
+		return nil, err
+	}
+	value, ok := new(big.Int).SetString(valueStr, 10)
+	if !ok {
+		return nil, errors.New("set KeyRestrictingMinimumAmount to big int fail")
+	}
+
+	return value, nil
 }

@@ -5,7 +5,7 @@ import (
 
 	"github.com/PlatONnetwork/wagon/exec"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/common"
 	"github.com/hashicorp/golang-lru/simplelru"
 )
 

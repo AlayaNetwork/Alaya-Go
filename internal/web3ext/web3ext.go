@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
-// package web3ext contains platon specific web3.js extensions.
+// package web3ext contains alaya specific web3.js extensions.
 package web3ext
 
 var Modules = map[string]string{
@@ -428,6 +428,11 @@ web3._extend({
 	property: 'platon',
 	methods: [
 		new web3._extend.Method({
+		name: 'chainId',
+			call: 'platon_chainId',
+			params: 0
+		}),
+		new web3._extend.Method({
 			name: 'setActor',
 			call: 'platon_setActor',
 			params: 1,
@@ -547,7 +552,7 @@ web3._extend({
 			params: 2
 		}),
 		//new web3._extend.Method({
-		//	name: 'deriveAccount',	
+		//	name: 'deriveAccount',
 		//	call: 'personal_deriveAccount',
 		//	params: 3
 		//}),

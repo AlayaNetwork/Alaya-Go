@@ -1,18 +1,19 @@
-// Copyright 2018-2020 The PlatON Network Authors
-// This file is part of the PlatON-Go library.
+// Copyright 2021 The Alaya Network Authors
+// This file is part of the Alaya-Go library.
 //
-// The PlatON-Go library is free software: you can redistribute it and/or modify
+// The Alaya-Go library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The PlatON-Go library is distributed in the hope that it will be useful,
+// The Alaya-Go library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the PlatON-Go library. If not, see <http://www.gnu.org/licenses/>.
+// along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
+
 
 package byteutil
 
@@ -20,25 +21,27 @@ import (
 	"encoding/hex"
 	"math/big"
 
-	"github.com/PlatONnetwork/PlatON-Go/crypto/bls"
+	"github.com/AlayaNetwork/Alaya-Go/crypto/bls"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	"github.com/PlatONnetwork/PlatON-Go/p2p/discover"
-	"github.com/PlatONnetwork/PlatON-Go/rlp"
-	"github.com/PlatONnetwork/PlatON-Go/x/restricting"
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
+	"github.com/AlayaNetwork/Alaya-Go/rlp"
+	"github.com/AlayaNetwork/Alaya-Go/x/restricting"
 )
 
 var Bytes2X_CMD = map[string]interface{}{
 	"string":   BytesToString,
+	"*string":  BytesToStringPoint,
 	"[8]byte":  BytesTo8Bytes,
 	"[16]byte": BytesTo16Bytes,
 	"[32]byte": BytesTo32Bytes,
 	"[64]byte": BytesTo64Bytes,
 
-	"uint8":  BytesToUint8,
-	"uint16": BytesToUint16,
-	"uint32": BytesToUint32,
-	"uint64": BytesToUint64,
+	"uint8":   BytesToUint8,
+	"uint16":  BytesToUint16,
+	"*uint16": BytesToUint16Point,
+	"uint32":  BytesToUint32,
+	"uint64":  BytesToUint64,
 
 	"*big.Int":              BytesToBigInt,
 	"[]*big.Int":            BytesToBigIntArr,
@@ -47,6 +50,7 @@ var Bytes2X_CMD = map[string]interface{}{
 	"common.Hash":           BytesToHash,
 	"[]common.Hash":         BytesToHashArr,
 	"common.Address":        BytesToAddress,
+	"*common.Address":       BytesToAddressPoint,
 	"[]common.Address":      BytesToAddressArr,
 	"common.VersionSign":    BytesToVersionSign,
 	"[]common.VersionSign":  BytesToVersionSignArr,
@@ -65,6 +69,17 @@ func BytesToString(curByte []byte) string {
 		panic("BytesToString:" + err.Error())
 	}
 	return str
+}
+
+func BytesToStringPoint(curByte []byte) *string {
+	if len(curByte) == 0 {
+		return nil
+	}
+	var str string
+	if err := rlp.DecodeBytes(curByte, &str); nil != err {
+		panic("BytesToString:" + err.Error())
+	}
+	return &str
 }
 
 func BytesTo8Bytes(curByte []byte) [8]byte {
@@ -119,6 +134,17 @@ func BytesToUint16(b []byte) uint16 {
 	var x uint16
 	if err := rlp.DecodeBytes(b, &x); nil != err {
 		panic("BytesToUint16:" + err.Error())
+	}
+	return x
+}
+
+func BytesToUint16Point(b []byte) *uint16 {
+	if len(b) == 0 {
+		return nil
+	}
+	var x *uint16
+	if err := rlp.DecodeBytes(b, &x); nil != err {
+		panic("BytesToUint16Point:" + err.Error())
 	}
 	return x
 }
@@ -221,6 +247,19 @@ func BytesToAddress(curByte []byte) common.Address {
 		panic("BytesToAddress:" + err.Error())
 	}
 	return addr
+}
+
+func BytesToAddressPoint(curByte []byte) *common.Address {
+	//str := BytesToString(curByte)
+	//return common.HexToAddress(str)
+	if len(curByte) == 0 {
+		return nil
+	}
+	var addr common.Address
+	if err := rlp.DecodeBytes(curByte, &addr); nil != err {
+		panic("BytesToAddress:" + err.Error())
+	}
+	return &addr
 }
 
 func BytesToAddressArr(curByte []byte) []common.Address {

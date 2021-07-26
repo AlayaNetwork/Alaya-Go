@@ -20,15 +20,16 @@ import (
 	"errors"
 	"math/big"
 
-	"github.com/PlatONnetwork/PlatON-Go/core/snapshotdb"
-	"github.com/PlatONnetwork/PlatON-Go/log"
 	"github.com/syndtr/goleveldb/leveldb/iterator"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	"github.com/PlatONnetwork/PlatON-Go/core"
-	"github.com/PlatONnetwork/PlatON-Go/core/rawdb"
-	"github.com/PlatONnetwork/PlatON-Go/core/types"
-	"github.com/PlatONnetwork/PlatON-Go/ethdb"
+	"github.com/AlayaNetwork/Alaya-Go/core/snapshotdb"
+	"github.com/AlayaNetwork/Alaya-Go/log"
+
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/core"
+	"github.com/AlayaNetwork/Alaya-Go/core/rawdb"
+	"github.com/AlayaNetwork/Alaya-Go/core/types"
+	"github.com/AlayaNetwork/Alaya-Go/ethdb"
 )
 
 // FakePeer is a mock downloader peer that operates on a local database instance
@@ -151,7 +152,7 @@ func (p *FakePeer) RequestBodies(hashes []common.Hash) error {
 func (p *FakePeer) RequestReceipts(hashes []common.Hash) error {
 	var receipts [][]*types.Receipt
 	for _, hash := range hashes {
-		receipts = append(receipts, rawdb.ReadReceipts(p.db, hash, *p.hc.GetBlockNumber(hash)))
+		receipts = append(receipts, rawdb.ReadRawReceipts(p.db, hash, *p.hc.GetBlockNumber(hash)))
 	}
 	p.dl.DeliverReceipts(p.id, receipts)
 	return nil

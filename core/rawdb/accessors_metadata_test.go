@@ -4,11 +4,11 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/PlatONnetwork/PlatON-Go/crypto"
+	"github.com/AlayaNetwork/Alaya-Go/crypto"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	"github.com/PlatONnetwork/PlatON-Go/params"
-	"github.com/PlatONnetwork/PlatON-Go/x/xcom"
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/params"
+	"github.com/AlayaNetwork/Alaya-Go/x/xcom"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -43,7 +43,7 @@ func TestReadWriteChainConfig(t *testing.T) {
 	config := ReadChainConfig(chainDb, common.ZeroHash)
 	assert.Nil(t, config, "the chainConfig is not nil")
 
-	WriteChainConfig(chainDb, common.ZeroHash, params.MainnetChainConfig)
+	WriteChainConfig(chainDb, common.ZeroHash, params.AlayaChainConfig)
 	config = ReadChainConfig(chainDb, common.ZeroHash)
 	assert.NotNil(t, config, "the chainConfig is nil")
 

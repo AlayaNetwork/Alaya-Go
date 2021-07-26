@@ -5,23 +5,22 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/PlatONnetwork/PlatON-Go/crypto/bls"
+	"github.com/AlayaNetwork/Alaya-Go/crypto/bls"
 
-	"github.com/PlatONnetwork/PlatON-Go/params"
-	"github.com/PlatONnetwork/PlatON-Go/x/gov"
-	"github.com/PlatONnetwork/PlatON-Go/x/plugin"
+	"github.com/AlayaNetwork/Alaya-Go/params"
+	"github.com/AlayaNetwork/Alaya-Go/x/gov"
+	"github.com/AlayaNetwork/Alaya-Go/x/plugin"
 
-	"github.com/PlatONnetwork/PlatON-Go/log"
+	"github.com/AlayaNetwork/Alaya-Go/log"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	"github.com/PlatONnetwork/PlatON-Go/common/vm"
-	"github.com/PlatONnetwork/PlatON-Go/core/snapshotdb"
-	"github.com/PlatONnetwork/PlatON-Go/core/state"
-	"github.com/PlatONnetwork/PlatON-Go/rlp"
-	"github.com/PlatONnetwork/PlatON-Go/x/restricting"
-	"github.com/PlatONnetwork/PlatON-Go/x/staking"
-	"github.com/PlatONnetwork/PlatON-Go/x/xcom"
-	"github.com/PlatONnetwork/PlatON-Go/x/xutil"
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/common/vm"
+	"github.com/AlayaNetwork/Alaya-Go/core/snapshotdb"
+	"github.com/AlayaNetwork/Alaya-Go/core/state"
+	"github.com/AlayaNetwork/Alaya-Go/rlp"
+	"github.com/AlayaNetwork/Alaya-Go/x/staking"
+	"github.com/AlayaNetwork/Alaya-Go/x/xcom"
+	"github.com/AlayaNetwork/Alaya-Go/x/xutil"
 )
 
 func genesisStakingData(prevHash common.Hash, snapdb snapshotdb.BaseDB, g *Genesis, stateDB *state.StateDB) (common.Hash, error) {
@@ -248,40 +247,6 @@ func genesisStakingData(prevHash common.Hash, snapdb snapshotdb.BaseDB, g *Genes
 	return lastHash, nil
 }
 
-// genesisAllowancePlan writes the data of precompiled restricting contract, which used for the second year allowance
-// and the third year allowance, to stateDB
-func genesisAllowancePlan(statedb *state.StateDB) error {
-
-	account := vm.RewardManagerPoolAddr
-	var (
-		zeroYear  = new(big.Int).Mul(big.NewInt(62215742), big.NewInt(1e18))
-		oneYear   = new(big.Int).Mul(big.NewInt(55965742), big.NewInt(1e18))
-		twoYear   = new(big.Int).Mul(big.NewInt(49559492), big.NewInt(1e18))
-		threeYear = new(big.Int).Mul(big.NewInt(42993086), big.NewInt(1e18))
-		fourYear  = new(big.Int).Mul(big.NewInt(36262520), big.NewInt(1e18))
-		fiveYear  = new(big.Int).Mul(big.NewInt(29363689), big.NewInt(1e18))
-		sixYear   = new(big.Int).Mul(big.NewInt(22292388), big.NewInt(1e18))
-		sevenYear = new(big.Int).Mul(big.NewInt(15044304), big.NewInt(1e18))
-		eightYear = new(big.Int).Mul(big.NewInt(7615018), big.NewInt(1e18))
-	)
-
-	statedb.SubBalance(xcom.CDFAccount(), zeroYear)
-	statedb.AddBalance(account, zeroYear)
-	needRelease := []*big.Int{oneYear, twoYear, threeYear, fourYear, fiveYear, sixYear, sevenYear, eightYear}
-
-	restrictingPlans := make([]restricting.RestrictingPlan, 0)
-	OneYearEpochs := xutil.EpochsPerYear()
-	for key, value := range needRelease {
-		epochs := OneYearEpochs * (uint64(key) + 1)
-		restrictingPlans = append(restrictingPlans, restricting.RestrictingPlan{epochs, value})
-	}
-
-	if err := plugin.RestrictingInstance().AddRestrictingRecord(xcom.CDFAccount(), vm.RewardManagerPoolAddr, 0, restrictingPlans, statedb); err != nil {
-		return err
-	}
-	return nil
-}
-
 func genesisPluginState(g *Genesis, statedb *state.StateDB, snapDB snapshotdb.BaseDB, genesisIssue *big.Int) error {
 
 	if g.Config.Cbft.ValidatorMode != common.PPOS_VALIDATOR_MODE {
@@ -303,12 +268,6 @@ func genesisPluginState(g *Genesis, statedb *state.StateDB, snapDB snapshotdb.Ba
 	activeVersionListBytes, _ := json.Marshal(activeVersionList)
 	statedb.SetState(vm.GovContractAddr, gov.KeyActiveVersions(), activeVersionListBytes)
 
-	if !(g.Config.ChainID.Cmp(params.AlayaChainConfig.ChainID) == 0 || g.Config.ChainID.Cmp(params.AlayaTestChainConfig.ChainID) == 0) {
-		err := plugin.NewRestrictingPlugin(nil).InitGenesisRestrictingPlans(statedb)
-		if err != nil {
-			return fmt.Errorf("Failed to init genesis restricting plans, err:%s", err.Error())
-		}
-	}
 	genesisReward := statedb.GetBalance(vm.RewardManagerPoolAddr)
 	plugin.SetYearEndBalance(statedb, 0, genesisReward)
 	log.Info("Set SetYearEndBalance", "genesisReward", genesisReward)

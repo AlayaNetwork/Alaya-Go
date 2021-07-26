@@ -18,7 +18,7 @@ package vm
 
 import (
 	"errors"
-	"github.com/PlatONnetwork/PlatON-Go/params"
+	"github.com/AlayaNetwork/Alaya-Go/params"
 )
 
 type (

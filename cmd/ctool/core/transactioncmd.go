@@ -1,18 +1,19 @@
-// Copyright 2018-2020 The PlatON Network Authors
-// This file is part of the PlatON-Go library.
+// Copyright 2021 The Alaya Network Authors
+// This file is part of Alaya-Go.
 //
-// The PlatON-Go library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Lesser General Public License as published by
+// Alaya-Go is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The PlatON-Go library is distributed in the hope that it will be useful,
+// Alaya-Go is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU Lesser General Public License for more details.
+// GNU General Public License for more details.
 //
-// You should have received a copy of the GNU Lesser General Public License
-// along with the PlatON-Go library. If not, see <http://www.gnu.org/licenses/>.
+// You should have received a copy of the GNU General Public License
+// along with Alaya-Go. If not, see <http://www.gnu.org/licenses/>.
+
 
 package core
 
@@ -24,12 +25,12 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/PlatONnetwork/PlatON-Go/cmd/utils"
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	"github.com/PlatONnetwork/PlatON-Go/common/hexutil"
-	"github.com/PlatONnetwork/PlatON-Go/core/types"
-	"github.com/PlatONnetwork/PlatON-Go/rlp"
 	"gopkg.in/urfave/cli.v1"
+
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/common/hexutil"
+	"github.com/AlayaNetwork/Alaya-Go/core/types"
+	"github.com/AlayaNetwork/Alaya-Go/rlp"
 )
 
 var (
@@ -83,7 +84,7 @@ func sendTransactionCmd(c *cli.Context) error {
 
 	hash, err := SendTransaction(from, to, value)
 	if err != nil {
-		utils.Fatalf("Send transaction error: %v", err)
+		return fmt.Errorf("Send transaction error: %v", err)
 	}
 
 	fmt.Printf("tx hash: %s", hash)
@@ -100,7 +101,7 @@ func sendRawTransactionCmd(c *cli.Context) error {
 
 	hash, err := SendRawTransaction(from, to, value, pkFile)
 	if err != nil {
-		utils.Fatalf("Send transaction error: %v", err)
+		return fmt.Errorf("Send transaction error: %v", err)
 	}
 
 	fmt.Printf("tx hash: %s", hash)

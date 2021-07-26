@@ -29,7 +29,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/PlatONnetwork/PlatON-Go/common/hexutil"
+	"github.com/AlayaNetwork/Alaya-Go/common/hexutil"
 )
 
 type testEncoder struct {

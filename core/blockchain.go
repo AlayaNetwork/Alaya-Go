@@ -28,21 +28,21 @@ import (
 
 	lru "github.com/hashicorp/golang-lru"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	"github.com/PlatONnetwork/PlatON-Go/common/mclock"
-	"github.com/PlatONnetwork/PlatON-Go/common/prque"
-	"github.com/PlatONnetwork/PlatON-Go/consensus"
-	"github.com/PlatONnetwork/PlatON-Go/core/rawdb"
-	"github.com/PlatONnetwork/PlatON-Go/core/state"
-	"github.com/PlatONnetwork/PlatON-Go/core/types"
-	"github.com/PlatONnetwork/PlatON-Go/core/vm"
-	"github.com/PlatONnetwork/PlatON-Go/crypto"
-	"github.com/PlatONnetwork/PlatON-Go/ethdb"
-	"github.com/PlatONnetwork/PlatON-Go/event"
-	"github.com/PlatONnetwork/PlatON-Go/log"
-	"github.com/PlatONnetwork/PlatON-Go/params"
-	"github.com/PlatONnetwork/PlatON-Go/rlp"
-	"github.com/PlatONnetwork/PlatON-Go/trie"
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/common/mclock"
+	"github.com/AlayaNetwork/Alaya-Go/common/prque"
+	"github.com/AlayaNetwork/Alaya-Go/consensus"
+	"github.com/AlayaNetwork/Alaya-Go/core/rawdb"
+	"github.com/AlayaNetwork/Alaya-Go/core/state"
+	"github.com/AlayaNetwork/Alaya-Go/core/types"
+	"github.com/AlayaNetwork/Alaya-Go/core/vm"
+	"github.com/AlayaNetwork/Alaya-Go/crypto"
+	"github.com/AlayaNetwork/Alaya-Go/ethdb"
+	"github.com/AlayaNetwork/Alaya-Go/event"
+	"github.com/AlayaNetwork/Alaya-Go/log"
+	"github.com/AlayaNetwork/Alaya-Go/params"
+	"github.com/AlayaNetwork/Alaya-Go/rlp"
+	"github.com/AlayaNetwork/Alaya-Go/trie"
 )
 
 var (
@@ -623,7 +623,6 @@ func (bc *BlockChain) GetBlock(hash common.Hash, number uint64) *types.Block {
 	return bc.getBlock(hash, number)
 }
 
-// modified by PlatON
 func (bc *BlockChain) getBlock(hash common.Hash, number uint64) *types.Block {
 	// Short circuit if the block's already in the cache, retrieve otherwise
 	if block, ok := bc.blockCache.Get(hash); ok {
@@ -663,7 +662,7 @@ func (bc *BlockChain) GetReceiptsByHash(hash common.Hash) types.Receipts {
 	if number == nil {
 		return nil
 	}
-	return rawdb.ReadReceipts(bc.db, hash, *number)
+	return rawdb.ReadReceipts(bc.db, hash, *number, bc.Config())
 }
 
 // GetBlocksFromHash returns the block corresponding to hash and up to n-1 ancestors.
@@ -948,6 +947,8 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts []*types.
 
 	// Irrelevant of the canonical status, write the block itself to the database
 	rawdb.WriteBlock(bc.db, block)
+
+	triedb := bc.stateCache.TrieDB()
 	root, err := state.Commit(true)
 
 	if err != nil {
@@ -955,14 +956,12 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts []*types.
 		return NonStatTy, err
 	}
 
-	triedb := bc.stateCache.TrieDB()
-
 	// If we're running an archive node, always flush
 	if bc.cacheConfig.Disabled {
 		limit := common.StorageSize(bc.cacheConfig.TrieNodeLimit) * 1024 * 1024
 		oversize := false
 		if !(bc.cacheConfig.DBGCMpt && !bc.cacheConfig.DBDisabledGC.IsSet()) {
-			triedb.Reference(root, common.Hash{})
+			triedb.ReferenceVersion(root)
 			if err := triedb.Commit(root, false, false); err != nil {
 				log.Error("Commit to triedb error", "root", root)
 				return NonStatTy, err
@@ -971,7 +970,7 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts []*types.
 			nodes, _ := triedb.Size()
 			oversize = nodes > limit
 		} else {
-			triedb.Reference(root, common.Hash{})
+			triedb.ReferenceVersion(root)
 			triedb.DereferenceDB(currentBlock.Root())
 
 			if err := triedb.Commit(root, false, false); err != nil {
@@ -1321,7 +1320,7 @@ func (bc *BlockChain) reorg(oldBlock, newBlock *types.Block) error {
 			if number == nil {
 				return
 			}
-			receipts := rawdb.ReadReceipts(bc.db, hash, *number)
+			receipts := rawdb.ReadReceipts(bc.db, hash, *number, bc.Config())
 			for _, receipt := range receipts {
 				for _, log := range receipt.Logs {
 					del := *log

@@ -1,18 +1,19 @@
-// Copyright 2018-2020 The PlatON Network Authors
-// This file is part of the PlatON-Go library.
+// Copyright 2021 The Alaya Network Authors
+// This file is part of Alaya-Go.
 //
-// The PlatON-Go library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Lesser General Public License as published by
+// Alaya-Go is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The PlatON-Go library is distributed in the hope that it will be useful,
+// Alaya-Go is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU Lesser General Public License for more details.
+// GNU General Public License for more details.
 //
-// You should have received a copy of the GNU Lesser General Public License
-// along with the PlatON-Go library. If not, see <http://www.gnu.org/licenses/>.
+// You should have received a copy of the GNU General Public License
+// along with Alaya-Go. If not, see <http://www.gnu.org/licenses/>.
+
 
 package core
 
@@ -87,6 +88,21 @@ var (
 		Usage: "transfer value",
 	}
 
+	TxStressSourceFilesPathFlag = cli.StringSliceFlag{
+		Name:  "sourceFile",
+		Usage: "the tps source file path",
+	}
+
+	TxStressStatisticTimeFlag = cli.IntFlag{
+		Name:  "statisticTime",
+		Usage: "Statistics every few seconds",
+	}
+
+	TxStressOutPutFileFlag = cli.StringFlag{
+		Name:  "output",
+		Usage: "the output file path",
+	}
+
 	deployCmdFlags = []cli.Flag{
 		ContractWasmFilePathFlag,
 		ContractAbiFilePathFlag,
@@ -129,5 +145,10 @@ var (
 		AccountSizeFlag,
 		TransferValueFlag,
 		ConfigPathFlag,
+	}
+	txStressFlags = []cli.Flag{
+		TxStressSourceFilesPathFlag,
+		TxStressStatisticTimeFlag,
+		TxStressOutPutFileFlag,
 	}
 )

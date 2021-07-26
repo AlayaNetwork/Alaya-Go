@@ -1,34 +1,40 @@
-// Copyright 2018-2020 The PlatON Network Authors
-// This file is part of the PlatON-Go library.
+// Copyright 2021 The Alaya Network Authors
+// This file is part of the Alaya-Go library.
 //
-// The PlatON-Go library is free software: you can redistribute it and/or modify
+// The Alaya-Go library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The PlatON-Go library is distributed in the hope that it will be useful,
+// The Alaya-Go library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the PlatON-Go library. If not, see <http://www.gnu.org/licenses/>.
+// along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
+
 
 package plugin
 
 import (
+	"fmt"
 	"math"
 	"math/big"
 	"sync"
 
-	"github.com/PlatONnetwork/PlatON-Go/p2p/discover"
+	"github.com/AlayaNetwork/Alaya-Go/params"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	"github.com/PlatONnetwork/PlatON-Go/core/types"
-	"github.com/PlatONnetwork/PlatON-Go/log"
-	"github.com/PlatONnetwork/PlatON-Go/x/gov"
-	"github.com/PlatONnetwork/PlatON-Go/x/xcom"
-	"github.com/PlatONnetwork/PlatON-Go/x/xutil"
+	"github.com/AlayaNetwork/Alaya-Go/core/snapshotdb"
+
+	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
+
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/core/types"
+	"github.com/AlayaNetwork/Alaya-Go/log"
+	"github.com/AlayaNetwork/Alaya-Go/x/gov"
+	"github.com/AlayaNetwork/Alaya-Go/x/xcom"
+	"github.com/AlayaNetwork/Alaya-Go/x/xutil"
 )
 
 var (
@@ -92,6 +98,9 @@ func (govPlugin *GovPlugin) BeginBlock(blockHash common.Hash, header *types.Head
 	if isVersionProposal {
 		//log.Debug("found pre-active version proposal", "proposalID", preActiveVersionProposalID, "blockNumber", blockNumber, "blockHash", blockHash, "activeBlockNumber", versionProposal.GetActiveBlock())
 		if blockNumber == versionProposal.GetActiveBlock() {
+			if params.LtMinorVersion(versionProposal.NewVersion) {
+				panic(fmt.Sprintf("Please upgrade to：%s", params.FormatVersion(versionProposal.NewVersion)))
+			}
 			//log.Debug("it's time to active the pre-active version proposal")
 			tallyResult, err := gov.GetTallyResult(preActiveVersionProposalID, state)
 			if err != nil || tallyResult == nil {
@@ -119,6 +128,37 @@ func (govPlugin *GovPlugin) BeginBlock(blockHash common.Hash, header *types.Head
 			if err = gov.AddActiveVersion(versionProposal.NewVersion, blockNumber, state); err != nil {
 				log.Error("save active version to stateDB failed.", "blockNumber", blockNumber, "blockHash", blockHash, "preActiveProposalID", preActiveVersionProposalID)
 				return err
+			}
+			if err = gov.Set0140Param(blockHash, versionProposal.NewVersion, snapshotdb.Instance()); err != nil {
+				log.Error("save  version 0140 Param failed.", "blockNumber", blockNumber, "blockHash", blockHash, "preActiveProposalID", preActiveVersionProposalID, "err", err)
+				return err
+			}
+			if versionProposal.NewVersion == params.FORKVERSION_0_14_0 {
+				if err := gov.WriteEcHash0140(state); nil != err {
+					log.Error("save EcHash0140 to stateDB failed.", "blockNumber", blockNumber, "blockHash", blockHash, "preActiveProposalID", preActiveVersionProposalID)
+					return err
+				}
+				log.Info("Successfully upgraded the new version 0.14.0", "blockNumber", blockNumber, "blockHash", blockHash, "preActiveProposalID", preActiveVersionProposalID)
+			}
+
+			if versionProposal.NewVersion == params.FORKVERSION_0_15_0 {
+				fixRestrictingPlugin := NewFixIssue1625Plugin(snapshotdb.Instance())
+				if err := fixRestrictingPlugin.fix(blockHash, header, state, govPlugin.chainID); err != nil {
+					return err
+				}
+				log.Info("Successfully upgraded the new version 0.15.0", "blockNumber", blockNumber, "blockHash", blockHash, "preActiveProposalID", preActiveVersionProposalID)
+			}
+			if versionProposal.NewVersion == params.FORKVERSION_0_16_0 {
+				fixSharesPlugin := NewFixIssue1654Plugin(snapshotdb.Instance())
+				if err := fixSharesPlugin.fix(blockHash, govPlugin.chainID, state); err != nil {
+					return err
+				}
+
+				fixPlugin := NewFixIssue1583Plugin()
+				if err := fixPlugin.fix(blockHash, govPlugin.chainID, state); err != nil {
+					return err
+				}
+				log.Info("Successfully upgraded the new version 0.16.0", "blockNumber", blockNumber, "blockHash", blockHash, "preActiveProposalID", preActiveVersionProposalID)
 			}
 
 			log.Info("version proposal is active", "blockNumber", blockNumber, "proposalID", versionProposal.ProposalID, "newVersion", versionProposal.NewVersion, "newVersionString", xutil.ProgramVersion2Str(versionProposal.NewVersion))
@@ -280,7 +320,7 @@ func tallyVersion(proposal *gov.VersionProposal, blockHash common.Hash, blockNum
 			return err
 		}
 		//log.Debug("call stk.ProposalPassedNotify", "proposalID", proposalID, "activeList", activeList)
-		if err := stk.ProposalPassedNotify(blockHash, blockNumber, activeList, proposal.NewVersion); err != nil {
+		if err := stk.ProposalPassedNotify(blockHash, blockNumber, activeList, proposal.NewVersion, state); err != nil {
 			log.Error("call stk.ProposalPassedNotify failed", "proposalID", proposalID, "blockHash", blockHash, "newVersion", proposal.NewVersion, "activeList", activeList)
 			return err
 		}

@@ -1,18 +1,19 @@
-// Copyright 2018-2020 The PlatON Network Authors
-// This file is part of the PlatON-Go library.
+// Copyright 2021 The Alaya Network Authors
+// This file is part of the Alaya-Go library.
 //
-// The PlatON-Go library is free software: you can redistribute it and/or modify
+// The Alaya-Go library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The PlatON-Go library is distributed in the hope that it will be useful,
+// The Alaya-Go library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the PlatON-Go library. If not, see <http://www.gnu.org/licenses/>.
+// along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
+
 
 package gov
 
@@ -22,13 +23,13 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/PlatONnetwork/PlatON-Go/params"
+	"github.com/AlayaNetwork/Alaya-Go/params"
 
-	"github.com/PlatONnetwork/PlatON-Go/log"
+	"github.com/AlayaNetwork/Alaya-Go/log"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	"github.com/PlatONnetwork/PlatON-Go/core/snapshotdb"
-	"github.com/PlatONnetwork/PlatON-Go/x/xcom"
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/core/snapshotdb"
+	"github.com/AlayaNetwork/Alaya-Go/x/xcom"
 )
 
 var (
@@ -368,12 +369,42 @@ func initParam() []*GovernParam {
 	}
 }
 
+func init0140VersionParam() []*GovernParam {
+	return []*GovernParam{
+		{
+
+			ParamItem: &ParamItem{ModuleRestricting, KeyRestrictingMinimumAmount,
+				fmt.Sprintf("minimum restricting amount to be released in each epoch, range: [%d, %d]",
+					new(big.Int).Mul(new(big.Int).SetUint64(80), new(big.Int).SetInt64(params.ATP)), new(big.Int).Mul(new(big.Int).SetUint64(100000), new(big.Int).SetInt64(params.ATP)))},
+			ParamValue: &ParamValue{"", xcom.RestrictingMinimumRelease().String(), 0},
+			ParamVerifier: func(blockNumber uint64, blockHash common.Hash, value string) error {
+				v, ok := new(big.Int).SetString(value, 10)
+				if !ok {
+					return fmt.Errorf("parsed KeyRestrictingMinimumAmount is failed")
+				}
+				base := new(big.Int).SetInt64(params.ATP)
+				if v.Cmp(new(big.Int).Mul(base, new(big.Int).SetInt64(80))) < 0 {
+					return fmt.Errorf("the minimum number of restricting released must be greater than or equal to 80 atp")
+				}
+				if v.Cmp(new(big.Int).Mul(base, new(big.Int).SetInt64(100000))) > 0 {
+					return fmt.Errorf("the minimum number of restricting released must be less than or equal to 100000 atp")
+				}
+				return nil
+			},
+		},
+	}
+}
+
 var ParamVerifierMap = make(map[string]ParamVerifier)
 
 func InitGenesisGovernParam(prevHash common.Hash, snapDB snapshotdb.BaseDB, genesisVersion uint32) (common.Hash, error) {
 	var paramItemList []*ParamItem
 
 	initParamList := queryInitParam()
+
+	if genesisVersion >= params.FORKVERSION_0_14_0 {
+		initParamList = append(initParamList, init0140VersionParam()...)
+	}
 
 	putBasedb_genKVHash_Fn := func(key, val []byte, hash common.Hash) (common.Hash, error) {
 		if err := snapDB.PutBaseDB(key, val); nil != err {
@@ -410,6 +441,11 @@ func InitGenesisGovernParam(prevHash common.Hash, snapDB snapshotdb.BaseDB, gene
 func RegisterGovernParamVerifiers() {
 	for _, param := range queryInitParam() {
 		RegGovernParamVerifier(param.ParamItem.Module, param.ParamItem.Name, param.ParamVerifier)
+	}
+	if uint32(params.VersionMajor<<16|params.VersionMinor<<8|params.VersionPatch) >= params.FORKVERSION_0_14_0 {
+		for _, param := range init0140VersionParam() {
+			RegGovernParamVerifier(param.ParamItem.Module, param.ParamItem.Name, param.ParamVerifier)
+		}
 	}
 }
 

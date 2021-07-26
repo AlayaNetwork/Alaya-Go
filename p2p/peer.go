@@ -25,11 +25,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/PlatONnetwork/PlatON-Go/common/mclock"
-	"github.com/PlatONnetwork/PlatON-Go/event"
-	"github.com/PlatONnetwork/PlatON-Go/log"
-	"github.com/PlatONnetwork/PlatON-Go/p2p/discover"
-	"github.com/PlatONnetwork/PlatON-Go/rlp"
+	"github.com/AlayaNetwork/Alaya-Go/common/mclock"
+	"github.com/AlayaNetwork/Alaya-Go/event"
+	"github.com/AlayaNetwork/Alaya-Go/log"
+	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
+	"github.com/AlayaNetwork/Alaya-Go/rlp"
 )
 
 var (
@@ -37,7 +37,7 @@ var (
 )
 
 const (
-	baseProtocolVersion    = 5
+	baseProtocolVersion    = 6
 	baseProtocolLength     = uint64(16)
 	baseProtocolMaxMsgSize = 2 * 1024
 

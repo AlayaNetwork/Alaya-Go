@@ -13,35 +13,31 @@ GO ?= latest
 GPATH = $(shell go env GOPATH)
 GORUN = env GO111MODULE=on GOPATH=$(GPATH) go run
 
-platon:
+alaya:
 	build/build_deps.sh
-	$(GORUN) build/ci.go install ./cmd/platon
+	$(GORUN) build/ci.go install ./cmd/alaya
 	@echo "Done building."
-	@echo "Run \"$(GOBIN)/platon\" to launch platon."
+	@echo "Run \"$(GOBIN)/alaya\" to launch alaya."
 
-fix-cbft-test:
-	build/cbft_test.sh
-	@echo "Done fix."
-
-platon-with-mpc:
+alaya-with-mpc:
 	build/build_deps.sh
-	$(GORUN) build/ci.go install -mpc on ./cmd/platon
-	@echo "Done building platon with mpc."
-	@echo "Run \"$(GOBIN)/platon\" to launch platon."
+	$(GORUN) build/ci.go install -mpc on ./cmd/alaya
+	@echo "Done building alaya with mpc."
+	@echo "Run \"$(GOBIN)/alaya\" to launch alaya."
 
-platon-with-vc:
+alaya-with-vc:
 	build/build_deps.sh
 	build/build_snark.sh
-	$(GORUN) build/ci.go install -vc on ./cmd/platon
-	@echo "Done building platon with vc."
-	@echo "Run \"$(GOBIN)/platon\" to launch platon."
+	$(GORUN) build/ci.go install -vc on ./cmd/alaya
+	@echo "Done building alaya with vc."
+	@echo "Run \"$(GOBIN)/alaya\" to launch alaya."
 
-platon-with-mv:
+alaya-with-mv:
 	build/build_deps.sh
 	build/build_snark.sh
-	$(GORUN) build/ci.go install -mv on ./cmd/platon
-	@echo "Done building platon with vc."
-	@echo "Run \"$(GOBIN)/platon\" to launch platon."
+	$(GORUN) build/ci.go install -mv on ./cmd/alaya
+	@echo "Done building alaya with vc."
+	@echo "Run \"$(GOBIN)/alaya\" to launch alaya."
 
 all:
 	build/build_deps.sh

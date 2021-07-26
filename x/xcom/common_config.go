@@ -1,18 +1,19 @@
-// Copyright 2018-2020 The PlatON Network Authors
-// This file is part of the PlatON-Go library.
+// Copyright 2021 The Alaya Network Authors
+// This file is part of the Alaya-Go library.
 //
-// The PlatON-Go library is free software: you can redistribute it and/or modify
+// The Alaya-Go library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The PlatON-Go library is distributed in the hope that it will be useful,
+// The Alaya-Go library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the PlatON-Go library. If not, see <http://www.gnu.org/licenses/>.
+// along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
+
 
 package xcom
 
@@ -23,9 +24,11 @@ import (
 	"math/big"
 	"sync"
 
-	"github.com/PlatONnetwork/PlatON-Go/log"
+	"github.com/AlayaNetwork/Alaya-Go/rlp"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/log"
+
+	"github.com/AlayaNetwork/Alaya-Go/common"
 )
 
 // plugin rule key
@@ -58,6 +61,14 @@ const (
 	RewardPerChangeIntervalLowerLimit = 2
 	IncreaseIssuanceRatioUpperLimit   = 2000
 	IncreaseIssuanceRatioLowerLimit   = 0
+
+	// When electing consensus nodes, it is used to calculate the P value of the binomial distribution
+	ElectionBase = 25	// New expectations
+
+	ElectionBaseL1 = 3000
+	ElectionBaseL2 = 6000
+
+	AlayaNetECHash = "0x828aafb72c19203ad930cb21cee8c9887fcd59eaa44f5c4a24f4cab7cfb80ad0"
 )
 
 var (
@@ -136,7 +147,8 @@ type innerAccount struct {
 	CDFBalance *big.Int       `json:"cdfBalance"`
 }
 
-// total
+// Genesis parameters, once the chain is started, the structure and value cannot be changed
+// This will change the hash of the genesis block
 type EconomicModel struct {
 	Common   commonConfig     `json:"common"`
 	Staking  stakingConfig    `json:"staking"`
@@ -146,9 +158,41 @@ type EconomicModel struct {
 	InnerAcc innerAccount     `json:"innerAcc"`
 }
 
+// When the chain is started, if new parameters are added, add them to this structure
+type EconomicModelExtend struct {
+	Reward      rewardConfigExtend      `json:"reward"`
+	Restricting restrictingConfigExtend `json:"restricting"`
+}
+
+type rewardConfigExtend struct {
+	TheNumberOfDelegationsReward uint16 `json:"theNumberOfDelegationsReward"` // The maximum number of delegates that can receive rewards at a time
+}
+
+type restrictingConfigExtend struct {
+	MinimumRelease *big.Int `json:"minimumRelease"` //The minimum number of Restricting release in one epoch
+}
+
+// New parameters added in version 0.14.0 need to be saved on the chain.
+// Calculate the rlp of the new parameter and return it to the upper storage.
+func EcParams0140() ([]byte, error) {
+	params := struct {
+		TheNumberOfDelegationsReward uint16
+		RestrictingMinimumRelease    *big.Int
+	}{
+		TheNumberOfDelegationsReward: ece.Reward.TheNumberOfDelegationsReward,
+		RestrictingMinimumRelease:    ece.Restricting.MinimumRelease,
+	}
+	bytes, err := rlp.EncodeToBytes(params)
+	if err != nil {
+		return nil, err
+	}
+	return bytes, nil
+}
+
 var (
 	modelOnce sync.Once
 	ec        *EconomicModel
+	ece       *EconomicModelExtend
 )
 
 // Getting the global EconomicModel single instance
@@ -159,16 +203,22 @@ func GetEc(netId int8) *EconomicModel {
 	return ec
 }
 
+func GetEce() *EconomicModelExtend {
+	return ece
+}
+
 func ResetEconomicDefaultConfig(newEc *EconomicModel) {
 	ec = newEc
 }
 
+func ResetEconomicExtendConfig(newEc *EconomicModelExtend) {
+	ece = newEc
+}
+
 const (
-	DefaultMainNet      = iota // PlatON default main net flag
-	DefaultTestNet             // PlatON default test net flag
-	DefaultUnitTestNet         // PlatON default unit test
-	DefaultAlayaNet            // PlatON default Alaya net flag
-	DefaultAlayaTestNet        // PlatON default Alaya test net flag
+	DefaultAlayaNet    = iota // PlatON default Alaya net flag
+	DefaultTestNet            // PlatON default test net flag
+	DefaultUnitTestNet        // PlatON default unit test
 )
 
 func getDefaultEMConfig(netId int8) *EconomicModel {
@@ -185,58 +235,9 @@ func getDefaultEMConfig(netId int8) *EconomicModel {
 		return nil
 	}
 
+	oneAtp, _ := new(big.Int).SetString("1000000000000000000", 10)
+
 	switch netId {
-	case DefaultMainNet:
-		ec = &EconomicModel{
-			Common: commonConfig{
-				MaxEpochMinutes:     uint64(360), // 6 hours
-				NodeBlockTimeWindow: uint64(20),  // 20 seconds
-				PerRoundBlocks:      uint64(10),
-				MaxConsensusVals:    uint64(25),
-				AdditionalCycleTime: uint64(525960),
-			},
-			Staking: stakingConfig{
-				StakeThreshold:          new(big.Int).Set(StakeLowerLimit),
-				OperatingThreshold:      new(big.Int).Set(DelegateLowerLimit),
-				MaxValidators:           uint64(101),
-				UnStakeFreezeDuration:   uint64(28), // freezing 28 epoch
-				RewardPerMaxChangeRange: uint16(500),
-				RewardPerChangeInterval: uint16(10),
-			},
-			Slashing: slashingConfig{
-				SlashFractionDuplicateSign: uint32(10),
-				DuplicateSignReportReward:  uint32(50),
-				MaxEvidenceAge:             uint32(27),
-				SlashBlocksReward:          uint32(250),
-				ZeroProduceCumulativeTime:  uint16(30),
-				ZeroProduceNumberThreshold: uint16(1),
-				ZeroProduceFreezeDuration:  uint64(20),
-			},
-			Gov: governanceConfig{
-				VersionProposalVoteDurationSeconds: uint64(14 * 24 * 3600),
-				//VersionProposalActive_ConsensusRounds: uint64(5),
-				VersionProposalSupportRate:       6670,
-				TextProposalVoteDurationSeconds:  uint64(14 * 24 * 3600),
-				TextProposalVoteRate:             5000,
-				TextProposalSupportRate:          6670,
-				CancelProposalVoteRate:           5000,
-				CancelProposalSupportRate:        6670,
-				ParamProposalVoteDurationSeconds: uint64(14 * 24 * 3600),
-				ParamProposalVoteRate:            5000,
-				ParamProposalSupportRate:         6670,
-			},
-			Reward: rewardConfig{
-				NewBlockRate:          50,
-				PlatONFoundationYear:  2,
-				IncreaseIssuanceRatio: 500,
-			},
-			InnerAcc: innerAccount{
-				PlatONFundAccount: common.MustBech32ToAddress("atp10spacq8cz76y2n60pl7sg5yazncmjuus54xaaq"),
-				PlatONFundBalance: platonFundBalance,
-				CDFAccount:        common.MustBech32ToAddress("atp17tfkaghs4vded6mz6k53xyv5cvqsl63h7wu5ty"),
-				CDFBalance:        new(big.Int).Set(cdfundBalance),
-			},
-		}
 	case DefaultAlayaNet:
 		ec = &EconomicModel{
 			Common: commonConfig{
@@ -282,63 +283,21 @@ func getDefaultEMConfig(netId int8) *EconomicModel {
 				IncreaseIssuanceRatio: 500,
 			},
 			InnerAcc: innerAccount{
-				PlatONFundAccount: common.MustBech32ToAddress("atp147txew2paj3y8kqthzelslxyyjmkzt0gwe99cr"),
+				PlatONFundAccount: common.HexToAddress("0xAf966Cb941eca243D80Bb8b3f87cc424b7612dE8"),
 				PlatONFundBalance: platonFundBalance,
-				CDFAccount:        common.MustBech32ToAddress("atp14cl7nrys9xlfcx6clpy4fs4rsasc2htdjz9unu"),
+				CDFAccount:        common.HexToAddress("0xaE3fe98C9029Be9c1B58F84954c2A38761855d6d"),
 				CDFBalance:        new(big.Int).Set(cdfundBalance),
 			},
 		}
-	case DefaultAlayaTestNet:
-		ec = &EconomicModel{
-			Common: commonConfig{
-				MaxEpochMinutes:     uint64(360), // 6 hours
-				NodeBlockTimeWindow: uint64(20),  // 20 seconds
-				PerRoundBlocks:      uint64(10),
-				MaxConsensusVals:    uint64(25),
-				AdditionalCycleTime: uint64(525960),
+		ece = &EconomicModelExtend{
+			Reward: rewardConfigExtend{
+				TheNumberOfDelegationsReward: 20,
 			},
-			Staking: stakingConfig{
-				StakeThreshold:          new(big.Int).Set(StakeLowerLimit),
-				OperatingThreshold:      new(big.Int).Set(DelegateLowerLimit),
-				MaxValidators:           uint64(101),
-				UnStakeFreezeDuration:   uint64(168), // freezing 28 epoch
-				RewardPerMaxChangeRange: uint16(500),
-				RewardPerChangeInterval: uint16(10),
-			},
-			Slashing: slashingConfig{
-				SlashFractionDuplicateSign: uint32(10),
-				DuplicateSignReportReward:  uint32(50),
-				MaxEvidenceAge:             uint32(7),
-				SlashBlocksReward:          uint32(250),
-				ZeroProduceCumulativeTime:  uint16(30),
-				ZeroProduceNumberThreshold: uint16(1),
-				ZeroProduceFreezeDuration:  uint64(56),
-			},
-			Gov: governanceConfig{
-				VersionProposalVoteDurationSeconds: uint64(14 * 24 * 3600),
-				//VersionProposalActive_ConsensusRounds: uint64(5),
-				VersionProposalSupportRate:       6670,
-				TextProposalVoteDurationSeconds:  uint64(14 * 24 * 3600),
-				TextProposalVoteRate:             5000,
-				TextProposalSupportRate:          6670,
-				CancelProposalVoteRate:           5000,
-				CancelProposalSupportRate:        6670,
-				ParamProposalVoteDurationSeconds: uint64(14 * 24 * 3600),
-				ParamProposalVoteRate:            5000,
-				ParamProposalSupportRate:         6670,
-			},
-			Reward: rewardConfig{
-				NewBlockRate:          50,
-				PlatONFoundationYear:  2,
-				IncreaseIssuanceRatio: 500,
-			},
-			InnerAcc: innerAccount{
-				PlatONFundAccount: common.MustBech32ToAddress("atx10spacq8cz76y2n60pl7sg5yazncmjuus7n6hw2"),
-				PlatONFundBalance: platonFundBalance,
-				CDFAccount:        common.MustBech32ToAddress("atx17tfkaghs4vded6mz6k53xyv5cvqsl63h5gq7cw"),
-				CDFBalance:        new(big.Int).Set(cdfundBalance),
+			Restricting: restrictingConfigExtend{
+				MinimumRelease: new(big.Int).Mul(oneAtp, new(big.Int).SetInt64(80)),
 			},
 		}
+
 	case DefaultTestNet:
 		ec = &EconomicModel{
 			Common: commonConfig{
@@ -384,10 +343,18 @@ func getDefaultEMConfig(netId int8) *EconomicModel {
 				IncreaseIssuanceRatio: 250,
 			},
 			InnerAcc: innerAccount{
-				PlatONFundAccount: common.MustBech32ToAddress("atx1q8r3em9wlamt0qe92alx5a9ff5j2s6lzlxrsxg"),
+				PlatONFundAccount: common.HexToAddress("0x01C71CecaeFF76b78325577E6a74A94D24A86BE2"),
 				PlatONFundBalance: platonFundBalance,
-				CDFAccount:        common.MustBech32ToAddress("atx1qtxa5d3defggwzdx2877z5fmytfu9f89d2ue2g"),
+				CDFAccount:        common.HexToAddress("0x02CddA362DCA508709a651fDe1513b22D3C2a4e5"),
 				CDFBalance:        new(big.Int).Set(cdfundBalance),
+			},
+		}
+		ece = &EconomicModelExtend{
+			Reward: rewardConfigExtend{
+				TheNumberOfDelegationsReward: 20,
+			},
+			Restricting: restrictingConfigExtend{
+				MinimumRelease: new(big.Int).SetInt64(1),
 			},
 		}
 	case DefaultUnitTestNet:
@@ -435,13 +402,21 @@ func getDefaultEMConfig(netId int8) *EconomicModel {
 				IncreaseIssuanceRatio: 250,
 			},
 			InnerAcc: innerAccount{
-				PlatONFundAccount: common.MustBech32ToAddress("atx1fyeszufxwxk62p46djncj86rd553skpph926ws"),
+				PlatONFundAccount: common.HexToAddress("0x493301712671Ada506ba6Ca7891F436D29185821"),
 				PlatONFundBalance: new(big.Int).SetInt64(0),
-				CDFAccount:        common.MustBech32ToAddress("atx1c8enpvs5v6974shxgxxav5dsn36e5jl4slaumj"),
+				CDFAccount:        common.HexToAddress("0xC1f330B214668beAc2E6418Dd651B09C759a4Bf5"),
 				CDFBalance:        new(big.Int).Set(new(big.Int).Mul(cdfundBalance, new(big.Int).SetUint64(1000))),
 			},
 		}
-	default: // DefaultTestNet
+		ece = &EconomicModelExtend{
+			Reward: rewardConfigExtend{
+				TheNumberOfDelegationsReward: 2,
+			},
+			Restricting: restrictingConfigExtend{
+				MinimumRelease: new(big.Int).SetInt64(1),
+			},
+		}
+	default:
 		log.Error("not support chainID", "netId", netId)
 		return nil
 	}
@@ -795,6 +770,18 @@ func IncreaseIssuanceRatio() uint16 {
 	return ec.Reward.IncreaseIssuanceRatio
 }
 
+func TheNumberOfDelegationsReward() uint16 {
+	return ece.Reward.TheNumberOfDelegationsReward
+}
+
+/******
+ * Restricting config
+ ******/
+
+func RestrictingMinimumRelease() *big.Int {
+	return ece.Restricting.MinimumRelease
+}
+
 /******
  * Governance config
  ******/
@@ -874,4 +861,18 @@ func EconomicString() string {
 	} else {
 		return ""
 	}
+}
+
+// Calculate the P value of the binomial distribution
+// Parameter: The total weight of the election
+func CalcP(totalWeight float64, sqrtWeight float64) float64 {
+	if totalWeight < float64(100000000) {
+		return float64(ElectionBaseL1) / sqrtWeight
+	} else {
+		return float64(ElectionBaseL2) / sqrtWeight
+	}
+}
+
+func CalcPNew(sqrtWeight float64) float64 {
+	return float64(ElectionBase) / sqrtWeight
 }

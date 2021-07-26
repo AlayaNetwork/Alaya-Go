@@ -20,12 +20,12 @@ import (
 	"bytes"
 	"context"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	"github.com/PlatONnetwork/PlatON-Go/core"
-	"github.com/PlatONnetwork/PlatON-Go/core/rawdb"
-	"github.com/PlatONnetwork/PlatON-Go/core/types"
-	"github.com/PlatONnetwork/PlatON-Go/crypto"
-	"github.com/PlatONnetwork/PlatON-Go/rlp"
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/core"
+	"github.com/AlayaNetwork/Alaya-Go/core/rawdb"
+	"github.com/AlayaNetwork/Alaya-Go/core/types"
+	"github.com/AlayaNetwork/Alaya-Go/crypto"
+	"github.com/AlayaNetwork/Alaya-Go/rlp"
 )
 
 var sha3Nil = crypto.Keccak256Hash(nil)
@@ -128,7 +128,7 @@ func GetBlock(ctx context.Context, odr OdrBackend, hash common.Hash, number uint
 // in a block given by its hash.
 func GetBlockReceipts(ctx context.Context, odr OdrBackend, hash common.Hash, number uint64) (types.Receipts, error) {
 	// Retrieve the potentially incomplete receipts from disk or network
-	receipts := rawdb.ReadReceipts(odr.Database(), hash, number)
+	receipts := rawdb.ReadRawReceipts(odr.Database(), hash, number)
 	if receipts == nil {
 		r := &ReceiptsRequest{Hash: hash, Number: number}
 		if err := odr.Retrieve(ctx, r); err != nil {

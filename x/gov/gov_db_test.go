@@ -1,18 +1,19 @@
-// Copyright 2018-2020 The PlatON Network Authors
-// This file is part of the PlatON-Go library.
+// Copyright 2021 The Alaya Network Authors
+// This file is part of the Alaya-Go library.
 //
-// The PlatON-Go library is free software: you can redistribute it and/or modify
+// The Alaya-Go library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The PlatON-Go library is distributed in the hope that it will be useful,
+// The Alaya-Go library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the PlatON-Go library. If not, see <http://www.gnu.org/licenses/>.
+// along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
+
 
 package gov
 
@@ -21,22 +22,22 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/PlatONnetwork/PlatON-Go/log"
+	"github.com/AlayaNetwork/Alaya-Go/log"
 
-	"github.com/PlatONnetwork/PlatON-Go/params"
+	"github.com/AlayaNetwork/Alaya-Go/params"
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/PlatONnetwork/PlatON-Go/common/mock"
-	"github.com/PlatONnetwork/PlatON-Go/x/xcom"
+	"github.com/AlayaNetwork/Alaya-Go/common/mock"
+	"github.com/AlayaNetwork/Alaya-Go/x/xcom"
 
 	"testing"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	"github.com/PlatONnetwork/PlatON-Go/core/snapshotdb"
-	"github.com/PlatONnetwork/PlatON-Go/crypto/sha3"
-	"github.com/PlatONnetwork/PlatON-Go/p2p/discover"
-	"github.com/PlatONnetwork/PlatON-Go/rlp"
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/core/snapshotdb"
+	"github.com/AlayaNetwork/Alaya-Go/crypto/sha3"
+	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
+	"github.com/AlayaNetwork/Alaya-Go/rlp"
 )
 
 var (
@@ -926,7 +927,6 @@ func TestGovDB_setPreactiveProposalID(t *testing.T) {
 func TestGovDB_Version(t *testing.T) {
 	version := uint32(0<<16 | 7<<8 | 4)
 	fmt.Println(version)
-	//log.Root().SetHandler(log.CallerFileHandler(log.LvlFilterHandler(log.Lvl(6), log.StreamHandler(os.Stderr, log.TerminalFormat(true)))))
 	log.Warn("Store version for gov into genesis statedb", "genesis version", fmt.Sprintf("%d/%s", version, params.FormatVersion(version)))
 
 	var hash common.Hash
@@ -1048,4 +1048,38 @@ func rlpHash(x interface{}) (h common.Hash) {
 	rlp.Encode(hw, x)
 	hw.Sum(h[:0])
 	return h
+}
+
+func TestSet0140Param(t *testing.T) {
+	c := mock.NewChain()
+	defer snapshotdb.Instance().Clear()
+
+	var paramItemList []*ParamItem
+
+	initParamList := queryInitParam()
+
+	var err error
+	for _, param := range initParamList {
+		paramItemList = append(paramItemList, param.ParamItem)
+	}
+	v2, err := rlp.EncodeToBytes(paramItemList)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	c.AddBlock()
+
+	if err := snapshotdb.Instance().NewBlock(c.CurrentHeader().Number, common.ZeroHash, c.CurrentHeader().Hash()); err != nil {
+		t.Error(err)
+	}
+	if err := snapshotdb.Instance().Put(c.CurrentHeader().Hash(), KeyParamItems(), v2); err != nil {
+		t.Error(err)
+	}
+
+	if err := Set0140Param(c.CurrentHeader().Hash(), params.FORKVERSION_0_14_0, snapshotdb.Instance()); err != nil {
+		t.Error(err)
+	}
+	if _, err := snapshotdb.Instance().Get(c.CurrentHeader().Hash(), KeyParamValue(ModuleRestricting, KeyRestrictingMinimumAmount)); err != nil {
+		t.Error(err)
+	}
 }

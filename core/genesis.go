@@ -27,20 +27,22 @@ import (
 	"os"
 	"strings"
 
-	"github.com/PlatONnetwork/PlatON-Go/core/snapshotdb"
+	"github.com/AlayaNetwork/Alaya-Go/x/gov"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	"github.com/PlatONnetwork/PlatON-Go/common/hexutil"
-	"github.com/PlatONnetwork/PlatON-Go/common/math"
-	"github.com/PlatONnetwork/PlatON-Go/common/vm"
-	"github.com/PlatONnetwork/PlatON-Go/core/rawdb"
-	"github.com/PlatONnetwork/PlatON-Go/core/state"
-	"github.com/PlatONnetwork/PlatON-Go/core/types"
-	"github.com/PlatONnetwork/PlatON-Go/ethdb"
-	"github.com/PlatONnetwork/PlatON-Go/log"
-	"github.com/PlatONnetwork/PlatON-Go/params"
-	"github.com/PlatONnetwork/PlatON-Go/rlp"
-	"github.com/PlatONnetwork/PlatON-Go/x/xcom"
+	"github.com/AlayaNetwork/Alaya-Go/core/snapshotdb"
+
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/common/hexutil"
+	"github.com/AlayaNetwork/Alaya-Go/common/math"
+	"github.com/AlayaNetwork/Alaya-Go/common/vm"
+	"github.com/AlayaNetwork/Alaya-Go/core/rawdb"
+	"github.com/AlayaNetwork/Alaya-Go/core/state"
+	"github.com/AlayaNetwork/Alaya-Go/core/types"
+	"github.com/AlayaNetwork/Alaya-Go/ethdb"
+	"github.com/AlayaNetwork/Alaya-Go/log"
+	"github.com/AlayaNetwork/Alaya-Go/params"
+	"github.com/AlayaNetwork/Alaya-Go/rlp"
+	"github.com/AlayaNetwork/Alaya-Go/x/xcom"
 )
 
 //go:generate gencodec -type GenesisAccount -field-override genesisAccountMarshaling -out gen_genesis_account.go
@@ -153,14 +155,13 @@ func SetupGenesisBlock(db ethdb.Database, snapshotBaseDB snapshotdb.BaseDB, gene
 
 	if (stored == common.Hash{}) {
 		if genesis == nil {
-			panic("Please specify network")
+			log.Info("Writing default alaya network genesis block")
+			genesis = DefaultAlayaGenesisBlock()
 		} else {
-			log.Info("Writing custom genesis block", "chainID", genesis.Config.ChainID)
+			log.Info("Writing custom genesis block", "chainID", genesis.Config.ChainID, "addressHRP", genesis.Config.AddressHRP)
 		}
-		if genesis.Config.ChainID.Cmp(params.MainnetChainConfig.ChainID) == 0 || genesis.Config.ChainID.Cmp(params.AlayaChainConfig.ChainID) == 0 {
-			common.SetAddressPrefix(common.MainNetAddressPrefix)
-		} else {
-			common.SetAddressPrefix(common.TestNetAddressPrefix)
+		if err := common.SetAddressHRP(genesis.Config.AddressHRP); err != nil {
+			return nil, common.Hash{}, err
 		}
 
 		// check EconomicModel configuration
@@ -191,42 +192,44 @@ func SetupGenesisBlock(db ethdb.Database, snapshotBaseDB snapshotdb.BaseDB, gene
 	storedcfg := rawdb.ReadChainConfig(db, stored)
 	if storedcfg == nil {
 		log.Warn("Found genesis block without chain config")
-		if newcfg.ChainID.Cmp(params.MainnetChainConfig.ChainID) == 0 || newcfg.ChainID.Cmp(params.AlayaChainConfig.ChainID) == 0 {
-			common.SetAddressPrefix(common.MainNetAddressPrefix)
-		} else {
-			common.SetAddressPrefix(common.TestNetAddressPrefix)
+
+		if err := common.SetAddressHRP(newcfg.AddressHRP); err != nil {
+			return newcfg, stored, err
 		}
 		rawdb.WriteChainConfig(db, stored, newcfg)
 		return newcfg, stored, nil
 	}
-
-	if genesis == nil && stored != params.MainnetGenesisHash {
-		if storedcfg.ChainID.Cmp(params.MainnetChainConfig.ChainID) == 0 || storedcfg.ChainID.Cmp(params.AlayaChainConfig.ChainID) == 0 {
-			common.SetAddressPrefix(common.MainNetAddressPrefix)
-		} else {
-			common.SetAddressPrefix(common.TestNetAddressPrefix)
+	if genesis == nil {
+		if err := common.SetAddressHRP(storedcfg.AddressHRP); err != nil {
+			return newcfg, stored, err
 		}
 	} else {
-		if newcfg.ChainID.Cmp(params.MainnetChainConfig.ChainID) == 0 || newcfg.ChainID.Cmp(params.AlayaChainConfig.ChainID) == 0 {
-			common.SetAddressPrefix(common.MainNetAddressPrefix)
-		} else {
-			common.SetAddressPrefix(common.TestNetAddressPrefix)
+		if err := common.SetAddressHRP(newcfg.AddressHRP); err != nil {
+			return newcfg, stored, err
 		}
 	}
 
 	// Get the existing EconomicModel configuration.
 	ecCfg := rawdb.ReadEconomicModel(db, stored)
+	eceCfg := rawdb.ReadEconomicModelExtend(db, stored)
 	if nil == ecCfg {
 		log.Warn("Found genesis block without EconomicModel config")
-		ecCfg = xcom.GetEc(xcom.DefaultMainNet)
+		ecCfg = xcom.GetEc(xcom.DefaultAlayaNet)
 		rawdb.WriteEconomicModel(db, stored, ecCfg)
 	}
+	if nil == eceCfg {
+		log.Warn("Found genesis block without EconomicModelExtend config")
+		xcom.GetEc(xcom.DefaultAlayaNet)
+		eceCfg = xcom.GetEce()
+		rawdb.WriteEconomicModelExtend(db, stored, eceCfg)
+	}
 	xcom.ResetEconomicDefaultConfig(ecCfg)
+	xcom.ResetEconomicExtendConfig(eceCfg)
 
 	// Special case: don't change the existing config of a non-mainnet chain if no new
 	// config is supplied. These chains would get AllProtocolChanges (and a compat error)
 	// if we just continued here.
-	if genesis == nil && stored != params.MainnetGenesisHash {
+	if genesis == nil && stored != params.AlayanetGenesisHash {
 		return storedcfg, stored, nil
 	}
 
@@ -246,16 +249,28 @@ func SetupGenesisBlock(db ethdb.Database, snapshotBaseDB snapshotdb.BaseDB, gene
 	return newcfg, stored, nil
 }
 
-func (g *Genesis) UnmarshalChainID(r io.Reader) (*big.Int, error) {
-	var genesisChaind struct {
+func (g *Genesis) UnmarshalAddressHRP(r io.Reader) (string, error) {
+	var genesisAddressHRP struct {
 		Config *struct {
-			ChainID *big.Int `json:"chainId"` // chainId identifies the current chain and is used for replay protection
+			AddressHRP string `json:"addressHRP"`
 		} `json:"config"`
 	}
-	if err := json.NewDecoder(r).Decode(&genesisChaind); err != nil {
-		return nil, fmt.Errorf("invalid genesis file chain id: %v", err)
+	if err := json.NewDecoder(r).Decode(&genesisAddressHRP); err != nil {
+		return "", fmt.Errorf("invalid genesis file address prefix: %v", err)
 	}
-	return genesisChaind.Config.ChainID, nil
+	return genesisAddressHRP.Config.AddressHRP, nil
+}
+
+func (g *Genesis) UnmarshalEconomicConfigExtend(r io.Reader) error {
+	var genesisEcConfig struct {
+		EconomicModel *xcom.EconomicModelExtend `json:"economicModel"`
+	}
+	genesisEcConfig.EconomicModel = xcom.GetEce()
+	if err := json.NewDecoder(r).Decode(&genesisEcConfig); err != nil {
+		return fmt.Errorf("invalid genesis file economicModel: %v", err)
+	}
+	xcom.ResetEconomicExtendConfig(genesisEcConfig.EconomicModel)
+	return nil
 }
 
 //this is only use to private chain
@@ -265,19 +280,23 @@ func (g *Genesis) InitGenesisAndSetEconomicConfig(path string) error {
 		return fmt.Errorf("Failed to read genesis file: %v", err)
 	}
 	defer file.Close()
-	chainID, err := g.UnmarshalChainID(file)
+	hrp, err := g.UnmarshalAddressHRP(file)
 	if err != nil {
 		return err
 	}
-	if chainID != nil && (chainID.Cmp(params.MainnetChainConfig.ChainID) == 0 || chainID.Cmp(params.AlayaChainConfig.ChainID) == 0) {
-		common.SetAddressPrefix(common.MainNetAddressPrefix)
-	} else {
-		common.SetAddressPrefix(common.TestNetAddressPrefix)
+
+	if err := common.SetAddressHRP(hrp); err != nil {
+		return err
+	}
+
+	g.EconomicModel = xcom.GetEc(xcom.DefaultAlayaNet)
+
+	file.Seek(0, io.SeekStart)
+	if err := g.UnmarshalEconomicConfigExtend(file); nil != err {
+		return err
 	}
 
 	file.Seek(0, io.SeekStart)
-
-	g.EconomicModel = xcom.GetEc(xcom.DefaultMainNet)
 	if err := json.NewDecoder(file).Decode(g); err != nil {
 		return fmt.Errorf("invalid genesis file: %v", err)
 	}
@@ -317,14 +336,10 @@ func (g *Genesis) configOrDefault(ghash common.Hash) *params.ChainConfig {
 	switch {
 	case g != nil:
 		return g.Config
-	case ghash == params.MainnetGenesisHash:
-		return params.MainnetChainConfig
 	case ghash == params.TestnetGenesisHash:
 		return params.TestnetChainConfig
 	case ghash == params.AlayanetGenesisHash:
 		return params.AlayaChainConfig
-	case ghash == params.AlayaTestnetGenesisHash:
-		return params.AlayaTestChainConfig
 	default:
 		return params.AllEthashProtocolChanges
 	}
@@ -400,6 +415,21 @@ func (g *Genesis) ToBlock(db ethdb.Database, sdb snapshotdb.BaseDB) *types.Block
 		if _, err := genesisStakingData(initDataStateHash, sdb, g, statedb); nil != err {
 			panic("Failed Store staking: " + err.Error())
 		}
+
+		// 0.14.0
+		if gov.Gte0140Version(genesisVersion) {
+			if err := gov.WriteEcHash0140(statedb); nil != err {
+				panic("Failed Store EcHash0140: " + err.Error())
+			}
+		}
+
+		if g.Config != nil && g.Config.ChainID.Cmp(params.AlayaChainConfig.ChainID) != 0 {
+			if g.Config.AddressHRP != "" {
+				statedb.SetString(vm.StakingContractAddr, rawdb.AddressHRPKey, g.Config.AddressHRP)
+			} else {
+				statedb.SetString(vm.StakingContractAddr, rawdb.AddressHRPKey, common.DefaultAddressHRP)
+			}
+		}
 	}
 
 	root := statedb.IntermediateRoot(false)
@@ -474,6 +504,8 @@ func (g *Genesis) Commit(db ethdb.Database, sdb snapshotdb.BaseDB) (*types.Block
 	}
 	rawdb.WriteChainConfig(db, block.Hash(), config)
 	rawdb.WriteEconomicModel(db, block.Hash(), g.EconomicModel)
+	rawdb.WriteEconomicModelExtend(db, block.Hash(), xcom.GetEce())
+
 	return block, nil
 }
 
@@ -491,31 +523,6 @@ func (g *Genesis) MustCommit(db ethdb.Database) *types.Block {
 func GenesisBlockForTesting(db ethdb.Database, addr common.Address, balance *big.Int) *types.Block {
 	g := Genesis{Alloc: GenesisAlloc{addr: {Balance: balance}}}
 	return g.MustCommit(db)
-}
-
-// DefaultGenesisBlock returns the PlatON main net genesis block.
-func DefaultGenesisBlock() *Genesis {
-
-	generalAddr := common.MustBech32ToAddress("atp1dl93r6fr022ca5yjqe6cgkg06er9pyqfhqckj8")
-	generalBalance, _ := new(big.Int).SetString("100000000000000000000000000", 10)
-
-	rewardMgrPoolIssue, _ := new(big.Int).SetString("2000000000000000000000000", 10)
-
-	genesis := Genesis{
-		Config:    params.MainnetChainConfig,
-		Nonce:     hexutil.MustDecode("0x024c6378c176ef6c717cd37a74c612c9abd615d13873ff6651e3d352b31cb0b2e1"),
-		Timestamp: 0,
-		ExtraData: hexutil.MustDecode("0xd782070186706c61746f6e86676f312e3131856c696e757800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"),
-		GasLimit:  params.GenesisGasLimit,
-		Alloc: map[common.Address]GenesisAccount{
-			vm.RewardManagerPoolAddr: {Balance: rewardMgrPoolIssue},
-			generalAddr:              {Balance: generalBalance},
-		},
-		EconomicModel: xcom.GetEc(xcom.DefaultMainNet),
-	}
-	xcom.SetNodeBlockTimeWindow(genesis.Config.Cbft.Period / 1000)
-	xcom.SetPerRoundBlocks(uint64(genesis.Config.Cbft.Amount))
-	return &genesis
 }
 
 // DefaultGenesisBlock returns the PlatON main net genesis block.
@@ -537,31 +544,6 @@ func DefaultAlayaGenesisBlock() *Genesis {
 			generalAddr:              {Balance: generalBalance},
 		},
 		EconomicModel: xcom.GetEc(xcom.DefaultAlayaNet),
-	}
-	xcom.SetNodeBlockTimeWindow(genesis.Config.Cbft.Period / 1000)
-	xcom.SetPerRoundBlocks(uint64(genesis.Config.Cbft.Amount))
-	return &genesis
-}
-
-// DefaultGenesisBlock returns the PlatON main net genesis block.
-func DefaultAlayaTestGenesisBlock() *Genesis {
-
-	generalAddr := common.MustBech32ToAddress("atx1dl93r6fr022ca5yjqe6cgkg06er9pyqfaxyupd")
-	generalBalance, _ := new(big.Int).SetString("100000000000000000000000000", 10)
-
-	rewardMgrPoolIssue, _ := new(big.Int).SetString("2000000000000000000000000", 10)
-
-	genesis := Genesis{
-		Config:    params.AlayaTestChainConfig,
-		Nonce:     hexutil.MustDecode("0x024c6378c176ef6c717cd37a74c612c9abd615d13873ff6651e3d352b31cb0b2e1"),
-		Timestamp: 1602973620000,
-		ExtraData: hexutil.MustDecode("0xd782070186706c61746f6e86676f312e3131856c696e757800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"),
-		GasLimit:  params.GenesisGasLimit,
-		Alloc: map[common.Address]GenesisAccount{
-			vm.RewardManagerPoolAddr: {Balance: rewardMgrPoolIssue},
-			generalAddr:              {Balance: generalBalance},
-		},
-		EconomicModel: xcom.GetEc(xcom.DefaultAlayaTestNet),
 	}
 	xcom.SetNodeBlockTimeWindow(genesis.Config.Cbft.Period / 1000)
 	xcom.SetPerRoundBlocks(uint64(genesis.Config.Cbft.Amount))

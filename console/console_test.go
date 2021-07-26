@@ -26,18 +26,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/PlatONnetwork/PlatON-Go/core/snapshotdb"
+	"github.com/AlayaNetwork/Alaya-Go/core/snapshotdb"
 
-	"github.com/PlatONnetwork/PlatON-Go/core"
-	"github.com/PlatONnetwork/PlatON-Go/crypto/bls"
+	"github.com/AlayaNetwork/Alaya-Go/core"
+	"github.com/AlayaNetwork/Alaya-Go/crypto/bls"
 
-	"github.com/PlatONnetwork/PlatON-Go/p2p/discover"
-	"github.com/PlatONnetwork/PlatON-Go/params"
+	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
+	"github.com/AlayaNetwork/Alaya-Go/params"
 
-	"github.com/PlatONnetwork/PlatON-Go/eth"
-	"github.com/PlatONnetwork/PlatON-Go/internal/jsre"
-	"github.com/PlatONnetwork/PlatON-Go/node"
-	_ "github.com/PlatONnetwork/PlatON-Go/x/xcom"
+	"github.com/AlayaNetwork/Alaya-Go/eth"
+	"github.com/AlayaNetwork/Alaya-Go/internal/jsre"
+	"github.com/AlayaNetwork/Alaya-Go/node"
+	_ "github.com/AlayaNetwork/Alaya-Go/x/xcom"
 )
 
 const (
@@ -202,7 +202,7 @@ func TestWelcome(t *testing.T) {
 func TestApi(t *testing.T) {
 	tester := newTester(t, nil)
 	defer tester.Close(t)
-	fmt.Fprintf(tester.console.printer, "Welcome to the PlatON JavaScript console!\n\n")
+	fmt.Fprintf(tester.console.printer, "Welcome to the Alaya JavaScript console!\n\n")
 	_, err := tester.console.jsre.Run(`
 		console.log("aaaaaaa");
 		console.log("instance: " + web3.version.node);
@@ -215,9 +215,9 @@ func TestApi(t *testing.T) {
 		console.log("gasPrice",platon.gasPrice)
 		console.log("accounts",platon.accounts)
 		console.log("blockNumber",platon.blockNumber)
-		console.log("getBalance",platon.getBalance("atx1sczumw7md5ny4f6zuaczph9utr7decvzv79uu9"))
-		console.log("getStorageAt",platon.getStorageAt("atx1sczumw7md5ny4f6zuaczph9utr7decvzv79uu9"))
-		console.log("getTransactionCount",platon.getTransactionCount("atx1sczumw7md5ny4f6zuaczph9utr7decvzv79uu9"))
+		console.log("getBalance",platon.getBalance("atp1sczumw7md5ny4f6zuaczph9utr7decvzxcek00"))
+		console.log("getStorageAt",platon.getStorageAt("atp1sczumw7md5ny4f6zuaczph9utr7decvzxcek00"))
+		console.log("getTransactionCount",platon.getTransactionCount("atp1sczumw7md5ny4f6zuaczph9utr7decvzxcek00"))
 		console.log("getBlockTransactionCountByHash or ByNumber",platon.getBlockTransactionCount("1234"))
 		//console.log("getCode",platon.getCode("0x8605cdbbdb6d264aa742e77020dcbc58fcdce182"))
 		//adr = personal.newAccount("123456")

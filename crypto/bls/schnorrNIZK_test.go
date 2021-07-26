@@ -5,7 +5,7 @@ import (
 
 	"fmt"
 
-	"github.com/PlatONnetwork/PlatON-Go/rlp"
+	"github.com/AlayaNetwork/Alaya-Go/rlp"
 )
 
 func TestSchnorrNIZK(t *testing.T) {

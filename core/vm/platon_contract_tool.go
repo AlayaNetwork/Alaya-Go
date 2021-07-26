@@ -1,18 +1,18 @@
-// Copyright 2018-2020 The PlatON Network Authors
-// This file is part of the PlatON-Go library.
+// Copyright 2021 The Alaya Network Authors
+// This file is part of the Alaya-Go library.
 //
-// The PlatON-Go library is free software: you can redistribute it and/or modify
+// The Alaya-Go library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The PlatON-Go library is distributed in the hope that it will be useful,
+// The Alaya-Go library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the PlatON-Go library. If not, see <http://www.gnu.org/licenses/>.
+// along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
 package vm
 
@@ -20,10 +20,12 @@ import (
 	"reflect"
 	"strconv"
 
-	"github.com/PlatONnetwork/PlatON-Go/common"
-	"github.com/PlatONnetwork/PlatON-Go/log"
-	"github.com/PlatONnetwork/PlatON-Go/x/plugin"
-	"github.com/PlatONnetwork/PlatON-Go/x/xcom"
+	"github.com/AlayaNetwork/Alaya-Go/x/gov"
+
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/log"
+	"github.com/AlayaNetwork/Alaya-Go/x/plugin"
+	"github.com/AlayaNetwork/Alaya-Go/x/xcom"
 )
 
 func execPlatonContract(input []byte, command map[uint16]interface{}) (ret []byte, err error) {
@@ -36,24 +38,39 @@ func execPlatonContract(input []byte, command map[uint16]interface{}) (ret []byt
 
 	// execute contracts method
 	result := reflect.ValueOf(fn).Call(params)
-	if err, ok := result[1].Interface().(error); ok {
+	switch errtyp := result[1].Interface().(type) {
+	case *common.BizError:
 		log.Error("Failed to execute contract tx", "err", err)
-		return xcom.NewResult(common.InternalError, nil), err
+		return xcom.NewResult(errtyp, nil), errtyp
+	case error:
+		log.Error("Failed to execute contract tx", "err", err)
+		return xcom.NewResult(common.InternalError, nil), errtyp
+	default:
 	}
 	return result[0].Bytes(), nil
 }
 
-func txResultHandler(contractAddr common.Address, evm *EVM, title, reason string, fncode, errCode int) []byte {
+func txResultHandler(contractAddr common.Address, evm *EVM, title, reason string, fncode int, errCode *common.BizError) ([]byte, error) {
 	event := strconv.Itoa(fncode)
-	receipt := strconv.Itoa(errCode)
+	receipt := strconv.Itoa(int(errCode.Code))
 	blockNumber := evm.BlockNumber.Uint64()
-	if errCode != 0 {
+	if errCode.Code != 0 {
 		txHash := evm.StateDB.TxHash()
 		log.Error("Failed to "+title, "txHash", txHash.Hex(),
 			"blockNumber", blockNumber, "receipt: ", receipt, "the reason", reason)
 	}
 	xcom.AddLog(evm.StateDB, blockNumber, contractAddr, event, receipt)
-	return []byte(receipt)
+
+	if gov.Gte0140VersionState(evm.StateDB) {
+		if errCode.Code == common.NoErr.Code {
+			return []byte(receipt), nil
+		}
+		return []byte(receipt), errCode
+	}
+	if errCode.Code == common.InternalError.Code {
+		return []byte(receipt), errCode
+	}
+	return []byte(receipt), nil
 }
 
 func txResultHandlerWithRes(contractAddr common.Address, evm *EVM, title, reason string, fncode, errCode int, res interface{}) []byte {
