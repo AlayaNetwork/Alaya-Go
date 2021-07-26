@@ -139,7 +139,7 @@ For more information, please visit our [Docs](https://devdocs.alaya.network/alay
 
 ## Contributing to Alaya-Go
 
-All of codes for Alaya-Go are open source and contributing are very welcome! Before beginning, please take a look at our contributing [guidelines](https://github.com/AlayaNetwork/Alaya-Go/blob/master/.github/CONTRIBUTING.md). You can also open an issue by clicking [here](https://github.com/AlayaNetwork/Alaya-Go/issues/new).
+All of codes for Alaya-Go are open source and contributing are very welcome! Before beginning, please take a look at our contributing [guidelines](https://github.com/AlayaNetwork/Alaya-Go/blob/11339fae0f68718fc2d553d732d7daa73bf55325/.github/CONTRIBUTING.md). You can also open an issue by clicking [here](https://github.com/AlayaNetwork/Alaya-Go/issues/new/choose).
 
 ## Support
 If you have any questions or suggestions please contact us at support@platon.network.
