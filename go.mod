@@ -24,6 +24,7 @@ require (
 	github.com/golang/protobuf v1.2.1-0.20181128192352-1d3f30b51784
 	github.com/golang/snappy v0.0.1
 	github.com/google/go-cmp v0.4.0 // indirect
+	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/holiman/uint256 v1.1.1
 	github.com/huin/goupnp v0.0.0-20161224104101-679507af18f3

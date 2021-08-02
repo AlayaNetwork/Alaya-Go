@@ -786,9 +786,7 @@ func (s *PublicBlockChainAPI) EstimateGas(ctx context.Context, args CallArgs) (h
 		}
 
 		if result.Err != nil {
-			if ecerr, ok := result.Err.(*common.BizError); ok {
-				return true, nil, &economicError{ecerr} // Bail out
-			}
+			return true, nil, result.Err
 		}
 
 		return result.Failed(), result, nil
@@ -819,11 +817,6 @@ func (s *PublicBlockChainAPI) EstimateGas(ctx context.Context, args CallArgs) (h
 			if result != nil && result.Err != vm.ErrOutOfGas {
 				if len(result.Revert()) > 0 {
 					return 0, newRevertError(result)
-				}
-
-				var ecerr *common.BizError
-				if errors.As(result.Err, &ecerr) {
-					return 0, &economicError{ecerr}
 				}
 
 				return 0, result.Err
@@ -863,34 +856,6 @@ func (e *revertError) ErrorCode() int {
 // ErrorData returns the hex encoded revert reason.
 func (e *revertError) ErrorData() interface{} {
 	return e.reason
-}
-
-// revertError is an API error that encompassas an EVM revertal with JSON error
-// code and a binary data blob.
-type economicError struct {
-	*common.BizError
-}
-
-// ErrorCode returns the JSON error code for a revertal.
-func (e economicError) Error() string {
-	return "inner contract exec failed"
-}
-
-// ErrorCode returns the JSON error code for a revertal.
-func (e *economicError) ErrorCode() int {
-	return 4
-}
-
-// ErrorData returns the hex encoded revert reason.
-func (e *economicError) ErrorData() interface{} {
-	return jsonError{Code: int(e.BizError.Code), Message: e.BizError.Msg}
-}
-
-//todo,this is hack func ,should del in 0.15.0
-type jsonError struct {
-	Code    int         `json:"code"`
-	Message string      `json:"message"`
-	Data    interface{} `json:"data,omitempty"`
 }
 
 // ExecutionResult groups all structured logs emitted by the EVM

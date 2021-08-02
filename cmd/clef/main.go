@@ -35,6 +35,8 @@ import (
 	"runtime"
 	"strings"
 
+	"gopkg.in/urfave/cli.v1"
+
 	"github.com/AlayaNetwork/Alaya-Go/cmd/utils"
 	"github.com/AlayaNetwork/Alaya-Go/common"
 	"github.com/AlayaNetwork/Alaya-Go/crypto"
@@ -44,7 +46,6 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/signer/core"
 	"github.com/AlayaNetwork/Alaya-Go/signer/rules"
 	"github.com/AlayaNetwork/Alaya-Go/signer/storage"
-	"gopkg.in/urfave/cli.v1"
 )
 
 // ExternalAPIVersion -- see extapi_changelog.md
@@ -413,9 +414,16 @@ func signer(c *cli.Context) error {
 		vhosts := splitAndTrim(c.GlobalString(utils.RPCVirtualHostsFlag.Name))
 		cors := splitAndTrim(c.GlobalString(utils.RPCCORSDomainFlag.Name))
 
+		srv := rpc.NewServer()
+		err := node.RegisterApisFromWhitelist(rpcAPI, []string{"account"}, srv, false)
+		if err != nil {
+			utils.Fatalf("Could not register API: %w", err)
+		}
+		handler := node.NewHTTPHandlerStack(srv, cors, vhosts)
+
 		// start http server
 		httpEndpoint := fmt.Sprintf("%s:%d", c.String(utils.RPCListenAddrFlag.Name), c.Int(rpcPortFlag.Name))
-		listener, _, err := rpc.StartHTTPEndpoint(httpEndpoint, rpcAPI, []string{"account"}, cors, vhosts, rpc.DefaultHTTPTimeouts)
+		listener, err := node.StartHTTPEndpoint(httpEndpoint, rpc.DefaultHTTPTimeouts, handler)
 		if err != nil {
 			utils.Fatalf("Could not start RPC api: %v", err)
 		}
