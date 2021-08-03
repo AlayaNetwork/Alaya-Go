@@ -869,6 +869,8 @@ func (db *Database) Commit(node common.Hash, report bool, uncache bool) error {
 	// outside code doesn't see an inconsistent state (referenced data removed from
 	// memory cache during commit but not yet in persistent storage). This is ensured
 	// by only uncaching existing data when the database write finalizes.
+	db.lock.RLock()
+
 	start := time.Now()
 	batch := db.diskdb.NewBatch()
 
@@ -876,10 +878,12 @@ func (db *Database) Commit(node common.Hash, report bool, uncache bool) error {
 	for hash, preimage := range db.preimages {
 		if err := batch.Put(db.secureKey(hash[:]), preimage); err != nil {
 			log.Error("Failed to commit preimage from trie database", "err", err)
+			db.lock.RUnlock()
 			return err
 		}
 		if batch.ValueSize() > ethdb.IdealBatchSize {
 			if err := batch.Write(); err != nil {
+				db.lock.RUnlock()
 				return err
 			}
 			batch.Reset()
@@ -891,13 +895,17 @@ func (db *Database) Commit(node common.Hash, report bool, uncache bool) error {
 	uncacher := &cleaner{db, uncache}
 	if err := db.commit(node, batch, uncacher); err != nil {
 		log.Error("Failed to commit trie from trie database", "err", err)
+		db.lock.RUnlock()
 		return err
 	}
 	// Write batch ready, unlock for readers during persistence
 	if err := batch.Write(); err != nil {
 		log.Error("Failed to write trie to disk", "err", err)
+		db.lock.RUnlock()
 		return err
 	}
+	db.lock.RUnlock()
+
 	// Write successful, clear out the flushed data
 	db.lock.Lock()
 	defer db.lock.Unlock()
