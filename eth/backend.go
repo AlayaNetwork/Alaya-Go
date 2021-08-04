@@ -228,8 +228,6 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 		bloomIndexer:   NewBloomIndexer(chainDb, params.BloomBitsBlocks, params.BloomConfirms),
 	}
 
-	log.Info("Initialising PlatON protocol", "versions", ProtocolVersions, "network", config.NetworkId)
-
 	if !config.SkipBcVersionCheck {
 		bcVersion := rawdb.ReadDatabaseVersion(chainDb)
 		if bcVersion != config.BlockChainVersion && bcVersion != 0 {
@@ -370,7 +368,7 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 		return nil, err
 	}
 
-	eth.APIBackend = &EthAPIBackend{eth, nil}
+	eth.APIBackend = &EthAPIBackend{ctx.ExtRPCEnabled(), eth, nil}
 	gpoParams := config.GPO
 	if gpoParams.Default == nil {
 		gpoParams.Default = config.MinerGasPrice
