@@ -226,21 +226,12 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 		bloomIndexer:      NewBloomIndexer(chainDb, params.BloomBitsBlocks, params.BloomConfirms),
 	}
 
-	bcVersion := rawdb.ReadDatabaseVersion(chainDb)
-
-	var dbVer = "<nil>"
-	if bcVersion != nil {
-		dbVer = fmt.Sprintf("%d", *bcVersion)
-	}
-	log.Info("Initialising PlatON protocol", "versions", ProtocolVersions, "network", config.NetworkId, "dbversion", dbVer)
-
 	if !config.SkipBcVersionCheck {
-		if bcVersion != nil && *bcVersion > core.BlockChainVersion {
-			return nil, fmt.Errorf("database version is v%d, Geth %s only supports v%d", *bcVersion, params.VersionWithMeta, core.BlockChainVersion)
-		} else if bcVersion == nil || *bcVersion < core.BlockChainVersion {
-			log.Warn("Upgrade blockchain database version", "from", dbVer, "to", core.BlockChainVersion)
-			rawdb.WriteDatabaseVersion(chainDb, core.BlockChainVersion)
-		}
+        bcVersion := rawdb.ReadDatabaseVersion(chainDb)
+        if bcVersion != config.BlockChainVersion && bcVersion != 0 {
+            return nil, fmt.Errorf("Blockchain DB version mismatch (%d / %d).\n", bcVersion, config.BlockChainVersion)
+        }
+        rawdb.WriteDatabaseVersion(chainDb, config.BlockChainVersion)
 	}
 
 	var (
@@ -377,7 +368,8 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 	if eth.protocolManager, err = NewProtocolManager(eth.chainConfig, config.SyncMode, config.NetworkId, eth.eventMux, eth.txPool, eth.engine, eth.blockchain, chainDb, cacheLimit); err != nil {
 		return nil, err
 	}
-	eth.APIBackend = &EthAPIBackend{eth, nil}
+
+	eth.APIBackend = &EthAPIBackend{ctx.ExtRPCEnabled(), eth, nil}
 	gpoParams := config.GPO
 	if gpoParams.Default == nil {
 		gpoParams.Default = config.MinerGasPrice
