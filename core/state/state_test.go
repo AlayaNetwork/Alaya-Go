@@ -25,7 +25,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/AlayaNetwork/Alaya-Go/ethdb/leveldb"
+	"github.com/AlayaNetwork/Alaya-Go/ethdb/memorydb"
 
 	"github.com/AlayaNetwork/Alaya-Go/core/rawdb"
 
@@ -257,10 +257,12 @@ func compareStateObjects(so0, so1 *stateObject, t *testing.T) {
 }
 
 func TestEmptyByte(t *testing.T) {
-	tmpDir, _ := ioutil.TempDir("", "alaya")
-	defer os.Remove(tmpDir)
-
-	db, _ := leveldb.New(tmpDir, 0, 0, "")
+	frdir, err := ioutil.TempDir("", "")
+	if err != nil {
+		t.Fatalf("failed to create temp freezer dir: %v", err)
+	}
+	defer os.Remove(frdir)
+	db, err := rawdb.NewDatabaseWithFreezer(memorydb.New(), frdir, "")
 	state, _ := New(common.Hash{}, NewDatabase(db))
 
 	address := common.MustBech32ToAddress("atx1qqqqqqyzx9q8zzl38xgwg5qpxeexmz649nlcfu")
@@ -320,7 +322,7 @@ func TestEmptyByte(t *testing.T) {
 func TestForEachStorage(t *testing.T) {
 	tmpDir, _ := ioutil.TempDir("", "alaya")
 	defer os.Remove(tmpDir)
-	db, _ := leveldb.New(tmpDir, 0, 0, "")
+	db, _ := rawdb.NewLevelDBDatabaseWithFreezer(tmpDir, 0, 0, "", "")
 	state, _ := New(common.Hash{}, NewDatabase(db))
 
 	address := common.MustBech32ToAddress("atx1qqqqqqyzx9q8zzl38xgwg5qpxeexmz649nlcfu")
@@ -351,7 +353,7 @@ func TestMigrateStorage(t *testing.T) {
 
 	tmpDir, _ := ioutil.TempDir("", "alaya")
 	defer os.Remove(tmpDir)
-	db, _ := leveldb.New(tmpDir, 0, 0, "")
+	db, _ := rawdb.NewLevelDBDatabaseWithFreezer(tmpDir, 0, 0, "", "")
 	state, _ := New(common.Hash{}, NewDatabase(db))
 
 	from := common.MustBech32ToAddress("atx1qqqqqqyzx9q8zzl38xgwg5qpxeexmz649nlcfu")
