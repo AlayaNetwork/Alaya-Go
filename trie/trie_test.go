@@ -710,7 +710,7 @@ func TestDecodeNode(t *testing.T) {
 	for i := 0; i < 5000000; i++ {
 		rand.Read(hash)
 		rand.Read(elems)
-		decodeNode(hash, elems, 1)
+		decodeNode(hash, elems)
 	}
 }
 
