@@ -1,17 +1,7 @@
 package backends_test
 
 import (
-	"context"
-	"math/big"
 	"testing"
-
-	ethereum "github.com/AlayaNetwork/Alaya-Go"
-	"github.com/AlayaNetwork/Alaya-Go/accounts/abi/bind"
-	"github.com/AlayaNetwork/Alaya-Go/accounts/abi/bind/backends"
-	"github.com/AlayaNetwork/Alaya-Go/common"
-	"github.com/AlayaNetwork/Alaya-Go/core"
-	"github.com/AlayaNetwork/Alaya-Go/core/types"
-	"github.com/AlayaNetwork/Alaya-Go/crypto"
 )
 
 func TestSimulatedBackend(t *testing.T) {
@@ -62,6 +52,5 @@ func TestSimulatedBackend(t *testing.T) {
 	}
 	if isPending {
 		t.Fatal("transaction should not have pending status")
-	}
-	*/
+	}*/
 }
