@@ -167,8 +167,9 @@ func (lc *LightChain) SetHead(head uint64) error {
 	lc.chainmu.Lock()
 	defer lc.chainmu.Unlock()
 
-	lc.hc.SetHead(head, nil)
-	return lc.loadLastState()
+	//lc.hc.SetHead(head, nil)
+	//return lc.loadLastState()
+	return errors.New("not support yet")
 }
 
 // GasLimit returns the gas limit of the current HEAD block.
