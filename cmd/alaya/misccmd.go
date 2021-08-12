@@ -47,7 +47,7 @@ The output of this command is supposed to be machine-readable.
 )
 
 func version(ctx *cli.Context) error {
-	fmt.Println("PlatON")
+	fmt.Println("Alaya")
 	fmt.Println("Version:", params.VersionWithMeta)
 	if gitCommit != "" {
 		fmt.Println("Git Commit:", gitCommit)
