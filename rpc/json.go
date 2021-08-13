@@ -28,6 +28,8 @@ import (
 	"sync"
 	"time"
 
+	jsoniter "github.com/json-iterator/go"
+
 	"github.com/AlayaNetwork/Alaya-Go/common"
 )
 
@@ -37,11 +39,22 @@ const (
 	subscribeMethodSuffix    = "_subscribe"
 	unsubscribeMethodSuffix  = "_unsubscribe"
 	notificationMethodSuffix = "_subscription"
+	ethMethodPrefix          = "eth_"
+	platonMethodPrefix       = "platon_"
+	ethMethod                = "eth"
+	platonMethod             = "platon"
 
 	defaultWriteTimeout = 10 * time.Second // used if context has no deadline
 )
 
-var null = json.RawMessage("null")
+func init() {
+	json2.RegisterExtension(&common.AddressExtension{})
+}
+
+var (
+	null  = json.RawMessage("null")
+	json2 = jsoniter.ConfigCompatibleWithStandardLibrary
+)
 
 type subscriptionResult struct {
 	ID     string          `json:"subscription"`
@@ -57,6 +70,19 @@ type jsonrpcMessage struct {
 	Params  json.RawMessage `json:"params,omitempty"`
 	Error   *jsonError      `json:"error,omitempty"`
 	Result  json.RawMessage `json:"result,omitempty"`
+	Bech32  bool            `json:"bech32,omitempty"`
+}
+
+func (msg *jsonrpcMessage) isEthMessage() bool {
+	if strings.HasPrefix(msg.Method, ethMethodPrefix) {
+		return true
+	} else if strings.HasPrefix(msg.Method, platonMethodPrefix) {
+		return false
+	}
+	if !msg.Bech32 {
+		return true
+	}
+	return false
 }
 
 func (msg *jsonrpcMessage) isNotification() bool {
@@ -101,6 +127,15 @@ func (msg *jsonrpcMessage) errorResponse(err error) *jsonrpcMessage {
 
 func (msg *jsonrpcMessage) response(result interface{}) *jsonrpcMessage {
 	enc, err := json.Marshal(result)
+	if err != nil {
+		// TODO: wrap with 'internal server error'
+		return msg.errorResponse(err)
+	}
+	return &jsonrpcMessage{Version: vsn, ID: msg.ID, Result: enc}
+}
+
+func (msg *jsonrpcMessage) ethResponse(result interface{}) *jsonrpcMessage {
+	enc, err := json2.Marshal(result)
 	if err != nil {
 		// TODO: wrap with 'internal server error'
 		return msg.errorResponse(err)

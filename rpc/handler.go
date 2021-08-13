@@ -390,6 +390,9 @@ func (h *handler) runMethod(ctx context.Context, msg *jsonrpcMessage, callb *cal
 	if err != nil {
 		return msg.errorResponse(err)
 	}
+	if msg.isEthMessage() {
+		return msg.ethResponse(result)
+	}
 	return msg.response(result)
 }
 
