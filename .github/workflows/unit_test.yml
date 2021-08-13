@@ -31,7 +31,7 @@ jobs:
           go mod download
 
       - name: Build
-        run: make alaya
+        run: make all
 
       - name: Test
         run: go test -tags=test -covermode=count -coverprofile=coverage.txt  `go list ./...`
