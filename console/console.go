@@ -280,9 +280,6 @@ func (c *Console) Welcome() {
 	// Print some generic Alaya metadata
 	if res, err := c.jsre.Run(`
 		var message = "instance: " + web3.version.node + "\n";
-		try {
-			message += "coinbase: " + platon.coinbase + "\n";
-		} catch (err) {}
 		message += "at block: " + platon.blockNumber + " (" + new Date(1000 * platon.getBlock(platon.blockNumber).timestamp) + ")\n";
 		try {
 			message += " datadir: " + admin.datadir + "\n";

@@ -18,11 +18,13 @@ package main
 
 import (
 	"crypto/rand"
+	"github.com/AlayaNetwork/Alaya-Go/params"
 	"math/big"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 )
@@ -35,33 +37,30 @@ const (
 // Tests that a node embedded within a console can be started up properly and
 // then terminated by closing the input stream.
 func TestConsoleWelcome(t *testing.T) {
-	// 	datadir := tmpdir(t)
-	// 	defer os.RemoveAll(datadir)
-	// 	platon := runPlatON(t,
-	// 		"--datadir", datadir, "--port", "0", "--ipcdisable", "--alaya", "--maxpeers", "60", "--nodiscover", "--nat", "none", "console")
+	datadir := tmpdir(t)
+	defer os.RemoveAll(datadir)
+	platon := runPlatON(t,
+		"--datadir", datadir, "--port", "0", "--ipcdisable", "--alaya", "--maxpeers", "60", "--nodiscover", "--nat", "none", "console")
 
-	// 	// Gather all the infos the welcome message needs to contain
-	// 	platon.SetTemplateFunc("goos", func() string { return runtime.GOOS })
-	// 	platon.SetTemplateFunc("goarch", func() string { return runtime.GOARCH })
-	// 	platon.SetTemplateFunc("gover", runtime.Version)
-	// 	platon.SetTemplateFunc("gethver", func() string { return params.VersionWithMeta })
-	// 	//platon.SetTemplateFunc("niltime", func() string { return time.Unix(0, 0).Format(time.RFC1123) })
-	// 	platon.SetTemplateFunc("niltime", func() string { return time.Unix(1602973620000, 0).Format(time.RFC1123) })
-	// 	platon.SetTemplateFunc("apis", func() string { return ipcAPIs })
+	// Gather all the infos the welcome message needs to contain
+	platon.SetTemplateFunc("goos", func() string { return runtime.GOOS })
+	platon.SetTemplateFunc("goarch", func() string { return runtime.GOARCH })
+	platon.SetTemplateFunc("gover", runtime.Version)
+	platon.SetTemplateFunc("gethver", func() string { return params.VersionWithMeta })
+	//platon.SetTemplateFunc("niltime", func() string { return time.Unix(0, 0).Format(time.RFC1123) })
+	platon.SetTemplateFunc("niltime", func() string { return time.Unix(1602973620000, 0).Format(time.RFC1123) })
+	platon.SetTemplateFunc("apis", func() string { return ipcAPIs })
 
-	// 	// Verify the actual welcome message to the required template
-	// 	platon.Expect(`
-	// Welcome to the Alaya JavaScript console!
-
-	// instance: AlayaNetwork/v{{gethver}}/{{goos}}-{{goarch}}/{{gover}}
-	// ◊coinbase: undefined
-	// at block: 0 ({{niltime}})
-	//  datadir: {{.Datadir}}
-	//  modules: {{apis}}
-
-	// > {{.InputLine "exit"}}
-	// `)
-	// 	platon.ExpectExit()
+	// Verify the actual welcome message to the required template
+	platon.Expect(`
+Welcome to the Alaya JavaScript console!
+instance: AlayaNetwork/v{{gethver}}/{{goos}}-{{goarch}}/{{gover}}
+at block: 0 ({{niltime}})
+ datadir: {{.Datadir}}
+ modules: {{apis}}
+> {{.InputLine "exit"}}
+`)
+	platon.ExpectExit()
 }
 
 // Tests that a console can be attached to a running node via various means.
@@ -113,35 +112,32 @@ func TestWSAttachWelcome(t *testing.T) {
 }
 
 func testAttachWelcome(t *testing.T, platon *testplaton, endpoint, apis string) {
-	// 	// Attach to a running alaya note and terminate immediately
-	// 	attach := runPlatON(t, "attach", endpoint)
-	// 	defer attach.ExpectExit()
-	// 	attach.CloseStdin()
+	// Attach to a running alaya note and terminate immediately
+	attach := runPlatON(t, "attach", endpoint)
+	defer attach.ExpectExit()
+	attach.CloseStdin()
 
-	// 	// Gather all the infos the welcome message needs to contain
-	// 	attach.SetTemplateFunc("goos", func() string { return runtime.GOOS })
-	// 	attach.SetTemplateFunc("goarch", func() string { return runtime.GOARCH })
-	// 	attach.SetTemplateFunc("gover", runtime.Version)
-	// 	attach.SetTemplateFunc("gethver", func() string { return params.VersionWithMeta })
-	// 	//attach.SetTemplateFunc("niltime", func() string { return time.Unix(0, 0).Format(time.RFC1123) })
-	// 	attach.SetTemplateFunc("niltime", func() string { return time.Unix(1602973620000, 0).Format(time.RFC1123) })
-	// 	attach.SetTemplateFunc("ipc", func() bool { return strings.HasPrefix(endpoint, "ipc") })
-	// 	attach.SetTemplateFunc("datadir", func() string { return platon.Datadir })
-	// 	attach.SetTemplateFunc("apis", func() string { return apis })
+	// Gather all the infos the welcome message needs to contain
+	attach.SetTemplateFunc("goos", func() string { return runtime.GOOS })
+	attach.SetTemplateFunc("goarch", func() string { return runtime.GOARCH })
+	attach.SetTemplateFunc("gover", runtime.Version)
+	attach.SetTemplateFunc("gethver", func() string { return params.VersionWithMeta })
+	//attach.SetTemplateFunc("niltime", func() string { return time.Unix(0, 0).Format(time.RFC1123) })
+	attach.SetTemplateFunc("niltime", func() string { return time.Unix(1602973620000, 0).Format(time.RFC1123) })
+	attach.SetTemplateFunc("ipc", func() bool { return strings.HasPrefix(endpoint, "ipc") })
+	attach.SetTemplateFunc("datadir", func() string { return platon.Datadir })
+	attach.SetTemplateFunc("apis", func() string { return apis })
 
-	// 	// Verify the actual welcome message to the required template
-	// 	attach.Expect(`
-	// Welcome to the Alaya JavaScript console!
-
-	// instance: AlayaNetwork/v{{gethver}}/{{goos}}-{{goarch}}/{{gover}}
-	// ◊coinbase: undefined
-	// at block: 0 ({{niltime}}){{if ipc}}
-	//  datadir: {{datadir}}{{end}}
-	//  modules: {{apis}}
-
-	// > {{.InputLine "exit" }}
-	// `)
-	// 	attach.ExpectExit()
+	// Verify the actual welcome message to the required template
+	attach.Expect(`
+Welcome to the Alaya JavaScript console!
+instance: AlayaNetwork/v{{gethver}}/{{goos}}-{{goarch}}/{{gover}}
+at block: 0 ({{niltime}}){{if ipc}}
+ datadir: {{datadir}}{{end}}
+ modules: {{apis}}
+> {{.InputLine "exit" }}
+`)
+	attach.ExpectExit()
 }
 
 // trulyRandInt generates a crypto random integer used by the console tests to
