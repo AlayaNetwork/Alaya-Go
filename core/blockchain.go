@@ -1144,19 +1144,7 @@ func (bc *BlockChain) InsertReceiptChain(blockChain types.Blocks, receiptChain [
 		}
 	}
 
-	// Update the head fast sync block if better
-	bc.chainmu.Lock()
 	head := blockChain[len(blockChain)-1]
-	if bn := head.Number(); bn != nil { // Rewind may have occurred, skip in that case
-		currentFastBlock := bc.CurrentFastBlock()
-		if currentFastBlock.Number().Cmp(bn) < 0 {
-			rawdb.WriteHeadFastBlockHash(bc.db, head.Hash())
-			bc.currentFastBlock.Store(head)
-		}
-	}
-	bc.chainmu.Unlock()
-
-	head = blockChain[len(blockChain)-1]
 	context := []interface{}{
 		"count", stats.processed, "elapsed", common.PrettyDuration(time.Since(start)),
 		"number", head.Number(), "hash", head.Hash(), "age", common.PrettyAge(time.Unix(head.Time().Int64(), 0)),
