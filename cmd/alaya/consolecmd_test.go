@@ -54,10 +54,12 @@ func TestConsoleWelcome(t *testing.T) {
 	// Verify the actual welcome message to the required template
 	platon.Expect(`
 Welcome to the Alaya JavaScript console!
+
 instance: AlayaNetwork/v{{gethver}}/{{goos}}-{{goarch}}/{{gover}}
 at block: 0 ({{niltime}})
  datadir: {{.Datadir}}
  modules: {{apis}}
+
 > {{.InputLine "exit"}}
 `)
 	platon.ExpectExit()
@@ -131,10 +133,12 @@ func testAttachWelcome(t *testing.T, platon *testplaton, endpoint, apis string) 
 	// Verify the actual welcome message to the required template
 	attach.Expect(`
 Welcome to the Alaya JavaScript console!
+
 instance: AlayaNetwork/v{{gethver}}/{{goos}}-{{goarch}}/{{gover}}
 at block: 0 ({{niltime}}){{if ipc}}
  datadir: {{datadir}}{{end}}
  modules: {{apis}}
+
 > {{.InputLine "exit" }}
 `)
 	attach.ExpectExit()
