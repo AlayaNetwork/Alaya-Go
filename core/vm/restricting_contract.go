@@ -19,6 +19,7 @@ package vm
 import (
 	"fmt"
 	"math/big"
+	"strings"
 
 	"github.com/AlayaNetwork/Alaya-Go/common"
 	"github.com/AlayaNetwork/Alaya-Go/common/vm"
@@ -31,6 +32,7 @@ import (
 const (
 	TxCreateRestrictingPlan = 4000
 	QueryRestrictingInfo    = 4100
+	QueryFreeBalance        = 4102
 )
 
 type RestrictingContract struct {
@@ -60,6 +62,7 @@ func (rc *RestrictingContract) FnSigns() map[uint16]interface{} {
 
 		// Get
 		QueryRestrictingInfo: rc.getRestrictingInfo,
+		QueryFreeBalance:     rc.getFreeBalance,
 	}
 }
 
@@ -112,4 +115,41 @@ func (rc *RestrictingContract) getRestrictingInfo(account common.Address) ([]byt
 	result, err := rc.Plugin.GetRestrictingInfo(account, state)
 	return callResultHandler(rc.Evm, fmt.Sprintf("getRestrictingInfo, account: %s", account.String()),
 		result, err), nil
+}
+
+func (rc *RestrictingContract) getFreeBalance(accounts string) ([]byte, error) {
+
+	accountList := strings.Split(accounts, ";")
+	if len(accountList) == 0 {
+		log.Error("getRestrictingBalance accountList empty", "accountList:", len(accountList))
+		return nil, nil
+	}
+
+	txHash := rc.Evm.StateDB.TxHash()
+	currNumber := rc.Evm.BlockNumber
+	state := rc.Evm.StateDB
+
+	log.Info("Call getRestrictingBalance of RestrictingContract", "txHash", txHash.Hex(), "blockNumber", currNumber.Uint64())
+
+	rs := make([]restricting.FreeBalanceResult, len(accountList))
+	for i, account := range accountList {
+		address, err := common.Bech32ToAddress(account)
+		if err != nil {
+			log.Error("Call getRestrictingBalance of RestrictingContract Bech32ToAddress Error", "account", account, "err", err)
+			continue
+		}
+		result, err := rc.Plugin.GetFreeBalance(address, state)
+		if err != nil {
+			rb := restricting.FreeBalanceResult{
+				Account: address,
+			}
+			rs[i] = rb
+			log.Error("getRestrictingBalance err", "account:", account, ";err", err)
+		} else {
+			rs[i] = result
+		}
+	}
+
+	return callResultHandler(rc.Evm, fmt.Sprintf("getRestrictingBalance, account: %s", accounts),
+		rs, nil), nil
 }

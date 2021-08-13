@@ -17,6 +17,7 @@
 package restricting
 
 import (
+	"github.com/AlayaNetwork/Alaya-Go/common"
 	"math/big"
 
 	"github.com/AlayaNetwork/Alaya-Go/common/hexutil"
@@ -58,4 +59,9 @@ type Result struct {
 	Debt    *hexutil.Big        `json:"debt"`
 	Entry   []ReleaseAmountInfo `json:"plans"`
 	Pledge  *hexutil.Big        `json:"Pledge"`
+}
+
+type FreeBalanceResult struct {
+	Account     common.Address `json:"account"`
+	FreeBalance *hexutil.Big   `json:"freeBalance"`
 }

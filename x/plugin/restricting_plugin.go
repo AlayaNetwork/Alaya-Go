@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
-
 package plugin
 
 import (
@@ -776,6 +775,20 @@ func (rp *RestrictingPlugin) getRestrictingInfoToReturn(account common.Address, 
 
 func (rp *RestrictingPlugin) GetRestrictingInfo(account common.Address, state xcom.StateDB) (*restricting.Result, *common.BizError) {
 	return rp.getRestrictingInfoToReturn(account, state)
+}
+
+func (rp *RestrictingPlugin) GetFreeBalance(account common.Address, state xcom.StateDB) (restricting.FreeBalanceResult, error) {
+
+	log.Debug("begin to GetRestrictingBalance", "account", account.String())
+
+	var (
+		result restricting.FreeBalanceResult
+	)
+	result.Account = account
+	result.FreeBalance = (*hexutil.Big)(state.GetBalance(account))
+
+	log.Debug("end to GetRestrictingBalance", "GetRestrictingBalance", result)
+	return result, nil
 }
 
 func GetBlockNumberByEpoch(epoch uint64) uint64 {

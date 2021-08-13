@@ -74,14 +74,9 @@ var tomlSettings = toml.Config{
 	},
 }
 
-type ethstatsConfig struct {
-	URL string `toml:",omitempty"`
-}
 type statsConfig struct {
-	URL                  string `toml:",omitempty"`
-	BlockTopic           string `toml:",omitempty"`
-	AccountCheckingTopic string `toml:",omitempty"`
-	AccountCheckingGroup string `toml:",omitempty"`
+	URL        string `toml:",omitempty"`
+	BlockTopic string `toml:",omitempty"`
 }
 
 type platonConfig struct {
@@ -183,20 +178,9 @@ func makeConfigNode(ctx *cli.Context) (*node.Node, platonConfig) {
 	if ctx.GlobalIsSet(utils.StatsFlag.Name) {
 		statsConfig := ctx.GlobalString(utils.StatsFlag.Name)
 		configs := strings.Split(statsConfig, ";")
-		if len(configs) == 1 {
-			cfg.Stats.URL = configs[0]
-		} else if len(configs) == 2 {
+		if len(configs) == 2 {
 			cfg.Stats.URL = configs[0]
 			cfg.Stats.BlockTopic = configs[1]
-		} else if len(configs) == 3 {
-			cfg.Stats.URL = configs[0]
-			cfg.Stats.BlockTopic = configs[1]
-			cfg.Stats.AccountCheckingTopic = configs[2]
-		} else if len(configs) == 4 {
-			cfg.Stats.URL = configs[0]
-			cfg.Stats.BlockTopic = configs[1]
-			cfg.Stats.AccountCheckingTopic = configs[2]
-			cfg.Stats.AccountCheckingGroup = configs[3]
 		} else {
 			utils.Fatalf("Failed to parse --stats command")
 		}
@@ -220,7 +204,7 @@ func makeFullNode(ctx *cli.Context) *node.Node {
 	}*/
 	//stats：数据统计
 	if len(cfg.Stats.URL) > 0 {
-		utils.RegisterStatsService(stack, cfg.Stats.URL, cfg.Stats.BlockTopic, cfg.Stats.AccountCheckingTopic, cfg.Stats.AccountCheckingGroup, cfg.Node.DataDir)
+		utils.RegisterStatsService(stack, cfg.Stats.URL, cfg.Stats.BlockTopic, cfg.Node.DataDir)
 	}
 	return stack
 }
@@ -238,7 +222,7 @@ func makeFullNodeForCBFT(ctx *cli.Context) (*node.Node, platonConfig) {
 	}*/
 	//stats：数据统计
 	if cfg.Stats.URL != "" {
-		utils.RegisterStatsService(stack, cfg.Stats.URL, cfg.Stats.BlockTopic, cfg.Stats.AccountCheckingTopic, cfg.Stats.AccountCheckingGroup, cfg.Node.DataDir)
+		utils.RegisterStatsService(stack, cfg.Stats.URL, cfg.Stats.BlockTopic, cfg.Node.DataDir)
 	}
 	return stack, cfg
 }
