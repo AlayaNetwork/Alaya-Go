@@ -75,7 +75,7 @@ type Cheque struct {
 }
 
 func (ch *Cheque) String() string {
-	return fmt.Sprintf("contract: %s, beneficiary: %s, amount: %v, signature: %x", ch.Contract.Hex(), ch.Beneficiary.Hex(), ch.Amount, ch.Sig)
+	return fmt.Sprintf("contract: %s, beneficiary: %s, amount: %v, signature: %x", ch.Contract.String(), ch.Beneficiary.String(), ch.Amount, ch.Sig)
 }
 
 type Params struct {
@@ -109,7 +109,7 @@ type Chequebook struct {
 }
 
 func (cb *Chequebook) String() string {
-	return fmt.Sprintf("contract: %s, owner: %s, balance: %v, signer: %x", cb.contractAddr.Hex(), cb.owner.Hex(), cb.balance, cb.prvKey.PublicKey)
+	return fmt.Sprintf("contract: %s, owner: %s, balance: %v, signer: %x", cb.contractAddr.String(), cb.owner.String(), cb.balance, cb.prvKey.PublicKey)
 }
 
 // NewChequebook creates a new Chequebook.
@@ -193,9 +193,9 @@ func (cb *Chequebook) UnmarshalJSON(data []byte) error {
 	if !ok {
 		return fmt.Errorf("cumulative amount sent: unable to convert string to big integer: %v", file.Balance)
 	}
-	cb.contractAddr = common.HexToAddress(file.Contract)
+	cb.contractAddr = common.MustBech32ToAddress(file.Contract)
 	for addr, sent := range file.Sent {
-		cb.sent[common.HexToAddress(addr)], ok = new(big.Int).SetString(sent, 10)
+		cb.sent[common.MustBech32ToAddress(addr)], ok = new(big.Int).SetString(sent, 10)
 		if !ok {
 			return fmt.Errorf("beneficiary %v cumulative amount sent: unable to convert string to big integer: %v", addr, sent)
 		}
@@ -207,12 +207,12 @@ func (cb *Chequebook) UnmarshalJSON(data []byte) error {
 func (cb *Chequebook) MarshalJSON() ([]byte, error) {
 	var file = &chequebookFile{
 		Balance:  cb.balance.String(),
-		Contract: cb.contractAddr.Hex(),
-		Owner:    cb.owner.Hex(),
+		Contract: cb.contractAddr.String(),
+		Owner:    cb.owner.String(),
 		Sent:     make(map[string]string),
 	}
 	for addr, sent := range cb.sent {
-		file.Sent[addr.Hex()] = sent.String()
+		file.Sent[addr.String()] = sent.String()
 	}
 	return json.Marshal(file)
 }
@@ -421,7 +421,7 @@ func (o *Outbox) Stop() {}
 
 // String implements fmt.Stringer.
 func (o *Outbox) String() string {
-	return fmt.Sprintf("chequebook: %v, beneficiary: %s, balance: %v", o.chequeBook.Address().Hex(), o.beneficiary.Hex(), o.chequeBook.Balance())
+	return fmt.Sprintf("chequebook: %v, beneficiary: %s, balance: %v", o.chequeBook.Address().String(), o.beneficiary.String(), o.chequeBook.Balance())
 }
 
 // Inbox can deposit, verify and cash cheques from a single contract to a single
@@ -473,7 +473,7 @@ func NewInbox(prvKey *ecdsa.PrivateKey, contractAddr, beneficiary common.Address
 }
 
 func (i *Inbox) String() string {
-	return fmt.Sprintf("chequebook: %v, beneficiary: %s, balance: %v", i.contract.Hex(), i.beneficiary.Hex(), i.cheque.Amount)
+	return fmt.Sprintf("chequebook: %v, beneficiary: %s, balance: %v", i.contract.String(), i.beneficiary.String(), i.cheque.Amount)
 }
 
 // Stop quits the autocash goroutine.
@@ -551,10 +551,10 @@ func (ch *Cheque) Verify(signerKey *ecdsa.PublicKey, contract, beneficiary commo
 	}
 
 	if ch.Beneficiary != beneficiary {
-		return nil, fmt.Errorf("beneficiary mismatch: %v != %v", ch.Beneficiary.Hex(), beneficiary.Hex())
+		return nil, fmt.Errorf("beneficiary mismatch: %v != %v", ch.Beneficiary.String(), beneficiary.String())
 	}
 	if ch.Contract != contract {
-		return nil, fmt.Errorf("contract mismatch: %v != %v", ch.Contract.Hex(), contract.Hex())
+		return nil, fmt.Errorf("contract mismatch: %v != %v", ch.Contract.String(), contract.String())
 	}
 
 	amount := new(big.Int).Set(ch.Amount)
