@@ -1281,11 +1281,11 @@ func (args *SendTxArgs) setDefaults(ctx context.Context, b Backend) error {
 			input = args.Data
 		}
 		callArgs := CallArgs{
-			From:     &args.From, // From shouldn't be nil
-			To:       args.To,
-			GasPrice: args.GasPrice,
-			Value:    args.Value,
-			Data:     input,
+			From:     args.From, // From shouldn't be nil
+			To:       *args.To,
+			GasPrice: *args.GasPrice,
+			Value:    *args.Value,
+			Data:     *input,
 		}
 		estimated, err := DoEstimateGas(ctx, b, callArgs, rpc.PendingBlockNumber, b.RPCGasCap())
 		if err != nil {
