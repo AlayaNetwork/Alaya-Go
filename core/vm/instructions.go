@@ -17,12 +17,9 @@
 package vm
 
 import (
-	"errors"
 	"github.com/holiman/uint256"
-	"math/big"
 
 	"github.com/AlayaNetwork/Alaya-Go/common"
-	"github.com/AlayaNetwork/Alaya-Go/common/math"
 	"github.com/AlayaNetwork/Alaya-Go/core/types"
 	"github.com/AlayaNetwork/Alaya-Go/params"
 	"golang.org/x/crypto/sha3"
