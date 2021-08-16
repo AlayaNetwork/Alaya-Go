@@ -123,7 +123,7 @@ func (in *EVMInterpreter) enforceRestrictions(op OpCode, operation operation, st
 		// account to the others means the state is modified and should also
 		// return with an error.
 		if operation.writes || (op == CALL && stack.Back(2).BitLen() > 0) {
-			return errWriteProtection
+			return ErrWriteProtection
 		}
 	}
 	return nil
@@ -160,10 +160,10 @@ func (in *EVMInterpreter) Run(contract *Contract, input []byte, readOnly bool) (
 	// as every returning call will return new data anyway.
 	in.returnData = nil
 
-	// Don't bother with the execution if there's no code.
-	if len(contract.Code) == 0 {
-		return nil, nil
-	}
+	//// Don't bother with the execution if there's no code.
+	//if len(contract.Code) == 0 {
+	//      return nil, nil
+	//}
 
 	var (
 		op          OpCode             // current opcode
