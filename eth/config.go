@@ -114,14 +114,14 @@ type Config struct {
 	DatabaseCache      int
 	DatabaseFreezer    string
 
-	TrieCache          int
-	TrieTimeout        time.Duration
-	TrieDBCache        int
-	DBDisabledGC       bool
-	DBGCInterval       uint64
-	DBGCTimeout        time.Duration
-	DBGCMpt            bool
-	DBGCBlock          int
+	TrieCache    int
+	TrieTimeout  time.Duration
+	TrieDBCache  int
+	DBDisabledGC bool
+	DBGCInterval uint64
+	DBGCTimeout  time.Duration
+	DBGCMpt      bool
+	DBGCBlock    int
 
 	// VM options
 	VMWasmType        string
@@ -171,6 +171,9 @@ type Config struct {
 	//MPCPool core.MPCPoolConfig
 	//VCPool  core.VCPoolConfig
 	Debug bool
+
+	// RPCGasCap is the global gas cap for eth-call variants.
+	RPCGasCap *big.Int `toml:",omitempty"`
 }
 
 type configMarshaling struct {

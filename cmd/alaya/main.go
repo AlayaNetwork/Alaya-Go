@@ -106,8 +106,6 @@ var (
 		utils.DeveloperPeriodFlag,
 		utils.AlayaNetFlag,
 		utils.NetworkIdFlag,
-		utils.RPCCORSDomainFlag,
-		utils.RPCVirtualHostsFlag,
 		//utils.EthStatsURLFlag,
 		utils.NoCompactionFlag,
 		utils.GpoBlocksFlag,
@@ -127,6 +125,7 @@ var (
 		utils.WSAllowedOriginsFlag,
 		utils.IPCDisabledFlag,
 		utils.IPCPathFlag,
+		utils.RPCGlobalGasCap,
 	}
 
 	//whisperFlags = []cli.Flag{
