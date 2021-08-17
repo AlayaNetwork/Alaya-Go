@@ -1370,18 +1370,9 @@ func (bc *BlockChain) writeBlockWithState(block *types.Block, receipts []*types.
 //
 // After insertion is done, all accumulated events will be fired.
 func (bc *BlockChain) InsertChain(chain types.Blocks) (int, error) {
-	n, events, logs, err := bc.insertChain(chain)
-	bc.PostChainEvents(events, logs)
-	return n, err
-}
-
-// insertChain will execute the actual chain insertion and event aggregation. The
-// only reason this method exists as a separate one is to make locking cleaner
-// with deferred statements.
-func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*types.Log, error) {
 	// Sanity check that we have something meaningful to import
 	if len(chain) == 0 {
-		return 0, nil, nil, nil
+		return 0, nil
 	}
 	// Do a sanity check that the provided chain is actually ordered and linked
 	for i := 1; i < len(chain); i++ {
@@ -1390,13 +1381,34 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 			log.Error("Non contiguous block insert", "number", chain[i].Number(), "hash", chain[i].Hash(),
 				"parent", chain[i].ParentHash(), "prevnumber", chain[i-1].Number(), "prevhash", chain[i-1].Hash())
 
-			return 0, nil, nil, fmt.Errorf("non contiguous insert: item %d is #%d [%x…], item %d is #%d [%x…] (parent [%x…])", i-1, chain[i-1].NumberU64(),
+			return 0, fmt.Errorf("non contiguous insert: item %d is #%d [%x…], item %d is #%d [%x…] (parent [%x…])", i-1, chain[i-1].NumberU64(),
 				chain[i-1].Hash().Bytes()[:4], i, chain[i].NumberU64(), chain[i].Hash().Bytes()[:4], chain[i].ParentHash().Bytes()[:4])
 		}
 	}
 	// Pre-checks passed, start the full block imports
 	bc.wg.Add(1)
-	defer bc.wg.Done()
+	bc.chainmu.Lock()
+	n, events, logs, err := bc.insertChain(chain, true)
+	bc.chainmu.Unlock()
+	bc.wg.Done()
+
+	bc.PostChainEvents(events, logs)
+	return n, err
+}
+
+// insertChain is the internal implementation of insertChain, which assumes that
+// 1) chains are contiguous, and 2) The chain mutex is held.
+//
+// This method is split out so that import batches that require re-injecting
+// historical blocks can do so without releasing the lock, which could lead to
+// racey behaviour. If a sidechain import is in progress, and the historic state
+// is imported, but then new canon-head is added before the actual sidechain
+// completes, then the historic state could be pruned again
+func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals bool) (int, []interface{}, []*types.Log, error) {
+	// If the chain is terminating, don't even bother starting u
+	if atomic.LoadInt32(&bc.procInterrupt) == 1 {
+		return 0, nil, nil, nil
+	}
 
 	// A queued approach to delivering events. This is generally
 	// faster than direct delivery and requires much less mutex
