@@ -18,6 +18,7 @@ package main
 
 import (
 	"crypto/rand"
+	"github.com/AlayaNetwork/Alaya-Go/params"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -26,8 +27,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/AlayaNetwork/Alaya-Go/params"
 )
 
 const (
