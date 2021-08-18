@@ -18,8 +18,9 @@ package vm
 
 import (
 	"errors"
-	"github.com/holiman/uint256"
 	"math/big"
+
+	"github.com/holiman/uint256"
 
 	"github.com/AlayaNetwork/Alaya-Go/common"
 	"github.com/AlayaNetwork/Alaya-Go/common/math"
