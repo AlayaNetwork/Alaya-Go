@@ -25,6 +25,10 @@ import (
 	"golang.org/x/crypto/sha3"
 )
 
+var (
+	errExecutionReverted     = errors.New("execution reverted")
+)
+
 func opAdd(pc *uint64, interpreter *EVMInterpreter, callContext *callCtx) ([]byte, error) {
 	x, y := callContext.stack.pop(), callContext.stack.peek()
 	y.Add(&x, y)
