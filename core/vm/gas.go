@@ -44,5 +44,9 @@ func callGas(availableGas, base uint64, callCost *uint256.Int) (uint64, error) {
 		return gas, nil
 	}
 
+	if !callCost.IsUint64() {
+		return 0, errGasUintOverflow
+	}
+
 	return callCost.Uint64(), nil
 }
