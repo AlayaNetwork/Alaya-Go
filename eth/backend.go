@@ -72,8 +72,7 @@ type LesServer interface {
 
 // Ethereum implements the Ethereum full node service.
 type Ethereum struct {
-	config      *Config
-	chainConfig *params.ChainConfig
+	config *Config
 
 	// Handlers
 	txPool          *core.TxPool
@@ -215,7 +214,6 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 	eth := &Ethereum{
 		config:            config,
 		chainDb:           chainDb,
-		chainConfig:       chainConfig,
 		eventMux:          ctx.EventMux,
 		accountManager:    ctx.AccountManager,
 		engine:            CreateConsensusEngine(ctx, chainConfig, config.MinerNoverify, chainDb, &config.CbftConfig, ctx.EventMux),
@@ -266,7 +264,7 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 	)
 	cacheConfig.DBDisabledGC.Set(config.DBDisabledGC)
 
-	eth.blockchain, err = core.NewBlockChain(chainDb, cacheConfig, eth.chainConfig, eth.engine, vmConfig, eth.shouldPreserve)
+	eth.blockchain, err = core.NewBlockChain(chainDb, cacheConfig, chainConfig, eth.engine, vmConfig, eth.shouldPreserve)
 	if err != nil {
 		return nil, err
 	}
@@ -287,7 +285,7 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 		config.TxPool.Journal = ctx.ResolvePath(config.TxPool.Journal)
 	}
 	//eth.txPool = core.NewTxPool(config.TxPool, eth.chainConfig, eth.blockchain)
-	eth.txPool = core.NewTxPool(config.TxPool, eth.chainConfig, core.NewTxPoolBlockChain(blockChainCache))
+	eth.txPool = core.NewTxPool(config.TxPool, chainConfig, core.NewTxPoolBlockChain(blockChainCache))
 
 	core.SenderCacher.SetTxPool(eth.txPool)
 
@@ -323,18 +321,18 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 		return nil, fmt.Errorf("The gasFloor must be less than gasCeil, got: %d, expect range (0, %d]", config.MinerGasFloor, gasCeil)
 	}
 
-	eth.miner = miner.New(eth, eth.chainConfig, minningConfig, eth.EventMux(), eth.engine, config.MinerRecommit,
+	eth.miner = miner.New(eth, eth.blockchain.Config(), minningConfig, eth.EventMux(), eth.engine, config.MinerRecommit,
 		config.MinerGasFloor, eth.isLocalBlock, blockChainCache, config.VmTimeoutDuration)
 
 	//extra data for each block will be set by worker.go
 	//eth.miner.SetExtra(makeExtraData(eth.blockchain, config.MinerExtraData))
 
-	reactor := core.NewBlockChainReactor(eth.EventMux(), eth.chainConfig.ChainID)
+	reactor := core.NewBlockChainReactor(eth.EventMux(), eth.blockchain.Config().ChainID)
 	node.GetCryptoHandler().SetPrivateKey(ctx.NodePriKey())
 
 	if engine, ok := eth.engine.(consensus.Bft); ok {
 		var agency consensus.Agency
-		core.NewExecutor(eth.chainConfig, eth.blockchain, vmConfig, eth.txPool)
+		core.NewExecutor(eth.blockchain.Config(), eth.blockchain, vmConfig, eth.txPool)
 		// validatorMode:
 		// - static (default)
 		// - inner (via inner contract)eth/handler.go
@@ -374,10 +372,10 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 
 	// Permit the downloader to use the trie cache allowance during fast sync
 	cacheLimit := cacheConfig.TrieCleanLimit + cacheConfig.TrieDirtyLimit
-	if eth.protocolManager, err = NewProtocolManager(eth.chainConfig, config.SyncMode, config.NetworkId, eth.eventMux, eth.txPool, eth.engine, eth.blockchain, chainDb, cacheLimit); err != nil {
+	if eth.protocolManager, err = NewProtocolManager(chainConfig, config.SyncMode, config.NetworkId, eth.eventMux, eth.txPool, eth.engine, eth.blockchain, chainDb, cacheLimit); err != nil {
 		return nil, err
 	}
-	eth.APIBackend = &EthAPIBackend{eth, nil}
+	eth.APIBackend = &EthAPIBackend{ctx.ExtRPCEnabled(), eth, nil}
 	gpoParams := config.GPO
 	if gpoParams.Default == nil {
 		gpoParams.Default = config.MinerGasPrice
@@ -456,7 +454,7 @@ func (s *Ethereum) APIs() []rpc.API {
 		}, {
 			Namespace: "debug",
 			Version:   "1.0",
-			Service:   NewPrivateDebugAPI(s.chainConfig, s),
+			Service:   NewPrivateDebugAPI(s),
 		}, {
 			Namespace: "debug",
 			Version:   "1.0",
@@ -607,7 +605,7 @@ func (s *Ethereum) Start(srvr *p2p.Server) error {
 	//log.Debug("node start", "srvr.Config.PrivateKey", srvr.Config.PrivateKey)
 	if cbftEngine, ok := s.engine.(consensus.Bft); ok {
 		if flag := cbftEngine.IsConsensusNode(); flag {
-			for _, n := range s.chainConfig.Cbft.InitialNodes {
+			for _, n := range s.blockchain.Config().Cbft.InitialNodes {
 				// todo: Mock point.
 				if !node.FakeNetEnable {
 					srvr.AddConsensusPeer(discover.NewNode(n.Node.ID, n.Node.IP, n.Node.UDP, n.Node.TCP))

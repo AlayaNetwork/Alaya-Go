@@ -17,8 +17,9 @@
 package vm
 
 import (
-	"github.com/AlayaNetwork/Alaya-Go/crypto"
 	"testing"
+
+	"github.com/AlayaNetwork/Alaya-Go/crypto"
 )
 
 func TestJumpDestAnalysis(t *testing.T) {
