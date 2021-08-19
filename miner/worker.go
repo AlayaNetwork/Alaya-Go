@@ -237,19 +237,18 @@ func newWorker(config *Config, chainConfig *params.ChainConfig, miningConfig *co
 	worker.chainSideSub = eth.BlockChain().SubscribeChainSideEvent(worker.chainSideCh)
 	worker.bftResultSub = worker.mux.Subscribe(cbfttypes.CbftResult{})
 	// Sanitize recommit interval if the user-specified one is too short.
-	recommit := worker.config.Recommit
 	if chainConfig.Cbft != nil {
-		recommit = time.Duration(chainConfig.Cbft.Period) * time.Second
+		worker.config.Recommit = time.Duration(chainConfig.Cbft.Period) * time.Second
 	}
-	if recommit < miningConfig.MinRecommitInterval {
-		log.Warn("Sanitizing miner recommit interval", "provided", recommit, "updated", miningConfig.MinRecommitInterval)
+	if worker.config.Recommit < miningConfig.MinRecommitInterval {
+		log.Warn("Sanitizing miner recommit interval", "provided", worker.config.Recommit, "updated", miningConfig.MinRecommitInterval)
 		worker.config.Recommit = miningConfig.MinRecommitInterval
 	}
 
 	worker.EmptyBlock = chainConfig.EmptyBlock
 
-	worker.recommit = recommit
-	worker.commitDuration = int64((float64)(recommit.Nanoseconds()/1e6) * miningConfig.DefaultCommitRatio)
+	worker.recommit = worker.config.Recommit
+	worker.commitDuration = int64((float64)(worker.config.Recommit.Nanoseconds()/1e6) * miningConfig.DefaultCommitRatio)
 	log.Info("CommitDuration in Millisecond", "commitDuration", worker.commitDuration)
 
 	worker.commitWorkEnv.nextBlockTime.Store(time.Now())
@@ -258,7 +257,7 @@ func newWorker(config *Config, chainConfig *params.ChainConfig, miningConfig *co
 	//worker.setCommitter(NewTxsCommitter(worker))
 
 	go worker.mainLoop()
-	go worker.newWorkLoop(recommit)
+	go worker.newWorkLoop(worker.config.Recommit)
 	go worker.resultLoop()
 	go worker.taskLoop()
 
