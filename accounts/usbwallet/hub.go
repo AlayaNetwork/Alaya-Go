@@ -20,7 +20,6 @@ import (
 	"errors"
 	"runtime"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/AlayaNetwork/Alaya-Go/accounts"
@@ -65,7 +64,6 @@ type Hub struct {
 	// TODO(karalabe): remove if hotplug lands on Windows
 	commsPend int        // Number of operations blocking enumeration
 	commsLock sync.Mutex // Lock protecting the pending counter and enumeration
-	enumFails uint32     // Number of times enumeration has failed
 }
 
 // NewLedgerHub creates a new hardware wallet manager for Ledger devices.
@@ -121,10 +119,6 @@ func (hub *Hub) refreshWallets() {
 	if elapsed < refreshThrottling {
 		return
 	}
-	// If USB enumeration is continually failing, don't keep trying indefinitely
-	if atomic.LoadUint32(&hub.enumFails) > 2 {
-		return
-	}
 	// Retrieve the current list of USB wallet devices
 	var devices []hid.DeviceInfo
 
@@ -141,15 +135,7 @@ func (hub *Hub) refreshWallets() {
 			return
 		}
 	}
-	deviceInfo := hid.Enumerate(hub.vendorID, 0)
-	if len(deviceInfo) == 0 {
-		failcount := atomic.AddUint32(&hub.enumFails, 1)
-		log.Error("Failed to enumerate USB devices", "hub", hub.scheme,
-			"vendor", hub.vendorID, "failcount", failcount)
-		return
-	}
-	atomic.StoreUint32(&hub.enumFails, 0)
-	for _, info := range deviceInfo {
+	for _, info := range hid.Enumerate(hub.vendorID, 0) {
 		for _, id := range hub.productIDs {
 			if info.ProductID == id && (info.UsagePage == hub.usageID || info.Interface == hub.endpointID) {
 				devices = append(devices, info)
