@@ -302,7 +302,7 @@ func (s *stateSync) loop() (err error) {
 			return errCancelStateFetch
 
 		case <-s.d.cancelCh:
-			return errCancelStateFetch
+			return errCanceled
 
 		case req := <-s.deliver:
 			// Response, disconnect or timeout triggered, drop the peer if stalling
