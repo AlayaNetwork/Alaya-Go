@@ -1638,7 +1638,7 @@ func MigrateInnerContract(proc *exec.Process, newAddr, val, valLen, callCost, ca
 
 	// Assign err if contract code size exceeds the max while the err is still empty.
 	if maxCodeSizeExceeded && err == nil {
-		err = errMaxCodeSizeExceeded
+		err = ErrMaxCodeSizeExceeded
 	}
 	ctx.contract.Gas += contract.Gas
 	if nil != err {
@@ -2266,7 +2266,7 @@ func CreateContract(proc *exec.Process, newAddr, val, valLen, callCost, callCost
 
 	// Assign err if contract code size exceeds the max while the err is still empty.
 	if maxCodeSizeExceeded && err == nil {
-		err = errMaxCodeSizeExceeded
+		err = ErrMaxCodeSizeExceeded
 	}
 	ctx.contract.Gas += contract.Gas
 	if nil != err {

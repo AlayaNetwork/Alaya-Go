@@ -18,24 +18,16 @@ package vm
 
 import (
 	"errors"
-	"math/big"
-
 	"github.com/holiman/uint256"
 
 	"github.com/AlayaNetwork/Alaya-Go/common"
-	"github.com/AlayaNetwork/Alaya-Go/common/math"
 	"github.com/AlayaNetwork/Alaya-Go/core/types"
 	"github.com/AlayaNetwork/Alaya-Go/params"
 	"golang.org/x/crypto/sha3"
 )
 
 var (
-	bigZero                  = new(big.Int)
-	tt255                    = math.BigPow(2, 255)
-	errWriteProtection       = errors.New("evm: write protection")
-	errReturnDataOutOfBounds = errors.New("evm: return data out of bounds")
 	errExecutionReverted     = errors.New("execution reverted")
-	errMaxCodeSizeExceeded   = errors.New("evm: max code size exceeded")
 )
 
 func opAdd(pc *uint64, interpreter *EVMInterpreter, callContext *callCtx) ([]byte, error) {
