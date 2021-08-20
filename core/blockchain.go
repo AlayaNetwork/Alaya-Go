@@ -758,6 +758,9 @@ func (bc *BlockChain) GetReceiptsByHash(hash common.Hash) types.Receipts {
 	}
 
 	receipts := rawdb.ReadReceipts(bc.db, hash, *number, bc.Config())
+	if receipts == nil {
+		return nil
+	}
 	bc.receiptsCache.Add(hash, receipts)
 	return receipts
 }
