@@ -23,6 +23,15 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/x/xutil"
 )
 
+//stats
+func ConvertToCommonNodeIdList(verifierList []params.CbftNode) []common.NodeID {
+	nodeIdList := make([]common.NodeID, len(verifierList))
+	for i, verifier := range verifierList {
+		nodeIdList[i] = common.NodeID(verifier.Node.ID)
+	}
+	return nodeIdList
+}
+
 //func genesisStakingData(prevHash common.Hash, snapdb snapshotdb.BaseDB, g *Genesis, stateDB *state.StateDB) (common.Hash, error) {
 //stats：收集数据
 func genesisStakingData(genesisDataCollector *common.GenesisData, prevHash common.Hash, snapdb snapshotdb.BaseDB, g *Genesis, stateDB *state.StateDB) (common.Hash, error) {
@@ -50,6 +59,12 @@ func genesisStakingData(genesisDataCollector *common.GenesisData, prevHash commo
 	}
 
 	initQueue := g.Config.Cbft.InitialNodes
+
+	//stats
+	nodeList := ConvertToCommonNodeIdList(initQueue)
+	log.Debug("init genesis validators", "idList", nodeList)
+	genesisDataCollector.ConsensusElection = nodeList
+	genesisDataCollector.EpochElection = nodeList
 
 	validatorQueue := make(staking.ValidatorQueue, length)
 
