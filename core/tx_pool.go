@@ -76,10 +76,6 @@ var (
 	// configured for the transaction pool.
 	ErrUnderpriced = errors.New("transaction underpriced")
 
-	// ErrTxPoolOverflow is returned if the transaction pool is full and can't accpet
-	// another remote transaction.
-	ErrTxPoolOverflow = errors.New("txpool is full")
-
 	// ErrReplaceUnderpriced is returned if a transaction is attempted to be replaced
 	// with a different one without the required price bump.
 	ErrReplaceUnderpriced = errors.New("replacement transaction underpriced")
@@ -775,7 +771,6 @@ func (pool *TxPool) add(tx *types.Transaction, local bool) (replaced bool, err e
 		if !local && !success {
 			log.Trace("Discarding overflown transaction", "hash", hash)
 			overflowedTxMeter.Mark(1)
-			return false, ErrTxPoolOverflow
 		}
 		for _, tx := range drop {
 			if log.GetWasmLogLevel() == log.LvlTrace {
