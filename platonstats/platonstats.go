@@ -73,7 +73,7 @@ type Brief struct {
 
 type StatsBlockExt struct {
 	BlockType    common.BlockType       `json:"blockType"`
-	EpochNo      uint64                 `json:"epochNo"`
+	EpochNo      uint64                 `json:"epoch"`
 	NodeID       common.NodeID          `json:"nodeID,omitempty"`
 	NodeAddress  common.Address         `json:"nodeAddress,omitempty"`
 	Block        map[string]interface{} `json:"block,omitempty"`
