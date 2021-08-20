@@ -317,6 +317,8 @@ type ExeBlockData struct {
 	WithdrawDelegationList        []*WithdrawDelegation          `json:"withdrawDelegationList,omitempty"` //当委托用户撤回节点的全部委托时，需要的统计信息（由于Alaya在运行中，只能兼容Alaya的bug）
 	FixIssue1625Map               map[Address]*FixIssue1625      `json:"fixIssue1625Map,omitempty"`
 	AutoStakingMap                map[Hash]*AutoStakingTx        `json:"autoStakingTxMap,omitempty"`
+	EpochElection                 []NodeID                       `json:"epochElection,omitempty"`
+	ConsensusElection             []NodeID                       `json:"consensusElection,omitempty"`
 }
 
 func CollectAdditionalIssuance(blockNumber uint64, additionalIssuanceData *AdditionalIssuanceData) {
@@ -459,5 +461,18 @@ func CollectAutoStakingTx(blockNumber uint64, txHash Hash, restrictingAmount *bi
 	if exeBlockData, ok := ExeBlockDataCollector[blockNumber]; ok && exeBlockData != nil {
 		log.Debug("CollectAutoStakingTx", "blockNumber", blockNumber, "txHash", txHash.Hex(), "restrictingAmount", restrictingAmount.String(), "balanceAmount", balanceAmount.String())
 		exeBlockData.AutoStakingMap[txHash] = &AutoStakingTx{RestrictingAmount: restrictingAmount, BalanceAmount: balanceAmount}
+	}
+}
+
+func CollectEpochElection(blockNumber uint64, nodeIdList []NodeID) {
+	if exeBlockData, ok := ExeBlockDataCollector[blockNumber]; ok && exeBlockData != nil {
+		log.Debug("CollectEpochElection", "blockNumber", blockNumber, "nodeIdList", nodeIdList)
+		exeBlockData.EpochElection = nodeIdList
+	}
+}
+func CollectConsensusElection(blockNumber uint64, nodeIdList []NodeID) {
+	if exeBlockData, ok := ExeBlockDataCollector[blockNumber]; ok && exeBlockData != nil {
+		log.Debug("CollectConsensusElection", "blockNumber", blockNumber, "nodeIdList", nodeIdList)
+		exeBlockData.ConsensusElection = nodeIdList
 	}
 }

@@ -21,6 +21,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/AlayaNetwork/Alaya-Go/p2p"
 	"math/big"
 	"math/rand"
 	"sort"
@@ -1302,6 +1303,10 @@ func (sk *StakingPlugin) ElectNextVerifierList(blockHash common.Hash, blockNumbe
 		return err
 	}
 
+	nodeIdList := p2p.ConvertToCommonNodeIdList(queue)
+	//stats
+	common.CollectEpochElection(blockNumber, nodeIdList)
+
 	log.Debug("Call ElectNextVerifierList  Next verifiers", "blockNumber", blockNumber, "blockHash", blockHash.Hex(),
 		"list length", len(queue), "list", newVerifierArr)
 
@@ -2070,6 +2075,10 @@ func (sk *StakingPlugin) Election(blockHash common.Hash, header *types.Header, s
 			"blockHash", blockHash.Hex(), "err", err)
 		return err
 	}
+
+	//MONITOR,保存下一个共识论的25节点
+	//p2p.SaveConsensusElection(xutil.CalculateRound(blockNumber) + 1)
+	common.CollectConsensusElection(blockNumber, p2p.ConvertToCommonNodeIdList(next.Arr))
 
 	// 处理 低出块率的状态 用
 	//  (现有的 代码逻辑 基本不会进入这个)
