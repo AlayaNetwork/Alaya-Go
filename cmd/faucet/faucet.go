@@ -41,6 +41,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
+
+	"golang.org/x/net/websocket"
+
 	"github.com/AlayaNetwork/Alaya-Go/accounts"
 	"github.com/AlayaNetwork/Alaya-Go/accounts/keystore"
 	"github.com/AlayaNetwork/Alaya-Go/common"
@@ -54,11 +58,9 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/log"
 	"github.com/AlayaNetwork/Alaya-Go/node"
 	"github.com/AlayaNetwork/Alaya-Go/p2p"
-	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
 	"github.com/AlayaNetwork/Alaya-Go/p2p/discv5"
 	"github.com/AlayaNetwork/Alaya-Go/p2p/nat"
 	"github.com/AlayaNetwork/Alaya-Go/params"
-	"golang.org/x/net/websocket"
 )
 
 var (
@@ -260,8 +262,10 @@ func newFaucet(genesis *core.Genesis, port int, enodes []*discv5.Node, network u
 		return nil, err
 	}
 	for _, boot := range enodes {
-		old, _ := discover.ParseNode(boot.String())
-		stack.Server().AddPeer(old)
+		old, err := enode.ParseV4(boot.String())
+		if err != nil {
+			stack.Server().AddPeer(old)
+		}
 	}
 	// Attach to the client and retrieve and interesting metadatas
 	api, err := stack.Attach()

@@ -26,6 +26,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
+
 	"github.com/AlayaNetwork/Alaya-Go/core/rawdb"
 
 	"github.com/AlayaNetwork/Alaya-Go/common"
@@ -40,7 +42,6 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/les/flowcontrol"
 	"github.com/AlayaNetwork/Alaya-Go/light"
 	"github.com/AlayaNetwork/Alaya-Go/p2p"
-	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
 	"github.com/AlayaNetwork/Alaya-Go/params"
 	_ "github.com/AlayaNetwork/Alaya-Go/x/xcom"
 )
@@ -217,7 +218,7 @@ func newTestPeer(t *testing.T, name string, version int, pm *ProtocolManager, sh
 	app, net := p2p.MsgPipe()
 
 	// Generate a random id and create the peer
-	var id discover.NodeID
+	var id enode.ID
 	rand.Read(id[:])
 
 	peer := pm.newPeer(version, NetworkId, p2p.NewPeer(id, name, nil), net)
@@ -253,7 +254,7 @@ func newTestPeerPair(name string, version int, pm, pm2 *ProtocolManager) (*peer,
 	app, net := p2p.MsgPipe()
 
 	// Generate a random id and create the peer
-	var id discover.NodeID
+	var id enode.ID
 	rand.Read(id[:])
 
 	peer := pm.newPeer(version, NetworkId, p2p.NewPeer(id, name, nil), net)

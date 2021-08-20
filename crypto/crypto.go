@@ -233,3 +233,9 @@ func zeroBytes(bytes []byte) {
 		bytes[i] = 0
 	}
 }
+
+const PubkeyBytesBits = 512
+
+// PubkeyBytes is a unique identifier for each node.
+// The node identifier is a marshaled elliptic curve public key.
+type PubkeyBytes [PubkeyBytesBits / 8]byte

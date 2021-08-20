@@ -25,13 +25,14 @@ import (
 	"math/big"
 	"sync"
 
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
+
 	"github.com/AlayaNetwork/Alaya-Go/common"
 	cvm "github.com/AlayaNetwork/Alaya-Go/common/vm"
 	"github.com/AlayaNetwork/Alaya-Go/core/cbfttypes"
 	"github.com/AlayaNetwork/Alaya-Go/core/snapshotdb"
 	"github.com/AlayaNetwork/Alaya-Go/core/state"
 	"github.com/AlayaNetwork/Alaya-Go/core/vm"
-	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
 	"github.com/AlayaNetwork/Alaya-Go/x/handler"
 	"github.com/AlayaNetwork/Alaya-Go/x/staking"
 	"github.com/AlayaNetwork/Alaya-Go/x/xutil"
@@ -51,7 +52,7 @@ type BlockChainReactor struct {
 	beginRule     []int                     // Order rules for xxPlugins called in BeginBlocker
 	endRule       []int                     // Order rules for xxPlugins called in EndBlocker
 	validatorMode string                    // mode: static, inner, ppos
-	NodeId        discover.NodeID           // The nodeId of current node
+	NodeId        enode.IDv0                // The nodeId of current node
 	exitCh        chan chan struct{}        // Used to receive an exit signal
 	exitOnce      sync.Once
 	chainID       *big.Int
@@ -184,7 +185,7 @@ func (bcr *BlockChainReactor) SetPrivateKey(privateKey *ecdsa.PrivateKey) {
 			bcr.vh.SetPrivateKey(privateKey)
 		}
 		plugin.SlashInstance().SetPrivateKey(privateKey)
-		bcr.NodeId = discover.PubkeyID(&privateKey.PublicKey)
+		bcr.NodeId = enode.PublicKeyToIDv0(&privateKey.PublicKey)
 	}
 }
 
@@ -195,7 +196,7 @@ func (bcr *BlockChainReactor) SetEndRule(rule []int) {
 	bcr.endRule = rule
 }
 
-func (bcr *BlockChainReactor) SetWorkerCoinBase(header *types.Header, nodeId discover.NodeID) {
+func (bcr *BlockChainReactor) SetWorkerCoinBase(header *types.Header, nodeId enode.IDv0) {
 
 	/**
 	this things about ppos
@@ -393,7 +394,7 @@ func (bcr *BlockChainReactor) GetValidator(blockNumber uint64) (*cbfttypes.Valid
 	return plugin.StakingInstance().GetValidator(blockNumber)
 }
 
-func (bcr *BlockChainReactor) IsCandidateNode(nodeID discover.NodeID) bool {
+func (bcr *BlockChainReactor) IsCandidateNode(nodeID enode.IDv0) bool {
 	return plugin.StakingInstance().IsCandidateNode(nodeID)
 }
 

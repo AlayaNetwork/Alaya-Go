@@ -19,13 +19,13 @@ package plugin
 import (
 	"math/big"
 
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
+
 	"github.com/AlayaNetwork/Alaya-Go/x/xcom"
 
 	"github.com/AlayaNetwork/Alaya-Go/log"
 
 	"github.com/AlayaNetwork/Alaya-Go/x/xutil"
-
-	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
 
 	"github.com/AlayaNetwork/Alaya-Go/params"
 
@@ -76,7 +76,7 @@ func (a *FixIssue1654Plugin) fix(blockHash common.Hash, chainID *big.Int, state 
 				log.Debug("fix issue1654,can is valid,update the can power", "nodeID", candidate.nodeID, "stakingNum", candidate.stakingNum, "sub", candidate.shouldSub, "newShare", can.Shares)
 			} else {
 				if can.Shares != nil {
-					if can.Shares.Cmp(candidate.shouldSub)>=0{
+					if can.Shares.Cmp(candidate.shouldSub) >= 0 {
 						can.SubShares(candidate.shouldSub)
 						if err := stk.db.SetCanMutableStore(blockHash, canAddr, can.CandidateMutable); nil != err {
 							return err
@@ -91,7 +91,7 @@ func (a *FixIssue1654Plugin) fix(blockHash common.Hash, chainID *big.Int, state 
 }
 
 type issue1654Candidate struct {
-	nodeID     discover.NodeID
+	nodeID     enode.IDv0
 	stakingNum uint64
 	shouldSub  *big.Int
 }
@@ -122,7 +122,7 @@ func NewIssue1654Candidates() ([]issue1654Candidate, error) {
 	for _, c := range candidates {
 		amount, _ := new(big.Int).SetString(c.Amount, 10)
 		nodes = append(nodes, issue1654Candidate{
-			nodeID:     discover.MustHexID(c.Node),
+			nodeID:     enode.MustHexIDv0(c.Node),
 			stakingNum: uint64(c.Num),
 			shouldSub:  amount,
 		})

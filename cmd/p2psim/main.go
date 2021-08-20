@@ -45,13 +45,15 @@ import (
 	"strings"
 	"text/tabwriter"
 
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
+
+	"gopkg.in/urfave/cli.v1"
+
 	"github.com/AlayaNetwork/Alaya-Go/crypto"
 	"github.com/AlayaNetwork/Alaya-Go/p2p"
-	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
 	"github.com/AlayaNetwork/Alaya-Go/p2p/simulations"
 	"github.com/AlayaNetwork/Alaya-Go/p2p/simulations/adapters"
 	"github.com/AlayaNetwork/Alaya-Go/rpc"
-	"gopkg.in/urfave/cli.v1"
 )
 
 var client *simulations.Client
@@ -285,7 +287,7 @@ func createNode(ctx *cli.Context) error {
 		if err != nil {
 			return err
 		}
-		config.ID = discover.PubkeyID(&privKey.PublicKey)
+		config.ID = enode.PubkeyToIDV4(&privKey.PublicKey)
 		config.PrivateKey = privKey
 	}
 	if services := ctx.String("services"); services != "" {

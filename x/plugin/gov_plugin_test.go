@@ -14,15 +14,16 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
-
 package plugin
 
 import (
 	"encoding/hex"
+	"testing"
+
 	"github.com/AlayaNetwork/Alaya-Go/common/vm"
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
 	"github.com/AlayaNetwork/Alaya-Go/params"
 	"github.com/AlayaNetwork/Alaya-Go/x/staking"
-	"testing"
 
 	"github.com/stretchr/testify/assert"
 
@@ -34,8 +35,6 @@ import (
 	//	"github.com/AlayaNetwork/Alaya-Go/core/state"
 
 	"github.com/AlayaNetwork/Alaya-Go/rlp"
-
-	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
 
 	"github.com/AlayaNetwork/Alaya-Go/x/xcom"
 
@@ -382,7 +381,7 @@ func TestGovPlugin_SubmitText_Proposer_empty(t *testing.T) {
 		ProposalType: gov.Text,
 		PIPID:        "textPIPID",
 		SubmitBlock:  1,
-		Proposer:     discover.ZeroNodeID,
+		Proposer:     enode.ZeroIDv0,
 	}
 
 	state := stateDB.(*mock.MockStateDB)
@@ -1236,10 +1235,10 @@ func TestGovPlugin_printVersion(t *testing.T) {
 }
 
 func TestGovPlugin_TestNodeID(t *testing.T) {
-	var nodeID discover.NodeID
+	var nodeID enode.IDv0
 	nodeID = [64]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x01}
 
-	t.Logf("nodeID is empty, %t", nodeID == discover.ZeroNodeID)
+	t.Logf("nodeID is empty, %t", nodeID == enode.ZeroIDv0)
 
 }
 
@@ -1324,7 +1323,7 @@ func TestGovPlugin_ForkVersion0140Proposal(t *testing.T) {
 		PIPID:           "em2",
 		SubmitBlock:     uint64(1000),
 		EndVotingRounds: uint64(8),
-		Proposer:        discover.NodeID{},
+		Proposer:        enode.IDv0{},
 		NewVersion:      params.FORKVERSION_0_14_0,
 		ActiveBlock:     1,
 	}
@@ -1365,7 +1364,7 @@ func TestGovPlugin_ForkVersion0140Proposal(t *testing.T) {
 var (
 	chandler *node.CryptoHandler
 	priKey   = crypto.HexMustToECDSA("8e1477549bea04b97ea15911e2e9b3041b7a9921f80bd6ddbe4c2b080473de22")
-	nodeID   = discover.MustHexID("3e7864716b671c4de0dc2d7fd86215e0dcb8419e66430a770294eb2f37b714a07b6a3493055bb2d733dee9bfcc995e1c8e7885f338a69bf6c28930f3cf341819")
+	nodeID   = enode.MustHexIDv0("3e7864716b671c4de0dc2d7fd86215e0dcb8419e66430a770294eb2f37b714a07b6a3493055bb2d733dee9bfcc995e1c8e7885f338a69bf6c28930f3cf341819")
 )
 
 func initChandlerHandler() {

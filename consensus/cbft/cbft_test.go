@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
-
 package cbft
 
 import (
@@ -24,6 +23,8 @@ import (
 	"math/big"
 	"testing"
 	"time"
+
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
 
 	"github.com/AlayaNetwork/Alaya-Go/core/rawdb"
 
@@ -42,7 +43,6 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/core/types"
 	cvm "github.com/AlayaNetwork/Alaya-Go/core/vm"
 	"github.com/AlayaNetwork/Alaya-Go/crypto/bls"
-	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
 	"github.com/AlayaNetwork/Alaya-Go/params"
 	"github.com/AlayaNetwork/Alaya-Go/rlp"
 )
@@ -73,14 +73,14 @@ func TestBls(t *testing.T) {
 	owner := sk[0]
 	nodes := make([]params.CbftNode, num)
 	for i := 0; i < num; i++ {
-		nodes[i].Node = *discover.NewNode(discover.PubkeyID(&pk[i].PublicKey), nil, 0, 0)
+		nodes[i].Node = enode.NewV4(&pk[i].PublicKey, nil, 0, 0)
 		nodes[i].BlsPubKey = *sk[i].GetPublicKey()
 	}
 
 	agency := validator.NewStaticAgency(nodes)
 
 	cbft := &Cbft{
-		validatorPool: validator.NewValidatorPool(agency, 0, 0, nodes[0].Node.ID),
+		validatorPool: validator.NewValidatorPool(agency, 0, 0, nodes[0].Node.ID()),
 		config: ctypes.Config{
 			Option: &ctypes.OptionsConfig{
 				BlsPriKey: owner,
@@ -99,13 +99,13 @@ func TestPrepareBlockBls(t *testing.T) {
 	pk, sk := GenerateKeys(1)
 	owner := sk[0]
 	node := params.CbftNode{
-		Node:      *discover.NewNode(discover.PubkeyID(&pk[0].PublicKey), nil, 0, 0),
+		Node:      enode.NewV4(&pk[0].PublicKey, nil, 0, 0),
 		BlsPubKey: *sk[0].GetPublicKey(),
 	}
 	agency := validator.NewStaticAgency([]params.CbftNode{node})
 
 	cbft := &Cbft{
-		validatorPool: validator.NewValidatorPool(agency, 0, 0, node.Node.ID),
+		validatorPool: validator.NewValidatorPool(agency, 0, 0, node.Node.ID()),
 		config: ctypes.Config{
 			Option: &ctypes.OptionsConfig{
 				BlsPriKey: owner,
@@ -163,7 +163,7 @@ func TestAgg(t *testing.T) {
 	pk, sk := GenerateKeys(num)
 	nodes := make([]params.CbftNode, num)
 	for i := 0; i < num; i++ {
-		nodes[i].Node = *discover.NewNode(discover.PubkeyID(&pk[i].PublicKey), nil, 0, 0)
+		nodes[i].Node = enode.NewV4(&pk[i].PublicKey, nil, 0, 0)
 		nodes[i].BlsPubKey = *sk[i].GetPublicKey()
 
 	}
@@ -174,7 +174,7 @@ func TestAgg(t *testing.T) {
 
 	for i := 0; i < num; i++ {
 		cnode[i] = &Cbft{
-			validatorPool: validator.NewValidatorPool(agency, 0, 0, nodes[0].Node.ID),
+			validatorPool: validator.NewValidatorPool(agency, 0, 0, nodes[0].Node.ID()),
 			config: ctypes.Config{
 				Option: &ctypes.OptionsConfig{
 					BlsPriKey: sk[i],
@@ -513,9 +513,9 @@ func testValidatorSwitch(t *testing.T) {
 
 func newUpdateValidatorTx(t *testing.T, parent *types.Block, header *types.Header, nodes []params.CbftNode, switchNode params.CbftNode, mineNode *TestCBFT) (*types.Transaction, *types.Receipt, *cstate.StateDB) {
 	type Vd struct {
-		Index     uint            `json:"index"`
-		NodeID    discover.NodeID `json:"nodeID"`
-		BlsPubKey bls.PublicKey   `json:"blsPubKey"`
+		Index     uint          `json:"index"`
+		NodeID    enode.IDv0    `json:"nodeID"`
+		BlsPubKey bls.PublicKey `json:"blsPubKey"`
 	}
 	type VdList struct {
 		NodeList []*Vd `json:"validateNode"`
@@ -528,13 +528,13 @@ func newUpdateValidatorTx(t *testing.T, parent *types.Block, header *types.Heade
 	for i := 0; i < 3; i++ {
 		vdl.NodeList = append(vdl.NodeList, &Vd{
 			Index:     uint(i),
-			NodeID:    nodes[i].Node.ID,
+			NodeID:    nodes[i].Node.IDv0(),
 			BlsPubKey: nodes[i].BlsPubKey,
 		})
 	}
 	vdl.NodeList = append(vdl.NodeList, &Vd{
 		Index:     3,
-		NodeID:    switchNode.Node.ID,
+		NodeID:    switchNode.Node.IDv0(),
 		BlsPubKey: switchNode.BlsPubKey,
 	})
 

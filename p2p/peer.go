@@ -25,10 +25,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enr"
+
 	"github.com/AlayaNetwork/Alaya-Go/common/mclock"
 	"github.com/AlayaNetwork/Alaya-Go/event"
 	"github.com/AlayaNetwork/Alaya-Go/log"
-	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
 	"github.com/AlayaNetwork/Alaya-Go/rlp"
 )
 
@@ -60,7 +62,7 @@ type protoHandshake struct {
 	Name       string
 	Caps       []Cap
 	ListenPort uint64
-	ID         discover.NodeID
+	ID         []byte // secp256k1 public key
 
 	// Ignore additional fields (for forward compatibility).
 	Rest []rlp.RawValue `rlp:"tail"`
@@ -90,12 +92,12 @@ const (
 // PeerEvent is an event emitted when peers are either added or dropped from
 // a p2p.Server or when a message is sent or received on a peer connection
 type PeerEvent struct {
-	Type     PeerEventType   `json:"type"`
-	Peer     discover.NodeID `json:"peer"`
-	Error    string          `json:"error,omitempty"`
-	Protocol string          `json:"protocol,omitempty"`
-	MsgCode  *uint64         `json:"msg_code,omitempty"`
-	MsgSize  *uint32         `json:"msg_size,omitempty"`
+	Type     PeerEventType `json:"type"`
+	Peer     enode.ID      `json:"peer"`
+	Error    string        `json:"error,omitempty"`
+	Protocol string        `json:"protocol,omitempty"`
+	MsgCode  *uint64       `json:"msg_code,omitempty"`
+	MsgSize  *uint32       `json:"msg_size,omitempty"`
 }
 
 // Peer represents a connected remote node.
@@ -114,72 +116,29 @@ type Peer struct {
 	events *event.Feed
 }
 
-func NewPeerByNodeID(nodeId1 discover.NodeID, nodeId2 discover.NodeID, protos []Protocol) (*Peer, MsgReadWriter, *Peer, MsgReadWriter) {
-	fd1, fd2 := net.Pipe()
-	c1 := &conn{fd: fd1, transport: newMockTransport(nodeId1, fd1), id: nodeId1}
-	c2 := &conn{fd: fd2, transport: newMockTransport(nodeId2, fd2), id: nodeId2}
-	for _, p := range protos {
-		c1.caps = append(c1.caps, p.cap())
-		c2.caps = append(c2.caps, p.cap())
-	}
-
-	peer1 := newPeer(c1, protos)
-	peer2 := newPeer(c1, protos)
-	return peer1, c1, peer2, c2
-}
-
-func NewMockPeerNodeID(nodeId discover.NodeID, protos []Protocol) (func(), MsgReadWriter, *Peer, <-chan error) {
-	fd1, fd2 := net.Pipe()
-	c1 := &conn{fd: fd1, transport: newMockTransport(nodeId, fd1), id: nodeId}
-	c2 := &conn{fd: fd2, transport: newMockTransport(nodeId, fd2)}
-	for _, p := range protos {
-		c1.caps = append(c1.caps, p.cap())
-		c2.caps = append(c2.caps, p.cap())
-	}
-
-	peer := newPeer(c1, protos)
-	errc := make(chan error, 1)
-	go func() {
-		_, err := peer.run()
-		errc <- err
-	}()
-
-	closer := func() { c2.close(errors.New("close func called")) }
-	return closer, c2, peer, errc
-}
-
-func NewMockPeer(protos []Protocol) (func(), MsgWriter, *Peer, <-chan error) {
-	fd1, fd2 := net.Pipe()
-	c1 := &conn{fd: fd1, transport: newMockTransport(randomID(), fd1)}
-	c2 := &conn{fd: fd2, transport: newMockTransport(randomID(), fd2)}
-	for _, p := range protos {
-		c1.caps = append(c1.caps, p.cap())
-		c2.caps = append(c2.caps, p.cap())
-	}
-
-	peer := newPeer(c1, protos)
-	errc := make(chan error, 1)
-	go func() {
-		_, err := peer.run()
-		errc <- err
-	}()
-
-	closer := func() { c2.close(errors.New("close func called")) }
-	return closer, c2, peer, errc
-}
-
 // NewPeer returns a peer for testing purposes.
-func NewPeer(id discover.NodeID, name string, caps []Cap) *Peer {
+func NewPeer(id enode.ID, name string, caps []Cap) *Peer {
 	pipe, _ := net.Pipe()
-	conn := &conn{fd: pipe, transport: nil, id: id, caps: caps, name: name}
+	node := enode.SignNull(new(enr.Record), id)
+	conn := &conn{fd: pipe, transport: nil, node: node, caps: caps, name: name}
 	peer := newPeer(conn, nil)
 	close(peer.closed) // ensures Disconnect doesn't block
 	return peer
 }
 
 // ID returns the node's public key.
-func (p *Peer) ID() discover.NodeID {
-	return p.rw.id
+func (p *Peer) ID() enode.ID {
+	return p.rw.node.ID()
+}
+
+// IDV0 returns the node's public key.
+func (p *Peer) IDV0() enode.IDv0 {
+	return p.rw.node.IDv0()
+}
+
+// Node returns the peer's node descriptor.
+func (p *Peer) Node() *enode.Node {
+	return p.rw.node
 }
 
 // Name returns the node name that the remote node advertised.
@@ -214,7 +173,8 @@ func (p *Peer) Disconnect(reason DiscReason) {
 
 // String implements fmt.Stringer.
 func (p *Peer) String() string {
-	return fmt.Sprintf("Peer %x %v", p.rw.id[:8], p.RemoteAddr())
+	id := p.ID()
+	return fmt.Sprintf("Peer %x %v", id[:8], p.RemoteAddr())
 }
 
 // Inbound returns true if the peer is an inbound connection
@@ -231,7 +191,7 @@ func newPeer(conn *conn, protocols []Protocol) *Peer {
 		disc:     make(chan DiscReason),
 		protoErr: make(chan error, len(protomap)+1), // protocols + pingLoop
 		closed:   make(chan struct{}),
-		log:      log.New("id", conn.id, "conn", conn.flags),
+		log:      log.New("id", conn.node.ID(), "conn", conn.flags),
 	}
 	return p
 }

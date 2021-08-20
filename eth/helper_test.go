@@ -27,6 +27,8 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
+
 	"github.com/AlayaNetwork/Alaya-Go/core/rawdb"
 
 	"github.com/AlayaNetwork/Alaya-Go/consensus"
@@ -40,7 +42,6 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/ethdb"
 	"github.com/AlayaNetwork/Alaya-Go/event"
 	"github.com/AlayaNetwork/Alaya-Go/p2p"
-	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
 	"github.com/AlayaNetwork/Alaya-Go/params"
 	_ "github.com/AlayaNetwork/Alaya-Go/x/xcom"
 )
@@ -191,7 +192,7 @@ func newTestPeer(name string, version int, pm *ProtocolManager, shake bool) (*te
 	app, net := p2p.MsgPipe()
 
 	// Start the peer on a new thread
-	var id discover.NodeID
+	var id enode.ID
 	rand.Read(id[:])
 	peer := pm.newPeer(version, p2p.NewPeer(id, name, nil), net)
 

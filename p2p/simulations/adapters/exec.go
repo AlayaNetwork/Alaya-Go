@@ -35,13 +35,14 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
+
 	"github.com/docker/docker/pkg/reexec"
 	"github.com/gorilla/websocket"
 
 	"github.com/AlayaNetwork/Alaya-Go/log"
 	"github.com/AlayaNetwork/Alaya-Go/node"
 	"github.com/AlayaNetwork/Alaya-Go/p2p"
-	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
 	"github.com/AlayaNetwork/Alaya-Go/rpc"
 )
 
@@ -58,7 +59,7 @@ type ExecAdapter struct {
 	// simulation node are created.
 	BaseDir string
 
-	nodes map[discover.NodeID]*ExecNode
+	nodes map[enode.ID]*ExecNode
 }
 
 // NewExecAdapter returns an ExecAdapter which stores node data in
@@ -66,7 +67,7 @@ type ExecAdapter struct {
 func NewExecAdapter(baseDir string) *ExecAdapter {
 	return &ExecAdapter{
 		BaseDir: baseDir,
-		nodes:   make(map[discover.NodeID]*ExecNode),
+		nodes:   make(map[enode.ID]*ExecNode),
 	}
 }
 
@@ -108,7 +109,7 @@ func (e *ExecAdapter) NewNode(config *NodeConfig) (Node, error) {
 	conf.Stack.P2P.NAT = nil
 	conf.Stack.NoUSB = true
 
-	// Listen on a localhost port, which we set when we
+	// listen on a localhost port, which we set when we
 	// initialise NodeConfig (usually a random port)
 	conf.Stack.P2P.ListenAddr = fmt.Sprintf(":%d", config.Port)
 
@@ -126,7 +127,7 @@ func (e *ExecAdapter) NewNode(config *NodeConfig) (Node, error) {
 // ExecNode starts a simulation node by exec'ing the current binary and
 // running the configured services
 type ExecNode struct {
-	ID     discover.NodeID
+	ID     enode.ID
 	Dir    string
 	Config *execNodeConfig
 	Cmd    *exec.Cmd
@@ -153,7 +154,9 @@ func (n *ExecNode) Client() (*rpc.Client, error) {
 	return n.client, nil
 }
 
-// and the node config encoded as JSON in an environment variable.
+// Start exec's the node passing the ID and service as command line arguments
+// and the node config encoded as JSON in the _P2P_NODE_CONFIG environment
+// variable
 func (n *ExecNode) Start(snapshots map[string][]byte) (err error) {
 	if n.Cmd != nil {
 		return errors.New("already started")
@@ -528,7 +531,7 @@ type wsRPCDialer struct {
 
 // DialRPC implements the RPCDialer interface by creating a WebSocket RPC
 // client of the given node
-func (w *wsRPCDialer) DialRPC(id discover.NodeID) (*rpc.Client, error) {
+func (w *wsRPCDialer) DialRPC(id enode.ID) (*rpc.Client, error) {
 	addr, ok := w.addrs[id.String()]
 	if !ok {
 		return nil, fmt.Errorf("unknown node: %s", id)

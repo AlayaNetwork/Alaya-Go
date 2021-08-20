@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
-
 package plugin
 
 import (
@@ -23,6 +22,8 @@ import (
 	"math/rand"
 	"testing"
 	"time"
+
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
 
 	"github.com/AlayaNetwork/Alaya-Go/x/gov"
 
@@ -33,7 +34,6 @@ import (
 
 	"github.com/AlayaNetwork/Alaya-Go/common/mock"
 	"github.com/AlayaNetwork/Alaya-Go/log"
-	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
 
 	"github.com/AlayaNetwork/Alaya-Go/crypto"
 	"github.com/AlayaNetwork/Alaya-Go/rlp"
@@ -58,7 +58,7 @@ func buildTestStakingData(epochStart, epochEnd uint64) (staking.ValidatorQueue, 
 			return nil, err
 		}
 		addr := crypto.PubkeyToNodeAddress(privateKey.PublicKey)
-		nodeId := discover.PubkeyID(&privateKey.PublicKey)
+		nodeId := enode.PublicKeyToIDv0(&privateKey.PublicKey)
 		canTmp := &staking.Candidate{
 			CandidateBase: &staking.CandidateBase{
 				NodeId:         nodeId,
@@ -455,7 +455,7 @@ func TestSaveRewardDelegateRewardPer(t *testing.T) {
 	}, nil, nil)
 
 	type delegateInfo struct {
-		nodeID                                            discover.NodeID
+		nodeID                                            enode.IDv0
 		stakingNum                                        uint64
 		currentReward, totalDelegateReward, totalDelegate *big.Int
 	}
@@ -692,7 +692,7 @@ func generateStk(rewardPer uint16, delegateTotal *big.Int, blockNumber uint64) (
 	if nil != err {
 		panic(err)
 	}
-	nodeID, add := discover.PubkeyID(&privateKey.PublicKey), crypto.PubkeyToAddress(privateKey.PublicKey)
+	nodeID, add := enode.PublicKeyToIDv0(&privateKey.PublicKey), crypto.PubkeyToAddress(privateKey.PublicKey)
 	canBase.BenefitAddress = add
 	canBase.NodeId = nodeID
 	canBase.StakingBlockNum = 100

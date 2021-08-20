@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
-
 package network
 
 import (
@@ -25,6 +24,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
+
 	"github.com/hashicorp/golang-lru"
 
 	"github.com/AlayaNetwork/Alaya-Go/common"
@@ -33,7 +34,6 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/types"
 	"github.com/AlayaNetwork/Alaya-Go/log"
 	"github.com/AlayaNetwork/Alaya-Go/p2p"
-	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
 )
 
 const (
@@ -299,7 +299,7 @@ func (h *EngineManager) Protocols() []p2p.Protocol {
 			NodeInfo: func() interface{} {
 				return h.NodeInfo()
 			},
-			PeerInfo: func(id discover.NodeID) interface{} {
+			PeerInfo: func(id enode.ID) interface{} {
 				if p, err := h.peers.get(fmt.Sprintf("%x", id[:8])); err == nil {
 					return p.Info()
 				}
@@ -335,7 +335,7 @@ func (h *EngineManager) Unregister(id string) error {
 }
 
 // ConsensusNodes returns a list of all consensus nodes.
-func (h *EngineManager) ConsensusNodes() ([]discover.NodeID, error) {
+func (h *EngineManager) ConsensusNodes() ([]enode.ID, error) {
 	return h.engine.ConsensusNodes()
 }
 
