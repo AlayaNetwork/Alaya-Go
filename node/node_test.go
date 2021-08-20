@@ -479,9 +479,9 @@ func TestProtocolGather(t *testing.T) {
 		Count int
 		Maker InstrumentingWrapper
 	}{
-		"Zero Protocols":  {0, InstrumentedServiceMakerA},
-		"Single Protocol": {1, InstrumentedServiceMakerB},
-		"Many Protocols":  {25, InstrumentedServiceMakerC},
+		"zero": {0, InstrumentedServiceMakerA},
+		"one":  {1, InstrumentedServiceMakerB},
+		"many": {10, InstrumentedServiceMakerC},
 	}
 	for id, config := range services {
 		protocols := make([]p2p.Protocol, config.Count)

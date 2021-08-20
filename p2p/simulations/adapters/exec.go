@@ -155,15 +155,13 @@ func (n *ExecNode) Client() (*rpc.Client, error) {
 }
 
 // Start exec's the node passing the ID and service as command line arguments
-// and the node config encoded as JSON in the _P2P_NODE_CONFIG environment
-// variable
+// and the node config encoded as JSON in an environment variable.
 func (n *ExecNode) Start(snapshots map[string][]byte) (err error) {
 	if n.Cmd != nil {
 		return errors.New("already started")
 	}
 	defer func() {
 		if err != nil {
-			log.Error("node failed to start", "err", err)
 			n.Stop()
 		}
 	}()
@@ -203,7 +201,7 @@ func (n *ExecNode) Start(snapshots map[string][]byte) (err error) {
 	if status.Err != "" {
 		return errors.New(status.Err)
 	}
-	client, err := rpc.DialWebsocket(ctx, status.WSEndpoint, "")
+	client, err := rpc.DialWebsocket(ctx, status.WSEndpoint, "http://localhost")
 	if err != nil {
 		return fmt.Errorf("can't connect to RPC server: %v", err)
 	}

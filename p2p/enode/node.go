@@ -106,6 +106,13 @@ func (n *Node) Pubkey() *ecdsa.PublicKey {
 	return &key
 }
 
+// Record returns the node's record. The return value is a copy and may
+// be modified by the caller.
+func (n *Node) Record() *enr.Record {
+	cpy := n.r
+	return &cpy
+}
+
 // IDv0 returns the node byte of the Pubkey.
 func (n *Node) IDv0() IDv0 {
 	var id IDv0
