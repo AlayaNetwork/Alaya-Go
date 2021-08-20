@@ -19,6 +19,7 @@ package eth
 import (
 	"context"
 	"errors"
+	"github.com/AlayaNetwork/Alaya-Go/core/rawdb"
 	"math/big"
 
 	"github.com/AlayaNetwork/Alaya-Go/core/snapshotdb"
@@ -178,6 +179,11 @@ func (b *EthAPIBackend) GetPoolTransactions() (types.Transactions, error) {
 
 func (b *EthAPIBackend) GetPoolTransaction(hash common.Hash) *types.Transaction {
 	return b.eth.txPool.Get(hash)
+}
+
+func (b *EthAPIBackend) GetTransaction(ctx context.Context, txHash common.Hash) (*types.Transaction, common.Hash, uint64, uint64, error) {
+	tx, blockHash, blockNumber, index := rawdb.ReadTransaction(b.eth.ChainDb(), txHash)
+	return tx, blockHash, blockNumber, index, nil
 }
 
 func (b *EthAPIBackend) GetPoolNonce(ctx context.Context, addr common.Address) (uint64, error) {
