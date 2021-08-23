@@ -19,6 +19,7 @@ package eth
 import (
 	"context"
 	"errors"
+	"github.com/AlayaNetwork/Alaya-Go/core/rawdb"
 	"math/big"
 
 	"github.com/AlayaNetwork/Alaya-Go/core/snapshotdb"
@@ -49,7 +50,7 @@ type EthAPIBackend struct {
 
 // ChainConfig returns the active chain configuration.
 func (b *EthAPIBackend) ChainConfig() *params.ChainConfig {
-	return b.eth.chainConfig
+	return b.eth.blockchain.Config()
 }
 
 func (b *EthAPIBackend) Engine() consensus.Engine {
@@ -137,7 +138,7 @@ func (b *EthAPIBackend) GetEVM(ctx context.Context, msg core.Message, state *sta
 	vmError := func() error { return nil }
 
 	context := core.NewEVMContext(msg, header, b.eth.BlockChain())
-	return vm.NewEVM(context, snapshotdb.Instance(), state, b.eth.chainConfig, *b.eth.blockchain.GetVMConfig()), vmError, nil
+	return vm.NewEVM(context, snapshotdb.Instance(), state, b.eth.blockchain.Config(), *b.eth.blockchain.GetVMConfig()), vmError, nil
 }
 
 func (b *EthAPIBackend) SubscribeRemovedLogsEvent(ch chan<- core.RemovedLogsEvent) event.Subscription {
@@ -178,6 +179,11 @@ func (b *EthAPIBackend) GetPoolTransactions() (types.Transactions, error) {
 
 func (b *EthAPIBackend) GetPoolTransaction(hash common.Hash) *types.Transaction {
 	return b.eth.txPool.Get(hash)
+}
+
+func (b *EthAPIBackend) GetTransaction(ctx context.Context, txHash common.Hash) (*types.Transaction, common.Hash, uint64, uint64, error) {
+	tx, blockHash, blockNumber, index := rawdb.ReadTransaction(b.eth.ChainDb(), txHash)
+	return tx, blockHash, blockNumber, index, nil
 }
 
 func (b *EthAPIBackend) GetPoolNonce(ctx context.Context, addr common.Address) (uint64, error) {

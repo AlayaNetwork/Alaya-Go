@@ -20,6 +20,7 @@ package utils
 import (
 	"crypto/ecdsa"
 	"fmt"
+	"github.com/AlayaNetwork/Alaya-Go/miner"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -258,28 +259,13 @@ var (
 	MinerGasTargetFlag = cli.Uint64Flag{
 		Name:  "miner.gastarget",
 		Usage: "Target gas floor for mined blocks",
-		Value: eth.DefaultConfig.MinerGasFloor,
+		Value: eth.DefaultConfig.Miner.GasFloor,
 	}
-	/*MinerGasLimitFlag = cli.Uint64Flag{
-		Name:  "miner.gaslimit",
-		Usage: "Target gas ceiling for mined blocks",
-		Value: eth.DefaultConfig.MinerGasCeil,
-	}*/
 	MinerGasPriceFlag = BigFlag{
 		Name:  "miner.gasprice",
 		Usage: "Minimum gas price for mining a transaction",
-		Value: eth.DefaultConfig.MinerGasPrice,
+		Value: eth.DefaultConfig.Miner.GasPrice,
 	}
-	/*
-		MinerExtraDataFlag = cli.StringFlag{
-			Name:  "miner.extradata",
-			Usage: "Block extra data set by the miner (default = client version)",
-		}
-		MinerLegacyExtraDataFlag = cli.StringFlag{
-			Name:  "extradata",
-			Usage: "Block extra data set by the miner (default = client version, deprecated, use --miner.extradata)",
-		}
-	*/
 	// Account settings
 	UnlockedAccountFlag = cli.StringFlag{
 		Name:  "unlock",
@@ -504,14 +490,14 @@ var (
 		Usage: "Password to authorize access to the database",
 		Value: "test",
 	}
-	// The `host` tag is part of every measurement sent to InfluxDB. Queries on tags are faster in InfluxDB.
-	// It is used so that we can group all nodes and average a measurement across all of them, but also so
-	// that we can select a specific node and inspect its measurements.
+	// Tags are part of every measurement sent to InfluxDB. Queries on tags are faster in InfluxDB.
+	// For example `host` tag could be used so that we can group all nodes and average a measurement
+	// across all of them, but also so that we can select a specific node and inspect its measurements.
 	// https://docs.influxdata.com/influxdb/v1.4/concepts/key_concepts/#tag-key
-	MetricsInfluxDBHostTagFlag = cli.StringFlag{
-		Name:  "metrics.influxdb.host.tag",
-		Usage: "InfluxDB `host` tag attached to all measurements",
-		Value: "localhost",
+	MetricsInfluxDBTagsFlag = cli.StringFlag{
+		Name:  "metrics.influxdb.tags",
+		Usage: "Comma-separated InfluxDB tags (key/values) attached to all measurements",
+		Value: "host=localhost",
 	}
 
 	// mpc compute
@@ -788,7 +774,7 @@ func setWS(ctx *cli.Context, cfg *node.Config) {
 // setIPC creates an IPC path configuration from the set command line flags,
 // returning an empty string if IPC was explicitly disabled, or the set path.
 func setIPC(ctx *cli.Context, cfg *node.Config) {
-	checkExclusive(ctx, IPCDisabledFlag, IPCPathFlag)
+	CheckExclusive(ctx, IPCDisabledFlag, IPCPathFlag)
 	switch {
 	case ctx.GlobalBool(IPCDisabledFlag.Name):
 		cfg.IPCPath = ""
@@ -1053,44 +1039,6 @@ func setTxPool(ctx *cli.Context, cfg *core.TxPoolConfig) {
 //
 //}
 
-// checkExclusive verifies that only a single instance of the provided flags was
-// set by the user. Each flag might optionally be followed by a string type to
-// specialize it further.
-func checkExclusive(ctx *cli.Context, args ...interface{}) {
-	set := make([]string, 0, 1)
-	for i := 0; i < len(args); i++ {
-		// Make sure the next argument is a flag and skip if not set
-		flag, ok := args[i].(cli.Flag)
-		if !ok {
-			panic(fmt.Sprintf("invalid argument, not cli.Flag type: %T", args[i]))
-		}
-		// Check if next arg extends current and expand its name if so
-		name := flag.GetName()
-
-		if i+1 < len(args) {
-			switch option := args[i+1].(type) {
-			case string:
-				// Extended flag, expand the name and shift the arguments
-				if ctx.GlobalString(flag.GetName()) == option {
-					name += "=" + option
-				}
-				i++
-
-			case cli.Flag:
-			default:
-				panic(fmt.Sprintf("invalid argument, not cli.Flag or string extension: %T", args[i+1]))
-			}
-		}
-		// Mark the flag if it's set
-		if ctx.GlobalIsSet(flag.GetName()) {
-			set = append(set, "--"+name)
-		}
-	}
-	if len(set) > 1 {
-		Fatalf("Flags %v can't be used at the same time", strings.Join(set, ", "))
-	}
-}
-
 // SetShhConfig applies shh-related command line flags to the config.
 //func SetShhConfig(ctx *cli.Context, stack *node.Node, cfg *whisper.Config) {
 //	if ctx.GlobalIsSet(WhisperMaxMessageSizeFlag.Name) {
@@ -1100,12 +1048,20 @@ func checkExclusive(ctx *cli.Context, args ...interface{}) {
 //		cfg.RestrictConnectionBetweenLightClients = true
 //	}
 //}
+func setMiner(ctx *cli.Context, cfg *miner.Config) {
+	if ctx.GlobalIsSet(MinerGasTargetFlag.Name) {
+		cfg.GasFloor = ctx.GlobalUint64(MinerGasTargetFlag.Name)
+	}
+	if ctx.GlobalIsSet(MinerGasPriceFlag.Name) {
+		cfg.GasPrice = GlobalBig(ctx, MinerGasPriceFlag.Name)
+	}
+}
 
 // SetEthConfig applies eth-related command line flags to the config.
 func SetEthConfig(ctx *cli.Context, stack *node.Node, cfg *eth.Config) {
 	// Avoid conflicting network flags
-	checkExclusive(ctx, AlayaNetFlag)
-	checkExclusive(ctx, LightServFlag, SyncModeFlag, "light")
+	CheckExclusive(ctx, AlayaNetFlag)
+	CheckExclusive(ctx, LightServFlag, SyncModeFlag, "light")
 
 	setGPO(ctx, &cfg.GPO)
 	setTxPool(ctx, &cfg.TxPool)
@@ -1147,23 +1103,6 @@ func SetEthConfig(ctx *cli.Context, stack *node.Node, cfg *eth.Config) {
 	}
 	if ctx.GlobalIsSet(DocRootFlag.Name) {
 		cfg.DocRoot = ctx.GlobalString(DocRootFlag.Name)
-	}
-	/*
-		if ctx.GlobalIsSet(MinerLegacyExtraDataFlag.Name) {
-			cfg.MinerExtraData = []byte(ctx.GlobalString(MinerLegacyExtraDataFlag.Name))
-		}
-
-			if ctx.GlobalIsSet(MinerExtraDataFlag.Name) {
-				cfg.MinerExtraData = []byte(ctx.GlobalString(MinerExtraDataFlag.Name))
-			}*/
-	if ctx.GlobalIsSet(MinerGasTargetFlag.Name) {
-		cfg.MinerGasFloor = ctx.GlobalUint64(MinerGasTargetFlag.Name)
-	}
-	/*if ctx.GlobalIsSet(MinerGasLimitFlag.Name) {
-		cfg.MinerGasCeil = ctx.GlobalUint64(MinerGasLimitFlag.Name)
-	}*/
-	if ctx.GlobalIsSet(MinerGasPriceFlag.Name) {
-		cfg.MinerGasPrice = GlobalBig(ctx, MinerGasPriceFlag.Name)
 	}
 
 	// Override any default configs for hard coded networks.
@@ -1303,16 +1242,32 @@ func SetupMetrics(ctx *cli.Context) {
 			database     = ctx.GlobalString(MetricsInfluxDBDatabaseFlag.Name)
 			username     = ctx.GlobalString(MetricsInfluxDBUsernameFlag.Name)
 			password     = ctx.GlobalString(MetricsInfluxDBPasswordFlag.Name)
-			hosttag      = ctx.GlobalString(MetricsInfluxDBHostTagFlag.Name)
 		)
 
 		if enableExport {
+			tagsMap := SplitTagsFlag(ctx.GlobalString(MetricsInfluxDBTagsFlag.Name))
+
 			log.Info("Enabling metrics export to InfluxDB")
-			go influxdb.InfluxDBWithTags(metrics.DefaultRegistry, 10*time.Second, endpoint, database, username, password, "alaya.", map[string]string{
-				"host": hosttag,
-			})
+			go influxdb.InfluxDBWithTags(metrics.DefaultRegistry, 10*time.Second, endpoint, database, username, password, "alaya.", tagsMap)
 		}
 	}
+}
+
+func SplitTagsFlag(tagsFlag string) map[string]string {
+	tags := strings.Split(tagsFlag, ",")
+	tagsMap := map[string]string{}
+
+	for _, t := range tags {
+		if t != "" {
+			kv := strings.Split(t, "=")
+
+			if len(kv) == 2 {
+				tagsMap[kv[0]] = kv[1]
+			}
+		}
+	}
+
+	return tagsMap
 }
 
 // MakeChainDatabase open an LevelDB using the flags passed to the client and will hard crash if it fails.

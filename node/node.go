@@ -31,7 +31,7 @@ import (
 
 	"github.com/AlayaNetwork/Alaya-Go/core/snapshotdb"
 
-	"github.com/prometheus/prometheus/util/flock"
+	"github.com/prometheus/tsdb/fileutil"
 
 	"github.com/AlayaNetwork/Alaya-Go/accounts"
 	"github.com/AlayaNetwork/Alaya-Go/ethdb"
@@ -48,8 +48,8 @@ type Node struct {
 	config   *Config
 	accman   *accounts.Manager
 
-	ephemeralKeystore string         // if non-empty, the key directory that will be removed by Stop
-	instanceDirLock   flock.Releaser // prevents concurrent use of instance directory
+	ephemeralKeystore string            // if non-empty, the key directory that will be removed by Stop
+	instanceDirLock   fileutil.Releaser // prevents concurrent use of instance directory
 
 	// chainId identifies the current chain and is used for replay protection
 	ChainID      *big.Int `toml:"-"`
@@ -165,6 +165,11 @@ func (n *Node) Register(constructor ServiceConstructor) error {
 	return nil
 }
 
+// Config returns the configuration of node.
+func (n *Node) Config() *Config {
+	return n.config
+}
+
 // Start creates a live P2P node and starts running it.
 func (n *Node) Start() error {
 	n.lock.Lock()
@@ -272,12 +277,6 @@ func (n *Node) Start() error {
 	return nil
 }
 
-// Config returns the configuration of node.
-func (n *Node) Config() *Config {
-	return n.config
-}
-
-
 func (n *Node) openDataDir() error {
 	if n.config.DataDir == "" {
 		return nil // ephemeral
@@ -290,7 +289,7 @@ func (n *Node) openDataDir() error {
 
 	// Lock the instance directory to prevent concurrent use by another instance as well as
 	// accidental use of the instance directory as a database.
-	release, _, err := flock.New(filepath.Join(instdir, "LOCK"))
+	release, _, err := fileutil.Flock(filepath.Join(instdir, "LOCK"))
 	if err != nil {
 		return convertFileLockError(err)
 	}
