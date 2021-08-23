@@ -33,8 +33,8 @@ require (
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/karalabe/hid v0.0.0-20170821103837-f00545f9f374
 	github.com/kylelemons/godebug v1.1.0 // indirect
-	github.com/mattn/go-colorable v0.0.8-0.20170210172801-5411d3eea597
-	github.com/mattn/go-isatty v0.0.0-20170209175615-281032e84ae0 // indirect
+	github.com/mattn/go-colorable v0.1.8
+	github.com/mattn/go-isatty v0.0.13 // indirect
 	github.com/mattn/go-runewidth v0.0.13 // indirect
 	github.com/modern-go/reflect2 v1.0.1
 	github.com/mroth/weightedrand v0.3.0
@@ -60,7 +60,7 @@ require (
 	github.com/tealeg/xlsx v1.0.5
 	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
 	golang.org/x/net v0.0.0-20200602114024-627f9648deb9
-	golang.org/x/sys v0.0.0-20210630005230-0f9fa26af87c
+	golang.org/x/sys v0.0.0-20210819135213-f52c844e1c1c
 	golang.org/x/text v0.3.1-0.20171227012246-e19ae1496984 // indirect
 	google.golang.org/protobuf v1.27.1 // indirect
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15

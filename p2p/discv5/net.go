@@ -24,10 +24,11 @@ import (
 	"net"
 	"time"
 
+	"golang.org/x/crypto/sha3"
+
 	"github.com/AlayaNetwork/Alaya-Go/common"
 	"github.com/AlayaNetwork/Alaya-Go/common/mclock"
 	"github.com/AlayaNetwork/Alaya-Go/crypto"
-	"github.com/AlayaNetwork/Alaya-Go/crypto/sha3"
 	"github.com/AlayaNetwork/Alaya-Go/log"
 	"github.com/AlayaNetwork/Alaya-Go/p2p/netutil"
 	"github.com/AlayaNetwork/Alaya-Go/rlp"
@@ -567,12 +568,11 @@ loop:
 			net.ticketStore.searchLookupDone(res.target, res.nodes, func(n *Node, topic Topic) []byte {
 				if n.state != nil && n.state.canQuery {
 					return net.conn.send(n, topicQueryPacket, topicQuery{Topic: topic}) // TODO: set expiration
-				} else {
-					if n.state == unknown {
-						net.ping(n, n.addr())
-					}
-					return nil
 				}
+				if n.state == unknown {
+					net.ping(n, n.addr())
+				}
+				return nil
 			})
 
 		case <-statsDump.C:
@@ -1235,7 +1235,7 @@ func (net *Network) checkTopicRegister(data *topicRegister) (*pong, error) {
 }
 
 func rlpHash(x interface{}) (h common.Hash) {
-	hw := sha3.NewKeccak256()
+	hw := sha3.NewLegacyKeccak256()
 	rlp.Encode(hw, x)
 	hw.Sum(h[:0])
 	return h
