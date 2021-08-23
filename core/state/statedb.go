@@ -546,7 +546,7 @@ func (self *StateDB) ListActiveVersion() ([]gov.ActiveVersionValue, error) {
 //	buffer.Write(value)
 //
 //	valueKey := common.Hash{}
-//	keccak := sha3.NewKeccak256()
+//	keccak := sha3.NewLegacyKeccak256()
 //	keccak.Write(buffer.Bytes())
 //	keccak.Sum(valueKey[:0])
 //

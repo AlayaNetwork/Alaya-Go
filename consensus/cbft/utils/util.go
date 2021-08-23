@@ -19,13 +19,14 @@ package utils
 
 import (
 	"bytes"
+	"golang.org/x/crypto/sha3"
 	"io"
 	"math/rand"
 	"sort"
 	"sync/atomic"
 
 	"github.com/AlayaNetwork/Alaya-Go/common"
-	"github.com/AlayaNetwork/Alaya-Go/crypto/sha3"
+
 )
 
 // RandomOffset returns a random offset between 0 and n
