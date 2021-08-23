@@ -195,11 +195,11 @@ func SetupGenesisBlock(db ethdb.Database, snapshotBaseDB snapshotdb.BaseDB, gene
 			return nil, common.Hash{}, err
 		}
 		// Ensure the stored genesis matches with the given one.
-		hash := genesis.ToBlock(nil,snapshotBaseDB).Hash()
+		hash := genesis.ToBlock(nil, snapshotBaseDB).Hash()
 		if hash != stored {
 			return genesis.Config, hash, &GenesisMismatchError{stored, hash}
 		}
-		block, err := genesis.Commit(db,snapshotBaseDB)
+		block, err := genesis.Commit(db, snapshotBaseDB)
 		return genesis.Config, block.Hash(), err
 	}
 
@@ -465,7 +465,7 @@ func (g *Genesis) ToBlock(db ethdb.Database, sdb snapshotdb.BaseDB) *types.Block
 	head := &types.Header{
 		Number:     new(big.Int).SetUint64(g.Number),
 		Nonce:      types.EncodeNonce(g.Nonce),
-		Time:       new(big.Int).SetUint64(g.Timestamp),
+		Time:       g.Timestamp,
 		ParentHash: g.ParentHash,
 		Extra:      g.ExtraData,
 		GasLimit:   g.GasLimit,
