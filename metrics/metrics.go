@@ -29,6 +29,9 @@ var EnabledExpensive = false
 // enablerFlags is the CLI flag names to use to enable metrics collections.
 var enablerFlags = []string{"metrics"}
 
+// expensiveEnablerFlags is the CLI flag names to use to enable metrics collections.
+var expensiveEnablerFlags = []string{"metrics.expensive"}
+
 // Init enables or disables the metrics system. Since we need this to run before
 // any other code gets to create meters and timers, we'll actually do an ugly hack
 // and peek into the command line args for the metrics flag.
@@ -40,6 +43,12 @@ func init() {
 			if !Enabled && flag == enabler {
 				log.Info("Enabling metrics collection")
 				Enabled = true
+			}
+		}
+		for _, enabler := range expensiveEnablerFlags {
+			if !EnabledExpensive && flag == enabler {
+				log.Info("Enabling expensive metrics collection")
+				EnabledExpensive = true
 			}
 		}
 	}
