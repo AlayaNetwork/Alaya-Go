@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
-
 package wal
 
 import (
@@ -41,7 +40,7 @@ func newBlock() *types.Block {
 	header := &types.Header{
 		Number:      big.NewInt(int64(blockNumber)),
 		ParentHash:  common.BytesToHash(utils.Rand32Bytes(32)),
-		Time:        big.NewInt(time.Now().UnixNano()),
+		Time:        uint64(time.Now().UnixNano()),
 		Extra:       make([]byte, 97),
 		ReceiptHash: common.BytesToHash(utils.Rand32Bytes(32)),
 		Root:        common.BytesToHash(utils.Rand32Bytes(32)),

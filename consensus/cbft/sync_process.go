@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
-
 package cbft
 
 import (
@@ -693,7 +692,7 @@ func (cbft *Cbft) MissingPrepareVote() (v *protocols.GetPrepareVote, err error) 
 		cbft.log.Debug("MissingPrepareVote", "epoch", cbft.state.Epoch(), "viewNumber", cbft.state.ViewNumber(), "beginIndex", begin, "endIndex", end, "validatorLen", len)
 
 		block := cbft.state.HighestQCBlock()
-		blockTime := common.MillisToTime(block.Time().Int64())
+		blockTime := common.MillisToTime(int64(block.Time()))
 
 		for index := begin; index < end; index++ {
 			size := cbft.state.PrepareVoteLenByIndex(index)
