@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
-
 package cbft
 
 import (
@@ -821,7 +820,7 @@ func (cbft *Cbft) OnSeal(block *types.Block, results chan<- *types.Block, stop <
 	minedCounter.Inc(1)
 	preBlock := cbft.blockTree.FindBlockByHash(block.ParentHash())
 	if preBlock != nil {
-		blockMinedGauage.Update(common.Millis(time.Now()) - preBlock.Time().Int64())
+		blockMinedGauage.Update(common.Millis(time.Now()) - int64(preBlock.Time()))
 	}
 	go func() {
 		select {
