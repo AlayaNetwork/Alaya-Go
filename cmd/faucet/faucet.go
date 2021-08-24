@@ -41,6 +41,8 @@ import (
 	"sync"
 	"time"
 
+	"golang.org/x/net/websocket"
+
 	"github.com/AlayaNetwork/Alaya-Go/accounts"
 	"github.com/AlayaNetwork/Alaya-Go/accounts/keystore"
 	"github.com/AlayaNetwork/Alaya-Go/common"
@@ -58,7 +60,6 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/p2p/discv5"
 	"github.com/AlayaNetwork/Alaya-Go/p2p/nat"
 	"github.com/AlayaNetwork/Alaya-Go/params"
-	"golang.org/x/net/websocket"
 )
 
 var (
@@ -586,7 +587,7 @@ func (f *faucet) loop() {
 	go func() {
 		for head := range update {
 			// New chain head arrived, query the current stats and stream to clients
-			timestamp := time.Unix(head.Time.Int64(), 0)
+			timestamp := time.Unix(int64(head.Time), 0)
 			if time.Since(timestamp) > time.Hour {
 				log.Warn("Skipping faucet refresh, head too old", "number", head.Number, "hash", head.Hash(), "age", common.PrettyAge(timestamp))
 				continue
