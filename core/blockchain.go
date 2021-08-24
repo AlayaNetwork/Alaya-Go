@@ -1579,7 +1579,7 @@ func (bc *BlockChain) ProcessDirectly(block *types.Block, state *state.StateDB, 
 
 	// Validate the state using the default validator
 	start = time.Now()
-	err = bc.Validator().ValidateState(block, parent, state, receipts, usedGas)
+	err = bc.Validator().ValidateState(block, state, receipts, usedGas)
 	if err != nil {
 		bc.reportBlock(block, receipts, err)
 		return nil, err

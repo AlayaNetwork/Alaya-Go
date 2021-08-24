@@ -260,6 +260,11 @@ func (cbft *Cbft) Start(chain consensus.ChainReader, blockCacheWriter consensus.
 	// Start the handler to process the message.
 	go cbft.network.Start()
 
+	if cbft.config.Option.NodePriKey == nil {
+		cbft.config.Option.NodePriKey = cbft.nodeServiceContext.NodePriKey()
+		cbft.config.Option.NodeID = discover.PubkeyID(&cbft.config.Option.NodePriKey.PublicKey)
+	}
+
 	if isGenesis() {
 		cbft.validatorPool = validator.NewValidatorPool(agency, block.NumberU64(), cstate.DefaultEpoch, cbft.config.Option.NodeID)
 		cbft.changeView(cstate.DefaultEpoch, cstate.DefaultViewNumber, block, qc, nil)
