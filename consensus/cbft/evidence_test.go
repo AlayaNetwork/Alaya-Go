@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
-
 package cbft
 
 import (
@@ -24,13 +23,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/suite"
+
 	"github.com/AlayaNetwork/Alaya-Go/common"
 	"github.com/AlayaNetwork/Alaya-Go/common/hexutil"
 	"github.com/AlayaNetwork/Alaya-Go/consensus"
 	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/evidence"
 	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/protocols"
 	"github.com/AlayaNetwork/Alaya-Go/core/types"
-	"github.com/stretchr/testify/suite"
 )
 
 func TestEvidenceSuite(t *testing.T) {
@@ -153,7 +153,7 @@ func (suit *EvidenceTestSuite) TestPrepareBlockDuplicate() {
 	header := &types.Header{
 		Number:      big.NewInt(int64(11)),
 		ParentHash:  suit.view.firstProposer().state.HighestQCBlock().Hash(),
-		Time:        big.NewInt(time.Now().UnixNano() + 100),
+		Time:        uint64(time.Now().UnixNano() + 100),
 		Extra:       make([]byte, 97),
 		ReceiptHash: common.BytesToHash(hexutil.MustDecode("0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")),
 		Root:        common.BytesToHash(hexutil.MustDecode("0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")),
@@ -203,7 +203,7 @@ func (suit *EvidenceTestSuite) TestPrepareBlockDuplicateDifViewNumber() {
 	header := &types.Header{
 		Number:      big.NewInt(int64(11)),
 		ParentHash:  suit.view.firstProposer().state.HighestQCBlock().Hash(),
-		Time:        big.NewInt(time.Now().UnixNano() + 100),
+		Time:        uint64(time.Now().UnixNano() + 100),
 		Extra:       make([]byte, 97),
 		ReceiptHash: common.BytesToHash(hexutil.MustDecode("0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")),
 		Root:        common.BytesToHash(hexutil.MustDecode("0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")),
@@ -241,7 +241,7 @@ func (suit *EvidenceTestSuite) TestPrepareBlockDuplicateDifEpoch() {
 	header := &types.Header{
 		Number:      big.NewInt(int64(11)),
 		ParentHash:  suit.view.firstProposer().state.HighestQCBlock().Hash(),
-		Time:        big.NewInt(time.Now().UnixNano() + 100),
+		Time:        uint64(time.Now().UnixNano() + 100),
 		Extra:       make([]byte, 97),
 		ReceiptHash: common.BytesToHash(hexutil.MustDecode("0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")),
 		Root:        common.BytesToHash(hexutil.MustDecode("0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")),

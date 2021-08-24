@@ -215,8 +215,6 @@ func (cs *chainSyncer) nextSyncOp() *chainSyncOp {
 		return nil // Sync already running.
 	}
 
-	log.Debug("what the fuck1")
-
 	// Ensure we're at mininum peer count.
 	minPeers := defaultMinSyncPeers
 	if cs.forced {
@@ -227,8 +225,6 @@ func (cs *chainSyncer) nextSyncOp() *chainSyncOp {
 	if cs.pm.peers.Len() < minPeers {
 		return nil
 	}
-
-	log.Debug("what the fuck2")
 
 	// We have enough peers, check TD.
 	peer := cs.pm.peers.BestPeer()
@@ -245,15 +241,11 @@ func (cs *chainSyncer) nextSyncOp() *chainSyncOp {
 		return nil
 	}
 
-	log.Debug("what the fuck3")
-
 	mode := downloader.FullSync
 	if currentBlock.NumberU64() > 0 {
 		log.Info("Blockchain not empty, auto disabling fast sync")
 		atomic.StoreUint32(&cs.pm.fastSync, 0)
 	}
-
-	log.Debug("what the fuck4")
 
 	if atomic.LoadUint32(&cs.pm.fastSync) == 1 {
 		// Fast sync was explicitly requested, and explicitly granted
@@ -268,13 +260,9 @@ func (cs *chainSyncer) nextSyncOp() *chainSyncOp {
 		mode = downloader.FastSync
 	}
 
-	log.Debug("what the fuck5")
-
 	if mode == downloader.FastSync && cs.pm.blockchain.CurrentFastBlock().Number().Cmp(pBn) >= 0 {
 		return nil
 	}
-
-	log.Debug("what the fuck", "mode", mode, "diff", diff)
 
 	return &chainSyncOp{mode: mode, peer: peer, bn: pBn, head: peerHead, diff: new(big.Int).Sub(pBn, currentBlock.Number())}
 }
