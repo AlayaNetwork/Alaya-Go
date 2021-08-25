@@ -47,7 +47,7 @@ type testTransport struct {
 	closeErr error
 }
 
-func newTestTransport(rpub *ecdsa.PublicKey, fd net.Conn) transport {
+func newTestTransport(id discover.NodeID, fd net.Conn) transport {
 	wrapped := newRLPX(fd).(*rlpx)
 	wrapped.rw = newRLPXFrameRW(fd, secrets{
 		MAC:        zero16,

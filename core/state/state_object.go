@@ -21,11 +21,12 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/AlayaNetwork/Alaya-Go/metrics"
+	"golang.org/x/crypto/sha3"
 	"io"
 	"math/big"
 	"time"
 
-	"github.com/AlayaNetwork/Alaya-Go/crypto/sha3"
+
 
 	"github.com/AlayaNetwork/Alaya-Go/common"
 	cvm "github.com/AlayaNetwork/Alaya-Go/common/vm"
@@ -307,7 +308,7 @@ func (self *stateObject) getPrefixValue(pack, key, value []byte) []byte {
 	prefix := append(self.data.StorageKeyPrefix, pack...)
 	prefix = append(prefix, key...)
 	prefixHash := common.Hash{}
-	keccak := sha3.NewKeccak256()
+	keccak := sha3.NewLegacyKeccak256()
 	keccak.Write(prefix)
 	keccak.Sum(prefixHash[:0])
 	return append(prefixHash[:], value...)

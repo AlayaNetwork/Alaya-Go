@@ -27,6 +27,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"golang.org/x/crypto/sha3"
 	"hash"
 	"io"
 	"io/ioutil"
@@ -40,8 +41,6 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/log"
 
 	"github.com/golang/snappy"
-
-	"golang.org/x/crypto/sha3"
 
 	"github.com/AlayaNetwork/Alaya-Go/crypto"
 	"github.com/AlayaNetwork/Alaya-Go/crypto/ecies"

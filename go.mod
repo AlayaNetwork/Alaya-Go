@@ -16,6 +16,7 @@ require (
 	github.com/deckarep/golang-set v1.7.1
 	github.com/docker/docker v17.12.0-ce-rc1.0.20180625184442-8e610b2b55bf+incompatible
 	github.com/edsrzf/mmap-go v1.0.1-0.20190108065903-904c4ced31cd // indirect
+	github.com/elastic/gosigar v0.14.1
 	github.com/fatih/color v1.3.0
 	github.com/fjl/gencodec v0.0.0-20191126094850-e283372f291f // indirect
 	github.com/fjl/memsize v0.0.0-20180418122429-ca190fb6ffbc
@@ -26,6 +27,7 @@ require (
 	github.com/golang/snappy v0.0.1
 	github.com/gorilla/websocket v1.4.2
 	github.com/hashicorp/golang-lru v0.5.4
+	github.com/herumi/bls v0.0.0-20210731023914-2ffc4ffc1a53
 	github.com/holiman/uint256 v1.1.1
 	github.com/huin/goupnp v0.0.0-20161224104101-679507af18f3
 	github.com/influxdata/influxdb v1.2.3-0.20180221223340-01288bdb0883

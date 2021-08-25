@@ -19,11 +19,11 @@ package node
 import (
 	"crypto/ecdsa"
 	"encoding/hex"
+	"golang.org/x/crypto/sha3"
 	"sync"
 
 	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
 
-	"github.com/AlayaNetwork/Alaya-Go/crypto/sha3"
 	"github.com/AlayaNetwork/Alaya-Go/rlp"
 
 	"github.com/AlayaNetwork/Alaya-Go/common"
@@ -88,7 +88,7 @@ func (chandler *CryptoHandler) IsSignedByNodeID(data interface{}, sig []byte, no
 }
 
 func RlpHash(x interface{}) (h common.Hash) {
-	hw := sha3.NewKeccak256()
+	hw := sha3.NewLegacyKeccak256()
 	rlp.Encode(hw, x)
 	hw.Sum(h[:0])
 	return h

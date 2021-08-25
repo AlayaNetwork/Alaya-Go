@@ -21,14 +21,14 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
+	"golang.org/x/crypto/sha3"
 	"net"
 	"time"
-
-	"golang.org/x/crypto/sha3"
 
 	"github.com/AlayaNetwork/Alaya-Go/common"
 	"github.com/AlayaNetwork/Alaya-Go/common/mclock"
 	"github.com/AlayaNetwork/Alaya-Go/crypto"
+
 	"github.com/AlayaNetwork/Alaya-Go/log"
 	"github.com/AlayaNetwork/Alaya-Go/p2p/netutil"
 	"github.com/AlayaNetwork/Alaya-Go/rlp"

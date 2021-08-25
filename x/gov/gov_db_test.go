@@ -14,11 +14,13 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
+
 package gov
 
 import (
 	"bytes"
 	"fmt"
+	"golang.org/x/crypto/sha3"
 	"math/big"
 
 	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
@@ -36,7 +38,6 @@ import (
 
 	"github.com/AlayaNetwork/Alaya-Go/common"
 	"github.com/AlayaNetwork/Alaya-Go/core/snapshotdb"
-	"github.com/AlayaNetwork/Alaya-Go/crypto/sha3"
 	"github.com/AlayaNetwork/Alaya-Go/rlp"
 )
 
@@ -1044,7 +1045,7 @@ func generateHash(n string) common.Hash {
 }
 
 func rlpHash(x interface{}) (h common.Hash) {
-	hw := sha3.NewKeccak256()
+	hw := sha3.NewLegacyKeccak256()
 	rlp.Encode(hw, x)
 	hw.Sum(h[:0])
 	return h
