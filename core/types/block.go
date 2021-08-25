@@ -20,6 +20,7 @@ package types
 import (
 	"crypto/ecdsa"
 	"fmt"
+	"golang.org/x/crypto/sha3"
 	"io"
 	"math/big"
 	"sort"
@@ -31,7 +32,7 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/common"
 	"github.com/AlayaNetwork/Alaya-Go/common/hexutil"
 	"github.com/AlayaNetwork/Alaya-Go/crypto"
-	"github.com/AlayaNetwork/Alaya-Go/crypto/sha3"
+
 	"github.com/AlayaNetwork/Alaya-Go/log"
 	"github.com/AlayaNetwork/Alaya-Go/rlp"
 )
@@ -146,7 +147,7 @@ func (h *Header) SealHash() (hash common.Hash) {
 func (h *Header) _sealHash() (hash common.Hash) {
 	extra := h.Extra
 
-	hasher := sha3.NewKeccak256()
+	hasher := sha3.NewLegacyKeccak256()
 	if len(h.Extra) > 32 {
 		extra = h.Extra[0:32]
 	}
@@ -198,7 +199,7 @@ func (h *Header) IsInvalid() bool {
 // hasherPool holds Keccak hashers.
 var hasherPool = sync.Pool{
 	New: func() interface{} {
-		return sha3.NewKeccak256()
+		return sha3.NewLegacyKeccak256()
 	},
 }
 

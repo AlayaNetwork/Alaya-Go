@@ -18,6 +18,7 @@ package downloader
 
 import (
 	"fmt"
+	"golang.org/x/crypto/sha3"
 	"hash"
 	"sync"
 	"time"
@@ -25,7 +26,7 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/common"
 	"github.com/AlayaNetwork/Alaya-Go/core/rawdb"
 	"github.com/AlayaNetwork/Alaya-Go/core/state"
-	"github.com/AlayaNetwork/Alaya-Go/crypto/sha3"
+
 	"github.com/AlayaNetwork/Alaya-Go/ethdb"
 	"github.com/AlayaNetwork/Alaya-Go/log"
 	"github.com/AlayaNetwork/Alaya-Go/trie"
@@ -241,7 +242,7 @@ func newStateSync(d *Downloader, root common.Hash) *stateSync {
 	return &stateSync{
 		d:       d,
 		sched:   state.NewStateSync(root, d.stateDB, d.stateBloom),
-		keccak:  sha3.NewKeccak256(),
+		keccak:  sha3.NewLegacyKeccak256(),
 		tasks:   make(map[common.Hash]*stateTask),
 		deliver: make(chan *stateReq),
 		cancel:  make(chan struct{}),

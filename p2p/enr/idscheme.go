@@ -19,11 +19,12 @@ package enr
 import (
 	"crypto/ecdsa"
 	"fmt"
+	"golang.org/x/crypto/sha3"
 	"sync"
 
 	"github.com/AlayaNetwork/Alaya-Go/common/math"
 	"github.com/AlayaNetwork/Alaya-Go/crypto"
-	"github.com/AlayaNetwork/Alaya-Go/crypto/sha3"
+	
 	"github.com/AlayaNetwork/Alaya-Go/rlp"
 )
 
@@ -67,7 +68,7 @@ func SignV4(r *Record, privkey *ecdsa.PrivateKey) error {
 	cpy.Set(ID("v4"))
 	cpy.Set(Secp256k1(privkey.PublicKey))
 
-	h := sha3.NewKeccak256()
+	h := sha3.NewLegacyKeccak256()
 	rlp.Encode(h, cpy.AppendElements(nil))
 	sig, err := crypto.Sign(h.Sum(nil), privkey)
 	if err != nil {
@@ -93,7 +94,7 @@ func (v4ID) Verify(r *Record, sig []byte) error {
 		return fmt.Errorf("invalid public key")
 	}
 
-	h := sha3.NewKeccak256()
+	h := sha3.NewLegacyKeccak256()
 	rlp.Encode(h, r.AppendElements(nil))
 	if !crypto.VerifySignature(entry, h.Sum(nil), sig) {
 		return errInvalidSig
