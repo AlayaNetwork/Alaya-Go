@@ -19,8 +19,9 @@ package node
 import (
 	"crypto/ecdsa"
 	"encoding/hex"
-	"golang.org/x/crypto/sha3"
 	"sync"
+
+	"golang.org/x/crypto/sha3"
 
 	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
 

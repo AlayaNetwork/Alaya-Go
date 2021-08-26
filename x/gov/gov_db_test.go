@@ -14,14 +14,14 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
-
 package gov
 
 import (
 	"bytes"
 	"fmt"
-	"golang.org/x/crypto/sha3"
 	"math/big"
+
+	"golang.org/x/crypto/sha3"
 
 	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
 

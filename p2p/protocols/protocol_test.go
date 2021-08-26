@@ -25,6 +25,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/AlayaNetwork/Alaya-Go/crypto"
+
 	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
 	"github.com/AlayaNetwork/Alaya-Go/rlp"
 
@@ -125,7 +127,7 @@ func newProtocol(pp *p2ptest.TestPeerPool) func(*p2p.Peer, p2p.MsgReadWriter) er
 			case *kill:
 				// demonstrates use of peerPool, killing another peer connection as a response to a message
 				id := msg.C
-				pp.Get(id).Drop(errors.New("killed"))
+				pp.Get(id).Drop()
 				return nil
 
 			case *drop:
@@ -144,8 +146,11 @@ func newProtocol(pp *p2ptest.TestPeerPool) func(*p2p.Peer, p2p.MsgReadWriter) er
 }
 
 func protocolTester(pp *p2ptest.TestPeerPool) *p2ptest.ProtocolTester {
-	conf := adapters.RandomNodeConfig()
-	return p2ptest.NewProtocolTester(conf.ID, 2, newProtocol(pp))
+	prvkey, err := crypto.GenerateKey()
+	if err != nil {
+		panic(err)
+	}
+	return p2ptest.NewProtocolTester(prvkey, 2, newProtocol(pp))
 }
 
 func protoHandshakeExchange(id enode.ID, proto *protoHandshake) []p2ptest.Exchange {
@@ -260,9 +265,13 @@ func TestProtocolHook(t *testing.T) {
 		return peer.Run(handle)
 	}
 
-	conf := adapters.RandomNodeConfig()
-	tester := p2ptest.NewProtocolTester(conf.ID, 2, runFunc)
-	err := tester.TestExchanges(p2ptest.Exchange{
+	prvkey, err := crypto.GenerateKey()
+	if err != nil {
+		panic(err)
+	}
+	tester := p2ptest.NewProtocolTester(prvkey, 2, runFunc)
+	defer tester.Stop()
+	err = tester.TestExchanges(p2ptest.Exchange{
 		Expects: []p2ptest.Expect{
 			{
 				Code: 0,

@@ -253,9 +253,9 @@ func ExpectMsg(r MsgReader, code uint64, content interface{}) error {
 type msgEventer struct {
 	MsgReadWriter
 
-	feed     *event.Feed
-	peerID   enode.ID
-	Protocol string
+	feed          *event.Feed
+	peerID        enode.ID
+	Protocol      string
 	localAddress  string
 	remoteAddress string
 }

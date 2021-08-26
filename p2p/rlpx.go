@@ -27,7 +27,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"golang.org/x/crypto/sha3"
 	"hash"
 	"io"
 	"io/ioutil"
@@ -35,6 +34,8 @@ import (
 	"net"
 	"sync"
 	"time"
+
+	"golang.org/x/crypto/sha3"
 
 	"github.com/AlayaNetwork/Alaya-Go/common/bitutil"
 

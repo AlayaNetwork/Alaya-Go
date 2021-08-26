@@ -21,9 +21,10 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
-	"golang.org/x/crypto/sha3"
 	"net"
 	"time"
+
+	"golang.org/x/crypto/sha3"
 
 	"github.com/AlayaNetwork/Alaya-Go/common"
 	"github.com/AlayaNetwork/Alaya-Go/common/mclock"
