@@ -114,14 +114,6 @@ func (it *insertIterator) current() *types.Block {
 	return it.chain[it.index]
 }
 
-// previous returns the previous block was being processed, or nil
-func (it *insertIterator) previous() *types.Block {
-	if it.index < 1 {
-		return nil
-	}
-	return it.chain[it.index-1]
-}
-
 // first returns the first block in the it.
 func (it *insertIterator) first() *types.Block {
 	return it.chain[0]

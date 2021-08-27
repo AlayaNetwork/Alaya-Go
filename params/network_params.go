@@ -47,11 +47,9 @@ const (
 	// is generated
 	HelperTrieProcessConfirmations = 256
 
-
 	// ImmutabilityThreshold is the number of blocks after which a chain segment is
 	// considered immutable (i.e. soft finality). It is used by the downloader as a
 	// hard limit against deep ancestors, by the blockchain against deep reorgs, by
 	// the freezer as the cutoff treshold and by clique as the snapshot trust limit.
-	//todo 我们出块的速度远比以太坊快，所以该值需要讨论
-	ImmutabilityThreshold = 90000
+	ImmutabilityThreshold = 1350000
 )

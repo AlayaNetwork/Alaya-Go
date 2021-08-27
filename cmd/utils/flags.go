@@ -20,13 +20,14 @@ package utils
 import (
 	"crypto/ecdsa"
 	"fmt"
-	"github.com/AlayaNetwork/Alaya-Go/miner"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/AlayaNetwork/Alaya-Go/miner"
 
 	"github.com/AlayaNetwork/Alaya-Go/core/snapshotdb"
 
