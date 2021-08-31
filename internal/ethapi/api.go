@@ -814,6 +814,11 @@ func DoEstimateGas(ctx context.Context, b Backend, args CallArgs, blockNr rpc.Bl
 			}
 			return true, nil, err // Bail out
 		}
+		if result.Err != nil {
+			if _, ok := result.Err.(*common.BizError); ok {
+				return true, nil, result.Err // Bail out
+			}
+		}
 		return result.Failed(), result, nil
 	}
 	// Execute the binary search and hone in on an executable gas limit
