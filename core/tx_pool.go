@@ -504,9 +504,21 @@ func (pool *TxPool) ForkedReset(newHeader *types.Header, rollback []*types.Block
 	pool.addTxsLocked(reinject, false)
 	log.Debug("Reinjecting stale transactions done", "count", len(reinject), "elapsed", time.Since(t))
 
+	var promoteAddrs []common.Address
+
+	if len(reinject) > 0 {
+		var tmp map[common.Address]struct{}
+		for _, tx := range reinject {
+			tmp[tx.FromAddr(pool.signer)] = struct{}{}
+		}
+		for addr := range tmp {
+			promoteAddrs = append(promoteAddrs, addr)
+		}
+	}
+
 	// Check the queue and move transactions over to the pending if possible
 	// or remove those that have become invalid
-	pool.promoteExecutables(nil)
+	pool.promoteExecutables(promoteAddrs)
 
 	// validate the pool of pending transactions, this will remove
 	// any transactions that have been included in the block or

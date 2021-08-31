@@ -20,11 +20,12 @@ package downloader
 import (
 	"errors"
 	"fmt"
-	"github.com/AlayaNetwork/Alaya-Go/trie"
 	"math/big"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/AlayaNetwork/Alaya-Go/trie"
 
 	ethereum "github.com/AlayaNetwork/Alaya-Go"
 	"github.com/AlayaNetwork/Alaya-Go/core/snapshotdb"
@@ -559,11 +560,6 @@ func (d *Downloader) syncWithPeer(p *peerConnection, hash common.Hash, bn *big.I
 	if err := d.spawnSync(fetchers); err != nil {
 		return err
 	}
-	if d.mode == FastSync {
-		if err := d.setFastSyncStatus(FastSyncDel); err != nil {
-			return err
-		}
-	}
 	return nil
 }
 
@@ -779,7 +775,10 @@ func (d *Downloader) spawnSync(fetchers []func() error) error {
 		go func() { defer d.cancelWg.Done(); errc <- fn() }()
 	}
 	// Wait for the first error, then terminate the others.
-	var err error
+	var (
+		err    error
+		failed bool
+	)
 	for i := 0; i < len(fetchers); i++ {
 		if i == len(fetchers)-1 {
 			// Close the queue when all fetchers have exited.
@@ -787,13 +786,23 @@ func (d *Downloader) spawnSync(fetchers []func() error) error {
 			// it has processed the queue.
 			d.queue.Close()
 		}
-		if err = <-errc; err != nil && err != errCanceled {
-			if d.mode == FastSync {
-				if err := d.setFastSyncStatus(FastSyncFail); err != nil {
-					return err
-				}
+		if err = <-errc; err != nil {
+			failed = true
+			if err != errCanceled {
+				break
 			}
-			break
+		}
+	}
+
+	if d.mode == FastSync {
+		if failed {
+			if err := d.setFastSyncStatus(FastSyncFail); err != nil {
+				return err
+			}
+		} else {
+			if err := d.setFastSyncStatus(FastSyncDel); err != nil {
+				return err
+			}
 		}
 	}
 	d.queue.Close()
