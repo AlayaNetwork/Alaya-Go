@@ -279,12 +279,12 @@ func ExampleMarshalIndent() {
 		"b": 2,
 	}
 
-	b, err := json.MarshalIndent(data, "<prefix>", "<indent>")
+	json, err := json.MarshalIndent(data, "<prefix>", "<indent>")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	fmt.Println(string(b))
+	fmt.Println(string(json))
 	// Output:
 	// {
 	// <prefix><indent>"a": 1,
