@@ -8,15 +8,8 @@ import (
 	"reflect"
 	"testing"
 
-	jsoniter "github.com/json-iterator/go"
+	json2 "github.com/AlayaNetwork/Alaya-Go/common/json"
 )
-
-//func TestEmptyAddress(t *testing.T) {
-//	add := MustBech32ToAddress("")
-//	if add != ZeroAddr {
-//		t.Error("ZeroAddr not compare")
-//	}
-//}
 
 func TestIsStringAddress(t *testing.T) {
 	tests := []struct {
@@ -136,8 +129,6 @@ func TestJsonEncodeWithEIP55(t *testing.T) {
 
 	defaultJsonAddr, _ := json.Marshal(a)
 
-	json2 := jsoniter.ConfigCompatibleWithStandardLibrary
-	json2.RegisterExtension(&AddressExtension{})
 	json2Addr, err1 := json2.Marshal(a)
 	if err1 != nil {
 		t.Error(err1)
