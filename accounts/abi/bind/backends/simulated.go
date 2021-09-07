@@ -340,6 +340,11 @@ func (b *SimulatedBackend) EstimateGas(ctx context.Context, call ethereum.CallMs
 			}
 			return true, nil, err // Bail out
 		}
+		if res.Err != nil {
+			if _, ok := res.Err.(*common.BizError); ok {
+				return true, nil, res.Err // Bail out
+			}
+		}
 		return res.Failed(), res, nil
 	}
 	// Execute the binary search and hone in on an executable gas limit
