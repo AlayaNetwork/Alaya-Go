@@ -21,6 +21,7 @@ import (
 
 	"github.com/AlayaNetwork/Alaya-Go/common"
 	"github.com/AlayaNetwork/Alaya-Go/common/hexutil"
+	json2 "github.com/AlayaNetwork/Alaya-Go/common/json"
 	"github.com/AlayaNetwork/Alaya-Go/rlp"
 )
 
@@ -53,6 +54,32 @@ type Log struct {
 	// The Removed field is true if this log was reverted due to a chain reorganisation.
 	// You must pay attention to this field if you receive logs through a filter query.
 	Removed bool `json:"removed"`
+}
+
+// MarshalJSON2 marshals as JSON.
+func (l Log) MarshalJSON2() ([]byte, error) {
+	type Log struct {
+		Address     common.Address `json:"address" gencodec:"required"`
+		Topics      []common.Hash  `json:"topics" gencodec:"required"`
+		Data        hexutil.Bytes  `json:"data" gencodec:"required"`
+		BlockNumber hexutil.Uint64 `json:"blockNumber"`
+		TxHash      common.Hash    `json:"transactionHash" gencodec:"required"`
+		TxIndex     hexutil.Uint   `json:"transactionIndex" gencodec:"required"`
+		BlockHash   common.Hash    `json:"blockHash"`
+		Index       hexutil.Uint   `json:"logIndex" gencodec:"required"`
+		Removed     bool           `json:"removed"`
+	}
+	var enc Log
+	enc.Address = l.Address
+	enc.Topics = l.Topics
+	enc.Data = l.Data
+	enc.BlockNumber = hexutil.Uint64(l.BlockNumber)
+	enc.TxHash = l.TxHash
+	enc.TxIndex = hexutil.Uint(l.TxIndex)
+	enc.BlockHash = l.BlockHash
+	enc.Index = hexutil.Uint(l.Index)
+	enc.Removed = l.Removed
+	return json2.Marshal(&enc)
 }
 
 type logMarshaling struct {
