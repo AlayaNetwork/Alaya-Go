@@ -83,6 +83,12 @@ var (
 
 	noauthFlag = flag.Bool("noauth", false, "Enables funding requests without authentication")
 	logFlag    = flag.Int("loglevel", 3, "Log level to use for Alaya-Go and the faucet")
+
+	twitterTokenFlag   = flag.String("twitter.token", "", "Bearer token to authenticate with the v2 Twitter API")
+	twitterTokenV1Flag = flag.String("twitter.token.v1", "", "Bearer token to authenticate with the v1.1 Twitter API")
+
+	goerliFlag  = flag.Bool("goerli", false, "Initializes the faucet with G?rli network config")
+	rinkebyFlag = flag.Bool("rinkeby", false, "Initializes the faucet with Rinkeby network config")
 )
 
 var (

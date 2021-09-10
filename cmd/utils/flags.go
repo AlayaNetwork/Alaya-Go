@@ -1045,16 +1045,6 @@ func setTxPool(ctx *cli.Context, cfg *core.TxPoolConfig) {
 //	}
 //
 //}
-
-// SetShhConfig applies shh-related command line flags to the config.
-//func SetShhConfig(ctx *cli.Context, stack *node.Node, cfg *whisper.Config) {
-//	if ctx.GlobalIsSet(WhisperMaxMessageSizeFlag.Name) {
-//		cfg.MaxMessageSize = uint32(ctx.GlobalUint(WhisperMaxMessageSizeFlag.Name))
-//	}
-//	if ctx.GlobalIsSet(WhisperRestrictConnectionBetweenLightClientsFlag.Name) {
-//		cfg.RestrictConnectionBetweenLightClients = true
-//	}
-//}
 func setMiner(ctx *cli.Context, cfg *miner.Config) {
 	if ctx.GlobalIsSet(MinerGasTargetFlag.Name) {
 		cfg.GasFloor = ctx.GlobalUint64(MinerGasTargetFlag.Name)

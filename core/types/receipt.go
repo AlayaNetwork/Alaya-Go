@@ -219,11 +219,10 @@ func (r *ReceiptForStorage) DecodeRLP(s *rlp.Stream) error {
 	}
 	// Try decoding from the newest format for future proofness, then the older one
 	// for old nodes that just upgraded.
-	if err := decodeStoredReceiptRLP(r, blob); err == nil {
-		return nil
-	} else {
+	if err := decodeStoredReceiptRLP(r, blob); err != nil {
 		return err
 	}
+	return nil
 }
 
 func decodeStoredReceiptRLP(r *ReceiptForStorage, blob []byte) error {

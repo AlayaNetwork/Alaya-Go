@@ -116,6 +116,10 @@ func LocalEnv() Environment {
 	return env
 }
 
+func firstLine(s string) string {
+	return strings.Split(s, "\n")[0]
+}
+
 func getDate(commit string) string {
 	if commit == "" {
 		return ""
@@ -129,10 +133,6 @@ func getDate(commit string) string {
 		panic(fmt.Sprintf("failed to parse git commit date: %v", err))
 	}
 	return time.Unix(date, 0).Format("20060102")
-}
-
-func firstLine(s string) string {
-	return strings.Split(s, "\n")[0]
 }
 
 func applyEnvFlags(env Environment) Environment {
