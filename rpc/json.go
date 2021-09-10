@@ -28,7 +28,7 @@ import (
 	"sync"
 	"time"
 
-	jsoniter "github.com/json-iterator/go"
+	json2 "github.com/AlayaNetwork/Alaya-Go/common/json"
 
 	"github.com/AlayaNetwork/Alaya-Go/common"
 )
@@ -47,13 +47,8 @@ const (
 	defaultWriteTimeout = 10 * time.Second // used if context has no deadline
 )
 
-func init() {
-	json2.RegisterExtension(&common.AddressExtension{})
-}
-
 var (
-	null  = json.RawMessage("null")
-	json2 = jsoniter.ConfigCompatibleWithStandardLibrary
+	null = json.RawMessage("null")
 )
 
 type subscriptionResult struct {

@@ -1,6 +1,6 @@
 module github.com/AlayaNetwork/Alaya-Go
 
-go 1.14
+go 1.16
 
 require (
 	github.com/Azure/azure-pipeline-go v0.0.0-20180607212504-7571e8eb0876 // indirect
@@ -18,7 +18,6 @@ require (
 	github.com/edsrzf/mmap-go v1.0.1-0.20190108065903-904c4ced31cd // indirect
 	github.com/elastic/gosigar v0.14.1
 	github.com/fatih/color v1.3.0
-	github.com/fjl/gencodec v0.0.0-20191126094850-e283372f291f // indirect
 	github.com/fjl/memsize v0.0.0-20180418122429-ca190fb6ffbc
 	github.com/go-errors/errors v1.0.2-0.20180813162953-d98b870cc4e0
 	github.com/go-ole/go-ole v1.2.4 // indirect
@@ -27,23 +26,22 @@ require (
 	github.com/golang/snappy v0.0.1
 	github.com/gorilla/websocket v1.4.2
 	github.com/hashicorp/golang-lru v0.5.4
-	github.com/herumi/bls v0.0.0-20210731023914-2ffc4ffc1a53
 	github.com/holiman/uint256 v1.1.1
 	github.com/huin/goupnp v0.0.0-20161224104101-679507af18f3
 	github.com/influxdata/influxdb v1.2.3-0.20180221223340-01288bdb0883
 	github.com/jackpal/go-nat-pmp v1.0.2-0.20160603034137-1fa385a6f458
-	github.com/json-iterator/go v1.1.6
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/karalabe/hid v0.0.0-20170821103837-f00545f9f374
 	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/mattn/go-colorable v0.0.8-0.20170210172801-5411d3eea597
 	github.com/mattn/go-isatty v0.0.0-20170209175615-281032e84ae0 // indirect
 	github.com/mattn/go-runewidth v0.0.13 // indirect
-	github.com/modern-go/reflect2 v1.0.1
 	github.com/mroth/weightedrand v0.3.0
 	github.com/naoina/go-stringutil v0.1.0 // indirect
 	github.com/naoina/toml v0.1.2-0.20170918210437-9fafd6967416
 	github.com/olekukonko/tablewriter v0.0.5
+	github.com/onsi/ginkgo v1.10.3 // indirect
+	github.com/onsi/gomega v1.7.1 // indirect
 	github.com/panjf2000/ants/v2 v2.4.1
 	github.com/pborman/uuid v0.0.0-20170112150404-1b00554d8222
 	github.com/peterh/liner v1.0.1-0.20170902204657-a37ad3984311
