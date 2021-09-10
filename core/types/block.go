@@ -218,7 +218,7 @@ func (h *Header) Signature() []byte {
 	if len(h.Extra) < 32 {
 		return []byte{}
 	}
-	return h.Extra[32:]
+	return h.Extra[32:97]
 }
 
 func (h *Header) ExtraData() []byte {
