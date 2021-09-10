@@ -165,11 +165,6 @@ func (n *Node) Register(constructor ServiceConstructor) error {
 	return nil
 }
 
-// Config returns the configuration of node.
-func (n *Node) Config() *Config {
-	return n.config
-}
-
 // Start creates a live P2P node and starts running it.
 func (n *Node) Start() error {
 	n.lock.Lock()
@@ -275,6 +270,11 @@ func (n *Node) Start() error {
 	n.stop = make(chan struct{})
 
 	return nil
+}
+
+// Config returns the configuration of node.
+func (n *Node) Config() *Config {
+	return n.config
 }
 
 func (n *Node) openDataDir() error {
