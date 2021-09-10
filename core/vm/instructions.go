@@ -17,8 +17,6 @@
 package vm
 
 import (
-	"errors"
-
 	"github.com/holiman/uint256"
 
 	"golang.org/x/crypto/sha3"
@@ -26,10 +24,6 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/common"
 	"github.com/AlayaNetwork/Alaya-Go/core/types"
 	"github.com/AlayaNetwork/Alaya-Go/params"
-)
-
-var (
-	errExecutionReverted = errors.New("execution reverted")
 )
 
 func opAdd(pc *uint64, interpreter *EVMInterpreter, callContext *callCtx) ([]byte, error) {
