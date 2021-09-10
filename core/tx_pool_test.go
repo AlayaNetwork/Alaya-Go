@@ -333,7 +333,7 @@ func TestTransactionQueue(t *testing.T) {
 	tx := transaction(0, 100, key, pool.chainconfig.ChainID)
 	from, _ := deriveSender(tx, pool.chainconfig.ChainID)
 	pool.currentState.AddBalance(from, big.NewInt(1000))
-	pool.requestReset(nil, pool.resetHead.Header())
+	<-pool.requestReset(nil, pool.resetHead.Header())
 
 	pool.enqueueTx(tx.Hash(), tx)
 
@@ -363,7 +363,7 @@ func TestTransactionQueue(t *testing.T) {
 	tx3 := transaction(11, 100, key, pool.chainconfig.ChainID)
 	from, _ = deriveSender(tx1, pool.chainconfig.ChainID)
 	pool.currentState.AddBalance(from, big.NewInt(1000))
-	pool.requestReset(nil, pool.resetHead.Header())
+	<-pool.requestReset(nil, pool.resetHead.Header())
 
 	pool.enqueueTx(tx1.Hash(), tx1)
 	pool.enqueueTx(tx2.Hash(), tx2)
