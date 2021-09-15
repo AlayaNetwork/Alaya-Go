@@ -20,7 +20,7 @@ If you're about to raise an issue because you think you've found a problem with 
 
 The GitHub issue tracker is the preferred channel for [bug reports](#bug-reports), [feature requests](#feature-requests), and [submitting pull requests](#submitting-pull-requests), but please respect the following restrictions:
 
-* Please **search for existing issues**. Help us keep duplicate issues to a minimum by checking to see if someone has already reported your problem or requested your idea.
+* Please do **quick search of existing ones**. If you find similar issue or request already exists, please add your comment to enrich it. Let's avoid having duplicated issues or requests. 
 
 * Please **be civil**. Keep the discussion on topic and respect the opinions of others. See also our [Contributor Code of Conduct](#conduct).
 
@@ -30,32 +30,28 @@ A bug is a _demonstrable problem_ that is caused by the code in the repository. 
 
 Guidelines for bug reports:
 
-1. **Use the GitHub issue search** &mdash; check if the issue has already been
-   reported.
+1. **Use the GitHub issue search** &mdash; check if the issue has already been reported or a very similar one exists.
 
-1. **Check if the issue has been fixed** &mdash; look for [closed issues in the
-   current milestone](https://github.com/AlayaNetwork/Alaya-Go/issues?q=is%3Aissue+is%3Aclosed) or try to reproduce it
-   using the latest `develop` branch.
+1. **Check if the issue has been fixed** &mdash; look for [closed issues in the current milestone](https://github.com/AlayaNetwork/Alaya-Go/issues?q=is%3Aissue+is%3Aclosed) or try to reproduce it using the latest `develop` branch.
 
-A good bug report shouldn't leave others needing to chase you up for more information. Be sure to include the details of your environment and relevant tests that demonstrate the failure.
+A good bug report shouldn't leave others needing to chase you up for more information. Be sure to include the enough details of your environment, current status, test cases, and ideally steps to re-produce the failure.
 
-[Report a bug](https://github.com/AlayaNetwork/Alaya-Go/issues/new?assignees=&labels=type%3Abug&template=bug.md&title=)
+[Report a bug](https://github.com/AlayaNetwork/Alaya-Go/issues/new?assignees=&labels=bug&template=bug.md&title=)
 
 ### Feature Requests
 
 Feature requests are welcome. Before you submit one be sure to have:
 
-1. **Use the GitHub search** and check the feature hasn't already been requested.
-1. Take a moment to think about whether your idea fits with the scope and aims of the project.
-1. Remember, it's up to *you* to make a strong case to convince the project's leaders of the merits of this feature. Please provide as much detail and context as possible, this means explaining the use case and why it is likely to be common.
+1. **Use the GitHub search** and check if a similar feature request exists or not, if yes, support it with your comment.
+1. Take a moment to re-think about whether your idea fits with the scope and aims of the project.
+1. Remember, it's up to *you* to make a strong case to get the community leaders understand and support your feature request. Please provide as much detail and context as possible, this means explaining the typical use cases and why it is likely to be common.
 
 ### Change Requests
 
-Change requests cover both architectural and functional changes to how Alaya works. If you have an idea for a new or different dependency, a refactor, or an improvement to a feature, etc - please be sure to:
+Change requests cover both architectural and functional changes to how Alaya works. If you have an idea for a refactor, or an improvement to a feature, or adding/replacing of dependencies, etc. - please be sure to:
 
 1. **Use the GitHub search** and check someone else didn't get there first
-1. Take a moment to think about the best way to make a case for, and explain what you're thinking. Are you sure this shouldn't really be
-   a [bug report](#bug-reports) or a [feature request](#feature-requests)?  Is it really one idea or is it many? What's the context? What problem are you solving? Why is what you are suggesting better than what's already there?
+1. Take a moment to think about the best way to make a case for, and explain why and what you're thinking. Are you sure this shouldn't be a [bug report](#bug-reports) or a [feature request](#feature-requests)?  Is this the only way to do so or there are many other alternatives? What's the context? What problem are you trying to solve? Why your suggestion is better than existing logic?
 
 ## Working on Alaya
 
@@ -67,13 +63,13 @@ Also, please follow these guidelines when submitting code:
 
 To get it out of the way:
 
-- **[feature/xxx](https://github.com/AlayaNetwork/Alaya-Go/tree/feature/bump-version-to-0.16.0)** is the development for new version feature branch. All work on the next version release happens here so you should generally branch off `feature/xxx`. Do **NOT** use this branch for a production site.
-- **[develop](https://github.com/AlayaNetwork/Alaya-Go/tree/develop)** is the development branch. Bug fixes of the current version can be submitted to this branch . Do **NOT** use this branch for a production site.
-- **[master](https://github.com/AlayaNetwork/Alaya-Go/tree/master)** contains the latest release of Alaya. This branch may be used in production. Do **NOT** use this branch to work on Alaya's source.
+- **[feature/xxx](https://github.com/AlayaNetwork/Alaya-Go/tree/feature/bump-version-to-0.16.0)** is the development for new version feature branch. All work on the next version release happens here so you should generally branch off `feature/xxx`. All feature branches are unstable and NOT ready for production, please do **NOT** use any feature branch for a production.
+- **[develop](https://github.com/AlayaNetwork/Alaya-Go/tree/develop)** is the development branch. Bug fixes of the current version can be submitted to this branch. Do **NOT** use this branch for a production.
+- **[master](https://github.com/AlayaNetwork/Alaya-Go/tree/master)** contains the latest release of Alaya. This is the branch could be used in production. Do **NOT** work on this branch for any Alaya updates. 
 
-### Submitting Pull Requests
+### Submitting Pull Requests (PR)
 
-Pull requests are awesome. If you're looking to raise a PR for something which doesn't have an open issue, please think carefully about [raising an issue](#reporting-an-issue) which your PR can close, especially if you're fixing a bug. This makes it more likely that there will be enough information available for your PR to be properly tested and merged.
+Pull requests are awesome. Raising PR means you are asking to merge your changes into target branch, and closing an existing issue. If you are raising a PR without any open issue related, please [raise one](#reporting-an-issue) in advance, especially if you're fixing a bug. This makes it more likely that there will be enough information available for your PR to be properly tested and merged. 
 
 ### Testing and Quality Assurance
 
