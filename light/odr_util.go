@@ -21,7 +21,6 @@ import (
 	"context"
 
 	"github.com/AlayaNetwork/Alaya-Go/common"
-	"github.com/AlayaNetwork/Alaya-Go/core"
 	"github.com/AlayaNetwork/Alaya-Go/core/rawdb"
 	"github.com/AlayaNetwork/Alaya-Go/core/types"
 	"github.com/AlayaNetwork/Alaya-Go/crypto"
@@ -145,7 +144,7 @@ func GetBlockReceipts(ctx context.Context, odr OdrBackend, hash common.Hash, num
 		genesis := rawdb.ReadCanonicalHash(odr.Database(), 0)
 		config := rawdb.ReadChainConfig(odr.Database(), genesis)
 
-		if err := core.SetReceiptsData(config, block, receipts); err != nil {
+		if err := receipts.DeriveFields(config, block.Hash(), block.NumberU64(), block.Transactions()); err != nil {
 			return nil, err
 		}
 		rawdb.WriteReceipts(odr.Database(), hash, number, receipts)

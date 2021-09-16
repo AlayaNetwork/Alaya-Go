@@ -17,30 +17,19 @@
 package vm
 
 import (
-	"errors"
 	"github.com/holiman/uint256"
-	"math/big"
+
+	"golang.org/x/crypto/sha3"
 	"encoding/hex"
 	"strconv"
 
 	"github.com/AlayaNetwork/Alaya-Go/common"
-	"github.com/AlayaNetwork/Alaya-Go/common/math"
 	"github.com/AlayaNetwork/Alaya-Go/core/types"
 	"github.com/AlayaNetwork/Alaya-Go/log"
 	"github.com/AlayaNetwork/Alaya-Go/params"
 	"github.com/AlayaNetwork/Alaya-Go/rlp"
 	"github.com/AlayaNetwork/Alaya-Go/x/plugin"
 	"github.com/AlayaNetwork/Alaya-Go/x/staking"
-	"golang.org/x/crypto/sha3"
-)
-
-var (
-	bigZero                  = new(big.Int)
-	tt255                    = math.BigPow(2, 255)
-	errWriteProtection       = errors.New("evm: write protection")
-	errReturnDataOutOfBounds = errors.New("evm: return data out of bounds")
-	errExecutionReverted     = errors.New("execution reverted")
-	errMaxCodeSizeExceeded   = errors.New("evm: max code size exceeded")
 )
 
 func opAdd(pc *uint64, interpreter *EVMInterpreter, callContext *callCtx) ([]byte, error) {
@@ -724,6 +713,7 @@ func opCall(pc *uint64, interpreter *EVMInterpreter, callContext *callCtx) ([]by
 	}
 	stack.push(&temp)
 	if err == nil || err == ErrExecutionReverted {
+		ret = common.CopyBytes(ret)
 		callContext.memory.Set(retOffset.Uint64(), retSize.Uint64(), ret)
 	}
 	callContext.contract.Gas += returnGas
@@ -762,6 +752,7 @@ func opCallCode(pc *uint64, interpreter *EVMInterpreter, callContext *callCtx) (
 	}
 	stack.push(&temp)
 	if err == nil || err == ErrExecutionReverted {
+		ret = common.CopyBytes(ret)
 		callContext.memory.Set(retOffset.Uint64(), retSize.Uint64(), ret)
 	}
 	callContext.contract.Gas += returnGas
@@ -789,6 +780,7 @@ func opDelegateCall(pc *uint64, interpreter *EVMInterpreter, callContext *callCt
 	}
 	stack.push(&temp)
 	if err == nil || err == ErrExecutionReverted {
+		ret = common.CopyBytes(ret)
 		callContext.memory.Set(retOffset.Uint64(), retSize.Uint64(), ret)
 	}
 	callContext.contract.Gas += returnGas
@@ -820,6 +812,7 @@ func opStaticCall(pc *uint64, interpreter *EVMInterpreter, callContext *callCtx)
 	}
 	stack.push(&temp)
 	if err == nil || err == ErrExecutionReverted {
+		ret = common.CopyBytes(ret)
 		callContext.memory.Set(retOffset.Uint64(), retSize.Uint64(), ret)
 	}
 	callContext.contract.Gas += returnGas

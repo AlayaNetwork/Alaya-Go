@@ -9,11 +9,13 @@ import (
 	"math/big"
 	"strings"
 
+	"golang.org/x/crypto/sha3"
+
 	"github.com/btcsuite/btcutil/bech32"
 
 	"github.com/AlayaNetwork/Alaya-Go/common/bech32util"
 	"github.com/AlayaNetwork/Alaya-Go/common/hexutil"
-	"github.com/AlayaNetwork/Alaya-Go/crypto/sha3"
+
 	"github.com/AlayaNetwork/Alaya-Go/log"
 )
 
@@ -127,22 +129,17 @@ func IsBech32Address(s string) bool {
 // Bytes gets the string representation of the underlying address.
 func (a Address) Bytes() []byte { return a[:] }
 
-// Big converts an address to a big integer.
-func (a Address) Big() *big.Int { return new(big.Int).SetBytes(a[:]) }
-
 // Hash converts an address to a hash by left-padding it with zeros.
 func (a Address) Hash() Hash { return BytesToHash(a[:]) }
 
-// Deprecated: address to string is use bech32 now
 // Hex returns an EIP55-compliant hex string representation of the address.it's use for node address
 func (a Address) Hex() string {
 	return "0x" + a.HexWithNoPrefix()
 }
 
-// Deprecated: address to string is use bech32 now
 func (a Address) HexWithNoPrefix() string {
 	unchecksummed := hex.EncodeToString(a[:])
-	sha := sha3.NewKeccak256()
+	sha := sha3.NewLegacyKeccak256()
 	sha.Write([]byte(unchecksummed))
 	hash := sha.Sum(nil)
 
@@ -208,8 +205,15 @@ func (a Address) MarshalText() ([]byte, error) {
 	return []byte(v), nil
 }
 
+func (a Address) MarshalText2() ([]byte, error) {
+	return hexutil.Bytes(a[:]).MarshalText()
+}
+
 // UnmarshalText parses a hash in hex syntax.
 func (a *Address) UnmarshalText(input []byte) error {
+	if hexutil.BytesHave0xPrefix(input) {
+		return hexutil.UnmarshalFixedText(addressT.String(), input, a[:])
+	}
 	hrpDecode, converted, err := bech32util.DecodeAndConvert(string(input))
 	if err != nil {
 		return err
@@ -224,7 +228,10 @@ func (a *Address) UnmarshalText(input []byte) error {
 // UnmarshalJSON parses a hash in hex syntax.
 func (a *Address) UnmarshalJSON(input []byte) error {
 	if !isString(input) {
-		return &json.UnmarshalTypeError{Value: "non-string", Type: addressT}
+		return hexutil.ErrNonString(addressT)
+	}
+	if hexutil.BytesHave0xPrefix(input[1 : len(input)-1]) {
+		return hexutil.WrapTypeError(hexutil.UnmarshalFixedText(addressT.String(), input[1:len(input)-1], a[:]), addressT)
 	}
 	hrpDecode, v, err := bech32util.DecodeAndConvert(string(input[1 : len(input)-1]))
 	if err != nil {
@@ -358,7 +365,7 @@ func (a NodeAddress) Hash() Hash { return BytesToHash(a[:]) }
 // Hex returns an EIP55-compliant hex string representation of the address.
 func (a NodeAddress) Hex() string {
 	unchecksummed := hex.EncodeToString(a[:])
-	sha := sha3.NewKeccak256()
+	sha := sha3.NewLegacyKeccak256()
 	sha.Write([]byte(unchecksummed))
 	hash := sha.Sum(nil)
 
@@ -379,7 +386,7 @@ func (a NodeAddress) Hex() string {
 
 func (a NodeAddress) HexWithNoPrefix() string {
 	unchecksummed := hex.EncodeToString(a[:])
-	sha := sha3.NewKeccak256()
+	sha := sha3.NewLegacyKeccak256()
 	sha.Write([]byte(unchecksummed))
 	hash := sha.Sum(nil)
 

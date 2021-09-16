@@ -825,12 +825,10 @@ var testCase = []*Case{
 			deployContract(self.ctx, addr1, addr2, readContractCode())
 		},
 		check: func(self *Case, err error) bool {
-
 			newContract := common.BytesToAddress(self.ctx.Output)
-			if newContract.Big().Cmp(common.Big0) != 0 {
+			if got := new(big.Int).SetBytes(newContract.Bytes()); got.Cmp(common.Big0) != 0 {
 				return false
 			}
-
 			newState := self.ctx.evm.StateDB.(*mock.MockStateDB)
 			oldState := self.stateDb.(*mock.MockStateDB)
 			if !oldState.Equal(newState) {
@@ -1367,12 +1365,10 @@ var testCase = []*Case{
 			self.ctx.evm.interpreters = append(self.ctx.evm.interpreters, NewWASMInterpreter(self.ctx.evm, self.ctx.config))
 		},
 		check: func(self *Case, err error) bool {
-
 			newContract := common.BytesToAddress(self.ctx.Output)
-			if newContract.Big().Cmp(common.Big0) != 0 {
+			if got := new(big.Int).SetBytes(newContract.Bytes()); got.Cmp(common.Big0) != 0 {
 				return false
 			}
-
 			oldBalance := self.ctx.evm.StateDB.GetBalance(addr2)
 			if oldBalance.Cmp(big.NewInt(int64(1000))) != 0 {
 				return false
