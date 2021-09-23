@@ -1,41 +1,15 @@
 package rawdb
 
 import (
-	"encoding/json"
 	"testing"
 
 	"github.com/AlayaNetwork/Alaya-Go/crypto"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/AlayaNetwork/Alaya-Go/common"
 	"github.com/AlayaNetwork/Alaya-Go/params"
-	"github.com/AlayaNetwork/Alaya-Go/x/xcom"
-
-	"github.com/stretchr/testify/assert"
 )
-
-func TestReadWriteDatabaseVersion(t *testing.T) {
-	chainDb := NewMemoryDatabase()
-	bcVersion := ReadDatabaseVersion(chainDb)
-	assert.Equal(t, 0, bcVersion, "got: %d, want: %d", bcVersion, 0)
-
-	WriteDatabaseVersion(chainDb, 1)
-	bcVersion = ReadDatabaseVersion(chainDb)
-	assert.Equal(t, 1, bcVersion, "got: %d, want: %d", bcVersion, 1)
-}
-
-func TestReadWriteEconomicModel(t *testing.T) {
-
-	chainDb := NewMemoryDatabase()
-	ec := ReadEconomicModel(chainDb, common.ZeroHash)
-	assert.Nil(t, ec, "the ec is not nil")
-
-	WriteEconomicModel(chainDb, common.ZeroHash, xcom.GetEc(xcom.DefaultTestNet))
-	ec = ReadEconomicModel(chainDb, common.ZeroHash)
-	assert.NotNil(t, ec, "the ec is nil")
-
-	b, _ := json.Marshal(ec)
-	t.Log(string(b))
-}
 
 func TestReadWriteChainConfig(t *testing.T) {
 
@@ -59,7 +33,7 @@ func TestReadWritePreimages(t *testing.T) {
 
 	preimages := make(map[common.Hash][]byte)
 	preimages[hash] = common.CopyBytes(blob)
-	WritePreimages(chainDb, 0, preimages)
+	WritePreimages(chainDb, preimages)
 
 	preimage = ReadPreimage(chainDb, hash)
 	assert.NotEqual(t, 0, len(preimage), "the preimage is nil")

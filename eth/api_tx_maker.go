@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"golang.org/x/crypto/sha3"
 	"hash/fnv"
 	"math/big"
 	"math/rand"
@@ -17,7 +18,7 @@ import (
 
 	"github.com/AlayaNetwork/Alaya-Go/rlp"
 
-	"github.com/AlayaNetwork/Alaya-Go/crypto/sha3"
+
 
 	"github.com/AlayaNetwork/Alaya-Go/core/rawdb"
 
@@ -128,7 +129,7 @@ func (txg *TxGenAPI) makeTransaction(tx, evm, wasm uint, totalTxPer, activeTxPer
 	}
 	state.ClearReference()
 
-	singine := types.NewEIP155Signer(new(big.Int).SetInt64(txg.eth.chainConfig.ChainID.Int64()))
+	singine := types.NewEIP155Signer(new(big.Int).SetInt64(txg.eth.blockchain.Config().ChainID.Int64()))
 
 	txsCh := make(chan []*types.Transaction, 2)
 
@@ -202,7 +203,7 @@ func (txg *TxGenAPI) makeTransaction(tx, evm, wasm uint, totalTxPer, activeTxPer
 			case res := <-blockQCCh:
 				txm.blockProduceTime = time.Now()
 				ttf, latency, sendTime := int64(0), int64(0), int64(0)
-				headerTime := common.MillisToTime(res.Header().Time.Int64()).UnixNano()
+				headerTime := common.MillisToTime(int64(res.Header().Time)).UnixNano()
 				currentTime := txm.blockProduceTime.UnixNano()
 				length := 0
 
@@ -339,7 +340,7 @@ func (txg *TxGenAPI) DeployContracts(prikey string, configPath string) error {
 		defer currentState.ClearReference()
 		account := crypto.PubkeyToAddress(pri.PublicKey)
 		nonce := currentState.GetNonce(account)
-		singine := types.NewEIP155Signer(new(big.Int).SetInt64(txg.eth.chainConfig.ChainID.Int64()))
+		singine := types.NewEIP155Signer(new(big.Int).SetInt64(txg.eth.blockchain.Config().ChainID.Int64()))
 		gasPrice := txg.eth.txPool.GasPrice()
 
 		for _, input := range [][]*TxGenContractConfig{txgenInput.Wasm, txgenInput.Evm} {
@@ -625,19 +626,19 @@ func (s *TxMakeManger) pickTxReceive() common.Address {
 
 var (
 	evmErc20Hash = func() []byte {
-		prifix := sha3.NewKeccak256()
+		prifix := sha3.NewLegacyKeccak256()
 		prifix.Write([]byte("transfer(address,uint256)"))
 		return prifix.Sum(nil)
 	}()
 
 	evmKVHash = func() []byte {
-		prifix := sha3.NewKeccak256()
+		prifix := sha3.NewLegacyKeccak256()
 		prifix.Write([]byte("SetKV(uint256,uint256)"))
 		return prifix.Sum(nil)
 	}()
 
 	evmKVHashAddr = func() []byte {
-		prifix := sha3.NewKeccak256()
+		prifix := sha3.NewLegacyKeccak256()
 		prifix.Write([]byte("SetKV(uint256)"))
 		return prifix.Sum(nil)
 	}()

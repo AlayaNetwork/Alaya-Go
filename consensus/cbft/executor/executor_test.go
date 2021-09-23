@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
-
 package executor
 
 import (
@@ -35,7 +34,7 @@ func NewBlock(parent common.Hash, number uint64) *types.Block {
 	header := &types.Header{
 		Number:     big.NewInt(int64(number)),
 		ParentHash: parent,
-		Time:       big.NewInt(time.Now().UnixNano()),
+		Time:       uint64(time.Now().UnixNano()),
 		Extra:      make([]byte, 77),
 		Coinbase:   common.Address{},
 		GasLimit:   10000000000,
