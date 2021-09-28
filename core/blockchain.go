@@ -1571,7 +1571,7 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals bool) (int, []
 func (bc *BlockChain) ProcessDirectly(block *types.Block, state *state.StateDB, parent *types.Block) (types.Receipts, error) {
 	// Process block using the parent state as reference point.
 	start := time.Now()
-	receipts, logs, usedGas, err := bc.processor.Process(block, state, bc.vmConfig)
+	receipts, _, usedGas, err := bc.processor.Process(block, state, bc.vmConfig)
 	if err != nil {
 		log.Error("Failed to ProcessDirectly", "blockNumber", block.Number(), "blockHash", block.Hash(), "err", err)
 		bc.reportBlock(block, receipts, err)
@@ -1587,10 +1587,7 @@ func (bc *BlockChain) ProcessDirectly(block *types.Block, state *state.StateDB, 
 		return nil, err
 	}
 	blockValidationTimer.UpdateSince(start)
-	//logs
-	if logs != nil {
-		bc.logsFeed.Send(logs)
-	}
+
 	bc.BlockExecuteFeed.Send(block)
 
 	return receipts, nil
