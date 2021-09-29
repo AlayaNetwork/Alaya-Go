@@ -1310,7 +1310,7 @@ func CallContract(proc *exec.Process, addrPtr, args, argsLen, val, valLen, callC
 		status = 0
 	}
 
-	if err == nil || err == errExecutionReverted {
+	if err == nil || err == ErrExecutionReverted {
 		ctx.CallOut = ret
 	}
 
@@ -1377,7 +1377,7 @@ func DelegateCallContract(proc *exec.Process, addrPtr, params, paramsLen, callCo
 		status = 0
 	}
 
-	if err == nil || err == errExecutionReverted {
+	if err == nil || err == ErrExecutionReverted {
 		ctx.CallOut = ret
 	}
 
@@ -1445,7 +1445,7 @@ func StaticCallContract(proc *exec.Process, addrPtr, params, paramsLen, callCost
 		status = 0
 	}
 
-	if err == nil || err == errExecutionReverted {
+	if err == nil || err == ErrExecutionReverted {
 		ctx.CallOut = ret
 	}
 
@@ -1635,14 +1635,14 @@ func MigrateInnerContract(proc *exec.Process, newAddr, val, valLen, callCost, ca
 	// when we're in homestead this also counts for code storage gas errors.
 	if maxCodeSizeExceeded || (err != nil && err != ErrCodeStoreOutOfGas) {
 		ctx.evm.RevertToDBSnapshot(snapshotForSnapshotDB, snapshotForStateDB)
-		if err != errExecutionReverted {
+		if err != ErrExecutionReverted {
 			contract.UseGas(contract.Gas)
 		}
 	}
 
 	// Assign err if contract code size exceeds the max while the err is still empty.
 	if maxCodeSizeExceeded && err == nil {
-		err = errMaxCodeSizeExceeded
+		err = ErrMaxCodeSizeExceeded
 	}
 	ctx.contract.Gas += contract.Gas
 	if nil != err {
@@ -2263,14 +2263,14 @@ func CreateContract(proc *exec.Process, newAddr, val, valLen, callCost, callCost
 	// when we're in homestead this also counts for code storage gas errors.
 	if maxCodeSizeExceeded || (err != nil && err != ErrCodeStoreOutOfGas) {
 		ctx.evm.RevertToDBSnapshot(snapshotForSnapshotDB, snapshotForStateDB)
-		if err != errExecutionReverted {
+		if err != ErrExecutionReverted {
 			contract.UseGas(contract.Gas)
 		}
 	}
 
 	// Assign err if contract code size exceeds the max while the err is still empty.
 	if maxCodeSizeExceeded && err == nil {
-		err = errMaxCodeSizeExceeded
+		err = ErrMaxCodeSizeExceeded
 	}
 	ctx.contract.Gas += contract.Gas
 	if nil != err {

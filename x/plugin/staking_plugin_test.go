@@ -341,7 +341,7 @@ func buildPrepareData(genesis *types.Block, t *testing.T) (*types.Header, error)
 		TxHash:      types.EmptyRootHash,
 		ReceiptHash: types.EmptyRootHash,
 		Number:      newNumber,
-		Time:        big.NewInt(time.Now().UnixNano()),
+		Time:        uint64(time.Now().UnixNano()),
 		Extra:       make([]byte, 97),
 		Nonce:       types.EncodeNonce(nonce),
 	}
@@ -710,7 +710,7 @@ func TestStakingPlugin_EndBlock(t *testing.T) {
 		TxHash:      types.EmptyRootHash,
 		ReceiptHash: types.EmptyRootHash,
 		Number:      currentNumber,
-		Time:        big.NewInt(time.Now().UnixNano()),
+		Time:        uint64(time.Now().UnixNano()),
 		Extra:       make([]byte, 97),
 		Nonce:       types.EncodeNonce(nonce),
 	}
@@ -765,7 +765,7 @@ func TestStakingPlugin_EndBlock(t *testing.T) {
 		TxHash:      types.EmptyRootHash,
 		ReceiptHash: types.EmptyRootHash,
 		Number:      currentNumber,
-		Time:        big.NewInt(time.Now().UnixNano()),
+		Time:        uint64(time.Now().UnixNano()),
 		Extra:       make([]byte, 97),
 		Nonce:       types.EncodeNonce(nonce),
 	}
@@ -1027,7 +1027,7 @@ func TestStakingPlugin_Confirmed(t *testing.T) {
 		TxHash:      types.EmptyRootHash,
 		ReceiptHash: types.EmptyRootHash,
 		Number:      currentNumber,
-		Time:        big.NewInt(time.Now().UnixNano()),
+		Time:        uint64(time.Now().UnixNano()),
 		Extra:       make([]byte, 97),
 		Nonce:       types.EncodeNonce(nonce),
 	}

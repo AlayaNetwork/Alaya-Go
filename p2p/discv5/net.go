@@ -21,13 +21,14 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
+	"golang.org/x/crypto/sha3"
 	"net"
 	"time"
 
 	"github.com/AlayaNetwork/Alaya-Go/common"
 	"github.com/AlayaNetwork/Alaya-Go/common/mclock"
 	"github.com/AlayaNetwork/Alaya-Go/crypto"
-	"github.com/AlayaNetwork/Alaya-Go/crypto/sha3"
+
 	"github.com/AlayaNetwork/Alaya-Go/log"
 	"github.com/AlayaNetwork/Alaya-Go/p2p/netutil"
 	"github.com/AlayaNetwork/Alaya-Go/rlp"
@@ -1235,7 +1236,7 @@ func (net *Network) checkTopicRegister(data *topicRegister) (*pong, error) {
 }
 
 func rlpHash(x interface{}) (h common.Hash) {
-	hw := sha3.NewKeccak256()
+	hw := sha3.NewLegacyKeccak256()
 	rlp.Encode(hw, x)
 	hw.Sum(h[:0])
 	return h

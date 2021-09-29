@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
-
 package rules
 
 import (
@@ -26,13 +25,14 @@ import (
 
 	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/utils"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/AlayaNetwork/Alaya-Go/common"
 	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/protocols"
 	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/state"
 	ctypes "github.com/AlayaNetwork/Alaya-Go/consensus/cbft/types"
 	"github.com/AlayaNetwork/Alaya-Go/core/types"
 	"github.com/AlayaNetwork/Alaya-Go/params"
-	"github.com/stretchr/testify/assert"
 )
 
 const (
@@ -59,14 +59,14 @@ const (
 	epochTooHigh       = "new epoch, need fetch blocks"
 )
 
-func NewBlock(parent common.Hash, number uint64, blockTime *big.Int) *types.Block {
+func NewBlock(parent common.Hash, number uint64, blockTime uint64) *types.Block {
 	header := &types.Header{
 		Number:     big.NewInt(int64(number)),
 		ParentHash: parent,
-		Time:       big.NewInt(time.Now().UnixNano() / 1e6),
+		Time:       uint64(time.Now().UnixNano() / 1e6),
 		Coinbase:   common.BytesToAddress(utils.Rand32Bytes(32)),
 	}
-	if blockTime != nil {
+	if blockTime != 0 {
 		header.Time = blockTime
 	}
 	block := types.NewBlockWithHeader(header)
@@ -94,7 +94,7 @@ func newEpochViewNumberState(epoch, viewNumber uint64, amount uint32) (*state.Vi
 	viewState.ResetView(epoch, viewNumber)
 	viewState.SetViewTimer(2)
 
-	parent := NewBlock(common.Hash{}, 0, nil)
+	parent := NewBlock(common.Hash{}, 0, 0)
 
 	viewState.SetHighestQCBlock(parent)
 	viewState.SetHighestLockBlock(parent)
@@ -103,7 +103,7 @@ func newEpochViewNumberState(epoch, viewNumber uint64, amount uint32) (*state.Vi
 	blockTree := ctypes.NewBlockTree(parent, nil)
 
 	for i := uint32(0); i < amount; i++ {
-		block := NewBlock(parent.Hash(), parent.NumberU64()+1, nil)
+		block := NewBlock(parent.Hash(), parent.NumberU64()+1, 0)
 		qc := prepareQC(epoch, epoch, block.Hash(), block.NumberU64(), i)
 		viewState.AddQCBlock(block, qc)
 		viewState.AddQC(qc)
@@ -149,7 +149,7 @@ func invokePrepareBlockRules(t *testing.T, rules SafetyRules, tests []testCase) 
 }
 
 func testBaseSafetyRulesPrepareBlockRules(t *testing.T, viewState *state.ViewState, blockTree *ctypes.BlockTree, rules SafetyRules, amount uint32) {
-	newPrepareBlock := func(epoch, viewNumber uint64, parentHash common.Hash, blockNumber uint64, blockIndex uint32, viewChangeQC *ctypes.ViewChangeQC, blockTime *big.Int) *protocols.PrepareBlock {
+	newPrepareBlock := func(epoch, viewNumber uint64, parentHash common.Hash, blockNumber uint64, blockIndex uint32, viewChangeQC *ctypes.ViewChangeQC, blockTime uint64) *protocols.PrepareBlock {
 		return &protocols.PrepareBlock{
 			Epoch:        epoch,
 			ViewNumber:   viewNumber,
@@ -176,22 +176,22 @@ func testBaseSafetyRulesPrepareBlockRules(t *testing.T, viewState *state.ViewSta
 	nextIndex := viewState.NextViewBlockIndex()
 
 	tests := []testCase{
-		{newCommonError(overIndexLimit), true, false, false, false, newPrepareBlock(Epoch, ViewNumber, qcBlock.Hash(), qcBlock.NumberU64()+1, amount+1, nil, nil), nil, nil},
-		{newCommonError(existIndex), true, false, false, false, newPrepareBlock(Epoch, ViewNumber, qcBlock.Hash(), qcBlock.NumberU64()+1, 1, nil, nil), nil, nil},
-		{newCommonError(notExistPreIndex), false, false, false, true, newPrepareBlock(Epoch, ViewNumber, common.BytesToHash(utils.Rand32Bytes(32)), qcBlock.NumberU64()+1, nextIndex+1, nil, nil), nil, nil},
-		{newCommonError(diffPreIndexBlock), true, false, false, false, newPrepareBlock(Epoch, ViewNumber, common.BytesToHash(utils.Rand32Bytes(32)), qcBlock.NumberU64()+1, nextIndex, nil, nil), nil, nil},
-		{newCommonError(backwardPrepare), true, false, false, false, newPrepareBlock(Epoch, ViewNumber, qcBlock.Hash(), qcBlock.NumberU64()+1, nextIndex, nil, new(big.Int).Sub(qcBlock.Time(), big.NewInt(1))), nil, nil},
-		{newCommonError(advancePrepare), true, false, false, false, newPrepareBlock(Epoch, ViewNumber, qcBlock.Hash(), qcBlock.NumberU64()+1, nextIndex, nil, big.NewInt(common.Millis(time.Now().Add(riseTimeLimit*10000)))), nil, nil},
-		{nil, false, false, false, false, newPrepareBlock(Epoch, ViewNumber, qcBlock.Hash(), qcBlock.NumberU64(), nextIndex, nil, nil), nil, nil},
+		{newCommonError(overIndexLimit), true, false, false, false, newPrepareBlock(Epoch, ViewNumber, qcBlock.Hash(), qcBlock.NumberU64()+1, amount+1, nil, 0), nil, nil},
+		{newCommonError(existIndex), true, false, false, false, newPrepareBlock(Epoch, ViewNumber, qcBlock.Hash(), qcBlock.NumberU64()+1, 1, nil, 0), nil, nil},
+		{newCommonError(notExistPreIndex), false, false, false, true, newPrepareBlock(Epoch, ViewNumber, common.BytesToHash(utils.Rand32Bytes(32)), qcBlock.NumberU64()+1, nextIndex+1, nil, 0), nil, nil},
+		{newCommonError(diffPreIndexBlock), true, false, false, false, newPrepareBlock(Epoch, ViewNumber, common.BytesToHash(utils.Rand32Bytes(32)), qcBlock.NumberU64()+1, nextIndex, nil, 0), nil, nil},
+		{newCommonError(backwardPrepare), true, false, false, false, newPrepareBlock(Epoch, ViewNumber, qcBlock.Hash(), qcBlock.NumberU64()+1, nextIndex, nil, qcBlock.Time()-1), nil, nil},
+		{newCommonError(advancePrepare), true, false, false, false, newPrepareBlock(Epoch, ViewNumber, qcBlock.Hash(), qcBlock.NumberU64()+1, nextIndex, nil, uint64(common.Millis(time.Now().Add(riseTimeLimit*10000)))), nil, nil},
+		{nil, false, false, false, false, newPrepareBlock(Epoch, ViewNumber, qcBlock.Hash(), qcBlock.NumberU64(), nextIndex, nil, 0), nil, nil},
 	}
 	invokePrepareBlockRules(t, rules, tests)
 	// change the view
 	viewState.ResetView(Epoch, ViewNumber+1)
 	tests = []testCase{
-		{newCommonError(firstBlockNotQCChild), true, false, false, false, newPrepareBlock(Epoch, ViewNumber+1, commitBlock.Hash(), commitBlock.NumberU64()+1, 0, nil, nil), nil, nil},
-		{newCommonError(viewNumberTooLow), true, false, false, false, newPrepareBlock(Epoch, ViewNumber, qcBlock.Hash(), qcBlock.NumberU64()+1, 1, nil, nil), nil, nil},
-		{newViewError(needChangeView), false, false, true, false, newPrepareBlock(Epoch, ViewNumber+2, qcBlock.Hash(), qcBlock.NumberU64()+1, 0, newViewChangeQC(Epoch, ViewNumber+1, qcBlock.Hash(), qcBlock.NumberU64()), nil), nil, nil},
-		{newFetchError(needFetchBlock), false, true, false, false, newPrepareBlock(Epoch+1, ViewNumber, qcBlock.Hash(), qcBlock.NumberU64()+1, 1, nil, nil), nil, nil},
+		{newCommonError(firstBlockNotQCChild), true, false, false, false, newPrepareBlock(Epoch, ViewNumber+1, commitBlock.Hash(), commitBlock.NumberU64()+1, 0, nil, 0), nil, nil},
+		{newCommonError(viewNumberTooLow), true, false, false, false, newPrepareBlock(Epoch, ViewNumber, qcBlock.Hash(), qcBlock.NumberU64()+1, 1, nil, 0), nil, nil},
+		{newViewError(needChangeView), false, false, true, false, newPrepareBlock(Epoch, ViewNumber+2, qcBlock.Hash(), qcBlock.NumberU64()+1, 0, newViewChangeQC(Epoch, ViewNumber+1, qcBlock.Hash(), qcBlock.NumberU64()), 0), nil, nil},
+		{newFetchError(needFetchBlock), false, true, false, false, newPrepareBlock(Epoch+1, ViewNumber, qcBlock.Hash(), qcBlock.NumberU64()+1, 1, nil, 0), nil, nil},
 	}
 	invokePrepareBlockRules(t, rules, tests)
 	// change the view

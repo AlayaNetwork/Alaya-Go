@@ -22,6 +22,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/AlayaNetwork/Alaya-Go/params"
+
 	"github.com/AlayaNetwork/Alaya-Go/common"
 	"github.com/AlayaNetwork/Alaya-Go/crypto"
 )
@@ -35,6 +37,17 @@ var (
 type sigCache struct {
 	signer Signer
 	from   common.Address
+}
+
+// todo we may  support EIP2930 soon
+// MakeSigner returns a Signer based on the given chain config and block number.
+func MakeSigner(config *params.ChainConfig, blockNumber *big.Int) Signer {
+	var signer Signer
+	switch {
+	case config.IsEIP155(blockNumber):
+		signer = NewEIP155Signer(config.ChainID)
+	}
+	return signer
 }
 
 // SignTx signs the transaction using the given signer and private key

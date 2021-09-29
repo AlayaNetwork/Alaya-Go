@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
-
 package state
 
 import (
@@ -22,12 +21,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/AlayaNetwork/Alaya-Go/common"
 	"github.com/AlayaNetwork/Alaya-Go/common/math"
 	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/protocols"
 	ctypes "github.com/AlayaNetwork/Alaya-Go/consensus/cbft/types"
 	"github.com/AlayaNetwork/Alaya-Go/core/types"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestNewViewState(t *testing.T) {
@@ -185,7 +185,7 @@ func newBlock(number uint64) *types.Block {
 	header := &types.Header{
 		Number:     big.NewInt(int64(number)),
 		ParentHash: common.Hash{},
-		Time:       big.NewInt(time.Now().UnixNano()),
+		Time:       uint64(time.Now().UnixNano()),
 		Extra:      nil,
 	}
 	block := types.NewBlockWithHeader(header)
