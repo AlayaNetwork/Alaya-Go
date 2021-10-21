@@ -22,6 +22,8 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
+
 	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/evidence"
 
 	"github.com/AlayaNetwork/Alaya-Go/crypto/bls"
@@ -29,7 +31,6 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/common"
 	"github.com/AlayaNetwork/Alaya-Go/common/hexutil"
 	"github.com/AlayaNetwork/Alaya-Go/core/snapshotdb"
-	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
 	"github.com/AlayaNetwork/Alaya-Go/rlp"
 	"github.com/AlayaNetwork/Alaya-Go/x/plugin"
 	"github.com/AlayaNetwork/Alaya-Go/x/staking"
@@ -44,7 +45,7 @@ func TestSlashingContract_ReportMutiSign(t *testing.T) {
 		t.Fatal(err)
 	}
 	addr := common.MustBech32ToAddress("atx1r9tx0n00etv5c5smmlctlpg8jas7p78nmnfw8v")
-	nodeId, err := discover.HexID("51c0559c065400151377d71acd7a17282a7c8abcfefdb11992dcecafde15e100b8e31e1a5e74834a04792d016f166c80b9923423fe280570e8131debf591d483")
+	nodeId, err := enode.HexIDv0("51c0559c065400151377d71acd7a17282a7c8abcfefdb11992dcecafde15e100b8e31e1a5e74834a04792d016f166c80b9923423fe280570e8131debf591d483")
 	if nil != err {
 		t.Fatal(err)
 	}
@@ -173,7 +174,7 @@ func TestSlashingContract_CheckMutiSign(t *testing.T) {
 	var params [][]byte
 	params = make([][]byte, 0)
 
-	nodeId, err := discover.HexID("51c0559c065400151377d71acd7a17282a7c8abcfefdb11992dcecafde15e100b8e31e1a5e74834a04792d016f166c80b9923423fe280570e8131debf591d483")
+	nodeId, err := enode.HexIDv0("51c0559c065400151377d71acd7a17282a7c8abcfefdb11992dcecafde15e100b8e31e1a5e74834a04792d016f166c80b9923423fe280570e8131debf591d483")
 	if nil != err {
 		t.Fatal(err)
 	}

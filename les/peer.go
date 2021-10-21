@@ -18,7 +18,6 @@
 package les
 
 import (
-	"crypto/ecdsa"
 	"errors"
 	"fmt"
 	"math/big"
@@ -51,7 +50,6 @@ const (
 
 type peer struct {
 	*p2p.Peer
-	pubKey *ecdsa.PublicKey
 
 	rw p2p.MsgReadWriter
 
@@ -80,11 +78,9 @@ type peer struct {
 
 func newPeer(version int, network uint64, p *p2p.Peer, rw p2p.MsgReadWriter) *peer {
 	id := p.ID()
-	pubKey, _ := id.Pubkey()
 
 	return &peer{
 		Peer:        p,
-		pubKey:      pubKey,
 		rw:          rw,
 		version:     version,
 		network:     network,
@@ -104,9 +100,9 @@ func (p *peer) queueSend(f func()) {
 // Info gathers and returns a collection of metadata known about a peer.
 func (p *peer) Info() *eth.PeerInfo {
 	return &eth.PeerInfo{
-		Version:    p.version,
-		BN:         new(big.Int).SetUint64(p.headInfo.Number),
-		Head:       fmt.Sprintf("%x", p.Head()),
+		Version: p.version,
+		BN:      new(big.Int).SetUint64(p.headInfo.Number),
+		Head:    fmt.Sprintf("%x", p.Head()),
 	}
 }
 

@@ -81,10 +81,10 @@ func (suit *EvidenceTestSuite) TestViewChangeDuplicate() {
 		suit.blockOne.Hash(), suit.blockOne.NumberU64(), suit.view.secondProposerIndex(), suit.blockOneQC.BlockQC)
 	viewChange2 := mockViewChange(suit.view.secondProposerBlsKey(), suit.epoch, suit.oldViewNumber,
 		suit.view.genesisBlock.Hash(), suit.view.genesisBlock.NumberU64(), suit.view.secondProposerIndex(), nil)
-	if err := suit.view.firstProposer().OnViewChange(suit.view.secondProposer().NodeID().String(), viewChange1); err != nil {
+	if err := suit.view.firstProposer().OnViewChange(suit.view.secondProposer().Node().ID().String(), viewChange1); err != nil {
 		suit.T().Fatal(err.Error())
 	}
-	if err := suit.view.firstProposer().OnViewChange(suit.view.secondProposer().NodeID().String(), viewChange2); err == nil {
+	if err := suit.view.firstProposer().OnViewChange(suit.view.secondProposer().Node().ID().String(), viewChange2); err == nil {
 		suit.T().Fatal("fail")
 	}
 	ev := suit.view.firstProposer().Evidences()
@@ -168,13 +168,13 @@ func (suit *EvidenceTestSuite) TestPrepareBlockDuplicate() {
 	prepareBlock1 := mockPrepareBlock(suit.view.secondProposerBlsKey(), suit.epoch,
 		suit.oldViewNumber+1, 0,
 		suit.view.secondProposerIndex(), block1, qc, nil)
-	if err := suit.view.firstProposer().OnPrepareBlock(suit.view.secondProposer().NodeID().String(), prepareBlock1); err != nil {
+	if err := suit.view.firstProposer().OnPrepareBlock(suit.view.secondProposer().Node().ID().String(), prepareBlock1); err != nil {
 		suit.T().Fatal(err.Error())
 	}
 	// time.Sleep(time.Millisecond * 10)
 	prepareBlock2 := mockPrepareBlock(suit.view.secondProposerBlsKey(), suit.epoch, suit.oldViewNumber+1, 0,
 		suit.view.secondProposerIndex(), block2, qc, nil)
-	if err := suit.view.firstProposer().OnPrepareBlock(suit.view.secondProposer().NodeID().String(), prepareBlock2); err == nil {
+	if err := suit.view.firstProposer().OnPrepareBlock(suit.view.secondProposer().Node().ID().String(), prepareBlock2); err == nil {
 		suit.T().Error("FAIL")
 	} else {
 		fmt.Println(err.Error())
@@ -284,10 +284,10 @@ func (suit *EvidenceTestSuite) TestPrepareVoteDuplicate() {
 	prepareVote2 := mockPrepareVote(suit.view.firstProposerBlsKey(), suit.epoch, suit.oldViewNumber, 0,
 		suit.view.firstProposerIndex(), block1.Hash(),
 		block1.NumberU64(), nil)
-	if err := suit.view.secondProposer().OnPrepareVote(suit.view.firstProposer().NodeID().String(), prepareVote1); err != nil {
+	if err := suit.view.secondProposer().OnPrepareVote(suit.view.firstProposer().Node().ID().String(), prepareVote1); err != nil {
 		suit.T().Fatal(err.Error())
 	}
-	if err := suit.view.secondProposer().OnPrepareVote(suit.view.firstProposer().NodeID().String(), prepareVote2); err == nil {
+	if err := suit.view.secondProposer().OnPrepareVote(suit.view.firstProposer().Node().ID().String(), prepareVote2); err == nil {
 		suit.T().Fatal("FAIL")
 	}
 	ev := suit.view.secondProposer().Evidences()

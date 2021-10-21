@@ -24,6 +24,8 @@ import (
 	"net"
 	"os"
 
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
+
 	"github.com/AlayaNetwork/Alaya-Go/cmd/utils"
 	"github.com/AlayaNetwork/Alaya-Go/crypto"
 	"github.com/AlayaNetwork/Alaya-Go/log"
@@ -85,7 +87,7 @@ func main() {
 	}
 
 	if *writeAddr {
-		fmt.Printf("%v\n", discover.PubkeyID(&nodeKey.PublicKey))
+		fmt.Printf("%v\n", enode.PubkeyToIDV4(&nodeKey.PublicKey))
 		os.Exit(0)
 	}
 
@@ -118,16 +120,17 @@ func main() {
 	}
 
 	if *runv5 {
-		if _, err := discv5.ListenUDP(nodeKey, conn, realaddr, "", restrictList); err != nil {
+		if _, err := discv5.ListenUDP(nodeKey, conn, "", restrictList); err != nil {
 			utils.Fatalf("%v", err)
 		}
 	} else {
+		db, _ := enode.OpenDB("")
+		ln := enode.NewLocalNode(db, nodeKey)
 		cfg := discover.Config{
-			PrivateKey:   nodeKey,
-			AnnounceAddr: realaddr,
-			NetRestrict:  restrictList,
+			PrivateKey:  nodeKey,
+			NetRestrict: restrictList,
 		}
-		if _, err := discover.ListenUDP(conn, cfg); err != nil {
+		if _, err := discover.ListenUDP(conn, ln, cfg); err != nil {
 			utils.Fatalf("%v", err)
 		}
 	}
