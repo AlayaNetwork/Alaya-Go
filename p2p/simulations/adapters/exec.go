@@ -19,7 +19,6 @@ package adapters
 import (
 	"bytes"
 	"context"
-	"crypto/ecdsa"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -98,6 +97,7 @@ func (e *ExecAdapter) NewNode(config *NodeConfig) (Node, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	// generate the config
 	conf := &execNodeConfig{
 		Stack: node.DefaultConfig,
@@ -108,6 +108,8 @@ func (e *ExecAdapter) NewNode(config *NodeConfig) (Node, error) {
 	} else {
 		conf.Stack.DataDir = filepath.Join(dir, "data")
 	}
+
+	// these parameters are crucial for execadapter node to run correctly
 	conf.Stack.WSHost = "127.0.0.1"
 	conf.Stack.WSPort = 0
 	conf.Stack.WSOrigins = []string{"*"}
@@ -117,7 +119,7 @@ func (e *ExecAdapter) NewNode(config *NodeConfig) (Node, error) {
 	conf.Stack.P2P.NAT = nil
 	conf.Stack.NoUSB = true
 
-	// listen on a localhost port, which we set when we
+	// Listen on a localhost port, which we set when we
 	// initialise NodeConfig (usually a random port)
 	conf.Stack.P2P.ListenAddr = fmt.Sprintf(":%d", config.Port)
 
@@ -145,7 +147,6 @@ type ExecNode struct {
 	client  *rpc.Client
 	wsAddr  string
 	newCmd  func() *exec.Cmd
-	key     *ecdsa.PrivateKey
 }
 
 // Addr returns the node's enode URL
@@ -209,7 +210,7 @@ func (n *ExecNode) Start(snapshots map[string][]byte) (err error) {
 	if status.Err != "" {
 		return errors.New(status.Err)
 	}
-	client, err := rpc.DialWebsocket(ctx, status.WSEndpoint, "http://localhost")
+	client, err := rpc.DialWebsocket(ctx, status.WSEndpoint, "")
 	if err != nil {
 		return fmt.Errorf("can't connect to RPC server: %v", err)
 	}
@@ -288,7 +289,7 @@ func (n *ExecNode) Stop() error {
 	if err := n.Cmd.Process.Signal(syscall.SIGTERM); err != nil {
 		return n.Cmd.Process.Kill()
 	}
-	waitErr := make(chan error)
+	waitErr := make(chan error, 1)
 	go func() {
 		waitErr <- n.Cmd.Wait()
 	}()
@@ -421,7 +422,7 @@ func startExecNodeStack() (*node.Node, error) {
 	}
 
 	// create enode record
-	nodeTcpConn, err := net.ResolveTCPAddr("tcp", conf.Stack.P2P.ListenAddr)
+	nodeTcpConn, _ := net.ResolveTCPAddr("tcp", conf.Stack.P2P.ListenAddr)
 	if nodeTcpConn.IP == nil {
 		nodeTcpConn.IP = net.IPv4(127, 0, 0, 1)
 	}

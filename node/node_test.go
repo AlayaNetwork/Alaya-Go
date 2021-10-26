@@ -505,7 +505,7 @@ func TestProtocolGather(t *testing.T) {
 	defer stack.Stop()
 
 	protocols := stack.Server().Protocols
-	if len(protocols) != 26 {
+	if len(protocols) != 11 {
 		t.Fatalf("mismatching number of protocols launched: have %d, want %d", len(protocols), 26)
 	}
 	for id, config := range services {

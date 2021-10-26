@@ -50,15 +50,10 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/common"
 	"github.com/AlayaNetwork/Alaya-Go/core"
 	"github.com/AlayaNetwork/Alaya-Go/core/types"
-	"github.com/AlayaNetwork/Alaya-Go/eth"
-	"github.com/AlayaNetwork/Alaya-Go/eth/downloader"
 	"github.com/AlayaNetwork/Alaya-Go/ethclient"
-	"github.com/AlayaNetwork/Alaya-Go/ethstats"
-	"github.com/AlayaNetwork/Alaya-Go/les"
 	"github.com/AlayaNetwork/Alaya-Go/log"
 	"github.com/AlayaNetwork/Alaya-Go/node"
 	"github.com/AlayaNetwork/Alaya-Go/p2p"
-	"github.com/AlayaNetwork/Alaya-Go/p2p/discv5"
 	"github.com/AlayaNetwork/Alaya-Go/p2p/nat"
 	"github.com/AlayaNetwork/Alaya-Go/params"
 )
@@ -158,9 +153,9 @@ func main() {
 		log.Crit("Failed to parse genesis block json", "err", err)
 	}
 	// Convert the bootnodes to internal enode representations
-	var enodes []*discv5.Node
+	var enodes []*enode.Node
 	for _, boot := range strings.Split(*bootFlag, ",") {
-		if url, err := discv5.ParseNode(boot); err == nil {
+		if url, err := enode.ParseV4(boot); err == nil {
 			enodes = append(enodes, url)
 		} else {
 			log.Error("Failed to parse bootnode URL", "url", boot, "err", err)
@@ -225,7 +220,7 @@ type faucet struct {
 	lock sync.RWMutex // Lock protecting the faucet's internals
 }
 
-func newFaucet(genesis *core.Genesis, port int, enodes []*discv5.Node, network uint64, stats string, ks *keystore.KeyStore, index []byte) (*faucet, error) {
+func newFaucet(genesis *core.Genesis, port int, enodes []*enode.Node, network uint64, stats string, ks *keystore.KeyStore, index []byte) (*faucet, error) {
 	// Assemble the raw devp2p protocol stack
 	stack, err := node.New(&node.Config{
 		Name:    "platon",
@@ -245,20 +240,22 @@ func newFaucet(genesis *core.Genesis, port int, enodes []*discv5.Node, network u
 	}
 	// Assemble the Ethereum light client protocol
 	if err := stack.Register(func(ctx *node.ServiceContext) (node.Service, error) {
-		cfg := eth.DefaultConfig
+		return nil, errors.New("not support light yet")
+		/*cfg := eth.DefaultConfig
 		cfg.SyncMode = downloader.LightSync
 		cfg.NetworkId = network
 		cfg.Genesis = genesis
-		return les.New(ctx, &cfg)
+		return les.New(ctx, &cfg)*/
 	}); err != nil {
 		return nil, err
 	}
 	// Assemble the ethstats monitoring and reporting service'
 	if stats != "" {
 		if err := stack.Register(func(ctx *node.ServiceContext) (node.Service, error) {
-			var serv *les.LightEthereum
+			return nil, errors.New("not support light yet")
+			/*var serv *les.LightEthereum
 			ctx.Service(&serv)
-			return ethstats.New(stats, nil, serv)
+			return ethstats.New(stats, nil, serv)*/
 		}); err != nil {
 			return nil, err
 		}
@@ -268,7 +265,7 @@ func newFaucet(genesis *core.Genesis, port int, enodes []*discv5.Node, network u
 		return nil, err
 	}
 	for _, boot := range enodes {
-		old, err := enode.ParseV4(boot.String())
+		old, err := enode.Parse(enode.ValidSchemes, boot.String())
 		if err != nil {
 			stack.Server().AddPeer(old)
 		}

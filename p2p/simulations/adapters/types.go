@@ -106,6 +106,11 @@ type NodeConfig struct {
 	// services registered by calling the RegisterService function)
 	Services []string
 
+	// Properties are the names of the properties this node should hold
+	// within running services (e.g. "bootnode", "lightnode" or any custom values)
+	// These values need to be checked and acted upon by node Services
+	Properties []string
+
 	// Enode
 	node *enode.Node
 
@@ -125,6 +130,7 @@ type nodeConfigJSON struct {
 	PrivateKey      string   `json:"private_key"`
 	Name            string   `json:"name"`
 	Services        []string `json:"services"`
+	Properties      []string `json:"properties"`
 	EnableMsgEvents bool     `json:"enable_msg_events"`
 	Port            uint16   `json:"port"`
 }
@@ -136,6 +142,7 @@ func (n *NodeConfig) MarshalJSON() ([]byte, error) {
 		ID:              n.ID.String(),
 		Name:            n.Name,
 		Services:        n.Services,
+		Properties:      n.Properties,
 		Port:            n.Port,
 		EnableMsgEvents: n.EnableMsgEvents,
 	}
@@ -173,6 +180,7 @@ func (n *NodeConfig) UnmarshalJSON(data []byte) error {
 
 	n.Name = confJSON.Name
 	n.Services = confJSON.Services
+	n.Properties = confJSON.Properties
 	n.Port = confJSON.Port
 	n.EnableMsgEvents = confJSON.EnableMsgEvents
 
@@ -296,5 +304,5 @@ func (n *NodeConfig) initEnode(ip net.IP, tcpport int, udpport int) error {
 }
 
 func (n *NodeConfig) initDummyEnode() error {
-	return n.initEnode(net.IPv4(127, 0, 0, 1), 0, 0)
+	return n.initEnode(net.IPv4(127, 0, 0, 1), int(n.Port), 0)
 }

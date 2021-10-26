@@ -334,7 +334,7 @@ func ConvertNodeUrl(initialNodes []initNode) []CbftNode {
 
 		cbftNode := new(CbftNode)
 
-		if node, err := enode.ParseV4(n.Enode); nil == err {
+		if node, err := enode.Parse(enode.ValidSchemes, n.Enode); nil == err {
 			cbftNode.Node = node
 		}
 

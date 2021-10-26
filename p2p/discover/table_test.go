@@ -59,7 +59,7 @@ func testPingReplace(t *testing.T, newNodeIsResponding, lastInBucketIsResponding
 
 	// Fill up the sender's bucket.
 	pingKey, _ := crypto.HexToECDSA("45a915e4d060149eb4365960e6a7a45f334393093061116b197e3240065ff2d8")
-	pingSender := wrapNode(enode.NewV4(&pingKey.PublicKey, net.IP{}, 99, 99))
+	pingSender := wrapNode(enode.NewV4(&pingKey.PublicKey, net.IP{127, 0, 0, 1}, 99, 99))
 	last := fillBucket(tab, pingSender)
 
 	// Add the sender as if it just pinged us. Revalidate should replace the last node in
@@ -191,7 +191,7 @@ func checkIPLimitInvariant(t *testing.T, tab *Table) {
 	}
 }
 
-func TestTable_closest(t *testing.T) {
+func TestTable_findnodeByID(t *testing.T) {
 	t.Parallel()
 
 	test := func(test *closeTest) bool {
@@ -203,7 +203,7 @@ func TestTable_closest(t *testing.T) {
 		fillTable(tab, test.All)
 
 		// check that closest(Target, N) returns nodes
-		result := tab.closest(test.Target, test.N, false).entries
+		result := tab.findnodeByID(test.Target, test.N, false).entries
 		if hasDuplicates(result) {
 			t.Errorf("result contains duplicates")
 			return false
@@ -367,6 +367,34 @@ func TestTable_addSeenNode(t *testing.T) {
 		t.Fatalf("wrong bucket content after update: %v", tab.bucket(n1.ID()).entries)
 	}
 	checkIPLimitInvariant(t, tab)
+}
+
+// This test checks that ENR updates happen during revalidation. If a node in the table
+// announces a new sequence number, the new record should be pulled.
+func TestTable_revalidateSyncRecord(t *testing.T) {
+	transport := newPingRecorder()
+	tab, db := newTestTable(transport)
+	<-tab.initDone
+	defer db.Close()
+	defer tab.close()
+
+	// Insert a node.
+	var r enr.Record
+	r.Set(enr.IP(net.IP{127, 0, 0, 1}))
+	id := enode.ID{1}
+	n1 := wrapNode(enode.SignNull(&r, id))
+	tab.addSeenNode(n1)
+
+	// Update the node record.
+	r.Set(enr.WithEntry("foo", "bar"))
+	n2 := enode.SignNull(&r, id)
+	transport.updateRecord(n2)
+
+	tab.doRevalidate(make(chan struct{}, 1))
+	intable := tab.getNode(id)
+	if !reflect.DeepEqual(intable, n2) {
+		t.Fatalf("table contains old record with seq %d, want seq %d", intable.Seq(), n2.Seq())
+	}
 }
 
 // gen wraps quick.Value so it's easier to use.

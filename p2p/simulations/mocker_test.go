@@ -15,7 +15,7 @@
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
 // Package simulations simulates p2p networks.
-// A mokcer simulates starting and stopping real nodes in a network.
+// A mocker simulates starting and stopping real nodes in a network.
 package simulations
 
 import (
@@ -80,14 +80,17 @@ func TestMocker(t *testing.T) {
 	var opts SubscribeOpts
 	sub, err := client.SubscribeNetwork(events, opts)
 	defer sub.Unsubscribe()
-	//wait until all nodes are started and connected
-	//store every node up event in a map (value is irrelevant, mimic Set datatype)
+
+	// wait until all nodes are started and connected
+	// store every node up event in a map (value is irrelevant, mimic Set datatype)
 	nodemap := make(map[enode.ID]bool)
-	wg.Add(1)
 	nodesComplete := false
 	connCount := 0
+	wg.Add(1)
 	go func() {
-		for {
+		defer wg.Done()
+
+		for connCount < (nodeCount-1)*2 {
 			select {
 			case event := <-events:
 				if isNodeUp(event) {
@@ -99,14 +102,10 @@ func TestMocker(t *testing.T) {
 					}
 				} else if event.Conn != nil && nodesComplete {
 					connCount += 1
-					if connCount == (nodeCount-1)*2 {
-						wg.Done()
-						return
-					}
 				}
 			case <-time.After(30 * time.Second):
-				wg.Done()
-				t.Fatalf("Timeout waiting for nodes being started up!")
+				t.Errorf("Timeout waiting for nodes being started up!")
+				return
 			}
 		}
 	}()
