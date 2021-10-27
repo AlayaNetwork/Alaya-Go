@@ -30,11 +30,6 @@ type Server struct {
 	Pb     *PubSub
 }
 
-// Protocols return consensus engine to provide protocol information.
-func (s *Server) Protocols() []p2p.Protocol {
-	return s.Pb.Protocols()
-}
-
 // Start starts running the server.
 // Servers can not be re-used after stopping.
 func (srv *Server) Start() (err error) {
@@ -50,4 +45,10 @@ func (srv *Server) Start() (err error) {
 // run is the main loop of the server.
 func (s *Server) run() {
 
+}
+
+// After the node is successfully connected and the message belongs
+// to the cbft.pubsub protocol message, the method is called.
+func (s *Server) Handle(p *p2p.Peer, rw p2p.MsgReadWriter) error {
+	return nil
 }

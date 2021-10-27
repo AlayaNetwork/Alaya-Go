@@ -19,22 +19,6 @@ package pubsub
 
 import (
 	"github.com/AlayaNetwork/Alaya-Go/p2p"
-	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
-)
-
-const (
-
-	// CbftPubSubProtocolName is protocol name of CBFT.PubSub
-	CbftPubSubProtocolName = "cbft.pubsub"
-
-	// CbftPubSubProtocolVersion is protocol version of CBFT.PubSub
-	CbftPubSubProtocolVersion = 1
-
-	// CbftPubSubProtocolLength are the number of implemented message corresponding to cbft.pubsub protocol versions.
-	CbftPubSubProtocolLength = 10
-
-	// DefaultMaximumMessageSize is 1mb.
-	DefaultMaxMessageSize = 1 << 20
 )
 
 // PubSub is the implementation of the pubsub system.
@@ -60,31 +44,11 @@ func (pubsub *PubSub) handler(p *p2p.Peer, rw p2p.MsgReadWriter) error {
 	return nil
 }
 
-// Protocols return consensus engine to provide protocol information.
-func (pubsub *PubSub) Protocols() []p2p.Protocol {
-	return []p2p.Protocol{
-		{
-			Name:    CbftPubSubProtocolName,
-			Version: CbftPubSubProtocolVersion,
-			Length:  CbftPubSubProtocolLength,
-			Run: func(p *p2p.Peer, rw p2p.MsgReadWriter) error {
-				return pubsub.handler(p, rw)
-			},
-			NodeInfo: func() interface{} {
-				return nil
-			},
-			PeerInfo: func(id enode.ID) interface{} {
-				return nil
-			},
-		},
-	}
-}
-
 // NewPubSub returns a new PubSub management object.
 func NewPubSub() *PubSub {
 	ps := &PubSub{
 		counter: 0,
-		maxMessageSize: DefaultMaxMessageSize,
+		maxMessageSize: 2048,
 		peerOutboundQueueSize: 32,
 	}
 	return ps

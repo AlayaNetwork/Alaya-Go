@@ -47,6 +47,18 @@ const (
 	// CbftProtocolLength are the number of implemented message corresponding to cbft protocol versions.
 	CbftProtocolLength = 40
 
+	// CbftPubSubProtocolName is protocol name of CBFT.PubSub
+	CbftPubSubProtocolName = "cbft.pubsub"
+
+	// CbftPubSubProtocolVersion is protocol version of CBFT.PubSub
+	CbftPubSubProtocolVersion = 1
+
+	// CbftPubSubProtocolLength are the number of implemented message corresponding to cbft.pubsub protocol versions.
+	CbftPubSubProtocolLength = 10
+
+	// DefaultMaximumMessageSize is 1mb.
+	DefaultMaxMessageSize = 1 << 20
+
 	// sendQueueSize is maximum threshold for the queue of messages waiting to be sent.
 	sendQueueSize = 10240
 
@@ -295,6 +307,23 @@ func (h *EngineManager) Protocols() []p2p.Protocol {
 			Length:  CbftProtocolLength,
 			Run: func(p *p2p.Peer, rw p2p.MsgReadWriter) error {
 				return h.handler(p, rw)
+			},
+			NodeInfo: func() interface{} {
+				return h.NodeInfo()
+			},
+			PeerInfo: func(id enode.ID) interface{} {
+				if p, err := h.peers.get(fmt.Sprintf("%x", id[:8])); err == nil {
+					return p.Info()
+				}
+				return nil
+			},
+		},
+		{
+			Name:    CbftPubSubProtocolName,
+			Version: CbftPubSubProtocolVersion,
+			Length:  CbftPubSubProtocolLength,
+			Run: func(p *p2p.Peer, rw p2p.MsgReadWriter) error {
+				return h.engine.PubSubServer().Handle(p, rw)
 			},
 			NodeInfo: func() interface{} {
 				return h.NodeInfo()

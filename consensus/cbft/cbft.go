@@ -880,11 +880,7 @@ func (cbft *Cbft) APIs(chain consensus.ChainReader) []rpc.API {
 
 // Protocols return consensus engine to provide protocol information.
 func (cbft *Cbft) Protocols() []p2p.Protocol {
-	p := cbft.network.Protocols()
-	for _,sp := range cbft.pbSvr.Protocols() {
-		p = append(p, sp)
-	}
-	return p
+	return cbft.network.Protocols()
 }
 
 // NextBaseBlock is used to calculate the next block.
@@ -1852,4 +1848,8 @@ func (cbft *Cbft) DecodeExtra(extra []byte) (common.Hash, uint64, error) {
 		return common.Hash{}, 0, err
 	}
 	return qc.BlockHash, qc.BlockNumber, nil
+}
+
+func (cbft *Cbft) PubSubServer() *pubsub.Server {
+	return cbft.pbSvr
 }
