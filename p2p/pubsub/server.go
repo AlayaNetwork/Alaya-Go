@@ -17,8 +17,15 @@
 
 package pubsub
 
+import "github.com/AlayaNetwork/Alaya-Go/p2p"
+
 // Server manages all pubsub peers.
 type Server struct {
-	p     *PubSub
+	Pb     *PubSub
 }
 
+
+// Protocols return consensus engine to provide protocol information.
+func (s *Server) Protocols() []p2p.Protocol {
+	return s.Pb.Protocols()
+}

@@ -21,8 +21,9 @@ package platon
 import (
 	"encoding/json"
 
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
+
 	"github.com/AlayaNetwork/Alaya-Go/core"
-	"github.com/AlayaNetwork/Alaya-Go/p2p/discv5"
 	"github.com/AlayaNetwork/Alaya-Go/params"
 )
 
@@ -38,9 +39,13 @@ func TestnetGenesis() string {
 // FoundationBootnodes returns the enode URLs of the P2P bootstrap nodes operated
 // by the foundation running the V5 discovery protocol.
 func FoundationBootnodes() *Enodes {
-	nodes := &Enodes{nodes: make([]*discv5.Node, len(params.DiscoveryV5Bootnodes))}
+	nodes := &Enodes{nodes: make([]*enode.Node, len(params.DiscoveryV5Bootnodes))}
 	for i, url := range params.DiscoveryV5Bootnodes {
-		nodes.nodes[i] = discv5.MustParseNode(url)
+		var err error
+		nodes.nodes[i], err = enode.Parse(enode.ValidSchemes, url)
+		if err != nil {
+			panic("invalid node URL: " + err.Error())
+		}
 	}
 	return nodes
 }

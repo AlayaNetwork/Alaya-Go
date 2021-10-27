@@ -28,6 +28,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
+
 	"github.com/AlayaNetwork/Alaya-Go/crypto/vrf"
 	"github.com/AlayaNetwork/Alaya-Go/x/gov"
 
@@ -50,7 +52,6 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/crypto"
 	"github.com/AlayaNetwork/Alaya-Go/crypto/bls"
 	"github.com/AlayaNetwork/Alaya-Go/event"
-	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
 	"github.com/AlayaNetwork/Alaya-Go/rlp"
 	"github.com/AlayaNetwork/Alaya-Go/x/staking"
 	"github.com/AlayaNetwork/Alaya-Go/x/xcom"
@@ -145,7 +146,7 @@ func buildPrepareData(genesis *types.Block, t *testing.T) (*types.Header, error)
 			return nil, err
 		}
 
-		nodeId := discover.PubkeyID(&privateKey.PublicKey)
+		nodeId := enode.PublicKeyToIDv0(&privateKey.PublicKey)
 
 		privateKey, err = crypto.GenerateKey()
 		if nil != err {
@@ -324,7 +325,7 @@ func buildPrepareData(genesis *types.Block, t *testing.T) (*types.Header, error)
 		t.Errorf("Failed to generate random Address private key: %v", err)
 		return nil, err
 	}
-	nodeId := discover.PubkeyID(&privateKey.PublicKey)
+	nodeId := enode.PublicKeyToIDv0(&privateKey.PublicKey)
 	currentHash := crypto.Keccak256Hash([]byte(nodeId.String()))
 	newNumber := big.NewInt(int64(xutil.ConsensusSize() - xcom.ElectionDistance())) // 50
 	preNum1 := new(big.Int).Sub(newNumber, big.NewInt(1))
@@ -496,7 +497,7 @@ func TestStakingPlugin_EndBlock(t *testing.T) {
 		return
 	}
 
-	nodeId := discover.PubkeyID(&privateKey.PublicKey)
+	nodeId := enode.PublicKeyToIDv0(&privateKey.PublicKey)
 	currentHash := crypto.Keccak256Hash([]byte(nodeId.String()))
 	currentNumber := big.NewInt(1)
 
@@ -521,7 +522,7 @@ func TestStakingPlugin_EndBlock(t *testing.T) {
 			return
 		}
 
-		nodeId := discover.PubkeyID(&privateKey.PublicKey)
+		nodeId := enode.PublicKeyToIDv0(&privateKey.PublicKey)
 
 		privateKey, err = crypto.GenerateKey()
 		if !assert.Nil(t, err, fmt.Sprintf("Failed to generate random Address private key: %v", err)) {
@@ -742,7 +743,7 @@ func TestStakingPlugin_EndBlock(t *testing.T) {
 		t.Errorf("Failed to generate random Address private key: %v", err)
 		return
 	}
-	nodeId2 := discover.PubkeyID(&privateKey2.PublicKey)
+	nodeId2 := enode.PublicKeyToIDv0(&privateKey2.PublicKey)
 	currentHash = crypto.Keccak256Hash([]byte(nodeId2.String()))
 
 	/**
@@ -813,7 +814,7 @@ func TestStakingPlugin_Confirmed(t *testing.T) {
 		return
 	}
 
-	nodeId := discover.PubkeyID(&privateKey.PublicKey)
+	nodeId := enode.PublicKeyToIDv0(&privateKey.PublicKey)
 	currentHash := crypto.Keccak256Hash([]byte(nodeId.String()))
 	currentNumber := big.NewInt(1)
 
@@ -839,7 +840,7 @@ func TestStakingPlugin_Confirmed(t *testing.T) {
 			return
 		}
 
-		nodeId := discover.PubkeyID(&privateKey.PublicKey)
+		nodeId := enode.PublicKeyToIDv0(&privateKey.PublicKey)
 
 		privateKey, err = crypto.GenerateKey()
 		if !assert.Nil(t, err, fmt.Sprintf("Failed to generate random Address private key: %v", err)) {
@@ -2099,7 +2100,7 @@ func TestStakingPlugin_ElectNextVerifierList(t *testing.T) {
 			return
 		}
 
-		nodeId := discover.PubkeyID(&privateKey.PublicKey)
+		nodeId := enode.PublicKeyToIDv0(&privateKey.PublicKey)
 
 		privateKey, err = crypto.GenerateKey()
 		if nil != err {
@@ -2286,7 +2287,7 @@ func TestStakingPlugin_Election(t *testing.T) {
 			return
 		}
 
-		nodeId := discover.PubkeyID(&privateKey.PublicKey)
+		nodeId := enode.PublicKeyToIDv0(&privateKey.PublicKey)
 
 		privateKey, err = crypto.GenerateKey()
 		if nil != err {
@@ -2497,7 +2498,7 @@ func TestStakingPlugin_SlashCandidates(t *testing.T) {
 			return
 		}
 
-		nodeId := discover.PubkeyID(&privateKey.PublicKey)
+		nodeId := enode.PublicKeyToIDv0(&privateKey.PublicKey)
 
 		privateKey, err = crypto.GenerateKey()
 		if nil != err {
@@ -2810,7 +2811,7 @@ func TestStakingPlugin_DeclarePromoteNotify(t *testing.T) {
 			return
 		}
 
-		nodeId := discover.PubkeyID(&privateKey.PublicKey)
+		nodeId := enode.PublicKeyToIDv0(&privateKey.PublicKey)
 
 		privateKey, err = crypto.GenerateKey()
 		if nil != err {
@@ -2918,7 +2919,7 @@ func TestStakingPlugin_ProposalPassedNotify(t *testing.T) {
 
 	validatorQueue := make(staking.ValidatorQueue, 0)
 
-	nodeIdArr := make([]discover.NodeID, 0)
+	nodeIdArr := make([]enode.IDv0, 0)
 	for i := 0; i < 1000; i++ {
 
 		var index int
@@ -2942,7 +2943,7 @@ func TestStakingPlugin_ProposalPassedNotify(t *testing.T) {
 			return
 		}
 
-		nodeId := discover.PubkeyID(&privateKey.PublicKey)
+		nodeId := enode.PublicKeyToIDv0(&privateKey.PublicKey)
 
 		privateKey, err = crypto.GenerateKey()
 		if nil != err {
@@ -3314,7 +3315,7 @@ func TestStakingPlugin_IsCandidate(t *testing.T) {
 		return
 	}
 
-	nodeIdArr := make([]discover.NodeID, 0)
+	nodeIdArr := make([]enode.IDv0, 0)
 
 	for i := 0; i < 1000; i++ {
 
@@ -3339,7 +3340,7 @@ func TestStakingPlugin_IsCandidate(t *testing.T) {
 			return
 		}
 
-		nodeId := discover.PubkeyID(&privateKey.PublicKey)
+		nodeId := enode.PublicKeyToIDv0(&privateKey.PublicKey)
 
 		privateKey, err = crypto.GenerateKey()
 		if nil != err {
@@ -3607,7 +3608,7 @@ func TestStakingPlugin_ProbabilityElection(t *testing.T) {
 		var blsKey bls.SecretKey
 		blsKey.SetByCSPRNG()
 		privKey, _ := ecdsa.GenerateKey(curve, rand.Reader)
-		nodeId := discover.PubkeyID(&privKey.PublicKey)
+		nodeId := enode.PublicKeyToIDv0(&privKey.PublicKey)
 		addr := crypto.PubkeyToNodeAddress(privKey.PublicKey)
 
 		var blsKeyHex bls.PublicKeyHex
@@ -3661,7 +3662,7 @@ func TestStakingPlugin_ProbabilityElectionDifferentWeights(t *testing.T) {
 			var blsKey bls.SecretKey
 			blsKey.SetByCSPRNG()
 			privKey, _ := ecdsa.GenerateKey(curve, rand.Reader)
-			nodeId := discover.PubkeyID(&privKey.PublicKey)
+			nodeId := enode.PublicKeyToIDv0(&privKey.PublicKey)
 			addr := crypto.PubkeyToNodeAddress(privKey.PublicKey)
 
 			var blsKeyHex bls.PublicKeyHex
@@ -3736,7 +3737,7 @@ func TestStakingPlugin_RandomOrderValidatorQueue(t *testing.T) {
 		dataList = append(dataList, data)
 
 		tempPrivateKey, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-		nodeId := discover.PubkeyID(&tempPrivateKey.PublicKey)
+		nodeId := enode.PublicKeyToIDv0(&tempPrivateKey.PublicKey)
 		addr := crypto.PubkeyToNodeAddress(tempPrivateKey.PublicKey)
 		v := &staking.Validator{
 			NodeAddress: addr,
@@ -3808,7 +3809,7 @@ func Test_IteratorCandidate(t *testing.T) {
 			return
 		}
 
-		nodeId := discover.PubkeyID(&privateKey.PublicKey)
+		nodeId := enode.PublicKeyToIDv0(&privateKey.PublicKey)
 
 		privateKey, err = crypto.GenerateKey()
 		if nil != err {

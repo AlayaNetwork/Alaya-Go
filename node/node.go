@@ -56,7 +56,7 @@ type Node struct {
 	ChainID      *big.Int `toml:"-"`
 	serverConfig p2p.Config
 	server       *p2p.Server // Currently running P2P networking layer
-	pubsub       *pubsub.Server // Currently running pubsub networking layer
+	Pubsub       *pubsub.Server // Currently running pubsub networking layer
 
 	serviceFuncs []ServiceConstructor     // Service constructors (in dependency order)
 	services     map[reflect.Type]Service // Currently running services
@@ -204,6 +204,8 @@ func (n *Node) Start() error {
 	}
 
 	running := &p2p.Server{Config: n.serverConfig}
+	n.Pubsub = &pubsub.Server{Pb: pubsub.NewPubSub()}
+
 	n.log.Info("Starting peer-to-peer node", "instance", n.serverConfig.Name)
 
 	// Otherwise copy and specialize the P2P configuration
@@ -243,6 +245,7 @@ func (n *Node) Start() error {
 	if err := running.Start(); err != nil {
 		return convertFileLockError(err)
 	}
+
 	// Start each of the services
 	var started []reflect.Type
 	for kind, service := range services {

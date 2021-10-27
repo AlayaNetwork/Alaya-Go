@@ -20,6 +20,7 @@ package eth
 import (
 	"errors"
 	"fmt"
+	"github.com/AlayaNetwork/Alaya-Go/p2p/pubsub"
 	"math/big"
 	"os"
 	"sync"
@@ -56,7 +57,6 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/miner"
 	"github.com/AlayaNetwork/Alaya-Go/node"
 	"github.com/AlayaNetwork/Alaya-Go/p2p"
-	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
 	"github.com/AlayaNetwork/Alaya-Go/params"
 	"github.com/AlayaNetwork/Alaya-Go/rpc"
 	xplugin "github.com/AlayaNetwork/Alaya-Go/x/plugin"
@@ -108,7 +108,7 @@ func (s *Ethereum) AddLesServer(ls LesServer) {
 
 // New creates a new Ethereum object (including the
 // initialisation of the common Ethereum object)
-func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
+func New(pbSvr *pubsub.Server, ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 	// Ensure configuration values are compatible and sane
 	if config.SyncMode == downloader.LightSync {
 		return nil, errors.New("can't run eth.PlatON in light sync mode, use les.LightPlatON")
@@ -220,7 +220,7 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 		chainDb:           chainDb,
 		eventMux:          ctx.EventMux,
 		accountManager:    ctx.AccountManager,
-		engine:            CreateConsensusEngine(ctx, chainConfig, config.Miner.Noverify, chainDb, &config.CbftConfig, ctx.EventMux),
+		engine:            CreateConsensusEngine(ctx, chainConfig, config.Miner.Noverify, chainDb, &config.CbftConfig, ctx.EventMux, pbSvr),
 		closeBloomHandler: make(chan struct{}),
 		networkID:         config.NetworkId,
 		gasPrice:          config.Miner.GasPrice,
@@ -349,6 +349,8 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 			log.Error("Init cbft consensus engine fail", "error", err)
 			return nil, errors.New("Failed to init cbft consensus engine")
 		}
+	} else {
+		log.Crit("engin not good")
 	}
 
 	// Permit the downloader to use the trie cache allowance during fast sync
@@ -389,9 +391,9 @@ func recoverSnapshotDB(blockChainCache *core.BlockChainCache) error {
 
 // CreateConsensusEngine creates the required type of consensus engine instance for an Ethereum service
 func CreateConsensusEngine(ctx *node.ServiceContext, chainConfig *params.ChainConfig, noverify bool, db ethdb.Database,
-	cbftConfig *ctypes.OptionsConfig, eventMux *event.TypeMux) consensus.Engine {
+	cbftConfig *ctypes.OptionsConfig, eventMux *event.TypeMux, pbSvr *pubsub.Server) consensus.Engine {
 	// If proof-of-authority is requested, set it up
-	engine := cbft.New(chainConfig.Cbft, cbftConfig, eventMux, ctx)
+	engine := cbft.New(chainConfig.Cbft, cbftConfig, eventMux, ctx, pbSvr)
 	if engine == nil {
 		panic("create consensus engine fail")
 	}
@@ -589,7 +591,7 @@ func (s *Ethereum) Start(srvr *p2p.Server) error {
 			for _, n := range s.blockchain.Config().Cbft.InitialNodes {
 				// todo: Mock point.
 				if !node.FakeNetEnable {
-					srvr.AddConsensusPeer(discover.NewNode(n.Node.ID, n.Node.IP, n.Node.UDP, n.Node.TCP))
+					srvr.AddConsensusPeer(n.Node)
 				}
 			}
 		}

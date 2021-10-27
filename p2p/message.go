@@ -25,8 +25,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
+
 	"github.com/AlayaNetwork/Alaya-Go/event"
-	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
 	"github.com/AlayaNetwork/Alaya-Go/rlp"
 )
 
@@ -39,9 +40,13 @@ import (
 // separate Msg with a bytes.Reader as Payload for each send.
 type Msg struct {
 	Code       uint64
-	Size       uint32 // size of the paylod
+	Size       uint32 // Size of the raw payload
 	Payload    io.Reader
 	ReceivedAt time.Time
+
+	meterCap  Cap    // Protocol name and version for egress metering
+	meterCode uint64 // Message within protocol for egress metering
+	meterSize uint32 // Compressed message size for ingress metering
 }
 
 // Decode parses the RLP content of a message into
@@ -64,6 +69,10 @@ func (msg Msg) String() string {
 func (msg Msg) Discard() error {
 	_, err := io.Copy(ioutil.Discard, msg.Payload)
 	return err
+}
+
+func (msg Msg) Time() time.Time {
+	return msg.ReceivedAt
 }
 
 type MsgReader interface {
@@ -169,7 +178,7 @@ type MsgPipeRW struct {
 	closed  *int32
 }
 
-// WriteMsg sends a messsage on the pipe.
+// WriteMsg sends a message on the pipe.
 // It blocks until the receiver has consumed the message payload.
 func (p *MsgPipeRW) WriteMsg(msg Msg) error {
 	if atomic.LoadInt32(p.closed) == 0 {
@@ -253,7 +262,7 @@ type msgEventer struct {
 	MsgReadWriter
 
 	feed          *event.Feed
-	peerID        discover.NodeID
+	peerID        enode.ID
 	Protocol      string
 	localAddress  string
 	remoteAddress string
@@ -261,7 +270,7 @@ type msgEventer struct {
 
 // newMsgEventer returns a msgEventer which sends message events to the given
 // feed
-func newMsgEventer(rw MsgReadWriter, feed *event.Feed, peerID discover.NodeID, proto, remote, local string) *msgEventer {
+func newMsgEventer(rw MsgReadWriter, feed *event.Feed, peerID enode.ID, proto, remote, local string) *msgEventer {
 	return &msgEventer{
 		MsgReadWriter: rw,
 		feed:          feed,

@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
-
 package plugin
 
 import (
@@ -23,7 +22,7 @@ import (
 	"math/big"
 	"sort"
 
-	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
 
 	"github.com/AlayaNetwork/Alaya-Go/params"
 
@@ -473,7 +472,7 @@ type issue1625AccountDelInfo struct {
 	//use for get staking
 	stakingBlock uint64
 	canAddr      common.NodeAddress
-	nodeID       discover.NodeID
+	nodeID       enode.IDv0
 
 	originRestrictingAmount, originFreeAmount *big.Int
 }

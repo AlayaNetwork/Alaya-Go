@@ -14,19 +14,18 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
-
 package byteutil
 
 import (
 	"math/big"
 	"testing"
 
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
+
 	"github.com/AlayaNetwork/Alaya-Go/x/restricting"
 
 	"github.com/AlayaNetwork/Alaya-Go/common"
 	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/utils"
-	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
-
 	"github.com/AlayaNetwork/Alaya-Go/crypto"
 
 	"github.com/stretchr/testify/assert"
@@ -102,19 +101,19 @@ func TestBytesToBigIntArr(t *testing.T) {
 
 func TestBytesToNodeId(t *testing.T) {
 	ecdsaKey, _ := crypto.GenerateKey()
-	nodeID := discover.PubkeyID(&ecdsaKey.PublicKey)
+	nodeID := enode.PublicKeyToIDv0(&ecdsaKey.PublicKey)
 	data, err := rlp.EncodeToBytes(nodeID)
 	assert.Nil(t, err)
 	dnodeID := BytesToNodeId(data)
 	assert.Equal(t, nodeID, dnodeID)
-	assert.NotNil(t, PrintNodeID(dnodeID))
+	assert.NotNil(t, dnodeID.String())
 }
 
 func TestBytesToNodeIdArr(t *testing.T) {
-	nodeIdArr := make([]discover.NodeID, 0, 3)
+	nodeIdArr := make([]enode.IDv0, 0, 3)
 	for i := 0; i < 3; i++ {
 		ecdsaKey, _ := crypto.GenerateKey()
-		nodeID := discover.PubkeyID(&ecdsaKey.PublicKey)
+		nodeID := enode.PublicKeyToIDv0(&ecdsaKey.PublicKey)
 		nodeIdArr = append(nodeIdArr, nodeID)
 	}
 	data, err := rlp.EncodeToBytes(nodeIdArr)

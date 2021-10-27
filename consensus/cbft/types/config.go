@@ -14,20 +14,21 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
-
 package types
 
 import (
 	"crypto/ecdsa"
 
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
+
 	"github.com/AlayaNetwork/Alaya-Go/crypto/bls"
-	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
 	"github.com/AlayaNetwork/Alaya-Go/params"
 )
 
 type OptionsConfig struct {
 	NodePriKey *ecdsa.PrivateKey `json:"-"`
-	NodeID     discover.NodeID   `json:"nodeID"`
+	NodeID     enode.IDv0        `json:"nodeID"`
+	Node       *enode.Node       `json:"-"`
 	BlsPriKey  *bls.SecretKey    `json:"-"`
 	WalMode    bool              `json:"walMode"`
 

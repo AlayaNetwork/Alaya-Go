@@ -26,6 +26,8 @@ import (
 	"strings"
 	"sync/atomic"
 
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
+
 	mapset "github.com/deckarep/golang-set"
 
 	"github.com/AlayaNetwork/Alaya-Go/common/hexutil"
@@ -59,7 +61,6 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/log"
 	"github.com/AlayaNetwork/Alaya-Go/node"
 	"github.com/AlayaNetwork/Alaya-Go/p2p"
-	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
 	"github.com/AlayaNetwork/Alaya-Go/params"
 	"github.com/AlayaNetwork/Alaya-Go/rpc"
 )
@@ -124,7 +125,7 @@ type Cbft struct {
 	evPool           evidence.EvidencePool
 	log              log.Logger
 	network          *network.EngineManager
-	pubsub           *pubsub.PubSub
+	pbSvr            *pubsub.Server
 
 	start    int32
 	syncing  int32
@@ -185,11 +186,11 @@ type Cbft struct {
 	//test
 	insertBlockQCHook  func(block *types.Block, qc *ctypes.QuorumCert)
 	executeFinishHook  func(index uint32)
-	consensusNodesMock func() ([]discover.NodeID, error)
+	consensusNodesMock func() ([]enode.ID, error)
 }
 
 // New returns a new CBFT.
-func New(sysConfig *params.CbftConfig, optConfig *ctypes.OptionsConfig, eventMux *event.TypeMux, ctx *node.ServiceContext) *Cbft {
+func New(sysConfig *params.CbftConfig, optConfig *ctypes.OptionsConfig, eventMux *event.TypeMux, ctx *node.ServiceContext, pbSvr *pubsub.Server) *Cbft {
 	cbft := &Cbft{
 		config:             ctypes.Config{Sys: sysConfig, Option: optConfig},
 		eventMux:           eventMux,
@@ -210,6 +211,7 @@ func New(sysConfig *params.CbftConfig, optConfig *ctypes.OptionsConfig, eventMux
 		statQueues:         make(map[common.Hash]map[string]int),
 		messageHashCache:   mapset.NewSet(),
 		netLatencyMap:      make(map[string]*list.List),
+		pbSvr:              pbSvr,
 	}
 
 	if evPool, err := evidence.NewEvidencePool(ctx, optConfig.EvidenceDir); err == nil {
@@ -262,16 +264,16 @@ func (cbft *Cbft) Start(chain consensus.ChainReader, blockCacheWriter consensus.
 	// Start the handler to process the message.
 	go cbft.network.Start()
 
-	if cbft.config.Option.NodePriKey == nil {
+	if cbft.config.Option.Node == nil {
+		cbft.config.Option.Node = enode.NewV4(&cbft.nodeServiceContext.NodePriKey().PublicKey, nil, 0, 0)
+		cbft.config.Option.NodeID = cbft.config.Option.Node.IDv0()
 		cbft.config.Option.NodePriKey = cbft.nodeServiceContext.NodePriKey()
-		cbft.config.Option.NodeID = discover.PubkeyID(&cbft.config.Option.NodePriKey.PublicKey)
 	}
-
 	if isGenesis() {
-		cbft.validatorPool = validator.NewValidatorPool(agency, block.NumberU64(), cstate.DefaultEpoch, cbft.config.Option.NodeID)
+		cbft.validatorPool = validator.NewValidatorPool(agency, block.NumberU64(), cstate.DefaultEpoch, cbft.config.Option.Node.ID())
 		cbft.changeView(cstate.DefaultEpoch, cstate.DefaultViewNumber, block, qc, nil)
 	} else {
-		cbft.validatorPool = validator.NewValidatorPool(agency, block.NumberU64(), qc.Epoch, cbft.config.Option.NodeID)
+		cbft.validatorPool = validator.NewValidatorPool(agency, block.NumberU64(), qc.Epoch, cbft.config.Option.Node.ID())
 		cbft.changeView(qc.Epoch, qc.ViewNumber, block, qc, nil)
 	}
 
@@ -762,9 +764,9 @@ func (cbft *Cbft) OnSeal(block *types.Block, results chan<- *types.Block, stop <
 		return
 	}
 
-	me, err := cbft.validatorPool.GetValidatorByNodeID(cbft.state.Epoch(), cbft.NodeID())
+	me, err := cbft.validatorPool.GetValidatorByNodeID(cbft.state.Epoch(), cbft.Node().ID())
 	if err != nil {
-		cbft.log.Warn("Can not got the validator, seal fail", "epoch", cbft.state.Epoch(), "nodeID", cbft.NodeID())
+		cbft.log.Warn("Can not got the validator, seal fail", "epoch", cbft.state.Epoch(), "nodeID", cbft.Node().ID())
 		return
 	}
 	numValidators := cbft.validatorPool.Len(cbft.state.Epoch())
@@ -873,7 +875,11 @@ func (cbft *Cbft) APIs(chain consensus.ChainReader) []rpc.API {
 
 // Protocols return consensus engine to provide protocol information.
 func (cbft *Cbft) Protocols() []p2p.Protocol {
-	return append(cbft.network.Protocols(), cbft.pubsub.Protocols())
+	p := cbft.network.Protocols()
+	for _,sp := range cbft.pbSvr.Protocols() {
+		p = append(p, sp)
+	}
+	return p
 }
 
 // NextBaseBlock is used to calculate the next block.
@@ -1098,7 +1104,7 @@ func (cbft *Cbft) Close() error {
 }
 
 // ConsensusNodes returns to the list of consensus nodes.
-func (cbft *Cbft) ConsensusNodes() ([]discover.NodeID, error) {
+func (cbft *Cbft) ConsensusNodes() ([]enode.ID, error) {
 	if cbft.consensusNodesMock != nil {
 		return cbft.consensusNodesMock()
 	}
@@ -1150,14 +1156,14 @@ func (cbft *Cbft) OnShouldSeal(result chan error) {
 		return
 	}
 	currentExecutedBlockNumber := cbft.state.HighestExecutedBlock().NumberU64()
-	if !cbft.validatorPool.IsValidator(cbft.state.Epoch(), cbft.config.Option.NodeID) {
+	if !cbft.validatorPool.IsValidator(cbft.state.Epoch(), cbft.config.Option.Node.ID()) {
 		result <- ErrorNotValidator
 		return
 	}
 
 	numValidators := cbft.validatorPool.Len(cbft.state.Epoch())
 	currentProposer := cbft.state.ViewNumber() % uint64(numValidators)
-	validator, err := cbft.validatorPool.GetValidatorByNodeID(cbft.state.Epoch(), cbft.config.Option.NodeID)
+	validator, err := cbft.validatorPool.GetValidatorByNodeID(cbft.state.Epoch(), cbft.config.Option.Node.ID())
 	if err != nil {
 		cbft.log.Error("Should seal fail", "err", err)
 		result <- err
@@ -1224,7 +1230,7 @@ func (cbft *Cbft) CalcNextBlockTime(blockTime time.Time) time.Time {
 
 // IsConsensusNode returns whether the current node is a consensus node.
 func (cbft *Cbft) IsConsensusNode() bool {
-	return cbft.validatorPool.IsValidator(cbft.state.Epoch(), cbft.config.Option.NodeID)
+	return cbft.validatorPool.IsValidator(cbft.state.Epoch(), cbft.config.Option.Node.ID())
 }
 
 // GetBlock returns the block corresponding to the specified number and hash.
@@ -1374,7 +1380,7 @@ func (cbft *Cbft) isStart() bool {
 }
 
 func (cbft *Cbft) isCurrentValidator() (*cbfttypes.ValidateNode, error) {
-	return cbft.validatorPool.GetValidatorByNodeID(cbft.state.Epoch(), cbft.config.Option.NodeID)
+	return cbft.validatorPool.GetValidatorByNodeID(cbft.state.Epoch(), cbft.config.Option.Node.ID())
 }
 
 func (cbft *Cbft) currentProposer() *cbfttypes.ValidateNode {
@@ -1818,8 +1824,8 @@ func (cbft *Cbft) verifyViewChangeQC(viewChangeQC *ctypes.ViewChangeQC) error {
 }
 
 // NodeID returns the ID value of the current node
-func (cbft *Cbft) NodeID() discover.NodeID {
-	return cbft.config.Option.NodeID
+func (cbft *Cbft) Node() *enode.Node {
+	return cbft.config.Option.Node
 }
 
 func (cbft *Cbft) avgRTT() time.Duration {

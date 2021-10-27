@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
-
 package plugin
 
 import (
@@ -23,13 +22,13 @@ import (
 	"sort"
 	"sync"
 
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
+
 	"github.com/AlayaNetwork/Alaya-Go/x/staking"
 
 	"github.com/AlayaNetwork/Alaya-Go/x/gov"
 
 	"github.com/AlayaNetwork/Alaya-Go/core/snapshotdb"
-
-	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
 
 	"github.com/AlayaNetwork/Alaya-Go/common/hexutil"
 
@@ -90,7 +89,7 @@ func (rp *RestrictingPlugin) EndBlock(blockHash common.Hash, head *types.Header,
 }
 
 // Confirmed is empty function
-func (rp *RestrictingPlugin) Confirmed(nodeId discover.NodeID, block *types.Block) error {
+func (rp *RestrictingPlugin) Confirmed(nodeId enode.IDv0, block *types.Block) error {
 	return nil
 }
 

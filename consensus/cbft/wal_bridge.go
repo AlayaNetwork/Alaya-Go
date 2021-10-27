@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
-
 package cbft
 
 import (
@@ -393,7 +392,7 @@ func (cbft *Cbft) recoveryMsg(msg interface{}) error {
 			return err
 		}
 		if should {
-			node, err := cbft.validatorPool.GetValidatorByNodeID(m.ViewChange.Epoch, cbft.config.Option.NodeID)
+			node, err := cbft.validatorPool.GetValidatorByNodeID(m.ViewChange.Epoch, cbft.config.Option.Node.ID())
 			if err != nil {
 				return err
 			}
@@ -444,7 +443,7 @@ func (cbft *Cbft) recoveryMsg(msg interface{}) error {
 			}
 
 			cbft.state.HadSendPrepareVote().Push(m.Vote)
-			node, _ := cbft.validatorPool.GetValidatorByNodeID(m.Vote.Epoch, cbft.config.Option.NodeID)
+			node, _ := cbft.validatorPool.GetValidatorByNodeID(m.Vote.Epoch, cbft.config.Option.Node.ID())
 			cbft.state.AddPrepareVote(uint32(node.Index), m.Vote)
 		}
 	}

@@ -25,12 +25,16 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/AlayaNetwork/Alaya-Go/log"
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enr"
+
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
+
 	"github.com/docker/docker/pkg/reexec"
 
 	"github.com/AlayaNetwork/Alaya-Go/crypto"
 	"github.com/AlayaNetwork/Alaya-Go/node"
 	"github.com/AlayaNetwork/Alaya-Go/p2p"
-	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
 	"github.com/AlayaNetwork/Alaya-Go/rpc"
 
 	"github.com/gorilla/websocket"
@@ -81,7 +85,7 @@ type NodeAdapter interface {
 type NodeConfig struct {
 	// ID is the node's ID which is used to identify the node in the
 	// simulation network
-	ID discover.NodeID
+	ID enode.ID
 
 	// PrivateKey is the node's private key which is used by the devp2p
 	// stack to encrypt communications
@@ -93,14 +97,28 @@ type NodeConfig struct {
 	// Name is a human friendly name for the node like "node01"
 	Name string
 
+	// Use an existing database instead of a temporary one if non-empty
+	DataDir string
+
 	// Services are the names of the services which should be run when
 	// starting the node (for SimNodes it should be the names of services
 	// contained in SimAdapter.services, for other nodes it should be
 	// services registered by calling the RegisterService function)
 	Services []string
 
+	// Properties are the names of the properties this node should hold
+	// within running services (e.g. "bootnode", "lightnode" or any custom values)
+	// These values need to be checked and acted upon by node Services
+	Properties []string
+
+	// Enode
+	node *enode.Node
+
+	// ENR Record with entries to overwrite
+	Record enr.Record
+
 	// function to sanction or prevent suggesting a peer
-	Reachable func(id discover.NodeID) bool
+	Reachable func(id enode.ID) bool
 
 	Port uint16
 }
@@ -112,6 +130,7 @@ type nodeConfigJSON struct {
 	PrivateKey      string   `json:"private_key"`
 	Name            string   `json:"name"`
 	Services        []string `json:"services"`
+	Properties      []string `json:"properties"`
 	EnableMsgEvents bool     `json:"enable_msg_events"`
 	Port            uint16   `json:"port"`
 }
@@ -123,6 +142,7 @@ func (n *NodeConfig) MarshalJSON() ([]byte, error) {
 		ID:              n.ID.String(),
 		Name:            n.Name,
 		Services:        n.Services,
+		Properties:      n.Properties,
 		Port:            n.Port,
 		EnableMsgEvents: n.EnableMsgEvents,
 	}
@@ -141,11 +161,9 @@ func (n *NodeConfig) UnmarshalJSON(data []byte) error {
 	}
 
 	if confJSON.ID != "" {
-		nodeID, err := discover.HexID(confJSON.ID)
-		if err != nil {
+		if err := n.ID.UnmarshalText([]byte(confJSON.ID)); err != nil {
 			return err
 		}
-		n.ID = nodeID
 	}
 
 	if confJSON.PrivateKey != "" {
@@ -162,29 +180,36 @@ func (n *NodeConfig) UnmarshalJSON(data []byte) error {
 
 	n.Name = confJSON.Name
 	n.Services = confJSON.Services
+	n.Properties = confJSON.Properties
 	n.Port = confJSON.Port
 	n.EnableMsgEvents = confJSON.EnableMsgEvents
 
 	return nil
 }
 
+// Node returns the node descriptor represented by the config.
+func (n *NodeConfig) Node() *enode.Node {
+	return n.node
+}
+
 // RandomNodeConfig returns node configuration with a randomly generated ID and
 // PrivateKey
 func RandomNodeConfig() *NodeConfig {
-	key, err := crypto.GenerateKey()
+	prvkey, err := crypto.GenerateKey()
 	if err != nil {
 		panic("unable to generate key")
 	}
 
-	id := discover.PubkeyID(&key.PublicKey)
 	port, err := assignTCPPort()
 	if err != nil {
 		panic("unable to assign tcp port")
 	}
+
+	enodId := enode.PubkeyToIDV4(&prvkey.PublicKey)
 	return &NodeConfig{
-		ID:              id,
-		Name:            fmt.Sprintf("node_%s", id.String()),
-		PrivateKey:      key,
+		PrivateKey:      prvkey,
+		ID:              enodId,
+		Name:            fmt.Sprintf("node_%s", enodId.String()),
 		Port:            port,
 		EnableMsgEvents: true,
 	}
@@ -221,7 +246,7 @@ type ServiceContext struct {
 // other nodes in the network (for example a simulated Swarm node which needs
 // to connect to a PlatON node to resolve ENS names)
 type RPCDialer interface {
-	DialRPC(id discover.NodeID) (*rpc.Client, error)
+	DialRPC(id enode.ID) (*rpc.Client, error)
 }
 
 // Services is a collection of services which can be run in a simulation
@@ -253,4 +278,31 @@ func RegisterServices(services Services) {
 	if reexec.Init() {
 		os.Exit(0)
 	}
+}
+
+// adds the host part to the configuration's ENR, signs it
+// creates and  the corresponding enode object to the configuration
+func (n *NodeConfig) initEnode(ip net.IP, tcpport int, udpport int) error {
+	enrIp := enr.IP(ip)
+	n.Record.Set(&enrIp)
+	enrTcpPort := enr.TCP(tcpport)
+	n.Record.Set(&enrTcpPort)
+	enrUdpPort := enr.UDP(udpport)
+	n.Record.Set(&enrUdpPort)
+
+	err := enode.SignV4(&n.Record, n.PrivateKey)
+	if err != nil {
+		return fmt.Errorf("unable to generate ENR: %v", err)
+	}
+	nod, err := enode.New(enode.V4ID{}, &n.Record)
+	if err != nil {
+		return fmt.Errorf("unable to create enode: %v", err)
+	}
+	log.Trace("simnode new", "record", n.Record)
+	n.node = nod
+	return nil
+}
+
+func (n *NodeConfig) initDummyEnode() error {
+	return n.initEnode(net.IPv4(127, 0, 0, 1), int(n.Port), 0)
 }
