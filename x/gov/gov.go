@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
-
 package gov
 
 import (
@@ -24,14 +23,14 @@ import (
 	"math/big"
 	"strconv"
 
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
+
 	"github.com/AlayaNetwork/Alaya-Go/common/vm"
 	"github.com/AlayaNetwork/Alaya-Go/params"
 
 	"github.com/AlayaNetwork/Alaya-Go/common"
-	"github.com/AlayaNetwork/Alaya-Go/common/byteutil"
 	"github.com/AlayaNetwork/Alaya-Go/log"
 	"github.com/AlayaNetwork/Alaya-Go/node"
-	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
 	"github.com/AlayaNetwork/Alaya-Go/x/staking"
 	"github.com/AlayaNetwork/Alaya-Go/x/xcom"
 	"github.com/AlayaNetwork/Alaya-Go/x/xutil"
@@ -39,12 +38,12 @@ import (
 
 type Staking interface {
 	GetVerifierList(blockHash common.Hash, blockNumber uint64, isCommit bool) (staking.ValidatorExQueue, error)
-	ListVerifierNodeID(blockHash common.Hash, blockNumber uint64) ([]discover.NodeID, error)
+	ListVerifierNodeID(blockHash common.Hash, blockNumber uint64) ([]enode.IDv0, error)
 	GetCanBaseList(blockHash common.Hash, blockNumber uint64) (staking.CandidateBaseQueue, error)
 	GetCandidateInfo(blockHash common.Hash, addr common.NodeAddress) (*staking.Candidate, error)
 	GetCanBase(blockHash common.Hash, addr common.NodeAddress) (*staking.CandidateBase, error)
 	GetCanMutable(blockHash common.Hash, addr common.NodeAddress) (*staking.CandidateMutable, error)
-	DeclarePromoteNotify(blockHash common.Hash, blockNumber uint64, nodeId discover.NodeID, programVersion uint32) error
+	DeclarePromoteNotify(blockHash common.Hash, blockNumber uint64, nodeId enode.IDv0, programVersion uint32) error
 }
 
 const (
@@ -269,7 +268,7 @@ func Vote(from common.Address, vote VoteInfo, blockHash common.Hash, blockNumber
 	//the proposal is version type, so add the node ID to active node list.
 	if proposal.GetProposalType() == Version {
 		if err := AddActiveNode(blockHash, vote.ProposalID, vote.VoteNodeID); err != nil {
-			log.Error("add nodeID to active node list error", "proposalID", vote.ProposalID, "nodeID", byteutil.PrintNodeID(vote.VoteNodeID))
+			log.Error("add nodeID to active node list error", "proposalID", vote.ProposalID, "nodeID", vote.VoteNodeID.TerminalString())
 			return err
 		}
 	}
@@ -278,7 +277,7 @@ func Vote(from common.Address, vote VoteInfo, blockHash common.Hash, blockNumber
 }
 
 // node declares it's version
-func DeclareVersion(from common.Address, declaredNodeID discover.NodeID, declaredVersion uint32, programVersionSign common.VersionSign, blockHash common.Hash, blockNumber uint64, stk Staking, state xcom.StateDB) error {
+func DeclareVersion(from common.Address, declaredNodeID enode.IDv0, declaredVersion uint32, programVersionSign common.VersionSign, blockHash common.Hash, blockNumber uint64, stk Staking, state xcom.StateDB) error {
 	log.Debug("call DeclareVersion", "from", from, "blockHash", blockHash, "blockNumber", blockNumber, "declaredNodeID", declaredNodeID, "declaredVersion", declaredVersion, "versionSign", programVersionSign)
 
 	if !node.GetCryptoHandler().IsSignedByNodeID(declaredVersion, programVersionSign.Bytes(), declaredNodeID) {
@@ -368,7 +367,7 @@ func DeclareVersion(from common.Address, declaredNodeID discover.NodeID, declare
 }
 
 // check if the node a verifier, and the caller address is same as the staking address
-func checkVerifier(from common.Address, nodeID discover.NodeID, blockHash common.Hash, blockNumber uint64, stk Staking) error {
+func checkVerifier(from common.Address, nodeID enode.IDv0, blockHash common.Hash, blockNumber uint64, stk Staking) error {
 	log.Debug("call checkVerifier", "from", from, "blockHash", blockHash, "blockNumber", blockNumber, "nodeID", nodeID)
 
 	_, err := xutil.NodeId2Addr(nodeID)
@@ -489,7 +488,7 @@ func FindVotingProposal(blockHash common.Hash, state xcom.StateDB, proposalTypes
 // GetMaxEndVotingBlock returns the max endVotingBlock of proposals those are at voting stage, and the nodeID has voted for those proposals.
 // or returns 0 if there's no proposal at voting stage, or nodeID didn't voted for any proposal.
 // if any error happened, return 0 and the error
-func GetMaxEndVotingBlock(nodeID discover.NodeID, blockHash common.Hash, state xcom.StateDB) (uint64, error) {
+func GetMaxEndVotingBlock(nodeID enode.IDv0, blockHash common.Hash, state xcom.StateDB) (uint64, error) {
 	if proposalIDList, err := ListVotingProposal(blockHash); err != nil {
 		return 0, err
 	} else {
@@ -514,7 +513,7 @@ func GetMaxEndVotingBlock(nodeID discover.NodeID, blockHash common.Hash, state x
 }
 
 // NotifyPunishedVerifiers receives punished verifies notification from Staking
-func NotifyPunishedVerifiers(blockHash common.Hash, punishedVerifierMap map[discover.NodeID]struct{}, state xcom.StateDB) error {
+func NotifyPunishedVerifiers(blockHash common.Hash, punishedVerifierMap map[enode.IDv0]struct{}, state xcom.StateDB) error {
 	if punishedVerifierMap == nil || len(punishedVerifierMap) == 0 {
 		return nil
 	}
@@ -658,7 +657,7 @@ func FindGovernParam(module, name string, blockHash common.Hash) (*GovernParam, 
 }
 
 // check if the node a candidate, and the caller address is same as the staking address
-func checkCandidate(from common.Address, nodeID discover.NodeID, blockHash common.Hash, blockNumber uint64, stk Staking) error {
+func checkCandidate(from common.Address, nodeID enode.IDv0, blockHash common.Hash, blockNumber uint64, stk Staking) error {
 
 	_, err := xutil.NodeId2Addr(nodeID)
 	if nil != err {

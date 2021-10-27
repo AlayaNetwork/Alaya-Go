@@ -14,17 +14,17 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
-
 package staking
 
 import (
 	"fmt"
 
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
+
 	"github.com/syndtr/goleveldb/leveldb/iterator"
 
 	"github.com/AlayaNetwork/Alaya-Go/common"
 	"github.com/AlayaNetwork/Alaya-Go/core/snapshotdb"
-	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
 	"github.com/AlayaNetwork/Alaya-Go/rlp"
 )
 
@@ -417,7 +417,7 @@ func (db *StakingDB) DelUnStakeItemStore(blockHash common.Hash, epoch, index uin
 
 // about delegate ...
 
-func (db *StakingDB) GetDelegateStore(blockHash common.Hash, delAddr common.Address, nodeId discover.NodeID, stakeBlockNumber uint64) (*Delegation, error) {
+func (db *StakingDB) GetDelegateStore(blockHash common.Hash, delAddr common.Address, nodeId enode.IDv0, stakeBlockNumber uint64) (*Delegation, error) {
 
 	key := GetDelegateKey(delAddr, nodeId, stakeBlockNumber)
 
@@ -434,7 +434,7 @@ func (db *StakingDB) GetDelegateStore(blockHash common.Hash, delAddr common.Addr
 	return &del, nil
 }
 
-func (db *StakingDB) GetDelegateStoreByIrr(delAddr common.Address, nodeId discover.NodeID, stakeBlockNumber uint64) (*Delegation, error) {
+func (db *StakingDB) GetDelegateStoreByIrr(delAddr common.Address, nodeId enode.IDv0, stakeBlockNumber uint64) (*Delegation, error) {
 	key := GetDelegateKey(delAddr, nodeId, stakeBlockNumber)
 
 	delByte, err := db.getFromCommitted(key)
@@ -464,7 +464,7 @@ func (db *StakingDB) GetDelegateStoreBySuffix(blockHash common.Hash, keySuffix [
 }
 
 type DelegationInfo struct {
-	NodeID           discover.NodeID
+	NodeID           enode.IDv0
 	StakeBlockNumber uint64
 	Delegation       *Delegation
 }
@@ -496,7 +496,7 @@ func (db *StakingDB) GetDelegatesInfo(blockHash common.Hash, delAddr common.Addr
 	return infos, nil
 }
 
-func (db *StakingDB) SetDelegateStore(blockHash common.Hash, delAddr common.Address, nodeId discover.NodeID,
+func (db *StakingDB) SetDelegateStore(blockHash common.Hash, delAddr common.Address, nodeId enode.IDv0,
 	stakeBlockNumber uint64, del *Delegation) error {
 
 	key := GetDelegateKey(delAddr, nodeId, stakeBlockNumber)
@@ -519,7 +519,7 @@ func (db *StakingDB) SetDelegateStoreBySuffix(blockHash common.Hash, suffix []by
 	return db.put(blockHash, key, delByte)
 }
 
-func (db *StakingDB) DelDelegateStore(blockHash common.Hash, delAddr common.Address, nodeId discover.NodeID,
+func (db *StakingDB) DelDelegateStore(blockHash common.Hash, delAddr common.Address, nodeId enode.IDv0,
 	stakeBlockNumber uint64) error {
 	key := GetDelegateKey(delAddr, nodeId, stakeBlockNumber)
 

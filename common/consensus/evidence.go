@@ -14,12 +14,11 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
-
 package consensus
 
 import (
 	"github.com/AlayaNetwork/Alaya-Go/crypto/bls"
-	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
 )
 
 type EvidenceType uint8
@@ -33,7 +32,7 @@ type Evidence interface {
 	ViewNumber() uint64
 	Hash() []byte
 	//Address() common.NodeAddress
-	NodeID() discover.NodeID
+	NodeID() enode.IDv0
 	BlsPubKey() *bls.PublicKey
 	Validate() error
 	Type() EvidenceType

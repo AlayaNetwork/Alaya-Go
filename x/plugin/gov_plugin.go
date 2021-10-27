@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
-
 package plugin
 
 import (
@@ -23,11 +22,11 @@ import (
 	"math/big"
 	"sync"
 
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
+
 	"github.com/AlayaNetwork/Alaya-Go/params"
 
 	"github.com/AlayaNetwork/Alaya-Go/core/snapshotdb"
-
-	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
 
 	"github.com/AlayaNetwork/Alaya-Go/common"
 	"github.com/AlayaNetwork/Alaya-Go/core/types"
@@ -58,7 +57,7 @@ func GovPluginInstance() *GovPlugin {
 func (govPlugin *GovPlugin) SetChainID(chainId *big.Int) {
 	govPlugin.chainID = chainId
 }
-func (govPlugin *GovPlugin) Confirmed(nodeId discover.NodeID, block *types.Block) error {
+func (govPlugin *GovPlugin) Confirmed(nodeId enode.IDv0, block *types.Block) error {
 	return nil
 }
 

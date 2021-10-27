@@ -18,11 +18,14 @@ package vm
 
 import (
 	"errors"
-	"github.com/AlayaNetwork/Alaya-Go/x/gov"
-	"github.com/AlayaNetwork/Alaya-Go/x/xcom"
-	"github.com/stretchr/testify/assert"
 	"math/big"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
+	"github.com/AlayaNetwork/Alaya-Go/x/gov"
+	"github.com/AlayaNetwork/Alaya-Go/x/xcom"
 
 	"github.com/AlayaNetwork/Alaya-Go/common/vm"
 
@@ -43,7 +46,6 @@ import (
 
 	"github.com/AlayaNetwork/Alaya-Go/common/mock"
 	"github.com/AlayaNetwork/Alaya-Go/crypto"
-	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
 	"github.com/AlayaNetwork/Alaya-Go/x/staking"
 	"github.com/AlayaNetwork/Alaya-Go/x/xutil"
 )
@@ -60,7 +62,7 @@ func generateStk(rewardPer uint16, delegateTotal *big.Int, blockNumber uint64) (
 	if nil != err {
 		panic(err)
 	}
-	nodeID, add := discover.PubkeyID(&privateKey.PublicKey), crypto.PubkeyToAddress(privateKey.PublicKey)
+	nodeID, add := enode.PublicKeyToIDv0(&privateKey.PublicKey), crypto.PubkeyToAddress(privateKey.PublicKey)
 	canBase.BenefitAddress = add
 	canBase.NodeId = nodeID
 	canBase.StakingBlockNum = 100

@@ -14,17 +14,16 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
-
 package evidence
 
 import (
 	"bytes"
 	"fmt"
 
-	"github.com/AlayaNetwork/Alaya-Go/crypto/bls"
-	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
 
 	"github.com/AlayaNetwork/Alaya-Go/common/consensus"
+	"github.com/AlayaNetwork/Alaya-Go/crypto/bls"
 
 	"github.com/AlayaNetwork/Alaya-Go/crypto"
 	"github.com/AlayaNetwork/Alaya-Go/rlp"
@@ -114,7 +113,7 @@ func (d DuplicatePrepareBlockEvidence) Validate() error {
 	return nil
 }
 
-func (d DuplicatePrepareBlockEvidence) NodeID() discover.NodeID {
+func (d DuplicatePrepareBlockEvidence) NodeID() enode.IDv0 {
 	return d.PrepareA.ValidateNode.NodeID
 }
 
@@ -209,7 +208,7 @@ func (d DuplicatePrepareVoteEvidence) Validate() error {
 	return nil
 }
 
-func (d DuplicatePrepareVoteEvidence) NodeID() discover.NodeID {
+func (d DuplicatePrepareVoteEvidence) NodeID() enode.IDv0 {
 	return d.VoteA.ValidateNode.NodeID
 }
 
@@ -301,7 +300,7 @@ func (d DuplicateViewChangeEvidence) Validate() error {
 	return nil
 }
 
-func (d DuplicateViewChangeEvidence) NodeID() discover.NodeID {
+func (d DuplicateViewChangeEvidence) NodeID() enode.IDv0 {
 	return d.ViewA.ValidateNode.NodeID
 }
 

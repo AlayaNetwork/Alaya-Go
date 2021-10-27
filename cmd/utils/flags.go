@@ -30,6 +30,8 @@ import (
 
 	"github.com/AlayaNetwork/Alaya-Go/miner"
 
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
+
 	"github.com/AlayaNetwork/Alaya-Go/core/snapshotdb"
 
 	"gopkg.in/urfave/cli.v1"
@@ -49,13 +51,11 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/eth/gasprice"
 	"github.com/AlayaNetwork/Alaya-Go/ethdb"
 	"github.com/AlayaNetwork/Alaya-Go/ethstats"
-	"github.com/AlayaNetwork/Alaya-Go/les"
 	"github.com/AlayaNetwork/Alaya-Go/log"
 	"github.com/AlayaNetwork/Alaya-Go/metrics"
 	"github.com/AlayaNetwork/Alaya-Go/metrics/influxdb"
 	"github.com/AlayaNetwork/Alaya-Go/node"
 	"github.com/AlayaNetwork/Alaya-Go/p2p"
-	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
 	"github.com/AlayaNetwork/Alaya-Go/p2p/nat"
 	"github.com/AlayaNetwork/Alaya-Go/p2p/netutil"
 	"github.com/AlayaNetwork/Alaya-Go/params"
@@ -665,15 +665,13 @@ func setBootstrapNodes(ctx *cli.Context, cfg *p2p.Config) {
 		return // already set, don't apply defaults.
 	}
 
-	cfg.BootstrapNodes = make([]*discover.Node, 0, len(urls))
+	cfg.BootstrapNodes = make([]*enode.Node, 0, len(urls))
 	for _, url := range urls {
-		if url != "" {
-			node, err := discover.ParseNode(url)
-			if err != nil {
-				log.Crit("Bootstrap URL invalid", "enode", url, "err", err)
-			}
-			cfg.BootstrapNodes = append(cfg.BootstrapNodes, node)
+		node, err := enode.Parse(enode.ValidSchemes, url)
+		if err != nil {
+			log.Crit("Bootstrap URL invalid", "enode", url, "err", err)
 		}
+		cfg.BootstrapNodes = append(cfg.BootstrapNodes, node)
 	}
 }
 
@@ -1146,7 +1144,8 @@ func SetEthConfig(ctx *cli.Context, stack *node.Node, cfg *eth.Config) {
 func SetCbft(ctx *cli.Context, cfg *types.OptionsConfig, nodeCfg *node.Config) {
 	if nodeCfg.P2P.PrivateKey != nil {
 		cfg.NodePriKey = nodeCfg.P2P.PrivateKey
-		cfg.NodeID = discover.PubkeyID(&cfg.NodePriKey.PublicKey)
+		cfg.Node = enode.NewV4(&cfg.NodePriKey.PublicKey, nil, 0, 0)
+		cfg.NodeID = cfg.Node.IDv0()
 	}
 
 	if ctx.GlobalIsSet(CbftBlsPriKeyFileFlag.Name) {
@@ -1181,13 +1180,7 @@ func SetCbft(ctx *cli.Context, cfg *types.OptionsConfig, nodeCfg *node.Config) {
 func RegisterEthService(stack *node.Node, cfg *eth.Config) {
 	var err error
 	if cfg.SyncMode == downloader.LightSync {
-		err = stack.Register(func(ctx *node.ServiceContext) (node.Service, error) {
-			light, err := les.New(ctx, cfg)
-			if err == nil {
-				stack.ChainID = light.ApiBackend.ChainConfig().ChainID
-			}
-			return light, err
-		})
+		Fatalf("Failed to register the Alaya-Go service: %v", "not support LightSync")
 	} else {
 		err = stack.Register(func(ctx *node.ServiceContext) (node.Service, error) {
 			fullNode, err := eth.New(ctx, cfg)
@@ -1196,8 +1189,8 @@ func RegisterEthService(stack *node.Node, cfg *eth.Config) {
 			}
 
 			if fullNode != nil && cfg.LightServ > 0 {
-				ls, _ := les.NewLesServer(fullNode, cfg)
-				fullNode.AddLesServer(ls)
+				/*ls, _ := les.NewLesServer(fullNode, cfg)
+				fullNode.AddLesServer(ls)*/
 			}
 			return fullNode, err
 		})
@@ -1224,10 +1217,10 @@ func RegisterEthStatsService(stack *node.Node, url string) {
 		var ethServ *eth.Ethereum
 		ctx.Service(&ethServ)
 
-		var lesServ *les.LightEthereum
-		ctx.Service(&lesServ)
+		//var lesServ *les.LightEthereum
+		//ctx.Service(&lesServ)
 
-		return ethstats.New(url, ethServ, lesServ)
+		return ethstats.New(url, ethServ)
 	}); err != nil {
 		Fatalf("Failed to register the Alaya-Go Stats service: %v", err)
 	}

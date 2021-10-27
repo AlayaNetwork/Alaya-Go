@@ -20,12 +20,13 @@ package consensus
 import (
 	"time"
 
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
+
 	"github.com/AlayaNetwork/Alaya-Go/common"
 	"github.com/AlayaNetwork/Alaya-Go/core/cbfttypes"
 	"github.com/AlayaNetwork/Alaya-Go/core/state"
 	"github.com/AlayaNetwork/Alaya-Go/core/types"
 	"github.com/AlayaNetwork/Alaya-Go/p2p"
-	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
 	"github.com/AlayaNetwork/Alaya-Go/params"
 	"github.com/AlayaNetwork/Alaya-Go/rpc"
 )
@@ -161,7 +162,7 @@ type Agency interface {
 	VerifyHeader(header *types.Header, stateDB *state.StateDB) error
 	GetLastNumber(blockNumber uint64) uint64
 	GetValidator(blockNumber uint64) (*cbfttypes.Validators, error)
-	IsCandidateNode(nodeID discover.NodeID) bool
+	IsCandidateNode(nodeID enode.IDv0) bool
 	OnCommit(block *types.Block) error
 }
 
@@ -173,7 +174,7 @@ type Bft interface {
 	Start(chain ChainReader, blockCacheWriter BlockCacheWriter, pool TxPoolReset, agency Agency) error
 
 	// Returns the current consensus node address list.
-	ConsensusNodes() ([]discover.NodeID, error)
+	ConsensusNodes() ([]enode.ID, error)
 
 	// Returns whether the current node is out of the block
 	ShouldSeal(curTime time.Time) (bool, error)
@@ -195,5 +196,5 @@ type Bft interface {
 	TracingSwitch(flag int8)
 
 	// NodeID is temporary.
-	NodeID() discover.NodeID
+	Node() *enode.Node
 }

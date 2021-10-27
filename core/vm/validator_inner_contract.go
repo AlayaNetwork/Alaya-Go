@@ -20,6 +20,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
+
 	"bytes"
 
 	"encoding/json"
@@ -30,7 +32,6 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/crypto"
 	"github.com/AlayaNetwork/Alaya-Go/crypto/bls"
 	"github.com/AlayaNetwork/Alaya-Go/log"
-	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
 	"github.com/AlayaNetwork/Alaya-Go/params"
 	"github.com/AlayaNetwork/Alaya-Go/rlp"
 )
@@ -46,8 +47,9 @@ const (
 )
 
 type ValidateNode struct {
-	Index     uint               `json:"index"`
-	NodeID    discover.NodeID    `json:"nodeID"`
+	Index uint `json:"index"`
+	//todo do not change
+	NodeID    enode.IDv0         `json:"nodeID"`
 	Address   common.NodeAddress `json:"-"`
 	BlsPubKey bls.PublicKey      `json:"blsPubKey"`
 }

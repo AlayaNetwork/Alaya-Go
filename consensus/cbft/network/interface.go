@@ -14,14 +14,13 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
-
 package network
 
 import (
 	"github.com/AlayaNetwork/Alaya-Go/common"
 	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/protocols"
 	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/types"
-	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
 )
 
 // Cbft defines the network layer to use the relevant interface
@@ -29,10 +28,10 @@ import (
 type Cbft interface {
 
 	// Returns the ID value of the current node.
-	NodeID() discover.NodeID
+	Node() *enode.Node
 
 	// Return a list of all consensus nodes.
-	ConsensusNodes() ([]discover.NodeID, error)
+	ConsensusNodes() ([]enode.ID, error)
 
 	// Return configuration information of CBFT consensus.
 	Config() *types.Config

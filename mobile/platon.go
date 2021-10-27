@@ -21,6 +21,7 @@ package platon
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"path/filepath"
 
@@ -30,7 +31,6 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/ethclient"
 	"github.com/AlayaNetwork/Alaya-Go/ethstats"
 	"github.com/AlayaNetwork/Alaya-Go/internal/debug"
-	"github.com/AlayaNetwork/Alaya-Go/les"
 	"github.com/AlayaNetwork/Alaya-Go/node"
 	"github.com/AlayaNetwork/Alaya-Go/p2p"
 	"github.com/AlayaNetwork/Alaya-Go/p2p/nat"
@@ -162,17 +162,18 @@ func NewNode(datadir string, config *NodeConfig) (stack *Node, _ error) {
 		ethConf.NetworkId = uint64(config.EthereumNetworkID)
 		ethConf.DatabaseCache = config.EthereumDatabaseCache
 		if err := rawStack.Register(func(ctx *node.ServiceContext) (node.Service, error) {
-			return les.New(ctx, &ethConf)
+			return nil, errors.New("not support light yet")
+			//return les.New(ctx, &ethConf)
 		}); err != nil {
 			return nil, fmt.Errorf("ethereum init: %v", err)
 		}
 		// If netstats reporting is requested, do it
 		if config.EthereumNetStats != "" {
 			if err := rawStack.Register(func(ctx *node.ServiceContext) (node.Service, error) {
-				var lesServ *les.LightEthereum
-				ctx.Service(&lesServ)
+				//var lesServ *les.LightEthereum
+				//ctx.Service(&lesServ)
 
-				return ethstats.New(config.EthereumNetStats, nil, lesServ)
+				return ethstats.New(config.EthereumNetStats, nil)
 			}); err != nil {
 				return nil, fmt.Errorf("netstats init: %v", err)
 			}

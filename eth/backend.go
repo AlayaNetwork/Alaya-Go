@@ -56,7 +56,6 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/miner"
 	"github.com/AlayaNetwork/Alaya-Go/node"
 	"github.com/AlayaNetwork/Alaya-Go/p2p"
-	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
 	"github.com/AlayaNetwork/Alaya-Go/params"
 	"github.com/AlayaNetwork/Alaya-Go/rpc"
 	xplugin "github.com/AlayaNetwork/Alaya-Go/x/plugin"
@@ -352,6 +351,8 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 			log.Error("Init cbft consensus engine fail", "error", err)
 			return nil, errors.New("Failed to init cbft consensus engine")
 		}
+	} else {
+		log.Crit("engin not good")
 	}
 
 	// Permit the downloader to use the trie cache allowance during fast sync
@@ -592,7 +593,7 @@ func (s *Ethereum) Start(srvr *p2p.Server) error {
 			for _, n := range s.blockchain.Config().Cbft.InitialNodes {
 				// todo: Mock point.
 				if !node.FakeNetEnable {
-					srvr.AddConsensusPeer(discover.NewNode(n.Node.ID, n.Node.IP, n.Node.UDP, n.Node.TCP))
+					srvr.AddConsensusPeer(n.Node)
 				}
 			}
 		}
