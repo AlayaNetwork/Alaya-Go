@@ -1207,6 +1207,27 @@ func RegisterEthService(stack *node.Node, cfg *eth.Config) {
 	}
 }
 
+// RegisterPubSubService adds a PubSub client to the stack.
+func RegisterPubSubService(stack *node.Node, cfg *eth.Config) {
+	var err error
+	err = stack.Register(func(ctx *node.ServiceContext) (node.Service, error) {
+		fullNode, err := eth.New(ctx, cfg)
+		if err == nil {
+			stack.ChainID = fullNode.APIBackend.ChainConfig().ChainID
+		}
+
+		if fullNode != nil && cfg.LightServ > 0 {
+			ls, _ := les.NewLesServer(fullNode, cfg)
+			fullNode.AddLesServer(ls)
+		}
+		return fullNode, err
+	})
+
+	if err != nil {
+		Fatalf("Failed to register the Alaya-Go service: %v", err)
+	}
+}
+
 // RegisterShhService configures Whisper and adds it to the given node.
 //func RegisterShhService(stack *node.Node, cfg *whisper.Config) {
 //	if err := stack.Register(func(n *node.ServiceContext) (node.Service, error) {

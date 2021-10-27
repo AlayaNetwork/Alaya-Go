@@ -19,6 +19,7 @@ package node
 import (
 	"errors"
 	"fmt"
+	"github.com/AlayaNetwork/Alaya-Go/p2p/pubsub"
 	"math/big"
 	"net"
 	"os"
@@ -55,6 +56,7 @@ type Node struct {
 	ChainID      *big.Int `toml:"-"`
 	serverConfig p2p.Config
 	server       *p2p.Server // Currently running P2P networking layer
+	pubsub       *pubsub.Server // Currently running pubsub networking layer
 
 	serviceFuncs []ServiceConstructor     // Service constructors (in dependency order)
 	services     map[reflect.Type]Service // Currently running services

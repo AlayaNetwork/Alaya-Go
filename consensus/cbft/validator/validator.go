@@ -298,8 +298,12 @@ type ValidatorPool struct {
 
 	// Current node's public key
 	nodeID discover.NodeID
+	// The group ID of the current node
+	groupID uint32
+	// Uint ID of the group where the current node is located
+	unitID uint32
 
-	// A block number which validators switch point.
+	// A block number which validators switch to current.
 	switchPoint uint64
 	lastNumber  uint64
 
@@ -307,7 +311,6 @@ type ValidatorPool struct {
 
 	prevValidators    *cbfttypes.Validators // Previous validators
 	currentValidators *cbfttypes.Validators // Current validators
-
 }
 
 // NewValidatorPool new a validator pool.
@@ -338,6 +341,8 @@ func NewValidatorPool(agency consensus.Agency, blockNumber uint64, epoch uint64,
 		pool.switchPoint = pool.currentValidators.ValidBlockNumber - 1
 	}
 
+	pool.groupID = pool.currentValidators.GroupID(nodeID)
+	pool.unitID = pool.currentValidators.UnitID(nodeID)
 	log.Debug("Update validator", "validators", pool.currentValidators.String(), "switchpoint", pool.switchPoint, "epoch", pool.epoch, "lastNumber", pool.lastNumber)
 	return pool
 }
@@ -682,6 +687,49 @@ func (vp *ValidatorPool) Flush(header *types.Header) error {
 
 func (vp *ValidatorPool) Commit(block *types.Block) error {
 	return vp.agency.OnCommit(block)
+}
+
+// GetGroupNodes return GroupValidators according epoch
+func (vp *ValidatorPool) GetGroupNodes(epoch uint64) []*cbfttypes.GroupValidators {
+	if epoch > vp.epoch {
+		panic(fmt.Sprintf("get unknown epoch, current:%d, request:%d", vp.epoch, epoch))
+	}
+	if epoch+1 == vp.epoch {
+		return vp.prevValidators.GroupNodes
+	}
+	return vp.currentValidators.GroupNodes
+}
+
+// GetGroupID return GroupID according epoch & NodeID
+func (vp *ValidatorPool) GetGroupID(epoch uint64, nodeID discover.NodeID) (uint32, error) {
+	if epoch > vp.epoch {
+		panic(fmt.Sprintf("get unknown epoch, current:%d, request:%d", vp.epoch, epoch))
+	}
+	if epoch+1 == vp.epoch {
+		return vp.prevValidators.GroupID(nodeID), nil
+	}
+	return vp.groupID, nil
+}
+
+// GroupID return current node's GroupID according epoch
+func (vp *ValidatorPool) GroupID(epoch uint64) (uint32, error) {
+	return vp.GetGroupID(epoch,vp.nodeID)
+}
+
+// GetUnitID return index according epoch & NodeID
+func (vp *ValidatorPool) GetUnitID(epoch uint64, nodeID discover.NodeID) (uint32, error) {
+	if epoch > vp.epoch {
+		panic(fmt.Sprintf("get unknown epoch, current:%d, request:%d", vp.epoch, epoch))
+	}
+	if epoch+1 == vp.epoch {
+		return vp.prevValidators.UnitID(nodeID), nil
+	}
+	return vp.unitID, nil
+}
+
+// UnitID return current node's index according epoch
+func (vp *ValidatorPool) UnitID(epoch uint64) (uint32, error) {
+	return vp.GetUnitID(epoch,vp.nodeID)
 }
 
 func NextRound(blockNumber uint64) uint64 {

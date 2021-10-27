@@ -22,6 +22,7 @@ import (
 	"crypto/elliptic"
 	"encoding/json"
 	"fmt"
+	"github.com/AlayaNetwork/Alaya-Go/p2p/pubsub"
 	"strings"
 	"sync/atomic"
 
@@ -123,6 +124,7 @@ type Cbft struct {
 	evPool           evidence.EvidencePool
 	log              log.Logger
 	network          *network.EngineManager
+	pubsub           *pubsub.PubSub
 
 	start    int32
 	syncing  int32
@@ -871,7 +873,7 @@ func (cbft *Cbft) APIs(chain consensus.ChainReader) []rpc.API {
 
 // Protocols return consensus engine to provide protocol information.
 func (cbft *Cbft) Protocols() []p2p.Protocol {
-	return cbft.network.Protocols()
+	return append(cbft.network.Protocols(), cbft.pubsub.Protocols())
 }
 
 // NextBaseBlock is used to calculate the next block.

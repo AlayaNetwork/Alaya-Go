@@ -130,6 +130,29 @@ func newTestNode3() []params.CbftNode {
 	return nodes
 }
 
+func newTestNodeByNum(num int) []params.CbftNode {
+	nodes := make([]params.CbftNode, 0, num)
+
+	randomID := func() discover.NodeID {
+		ecdsaKey, _ := crypto.GenerateKey()
+		publicKey := hex.EncodeToString(crypto.FromECDSAPub(&ecdsaKey.PublicKey)[1:])
+		return discover.MustHexID(publicKey)
+	}
+
+	for i := 0; i < num; i++ {
+		var sec bls.SecretKey
+		sec.SetByCSPRNG()
+		node := params.CbftNode{
+			Node: discover.Node{
+				ID: randomID(),
+			},
+			BlsPubKey: *sec.GetPublicKey(),
+		}
+		nodes = append(nodes, node)
+	}
+	return nodes
+}
+
 func TestValidators(t *testing.T) {
 	bls.Init(bls.BLS12_381)
 	nodes := newTestNode()
@@ -595,4 +618,68 @@ func TestValidatorPoolReset(t *testing.T) {
 	vp.Reset(150, 15)
 	assert.Equal(t, vp.epoch, uint64(15))
 	assert.Equal(t, vp.switchPoint, uint64(149))
+}
+
+func TestValidatorGrouped(t *testing.T) {
+	nodes := newTestNodeByNum(100)
+	vs := newValidators(nodes, 0)
+	vs.Grouped(25, 5)
+	assert.Equal(t, 4, len(vs.GroupNodes))
+	assert.Equal(t, 25, len(vs.GroupNodes[3].Nodes))
+	assert.Equal(t, uint32(74), vs.GroupNodes[2].Nodes[24].Index)
+	assert.Equal(t, 5, len(vs.GroupNodes[2].Units))
+	assert.Equal(t, uint32(74), vs.GroupNodes[2].Units[4][4])
+
+	vs.Grouped(28, 5)
+	assert.Equal(t, 4, len(vs.GroupNodes))
+	assert.Equal(t, 25, len(vs.GroupNodes[0].Nodes))
+	assert.Equal(t, 25, len(vs.GroupNodes[2].Nodes))
+	assert.Equal(t, 25, len(vs.GroupNodes[3].Nodes))
+	assert.Equal(t, uint32(79), vs.GroupNodes[3].Units[0][4])
+
+	vs.Grouped(19, 3)
+	assert.Equal(t, 6, len(vs.GroupNodes))
+	assert.Equal(t, 17, len(vs.GroupNodes[0].Nodes))
+	assert.Equal(t, 6, len(vs.GroupNodes[2].Units))
+	assert.Equal(t, uint32(48), vs.GroupNodes[2].Units[4][2])
+}
+
+func TestGetGroupID(t *testing.T) {
+	bls.Init(bls.BLS12_381)
+	nodes := newTestNodeByNum(100)
+	agency := newTestInnerAgency(nodes)
+	vp := NewValidatorPool(agency, 0, 0, nodes[0].Node.ID)
+
+	grpID,_ := vp.GetGroupID(0, nodes[0].Node.ID)
+	assert.Equal(t, 0, grpID)
+}
+
+func TestGetUintID(t *testing.T) {
+	bls.Init(bls.BLS12_381)
+	nodes := newTestNodeByNum(100)
+	agency := newTestInnerAgency(nodes)
+	vp := NewValidatorPool(agency, 0, 0, nodes[0].Node.ID)
+
+	untID,_ := vp.GetGroupID(0, nodes[0].Node.ID)
+	assert.Equal(t, 0, untID)
+}
+
+func TestXXXX(t *testing.T) {
+	c1 := make(chan int, 1)
+	c2 := make(chan int, 1)
+	go func() {
+		c1 <- 1
+		c2 <- 2
+	}()
+
+	for {
+		select {
+		case <-c2:
+			fmt.Println("c2 ready")
+		case <-c1:
+			fmt.Println("c1 ready")
+			//default:
+			//	fmt.Println("default")
+		}
+	}
 }

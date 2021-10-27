@@ -181,6 +181,7 @@ func makeFullNode(ctx *cli.Context) *node.Node {
 	snapshotdb.SetDBPathWithNode(stack.ResolvePath(snapshotdb.DBPath))
 
 	utils.RegisterEthService(stack, &cfg.Eth)
+	utils.RegisterPubSubService(stack, &cfg.Eth)
 
 	// Add the Ethereum Stats daemon if requested.
 	if cfg.Ethstats.URL != "" {
