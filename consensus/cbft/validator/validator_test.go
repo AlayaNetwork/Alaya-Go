@@ -17,6 +17,7 @@
 package validator
 
 import (
+	"crypto/ecdsa"
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
@@ -133,19 +134,16 @@ func newTestNode3() []params.CbftNode {
 func newTestNodeByNum(num int) []params.CbftNode {
 	nodes := make([]params.CbftNode, 0, num)
 
-	randomID := func() discover.NodeID {
+	randomPubKey := func() *ecdsa.PublicKey {
 		ecdsaKey, _ := crypto.GenerateKey()
-		publicKey := hex.EncodeToString(crypto.FromECDSAPub(&ecdsaKey.PublicKey)[1:])
-		return discover.MustHexID(publicKey)
+		return &ecdsaKey.PublicKey
 	}
 
 	for i := 0; i < num; i++ {
 		var sec bls.SecretKey
 		sec.SetByCSPRNG()
 		node := params.CbftNode{
-			Node: discover.Node{
-				ID: randomID(),
-			},
+			Node: enode.NewV4(randomPubKey(), nil, 0, 0),
 			BlsPubKey: *sec.GetPublicKey(),
 		}
 		nodes = append(nodes, node)
@@ -648,9 +646,9 @@ func TestGetGroupID(t *testing.T) {
 	bls.Init(bls.BLS12_381)
 	nodes := newTestNodeByNum(100)
 	agency := newTestInnerAgency(nodes)
-	vp := NewValidatorPool(agency, 0, 0, nodes[0].Node.ID)
+	vp := NewValidatorPool(agency, 0, 0, nodes[0].Node.ID())
 
-	grpID,_ := vp.GetGroupID(0, nodes[0].Node.ID)
+	grpID,_ := vp.GetGroupID(0, nodes[0].Node.ID())
 	assert.Equal(t, 0, grpID)
 }
 
@@ -658,28 +656,9 @@ func TestGetUintID(t *testing.T) {
 	bls.Init(bls.BLS12_381)
 	nodes := newTestNodeByNum(100)
 	agency := newTestInnerAgency(nodes)
-	vp := NewValidatorPool(agency, 0, 0, nodes[0].Node.ID)
+	vp := NewValidatorPool(agency, 0, 0, nodes[0].Node.ID())
 
-	untID,_ := vp.GetGroupID(0, nodes[0].Node.ID)
+	untID,_ := vp.GetGroupID(0, nodes[0].Node.ID())
 	assert.Equal(t, 0, untID)
 }
 
-func TestXXXX(t *testing.T) {
-	c1 := make(chan int, 1)
-	c2 := make(chan int, 1)
-	go func() {
-		c1 <- 1
-		c2 <- 2
-	}()
-
-	for {
-		select {
-		case <-c2:
-			fmt.Println("c2 ready")
-		case <-c1:
-			fmt.Println("c1 ready")
-			//default:
-			//	fmt.Println("default")
-		}
-	}
-}

@@ -31,7 +31,7 @@ const (
 	CbftPubSubProtocolVersion = 1
 
 	// CbftPubSubProtocolLength are the number of implemented message corresponding to cbft.pubsub protocol versions.
-	CbftPubSubProtocolLength = 40
+	CbftPubSubProtocolLength = 10
 
 	// DefaultMaximumMessageSize is 1mb.
 	DefaultMaxMessageSize = 1 << 20

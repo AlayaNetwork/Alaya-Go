@@ -296,6 +296,11 @@ func (cbft *Cbft) Start(chain consensus.ChainReader, blockCacheWriter consensus.
 		cbft.log.Error("Load wal failed", "err", err)
 		return err
 	}
+
+	if err := cbft.pbSvr.Start(); err != nil {
+		return err
+	}
+
 	utils.SetFalse(&cbft.loading)
 
 	go cbft.receiveLoop()

@@ -17,15 +17,37 @@
 
 package pubsub
 
-import "github.com/AlayaNetwork/Alaya-Go/p2p"
+import (
+	"errors"
+	"github.com/AlayaNetwork/Alaya-Go/p2p"
+	"sync"
+)
 
 // Server manages all pubsub peers.
 type Server struct {
+	lock    sync.Mutex // protects running
+	running bool
 	Pb     *PubSub
 }
-
 
 // Protocols return consensus engine to provide protocol information.
 func (s *Server) Protocols() []p2p.Protocol {
 	return s.Pb.Protocols()
+}
+
+// Start starts running the server.
+// Servers can not be re-used after stopping.
+func (srv *Server) Start() (err error) {
+	srv.lock.Lock()
+	defer srv.lock.Unlock()
+	if srv.running {
+		return errors.New("server already running")
+	}
+	srv.running = true
+	return nil
+}
+
+// run is the main loop of the server.
+func (s *Server) run() {
+
 }

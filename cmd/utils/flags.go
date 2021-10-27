@@ -1183,7 +1183,7 @@ func RegisterEthService(stack *node.Node, cfg *eth.Config) {
 		Fatalf("Failed to register the Alaya-Go service: %v", "not support LightSync")
 	} else {
 		err = stack.Register(func(ctx *node.ServiceContext) (node.Service, error) {
-			fullNode, err := eth.New(stack.Pubsub, ctx, cfg)
+			fullNode, err := eth.New(stack.PbSvr, ctx, cfg)
 			if err == nil {
 				stack.ChainID = fullNode.APIBackend.ChainConfig().ChainID
 			}

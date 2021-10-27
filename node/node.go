@@ -55,8 +55,8 @@ type Node struct {
 	// chainId identifies the current chain and is used for replay protection
 	ChainID      *big.Int `toml:"-"`
 	serverConfig p2p.Config
-	server       *p2p.Server // Currently running P2P networking layer
-	Pubsub       *pubsub.Server // Currently running pubsub networking layer
+	server       *p2p.Server    // Currently running P2P networking layer
+	PbSvr        *pubsub.Server // Currently running pubsub networking layer
 
 	serviceFuncs []ServiceConstructor     // Service constructors (in dependency order)
 	services     map[reflect.Type]Service // Currently running services
@@ -204,7 +204,7 @@ func (n *Node) Start() error {
 	}
 
 	running := &p2p.Server{Config: n.serverConfig}
-	n.Pubsub = &pubsub.Server{Pb: pubsub.NewPubSub()}
+	n.PbSvr = &pubsub.Server{Pb: pubsub.NewPubSub()}
 
 	n.log.Info("Starting peer-to-peer node", "instance", n.serverConfig.Name)
 
