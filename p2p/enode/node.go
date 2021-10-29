@@ -205,6 +205,10 @@ func (n *Node) UnmarshalText(text []byte) error {
 	return err
 }
 
+var (
+	ZeroID = HexID("0x0")
+)
+
 // ID is a unique identifier for each node.
 type ID [32]byte
 
