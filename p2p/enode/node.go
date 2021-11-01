@@ -205,6 +205,10 @@ func (n *Node) UnmarshalText(text []byte) error {
 	return err
 }
 
+var (
+	ZeroID ID
+)
+
 // ID is a unique identifier for each node.
 type ID [32]byte
 
