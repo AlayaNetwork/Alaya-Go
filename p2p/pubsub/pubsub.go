@@ -17,10 +17,6 @@
 
 package pubsub
 
-import (
-	"github.com/AlayaNetwork/Alaya-Go/p2p"
-)
-
 // PubSub is the implementation of the pubsub system.
 type PubSub struct {
 	// atomic counter for seqnos
@@ -36,12 +32,6 @@ type PubSub struct {
 
 	// size of the outbound message channel that we maintain for each peer
 	peerOutboundQueueSize int
-}
-
-// After the node is successfully connected and the message belongs
-// to the cbft.pubsub protocol message, the method is called.
-func (pubsub *PubSub) handler(p *p2p.Peer, rw p2p.MsgReadWriter) error {
-	return nil
 }
 
 // NewPubSub returns a new PubSub management object.
