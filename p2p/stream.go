@@ -3,7 +3,6 @@ package p2p
 import (
 	"fmt"
 	"github.com/AlayaNetwork/Alaya-Go/p2p/pubsub"
-	"github.com/libp2p/go-libp2p-core/protocol"
 	"sync/atomic"
 )
 
@@ -27,9 +26,9 @@ func (s *Stream) Conn() pubsub.Conn {
 }
 
 // Protocol returns the protocol negotiated on this stream (if set).
-func (s *Stream) Protocol() protocol.ID {
+func (s *Stream) Protocol() pubsub.ProtocolID {
 	// Ignore type error. It means that the protocol is unset.
-	p, _ := s.protocol.Load().(protocol.ID)
+	p, _ := s.protocol.Load().(pubsub.ProtocolID)
 	return p
 }
 
@@ -38,7 +37,7 @@ func (s *Stream) Protocol() protocol.ID {
 // This doesn't actually *do* anything other than record the fact that we're
 // speaking the given protocol over this stream. It's still up to the user to
 // negotiate the protocol. This is usually done by the Host.
-func (s *Stream) SetProtocol(p protocol.ID) {
+func (s *Stream) SetProtocol(p pubsub.ProtocolID) {
 	s.protocol.Store(p)
 }
 
@@ -47,7 +46,7 @@ func (s *Stream) ReadWriter() MsgReadWriter {
 }
 
 // newStream creates a new Stream.
-func newStream(conn pubsub.Conn, rw MsgReadWriter, id protocol.ID) *Stream {
+func newStream(conn pubsub.Conn, rw MsgReadWriter, id pubsub.ProtocolID) *Stream {
 	s := &Stream{
 		conn:	conn,
 		rw:		rw,
