@@ -125,7 +125,7 @@ type Cbft struct {
 	evPool           evidence.EvidencePool
 	log              log.Logger
 	network          *network.EngineManager
-	pbSvr            *pubsub.Server
+	subServer        *pubsub.SubServer
 
 	start    int32
 	syncing  int32
@@ -190,7 +190,7 @@ type Cbft struct {
 }
 
 // New returns a new CBFT.
-func New(sysConfig *params.CbftConfig, optConfig *ctypes.OptionsConfig, eventMux *event.TypeMux, ctx *node.ServiceContext, pbSvr *pubsub.Server) *Cbft {
+func New(sysConfig *params.CbftConfig, optConfig *ctypes.OptionsConfig, eventMux *event.TypeMux, ctx *node.ServiceContext) *Cbft {
 	cbft := &Cbft{
 		config:             ctypes.Config{Sys: sysConfig, Option: optConfig},
 		eventMux:           eventMux,
@@ -211,7 +211,7 @@ func New(sysConfig *params.CbftConfig, optConfig *ctypes.OptionsConfig, eventMux
 		statQueues:         make(map[common.Hash]map[string]int),
 		messageHashCache:   mapset.NewSet(),
 		netLatencyMap:      make(map[string]*list.List),
-		pbSvr:              pbSvr,
+		subServer:			pubsub.SubServerInstance(),
 	}
 
 	if evPool, err := evidence.NewEvidencePool(ctx, optConfig.EvidenceDir); err == nil {
@@ -261,6 +261,7 @@ func (cbft *Cbft) Start(chain consensus.ChainReader, blockCacheWriter consensus.
 	// init handler and router to process message.
 	// cbft -> handler -> router.
 	cbft.network = network.NewEngineManger(cbft) // init engineManager as handler.
+
 	// Start the handler to process the message.
 	go cbft.network.Start()
 
@@ -294,10 +295,6 @@ func (cbft *Cbft) Start(chain consensus.ChainReader, blockCacheWriter consensus.
 	// load consensus state
 	if err := cbft.LoadWal(); err != nil {
 		cbft.log.Error("Load wal failed", "err", err)
-		return err
-	}
-
-	if err := cbft.pbSvr.Start(); err != nil {
 		return err
 	}
 
@@ -880,7 +877,12 @@ func (cbft *Cbft) APIs(chain consensus.ChainReader) []rpc.API {
 
 // Protocols return consensus engine to provide protocol information.
 func (cbft *Cbft) Protocols() []p2p.Protocol {
-	return cbft.network.Protocols()
+	protocols := cbft.network.Protocols()
+	pubsubProtocols := cbft.subServer.Protocols()
+	for _,subProtol := range pubsubProtocols {
+		protocols = append(protocols, subProtol)
+	}
+	return protocols
 }
 
 // NextBaseBlock is used to calculate the next block.
@@ -1848,8 +1850,4 @@ func (cbft *Cbft) DecodeExtra(extra []byte) (common.Hash, uint64, error) {
 		return common.Hash{}, 0, err
 	}
 	return qc.BlockHash, qc.BlockNumber, nil
-}
-
-func (cbft *Cbft) PubSubServer() *pubsub.Server {
-	return cbft.pbSvr
 }

@@ -318,23 +318,6 @@ func (h *EngineManager) Protocols() []p2p.Protocol {
 				return nil
 			},
 		},
-		{
-			Name:    CbftPubSubProtocolName,
-			Version: CbftPubSubProtocolVersion,
-			Length:  CbftPubSubProtocolLength,
-			Run: func(p *p2p.Peer, rw p2p.MsgReadWriter) error {
-				return h.engine.PubSubServer().Handle(p, rw)
-			},
-			NodeInfo: func() interface{} {
-				return h.NodeInfo()
-			},
-			PeerInfo: func(id enode.ID) interface{} {
-				if p, err := h.peers.get(fmt.Sprintf("%x", id[:8])); err == nil {
-					return p.Info()
-				}
-				return nil
-			},
-		},
 	}
 }
 

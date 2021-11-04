@@ -19,7 +19,6 @@ package node
 import (
 	"errors"
 	"fmt"
-	"github.com/AlayaNetwork/Alaya-Go/p2p/pubsub"
 	"math/big"
 	"net"
 	"os"
@@ -56,7 +55,6 @@ type Node struct {
 	ChainID      *big.Int `toml:"-"`
 	serverConfig p2p.Config
 	server       *p2p.Server    // Currently running P2P networking layer
-	PbSvr        *pubsub.Server // Currently running pubsub networking layer
 
 	serviceFuncs []ServiceConstructor     // Service constructors (in dependency order)
 	services     map[reflect.Type]Service // Currently running services
@@ -204,8 +202,6 @@ func (n *Node) Start() error {
 	}
 
 	running := &p2p.Server{Config: n.serverConfig}
-	n.PbSvr = &pubsub.Server{Pb: pubsub.NewPubSub()}
-
 	n.log.Info("Starting peer-to-peer node", "instance", n.serverConfig.Name)
 
 	// Otherwise copy and specialize the P2P configuration

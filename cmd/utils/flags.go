@@ -1011,7 +1011,7 @@ func setTxPool(ctx *cli.Context, cfg *core.TxPoolConfig) {
 //	if ctx.GlobalIsSet(MPCActorFlag.Name) {
 //		cfg.MpcActor = common.HexToAddress(ctx.GlobalString(MPCActorFlag.Name))
 //	}
-//	if file := ctx.GlobalString(MPCIceFileFlag.Name); file != "" {
+//	if file := ctx.GlobalString(MPCIceFileFlag.Name); file != "" {n
 //		if _, err := os.Stat(file); err != nil {
 //			fmt.Println("ice conf not exists.")
 //			return
@@ -1183,7 +1183,7 @@ func RegisterEthService(stack *node.Node, cfg *eth.Config) {
 		Fatalf("Failed to register the Alaya-Go service: %v", "not support LightSync")
 	} else {
 		err = stack.Register(func(ctx *node.ServiceContext) (node.Service, error) {
-			fullNode, err := eth.New(stack.PbSvr, ctx, cfg)
+			fullNode, err := eth.New(ctx, cfg)
 			if err == nil {
 				stack.ChainID = fullNode.APIBackend.ChainConfig().ChainID
 			}
@@ -1348,7 +1348,7 @@ func MakeChainForCBFT(ctx *cli.Context, stack *node.Node, cfg *eth.Config, nodeC
 	var engine consensus.Engine
 	if config.Cbft != nil {
 		sc := node.NewServiceContext(nodeCfg, nil, stack.EventMux(), stack.AccountManager())
-		engine = eth.CreateConsensusEngine(sc, config, false, chainDb, &cfg.CbftConfig, stack.EventMux(), nil)
+		engine = eth.CreateConsensusEngine(sc, config, false, chainDb, &cfg.CbftConfig, stack.EventMux())
 	}
 
 	cache := &core.CacheConfig{

@@ -19,20 +19,50 @@ package pubsub
 
 import (
 	"errors"
+	"fmt"
+	ctypes "github.com/AlayaNetwork/Alaya-Go/consensus/cbft/types"
+	"github.com/AlayaNetwork/Alaya-Go/log"
 	"github.com/AlayaNetwork/Alaya-Go/p2p"
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
 	"sync"
 )
 
-// Server manages all pubsub peers.
-type Server struct {
-	lock    sync.Mutex // protects running
-	running bool
-	Pb     *PubSub
+const (
+
+	// CbftProtocolName is protocol name of CBFT.pubsub.
+	CbftPubSubProtocolName = "cbft.pubsub"
+
+	// CbftProtocolVersion is protocol version of CBFT.pubsub.
+	CbftPubSubProtocolVersion = 1
+
+	// CbftProtocolLength are the number of implemented message corresponding to cbft.pubsub protocol versions.
+	CbftPubSubProtocolLength = 10
+
+)
+
+type SubServer struct {
+	lock		sync.Mutex // protects running
+	running 	bool
+	ps			*PubSub
+	peerMsgCh	chan *ctypes.MsgInfo
+}
+
+var (
+	subServerOnce sync.Once
+	svr           *SubServer
+)
+
+func SubServerInstance() *SubServer {
+	subServerOnce.Do(func() {
+		log.Info("Init SubServer ...")
+		svr = NewPubSubServer()
+	})
+	return svr
 }
 
 // Start starts running the server.
 // Servers can not be re-used after stopping.
-func (srv *Server) Start() (err error) {
+func (srv *SubServer) Start() (err error) {
 	srv.lock.Lock()
 	defer srv.lock.Unlock()
 	if srv.running {
@@ -43,12 +73,68 @@ func (srv *Server) Start() (err error) {
 }
 
 // run is the main loop of the server.
-func (s *Server) run() {
+func (s *SubServer) run() {
 
 }
 
 // After the node is successfully connected and the message belongs
 // to the cbft.pubsub protocol message, the method is called.
-func (s *Server) Handle(p *p2p.Peer, rw p2p.MsgReadWriter) error {
+func (s *SubServer) Handle(p *p2p.Peer, rw p2p.MsgReadWriter) error {
 	return nil
+}
+
+// watchingAddTopicValidatorEvent
+func (s *SubServer) watchingAddTopicValidatorEvent() {
+
+}
+
+// watchingAddTopicValidatorEvent
+func (s *SubServer) watchingRemoveTopicValidatorEvent() {
+
+}
+
+// PublishMsg
+func (s *SubServer) PublishMsg(topic string) error  {
+	if topic == "" {
+		return fmt.Errorf("topic is nil")
+	}
+	return nil
+}
+
+func (s *SubServer) ReadTopicLoop()  {
+
+}
+
+// Protocol.NodeInfo()
+func (s *SubServer) NodeInfo() interface{}  {
+	return nil
+}
+
+// Protocol.Run()
+func (s *SubServer) handler(peer *p2p.Peer, rw p2p.MsgReadWriter) error  {
+	return nil
+}
+
+//Protocols implemented the Protocols method and returned basic information about the CBFT.pubsub protocol.
+func (s *SubServer) Protocols() []p2p.Protocol {
+	return []p2p.Protocol{
+		{
+			Name:    CbftPubSubProtocolName,
+			Version: CbftPubSubProtocolVersion,
+			Length:  CbftPubSubProtocolLength,
+			Run: func(p *p2p.Peer, rw p2p.MsgReadWriter) error {
+				return s.handler(p, rw)
+			},
+			NodeInfo: func() interface{} {
+				return s.NodeInfo()
+			},
+			PeerInfo: func(id enode.ID) interface{} {
+				return nil
+			},
+		},
+	}
+}
+
+func NewPubSubServer() *SubServer {
+	return &SubServer{}
 }

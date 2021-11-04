@@ -21,7 +21,6 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/protocols"
 	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/types"
 	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
-	"github.com/AlayaNetwork/Alaya-Go/p2p/pubsub"
 )
 
 // Cbft defines the network layer to use the relevant interface
@@ -68,7 +67,4 @@ type Cbft interface {
 
 	// BlockExists determines if a block exists.
 	BlockExists(blockNumber uint64, blockHash common.Hash) error
-
-	// PubSubServer return pubsub.Server
-	PubSubServer() *pubsub.Server
 }

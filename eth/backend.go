@@ -20,7 +20,6 @@ package eth
 import (
 	"errors"
 	"fmt"
-	"github.com/AlayaNetwork/Alaya-Go/p2p/pubsub"
 	"math/big"
 	"os"
 	"sync"
@@ -97,7 +96,6 @@ type Ethereum struct {
 	gasPrice      *big.Int
 	networkID     uint64
 	netRPCService *ethapi.PublicNetAPI
-
 	lock sync.RWMutex // Protects the variadic fields (e.g. gas price and etherbase)
 }
 
@@ -108,7 +106,7 @@ func (s *Ethereum) AddLesServer(ls LesServer) {
 
 // New creates a new Ethereum object (including the
 // initialisation of the common Ethereum object)
-func New(pbSvr *pubsub.Server, ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
+func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 	// Ensure configuration values are compatible and sane
 	if config.SyncMode == downloader.LightSync {
 		return nil, errors.New("can't run eth.PlatON in light sync mode, use les.LightPlatON")
@@ -214,13 +212,12 @@ func New(pbSvr *pubsub.Server, ctx *node.ServiceContext, config *Config) (*Ether
 	}
 
 	log.Info("Initialised chain configuration", "config", chainConfig)
-
 	eth := &Ethereum{
 		config:            config,
 		chainDb:           chainDb,
 		eventMux:          ctx.EventMux,
 		accountManager:    ctx.AccountManager,
-		engine:            CreateConsensusEngine(ctx, chainConfig, config.Miner.Noverify, chainDb, &config.CbftConfig, ctx.EventMux, pbSvr),
+		engine:            CreateConsensusEngine(ctx, chainConfig, config.Miner.Noverify, chainDb, &config.CbftConfig, ctx.EventMux),
 		closeBloomHandler: make(chan struct{}),
 		networkID:         config.NetworkId,
 		gasPrice:          config.Miner.GasPrice,
@@ -391,9 +388,9 @@ func recoverSnapshotDB(blockChainCache *core.BlockChainCache) error {
 
 // CreateConsensusEngine creates the required type of consensus engine instance for an Ethereum service
 func CreateConsensusEngine(ctx *node.ServiceContext, chainConfig *params.ChainConfig, noverify bool, db ethdb.Database,
-	cbftConfig *ctypes.OptionsConfig, eventMux *event.TypeMux, pbSvr *pubsub.Server) consensus.Engine {
+	cbftConfig *ctypes.OptionsConfig, eventMux *event.TypeMux) consensus.Engine {
 	// If proof-of-authority is requested, set it up
-	engine := cbft.New(chainConfig.Cbft, cbftConfig, eventMux, ctx, pbSvr)
+	engine := cbft.New(chainConfig.Cbft, cbftConfig, eventMux, ctx)
 	if engine == nil {
 		panic("create consensus engine fail")
 	}
