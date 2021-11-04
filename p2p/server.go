@@ -883,6 +883,8 @@ running:
 				if p.Inbound() {
 					inboundCount++
 				}
+
+				// TODO pubsub network.NotifyAll
 			}
 			c.cont <- err
 
