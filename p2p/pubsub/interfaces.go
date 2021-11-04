@@ -91,8 +91,6 @@ type StreamHandler func(Stream)
 // connections (see swarm pkg, and peerstream.Swarm). Connections
 // are encrypted with a TLS-like protocol.
 type Network interface {
-	io.Closer
-
 	// ConnsToPeer returns the connections in this Netowrk for given peer.
 	ConnsToPeer(p enode.ID) []Conn
 
@@ -150,8 +148,6 @@ type Stream interface {
 // be useful to get information about the peer on the other side:
 //  stream.Conn().RemotePeer()
 type Conn interface {
-	io.Closer
-
 	// ID returns an identifier that uniquely identifies this Conn within this
 	// host, during this run. Connection IDs may repeat across restarts.
 	ID() string

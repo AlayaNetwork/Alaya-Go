@@ -681,7 +681,7 @@ func (p *PubSub) handleDeadPeers() {
 
 		close(ch)
 
-		if p.host.Network().Connectedness(pid) == Connected {
+		/*if p.host.Network().Connectedness(pid) == Connected {
 			// still connected, must be a duplicate connection being closed.
 			// we respawn the writer as we need to ensure there is a stream active
 			log.Debug("peer declared dead but still connected; respawning writer", "writer", pid)
@@ -690,7 +690,7 @@ func (p *PubSub) handleDeadPeers() {
 			go p.handleNewPeer(p.ctx, pid, messages)
 			p.peers[pid] = messages
 			continue
-		}
+		}*/
 
 		delete(p.peers, pid)
 		for t, tmap := range p.topics {

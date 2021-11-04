@@ -155,6 +155,7 @@ func (p *PubSub) handleSendingMessages(ctx context.Context, s Stream, outgoing <
 
 			if err := p2p.Send(s.ReadWriter(), 0xff, &rpc.RPC); err != nil {
 				log.Error("Send message fail", "err", err)
+				return
 			}
 
 		/*	err := writeMsg(&rpc.RPC)
