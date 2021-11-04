@@ -42,10 +42,9 @@ func (p *PubSub) handleNewStream(s Stream) {
 	peer := s.Conn().RemotePeer()
 
 	p.inboundStreamsMx.Lock()
-	other, dup := p.inboundStreams[peer.ID()]
+	_, dup := p.inboundStreams[peer.ID()]
 	if dup {
 		log.Debug("duplicate inbound stream , resetting other stream", "from", peer)
-		other.Reset()
 	}
 	p.inboundStreams[peer.ID()] = s
 	p.inboundStreamsMx.Unlock()
@@ -76,8 +75,6 @@ func (p *PubSub) handleNewStream(s Stream) {
 		select {
 		case p.incoming <- rpc:
 		case <-p.ctx.Done():
-			// Close is useless because the other side isn't reading.
-			s.Reset()
 			return
 		}
 	}
@@ -145,7 +142,6 @@ func (p *PubSub) handleSendingMessages(ctx context.Context, s Stream, outgoing <
 		return bufw.Flush()
 	}*/
 
-	defer s.Close()
 	for {
 		select {
 		case rpc, ok := <-outgoing:

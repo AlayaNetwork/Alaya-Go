@@ -2,7 +2,6 @@ package pubsub
 
 import (
 	"context"
-	"io"
 	"time"
 
 	"github.com/AlayaNetwork/Alaya-Go/p2p"
@@ -121,27 +120,6 @@ type Stream interface {
 	Conn() Conn
 
 	ReadWriter() p2p.MsgReadWriter //
-
-	// Reset closes both ends of the stream. Use this to tell the remote
-	// side to hang up and go away.
-	Reset() error
-
-	// Close closes the stream.
-	//
-	// * Any buffered data for writing will be flushed.
-	// * Future reads will fail.
-	// * Any in-progress reads/writes will be interrupted.
-	//
-	// Close may be asynchronous and _does not_ guarantee receipt of the
-	// data.
-	//
-	// Close closes the stream for both reading and writing.
-	// Close is equivalent to calling `CloseRead` and `CloseWrite`. Importantly, Close will not wait for any form of acknowledgment.
-	// If acknowledgment is required, the caller must call `CloseWrite`, then wait on the stream for a response (or an EOF),
-	// then call Close() to free the stream object.
-	//
-	// When done with a stream, the user must call either Close() or `Reset()` to discard the stream, even after calling `CloseRead` and/or `CloseWrite`.
-	io.Closer
 }
 
 // Conn is a connection to a remote peer. It multiplexes streams.
