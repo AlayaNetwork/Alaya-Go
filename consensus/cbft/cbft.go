@@ -22,7 +22,6 @@ import (
 	"crypto/elliptic"
 	"encoding/json"
 	"fmt"
-	"github.com/AlayaNetwork/Alaya-Go/p2p/pubsub"
 	"strings"
 	"sync/atomic"
 
@@ -125,7 +124,7 @@ type Cbft struct {
 	evPool           evidence.EvidencePool
 	log              log.Logger
 	network          *network.EngineManager
-	subServer        *pubsub.SubServer
+	subServer        *p2p.PubSubServer
 
 	start    int32
 	syncing  int32
@@ -211,7 +210,7 @@ func New(sysConfig *params.CbftConfig, optConfig *ctypes.OptionsConfig, eventMux
 		statQueues:         make(map[common.Hash]map[string]int),
 		messageHashCache:   mapset.NewSet(),
 		netLatencyMap:      make(map[string]*list.List),
-		subServer:			pubsub.SubServerInstance(),
+		subServer:          p2p.SubServerInstance(),
 	}
 
 	if evPool, err := evidence.NewEvidencePool(ctx, optConfig.EvidenceDir); err == nil {

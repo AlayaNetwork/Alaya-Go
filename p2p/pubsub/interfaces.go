@@ -34,8 +34,8 @@ type ProtocolID string
 
 // Host is an object participating in a p2p network, which
 // implements protocols or provides services. It handles
-// requests like a SubServer, and issues requests like a Client.
-// It is called Host because it is both SubServer and Client (and Peer
+// requests like a PubSubServer, and issues requests like a Client.
+// It is called Host because it is both PubSubServer and Client (and Peer
 // may be confusing).
 type Host interface {
 	// ID returns the (local) peer.ID associated with this Host
@@ -153,7 +153,7 @@ type Stat struct {
 	Extra map[interface{}]interface{}
 }
 
-// SubServer manages all pubsub peers.
+// PubSubServer manages all pubsub peers.
 type Server interface {
 
 	Protocols() []p2p.Protocol

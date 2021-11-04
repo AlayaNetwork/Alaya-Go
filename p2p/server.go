@@ -23,7 +23,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/AlayaNetwork/Alaya-Go/p2p/pubsub"
 	"math/big"
 	"net"
 	"sort"
@@ -218,7 +217,7 @@ type Server struct {
 	consensus       bool
 	addconsensus    chan *enode.Node
 	removeconsensus chan *enode.Node
-	subServer       *pubsub.SubServer
+	subServer       *PubSubServer
 }
 
 type peerOpFunc func(map[enode.ID]*Peer)
@@ -513,7 +512,7 @@ func (srv *Server) Start() (err error) {
 
 	// static fields
 	if srv.PrivateKey == nil {
-		return errors.New("SubServer.PrivateKey must be set to a non-nil key")
+		return errors.New("PubSubServer.PrivateKey must be set to a non-nil key")
 	}
 	if srv.newTransport == nil {
 		srv.newTransport = newRLPX
@@ -543,7 +542,7 @@ func (srv *Server) Start() (err error) {
 	}
 	srv.setupDialScheduler()
 
-	srv.subServer = pubsub.SubServerInstance()
+	srv.subServer = SubServerInstance()
 	srv.subServer.Start()
 
 	srv.loopWG.Add(1)
@@ -1193,7 +1192,7 @@ func (srv *Server) runPeer(p *Peer) {
 
 	// Broadcast peer drop to external subscribers. This needs to be
 	// after the send to delpeer so subscribers have a consistent view of
-	// the peer set (i.e. SubServer.Peers() doesn't include the peer when the
+	// the peer set (i.e. PubSubServer.Peers() doesn't include the peer when the
 	// event is received.
 	srv.peerFeed.Send(&PeerEvent{
 		Type:          PeerEventTypeDrop,
