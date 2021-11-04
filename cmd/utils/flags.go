@@ -1011,7 +1011,7 @@ func setTxPool(ctx *cli.Context, cfg *core.TxPoolConfig) {
 //	if ctx.GlobalIsSet(MPCActorFlag.Name) {
 //		cfg.MpcActor = common.HexToAddress(ctx.GlobalString(MPCActorFlag.Name))
 //	}
-//	if file := ctx.GlobalString(MPCIceFileFlag.Name); file != "" {n
+//	if file := ctx.GlobalString(MPCIceFileFlag.Name); file != "" {
 //		if _, err := os.Stat(file); err != nil {
 //			fmt.Println("ice conf not exists.")
 //			return

@@ -1,15 +1,16 @@
-package p2p
+package swarm
 
 import (
 	"fmt"
+	"github.com/AlayaNetwork/Alaya-Go/p2p"
 	"github.com/AlayaNetwork/Alaya-Go/p2p/pubsub"
 	"sync/atomic"
 )
 
 // Stream is the stream type used by pubsub. In general
 type Stream struct {
-	conn   pubsub.Conn
-	rw     MsgReadWriter
+	conn     pubsub.Conn
+	rw       p2p.MsgReadWriter
 	protocol atomic.Value
 }
 
@@ -41,12 +42,12 @@ func (s *Stream) SetProtocol(p pubsub.ProtocolID) {
 	s.protocol.Store(p)
 }
 
-func (s *Stream) ReadWriter() MsgReadWriter {
+func (s *Stream) ReadWriter() p2p.MsgReadWriter {
 	return s.rw
 }
 
 // newStream creates a new Stream.
-func newStream(conn pubsub.Conn, rw MsgReadWriter, id pubsub.ProtocolID) *Stream {
+func newStream(conn pubsub.Conn, rw p2p.MsgReadWriter, id pubsub.ProtocolID) *Stream {
 	s := &Stream{
 		conn:	conn,
 		rw:		rw,
