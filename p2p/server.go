@@ -71,7 +71,7 @@ const (
 
 var errServerStopped = errors.New("server stopped")
 
-// Config holds Server options.
+// Config holds PubSubServer options.
 type Config struct {
 	// This field must be set to a valid secp256k1 private key.
 	PrivateKey *ecdsa.PrivateKey `toml:"-"`
@@ -167,13 +167,13 @@ type Config struct {
 	// whenever a message is sent to or received from a peer
 	EnableMsgEvents bool
 
-	// Logger is a custom logger to use with the p2p.Server.
+	// Logger is a custom logger to use with the p2p.PubSubServer.
 	Logger log.Logger `toml:",omitempty"`
 
 	clock mclock.Clock
 }
 
-// Server manages all peer connections.
+// PubSubServer manages all peer connections.
 type Server struct {
 	// Config fields may not be modified while the server is running.
 	Config

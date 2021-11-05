@@ -2,9 +2,8 @@ package pubsub
 
 import (
 	"context"
-	"time"
-
 	"github.com/AlayaNetwork/Alaya-Go/p2p"
+	"time"
 
 	"github.com/libp2p/go-libp2p-core/connmgr"
 
@@ -151,20 +150,6 @@ type Stat struct {
 	Transient bool
 	// Extra stores additional metadata about this connection.
 	Extra map[interface{}]interface{}
-}
-
-// PubSubServer manages all pubsub peers.
-type Server interface {
-
-	Protocols() []p2p.Protocol
-
-	// Start starts running the server.
-	// Servers can not be re-used after stopping.
-	Start() (err error)
-
-	PublishMsg(topic string) error
-
-	ReadTopicLoop()
 }
 
 // Direction represents which peer in a stream initiated a connection.
