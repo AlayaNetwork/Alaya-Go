@@ -282,7 +282,7 @@ func TestServerAtCap(t *testing.T) {
 		t.Error("unexpected error for trusted conn @posthandshake:", err)
 	}
 	if !c.is(trustedConn) {
-		t.Error("PubSubServer did not set trusted flag")
+		t.Error("Server did not set trusted flag")
 	}
 
 	// Remove from trusted set and try again
@@ -299,7 +299,7 @@ func TestServerAtCap(t *testing.T) {
 		t.Error("unexpected error for trusted conn @posthandshake:", err)
 	}
 	if !c.is(trustedConn) {
-		t.Error("PubSubServer did not set trusted flag")
+		t.Error("Server did not set trusted flag")
 	}
 }
 

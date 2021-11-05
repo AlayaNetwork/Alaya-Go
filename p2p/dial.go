@@ -83,7 +83,7 @@ var (
 	errNoPort           = errors.New("node does not provide TCP port")
 )
 
-// dialer creates outbound connections and submits them into PubSubServer.
+// dialer creates outbound connections and submits them into Server.
 // Two types of peer connections can be created:
 //
 //  - static dials are pre-configured connections. The dialer attempts

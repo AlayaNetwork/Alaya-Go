@@ -71,7 +71,7 @@ const (
 
 var errServerStopped = errors.New("server stopped")
 
-// Config holds PubSubServer options.
+// Config holds Server options.
 type Config struct {
 	// This field must be set to a valid secp256k1 private key.
 	PrivateKey *ecdsa.PrivateKey `toml:"-"`
@@ -167,13 +167,13 @@ type Config struct {
 	// whenever a message is sent to or received from a peer
 	EnableMsgEvents bool
 
-	// Logger is a custom logger to use with the p2p.PubSubServer.
+	// Logger is a custom logger to use with the p2p.Server.
 	Logger log.Logger `toml:",omitempty"`
 
 	clock mclock.Clock
 }
 
-// PubSubServer manages all peer connections.
+// Server manages all peer connections.
 type Server struct {
 	// Config fields may not be modified while the server is running.
 	Config
@@ -512,7 +512,7 @@ func (srv *Server) Start() (err error) {
 
 	// static fields
 	if srv.PrivateKey == nil {
-		return errors.New("PubSubServer.PrivateKey must be set to a non-nil key")
+		return errors.New("Server.PrivateKey must be set to a non-nil key")
 	}
 	if srv.newTransport == nil {
 		srv.newTransport = newRLPX
@@ -1192,7 +1192,7 @@ func (srv *Server) runPeer(p *Peer) {
 
 	// Broadcast peer drop to external subscribers. This needs to be
 	// after the send to delpeer so subscribers have a consistent view of
-	// the peer set (i.e. PubSubServer.Peers() doesn't include the peer when the
+	// the peer set (i.e. Server.Peers() doesn't include the peer when the
 	// event is received.
 	srv.peerFeed.Send(&PeerEvent{
 		Type:          PeerEventTypeDrop,

@@ -345,13 +345,13 @@ func (sn *SimNode) ServiceMap() map[string]node.Service {
 	return services
 }
 
-// Server returns the underlying p2p.PubSubServer
+// Server returns the underlying p2p.Server
 func (sn *SimNode) Server() *p2p.Server {
 	return sn.node.Server()
 }
 
 // SubscribeEvents subscribes the given channel to peer events from the
-// underlying p2p.PubSubServer
+// underlying p2p.Server
 func (sn *SimNode) SubscribeEvents(ch chan *p2p.PeerEvent) event.Subscription {
 	srv := sn.Server()
 	if srv == nil {

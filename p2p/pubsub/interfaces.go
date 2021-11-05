@@ -33,8 +33,8 @@ type ProtocolID string
 
 // Host is an object participating in a p2p network, which
 // implements protocols or provides services. It handles
-// requests like a PubSubServer, and issues requests like a Client.
-// It is called Host because it is both PubSubServer and Client (and Peer
+// requests like a Server, and issues requests like a Client.
+// It is called Host because it is both Server and Client (and Peer
 // may be confusing).
 type Host interface {
 	// ID returns the (local) peer.ID associated with this Host
