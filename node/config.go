@@ -182,7 +182,7 @@ type Config struct {
 	// Requests using ip address directly are not affected
 	GraphQLVirtualHosts []string `toml:",omitempty"`
 
-	// Logger is a custom logger to use with the p2p.Server.
+	// Logger is a custom logger to use with the p2p.PubSubServer.
 	Logger log.Logger `toml:",omitempty"`
 
 	staticNodesWarning     bool

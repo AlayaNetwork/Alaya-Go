@@ -440,7 +440,6 @@ func WithBlacklist(b Blacklist) Option {
 				return err
 			}
 		}
-
 		p.disc.discovery = &pubSubDiscovery{Discovery: d, opts: discoverOpts.opts}
 		p.disc.options = discoverOpts
 		return nil
@@ -533,7 +532,6 @@ func (p *PubSub) processLoop(ctx context.Context) {
 			ch, ok := p.peers[pid.ID()]
 			if !ok {
 				log.Warn("new stream for unknown peer: ", pid)
-				s.Reset()
 				continue
 			}
 
@@ -541,7 +539,6 @@ func (p *PubSub) processLoop(ctx context.Context) {
 				log.Warn("closing stream for blacklisted peer: ", pid)
 				close(ch)
 				delete(p.peers, pid.ID())
-				s.Reset()
 				continue
 			}
 

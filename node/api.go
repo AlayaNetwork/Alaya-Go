@@ -77,7 +77,7 @@ func (api *PrivateAdminAPI) RemovePeer(url string) (bool, error) {
 }
 
 // PeerEvents creates an RPC subscription which receives peer events from the
-// node's p2p.Server
+// node's p2p.PubSubServer
 func (api *PrivateAdminAPI) PeerEvents(ctx context.Context) (*rpc.Subscription, error) {
 	// Make sure the server is running, fail otherwise
 	server := api.node.Server()

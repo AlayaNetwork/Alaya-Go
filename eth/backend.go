@@ -78,9 +78,6 @@ type Ethereum struct {
 	blockchain      *core.BlockChain
 	protocolManager *ProtocolManager
 	lesServer       LesServer
-	// modify
-	//mpcPool *core.MPCPool
-	//vcPool  *core.VCPool
 
 	// DB interfaces
 	chainDb ethdb.Database // Block chain database
@@ -99,7 +96,6 @@ type Ethereum struct {
 	gasPrice      *big.Int
 	networkID     uint64
 	netRPCService *ethapi.PublicNetAPI
-
 	lock sync.RWMutex // Protects the variadic fields (e.g. gas price and etherbase)
 }
 
@@ -216,7 +212,6 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 	}
 
 	log.Info("Initialised chain configuration", "config", chainConfig)
-
 	eth := &Ethereum{
 		config:            config,
 		chainDb:           chainDb,

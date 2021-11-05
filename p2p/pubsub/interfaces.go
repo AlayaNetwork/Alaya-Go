@@ -2,10 +2,8 @@ package pubsub
 
 import (
 	"context"
-	"io"
-	"time"
-
 	"github.com/AlayaNetwork/Alaya-Go/p2p"
+	"time"
 
 	"github.com/libp2p/go-libp2p-core/connmgr"
 
@@ -35,8 +33,8 @@ type ProtocolID string
 
 // Host is an object participating in a p2p network, which
 // implements protocols or provides services. It handles
-// requests like a Server, and issues requests like a Client.
-// It is called Host because it is both Server and Client (and Peer
+// requests like a PubSubServer, and issues requests like a Client.
+// It is called Host because it is both PubSubServer and Client (and Peer
 // may be confusing).
 type Host interface {
 	// ID returns the (local) peer.ID associated with this Host
@@ -53,6 +51,7 @@ type Host interface {
 	// peerstore. If there is not an active connection, Connect will issue a
 	// h.Network.Dial, and block until a connection is open, or an error is
 	// returned. // TODO: Relay + NAT.
+	// addConsensusNode
 	Connect(ctx context.Context, pi enode.ID) error
 
 	// SetStreamHandler sets the protocol handler on the Host's Mux.
@@ -120,27 +119,6 @@ type Stream interface {
 	Conn() Conn
 
 	ReadWriter() p2p.MsgReadWriter //
-
-	// Reset closes both ends of the stream. Use this to tell the remote
-	// side to hang up and go away.
-	Reset() error
-
-	// Close closes the stream.
-	//
-	// * Any buffered data for writing will be flushed.
-	// * Future reads will fail.
-	// * Any in-progress reads/writes will be interrupted.
-	//
-	// Close may be asynchronous and _does not_ guarantee receipt of the
-	// data.
-	//
-	// Close closes the stream for both reading and writing.
-	// Close is equivalent to calling `CloseRead` and `CloseWrite`. Importantly, Close will not wait for any form of acknowledgment.
-	// If acknowledgment is required, the caller must call `CloseWrite`, then wait on the stream for a response (or an EOF),
-	// then call Close() to free the stream object.
-	//
-	// When done with a stream, the user must call either Close() or `Reset()` to discard the stream, even after calling `CloseRead` and/or `CloseWrite`.
-	io.Closer
 }
 
 // Conn is a connection to a remote peer. It multiplexes streams.
