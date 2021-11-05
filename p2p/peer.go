@@ -70,16 +70,16 @@ type protoHandshake struct {
 	Rest []rlp.RawValue `rlp:"tail"`
 }
 
-// PeerEventType is the type of peer events emitted by a p2p.PubSubServer
+// PeerEventType is the type of peer events emitted by a p2p.Server
 type PeerEventType string
 
 const (
 	// PeerEventTypeAdd is the type of event emitted when a peer is added
-	// to a p2p.PubSubServer
+	// to a p2p.Server
 	PeerEventTypeAdd PeerEventType = "add"
 
 	// PeerEventTypeDrop is the type of event emitted when a peer is
-	// dropped from a p2p.PubSubServer
+	// dropped from a p2p.Server
 	PeerEventTypeDrop PeerEventType = "drop"
 
 	// PeerEventTypeMsgSend is the type of event emitted when a
@@ -92,7 +92,7 @@ const (
 )
 
 // PeerEvent is an event emitted when peers are either added or dropped from
-// a p2p.PubSubServer or when a message is sent or received on a peer connection
+// a p2p.Server or when a message is sent or received on a peer connection
 type PeerEvent struct {
 	Type          PeerEventType `json:"type"`
 	Peer          enode.ID      `json:"peer"`
