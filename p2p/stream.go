@@ -7,6 +7,12 @@ import (
 	"sync/atomic"
 )
 
+const (
+
+	// Msg code of PubSub's message
+	PubSubMsgCode = 0xff
+)
+
 // Stream is the stream type used by pubsub. In general
 type Stream struct {
 	conn     pubsub.Conn
@@ -68,8 +74,7 @@ func (s *Stream) Close() {
 
 }
 
-// newStream creates a new Stream.
-func newStream(conn pubsub.Conn, rw MsgReadWriter, id pubsub.ProtocolID) *Stream {
+func NewStream(conn pubsub.Conn, rw MsgReadWriter, id pubsub.ProtocolID) *Stream {
 	s := &Stream{
 		conn: conn,
 		rw:   rw,

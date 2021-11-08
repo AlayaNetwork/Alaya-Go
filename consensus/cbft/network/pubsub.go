@@ -17,25 +17,93 @@
 package network
 
 import (
+	"context"
 	"fmt"
 	"github.com/AlayaNetwork/Alaya-Go/p2p"
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
 	"github.com/AlayaNetwork/Alaya-Go/p2p/pubsub"
 )
 
-type PubSub struct {
-	pubsub p2p.PubSubServer
+const (
 
-	topicChan	chan string
-	topics		[]string
+	// CbftProtocolName is protocol name of CBFT.pubsub.
+	CbftPubSubProtocolName = "cbft.pubsub"
+
+	// CbftProtocolVersion is protocol version of CBFT.pubsub.
+	CbftPubSubProtocolVersion = 1
+
+	// CbftProtocolLength are the number of implemented message corresponding to cbft.pubsub protocol versions.
+	CbftPubSubProtocolLength = 10
+)
+
+type PubSub struct {
+	host *p2p.Host
+	ps   *pubsub.PubSub
+
+	topicChan chan string
+	topics    []string
 	// The set of topics we are subscribed to
-	mySubs		map[string]map[*pubsub.Subscription]struct{}
+	mySubs map[string]map[*pubsub.Subscription]struct{}
+}
+
+// Protocol.Run()
+func (ps *PubSub) handler(peer *p2p.Peer, rw p2p.MsgReadWriter) error {
+
+	conn := p2p.NewConn(peer.Node(), peer.Inbound())
+
+	stream := p2p.NewStream(conn, rw, "")
+	conn.SetStream(stream)
+
+	ps.host.SetStream(peer.ID(), stream)
+	ps.host.NotifyAll(conn)
+
+	// TODO pubsub: stream.linsten close
+	return nil
+}
+
+func (ps *PubSub) NodeInfo() interface{} {
+	return nil
+}
+
+//Protocols implemented the Protocols method and returned basic information about the CBFT.pubsub protocol.
+func (ps *PubSub) Protocols() []p2p.Protocol {
+	return []p2p.Protocol{
+		{
+			Name:    CbftPubSubProtocolName,
+			Version: CbftPubSubProtocolVersion,
+			Length:  CbftPubSubProtocolLength,
+			Run: func(p *p2p.Peer, rw p2p.MsgReadWriter) error {
+				return ps.handler(p, rw)
+			},
+			NodeInfo: func() interface{} {
+				return ps.NodeInfo()
+			},
+			PeerInfo: func(id enode.ID) interface{} {
+				return nil
+			},
+		},
+	}
+}
+
+func NewPubSub(localNode *enode.Node, server *p2p.Server) *PubSub {
+	network := p2p.NewNetwork(server)
+	host := p2p.NewHost(localNode, network)
+	pubsub, err := pubsub.NewGossipSub(context.Background(), host)
+	if err != nil {
+		panic("Failed to NewGossipSub: " + err.Error())
+	}
+
+	return &PubSub{
+		ps:   pubsub,
+		host: host,
+	}
 }
 
 //Subscribe subscribe a topic
 func (ps *PubSub) Subscribe(topic string) error {
-	if err := ps.pubsub.PublishMsg(topic); err != nil {
-		return err
-	}
+	//if err := ps.ps.PublishMsg(topic); err != nil {
+	//	return err
+	//}
 	ps.topics = append(ps.topics, topic)
 	return nil
 }
@@ -52,5 +120,5 @@ func (ps *PubSub) Cancel(topic string) error {
 		return nil
 	}
 
-	return fmt.Errorf("Can not find","topic", topic)
+	return fmt.Errorf("Can not find", "topic", topic)
 }

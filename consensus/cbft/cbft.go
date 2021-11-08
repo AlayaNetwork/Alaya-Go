@@ -124,7 +124,7 @@ type Cbft struct {
 	evPool           evidence.EvidencePool
 	log              log.Logger
 	network          *network.EngineManager
-	subServer        p2p.PubSubServer
+	pubSub           *network.PubSub
 
 	start    int32
 	syncing  int32
@@ -190,6 +190,7 @@ type Cbft struct {
 
 // New returns a new CBFT.
 func New(sysConfig *params.CbftConfig, optConfig *ctypes.OptionsConfig, eventMux *event.TypeMux, ctx *node.ServiceContext) *Cbft {
+	localNode := enode.NewV4(&ctx.NodePriKey().PublicKey, nil, 0, 0)
 	cbft := &Cbft{
 		config:             ctypes.Config{Sys: sysConfig, Option: optConfig},
 		eventMux:           eventMux,
@@ -210,7 +211,7 @@ func New(sysConfig *params.CbftConfig, optConfig *ctypes.OptionsConfig, eventMux
 		statQueues:         make(map[common.Hash]map[string]int),
 		messageHashCache:   mapset.NewSet(),
 		netLatencyMap:      make(map[string]*list.List),
-		subServer:          *p2p.SubServerInstance(),
+		pubSub:             network.NewPubSub(localNode, ctx.P2PServer()),
 	}
 
 	if evPool, err := evidence.NewEvidencePool(ctx, optConfig.EvidenceDir); err == nil {
@@ -877,8 +878,8 @@ func (cbft *Cbft) APIs(chain consensus.ChainReader) []rpc.API {
 // Protocols return consensus engine to provide protocol information.
 func (cbft *Cbft) Protocols() []p2p.Protocol {
 	protocols := cbft.network.Protocols()
-	pubsubProtocols := cbft.subServer.Protocols()
-	for _,subProtol := range pubsubProtocols {
+	pubsubProtocols := cbft.pubSub.Protocols()
+	for _, subProtol := range pubsubProtocols {
 		protocols = append(protocols, subProtol)
 	}
 	return protocols

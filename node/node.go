@@ -54,7 +54,7 @@ type Node struct {
 	// chainId identifies the current chain and is used for replay protection
 	ChainID      *big.Int `toml:"-"`
 	serverConfig p2p.Config
-	server       *p2p.Server    // Currently running P2P networking layer
+	server       *p2p.Server // Currently running P2P networking layer
 
 	serviceFuncs []ServiceConstructor     // Service constructors (in dependency order)
 	services     map[reflect.Type]Service // Currently running services
@@ -215,6 +215,7 @@ func (n *Node) Start() error {
 			EventMux:       n.eventmux,
 			AccountManager: n.accman,
 			serverConfig:   n.serverConfig,
+			p2pServer:      running,
 		}
 		for kind, s := range services { // copy needed for threaded access
 			ctx.services[kind] = s
