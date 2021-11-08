@@ -18,11 +18,12 @@ package network
 
 import (
 	"fmt"
+	"github.com/AlayaNetwork/Alaya-Go/p2p"
 	"github.com/AlayaNetwork/Alaya-Go/p2p/pubsub"
 )
 
 type PubSub struct {
-	pubsub pubsub.PubSubServer
+	pubsub p2p.PubSubServer
 
 	topicChan	chan string
 	topics		[]string
