@@ -39,6 +39,7 @@ type ServiceContext struct {
 	EventMux       *event.TypeMux           // Event multiplexer used for decoupled notifications
 	AccountManager *accounts.Manager        // Account manager created by the node.
 	serverConfig   p2p.Config
+	p2pServer      *p2p.Server
 }
 
 func NewServiceContext(config *Config, services map[reflect.Type]Service, EventMux *event.TypeMux, AccountManager *accounts.Manager) *ServiceContext {
@@ -120,6 +121,10 @@ func (ctx *ServiceContext) NodePriKey() *ecdsa.PrivateKey {
 // RPC(http, ws or graphql).
 func (ctx *ServiceContext) ExtRPCEnabled() bool {
 	return ctx.config.ExtRPCEnabled()
+}
+
+func (ctx *ServiceContext) P2PServer() *p2p.Server {
+	return ctx.p2pServer
 }
 
 // ServiceConstructor is the function signature of the constructors needed to be

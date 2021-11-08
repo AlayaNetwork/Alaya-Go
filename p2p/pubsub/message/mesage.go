@@ -53,7 +53,16 @@ func (m *RPC_SubOpts) GetTopicid() string {
 }
 
 func (m *RPC_SubOpts) Size() (n int) {
-	return 0
+	if m == nil {
+		return 0
+	}
+	if m.Subscribe != nil {
+		n += 2
+	}
+	if m.Topicid != nil {
+		n += 1 + (len(*m.Topicid))
+	}
+	return n
 }
 
 type Message struct {
@@ -108,7 +117,26 @@ func (m *Message) GetKey() []byte {
 }
 
 func (m *Message) Size() (n int) {
-	return 0
+	if m == nil {
+		return 0
+	}
+	n += len(m.From)
+	if m.Data != nil {
+		n += len(m.Data)
+	}
+	if m.Seqno != nil {
+		n += len(m.Seqno)
+	}
+	if m.Topic != nil {
+		n += len(*m.Topic)
+	}
+	if m.Signature != nil {
+		n += len(m.Signature)
+	}
+	if m.Key != nil {
+		n += len(m.Key)
+	}
+	return n
 }
 
 type ControlMessage struct {
@@ -166,7 +194,18 @@ func (m *ControlIHave) GetMessageIDs() []string {
 }
 
 func (m *ControlIHave) Size() (n int) {
-	return 0
+	if m == nil {
+		return 0
+	}
+	if m.TopicID != nil {
+		n += len(*m.TopicID)
+	}
+	if m.MessageIDs != nil {
+		for _, mid := range m.MessageIDs {
+			n += len(mid)
+		}
+	}
+	return n
 }
 
 type ControlIWant struct {
@@ -181,7 +220,15 @@ func (m *ControlIWant) GetMessageIDs() []string {
 }
 
 func (m *ControlIWant) Size() (n int) {
-	return 0
+	if m == nil {
+		return 0
+	}
+	if m.MessageIDs != nil {
+		for _, mid := range m.MessageIDs {
+			n += len(mid)
+		}
+	}
+	return n
 }
 
 type ControlGraft struct {

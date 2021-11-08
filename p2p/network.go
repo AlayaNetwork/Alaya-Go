@@ -4,7 +4,11 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
 	"github.com/AlayaNetwork/Alaya-Go/p2p/pubsub"
 	"sync"
+	"time"
 )
+
+type PeerManager interface {
+}
 
 type Network struct {
 	sync.RWMutex
@@ -106,17 +110,35 @@ type Conn struct {
 	}
 }
 
-func(c *Conn) ID() string {
+func NewConn(node *enode.Node, inbound bool) *Conn {
+	stat := pubsub.Stat{
+		Opened: time.Now(),
+		Extra:  make(map[interface{}]interface{}),
+	}
+	if inbound {
+		stat.Direction = pubsub.DirInbound
+	} else {
+		stat.Direction = pubsub.DirOutbound
+	}
+	conn := &Conn{
+		remote: node,
+		stat:   stat,
+	}
+	conn.streams.m = make(map[pubsub.Stream]struct{})
+	return conn
+}
+
+func (c *Conn) ID() string {
 	return c.remote.ID().String()
 }
 
-func(c *Conn) SetStreams(stream pubsub.Stream) {
+func (c *Conn) SetStream(stream pubsub.Stream) {
 	c.streams.Lock()
 	defer c.streams.Unlock()
 	c.streams.m[stream] = struct{}{}
 }
 
-func(c *Conn) GetStreams() []pubsub.Stream {
+func (c *Conn) GetStreams() []pubsub.Stream {
 	c.streams.Lock()
 	defer c.streams.Unlock()
 	streams := make([]pubsub.Stream, 0, len(c.streams.m))
@@ -126,10 +148,10 @@ func(c *Conn) GetStreams() []pubsub.Stream {
 	return streams
 }
 
-func(c *Conn) Stat() pubsub.Stat {
+func (c *Conn) Stat() pubsub.Stat {
 	return c.stat
 }
 
-func(c *Conn) RemotePeer() *enode.Node {
+func (c *Conn) RemotePeer() *enode.Node {
 	return c.remote
 }
