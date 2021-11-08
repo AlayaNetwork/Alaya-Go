@@ -217,7 +217,6 @@ type Server struct {
 	consensus       bool
 	addconsensus    chan *enode.Node
 	removeconsensus chan *enode.Node
-	subServer       *PubSubServer
 }
 
 type peerOpFunc func(map[enode.ID]*Peer)
@@ -541,9 +540,6 @@ func (srv *Server) Start() (err error) {
 		return err
 	}
 	srv.setupDialScheduler()
-
-	srv.subServer = NewPubSubServer(srv.localnode.Node(), srv)
-	srv.subServer.Start()
 
 	srv.loopWG.Add(1)
 	go srv.run()

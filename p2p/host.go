@@ -15,6 +15,15 @@ type Host struct {
 	sync.Mutex
 }
 
+func NewHost(localNode *enode.Node, network *Network) *Host {
+	host := &Host{
+		node:    localNode,
+		streams: make(map[enode.ID]pubsub.Stream),
+		network: network,
+	}
+	return host
+}
+
 func (h *Host) ID() *enode.Node {
 	return h.node
 }
@@ -61,4 +70,8 @@ func (h *Host) Close() error {
 
 func (h *Host) ConnManager() connmgr.ConnManager {
 	return nil
+}
+
+func (h *Host) NotifyAll(conn pubsub.Conn) {
+	h.network.NotifyAll(conn)
 }
