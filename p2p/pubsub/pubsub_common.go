@@ -60,9 +60,9 @@ func (p *PubSub) handleNewStream(s Stream) {
 
 		rpc := new(RPC)
 		if err := s.Read(&rpc.RPC); err != nil {
-			log.Debug("Read message error", "err", err)
+			log.Error("Read message error", "err", err)
 			p.notifyPeerDead(peer.ID())
-			s.Close()
+			s.Close(err)
 			return
 		}
 
