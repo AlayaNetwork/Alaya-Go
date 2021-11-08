@@ -1,7 +1,6 @@
-package swarm
+package p2p
 
 import (
-	"github.com/AlayaNetwork/Alaya-Go/p2p"
 	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
 	"github.com/AlayaNetwork/Alaya-Go/p2p/pubsub"
 	"sync"
@@ -9,7 +8,7 @@ import (
 
 type Network struct {
 	sync.RWMutex
-	server *p2p.Server
+	server *Server
 
 	m map[pubsub.Notifiee]struct{}
 
@@ -19,7 +18,7 @@ type Network struct {
 	}
 }
 
-func NewNetwork(server *p2p.Server) *Network {
+func NewNetwork(server *Server) *Network {
 	n := &Network{
 		RWMutex: sync.RWMutex{},
 		server:  server,

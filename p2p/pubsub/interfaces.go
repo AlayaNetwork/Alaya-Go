@@ -2,7 +2,6 @@ package pubsub
 
 import (
 	"context"
-	"github.com/AlayaNetwork/Alaya-Go/p2p"
 	"time"
 
 	"github.com/libp2p/go-libp2p-core/connmgr"
@@ -118,7 +117,11 @@ type Stream interface {
 	// Conn returns the connection this stream is part of.
 	Conn() Conn
 
-	ReadWriter() p2p.MsgReadWriter //
+	Read(interface{}) error
+
+	Write(interface{}) error
+
+	Close()
 }
 
 // Conn is a connection to a remote peer. It multiplexes streams.

@@ -542,7 +542,7 @@ func (srv *Server) Start() (err error) {
 	}
 	srv.setupDialScheduler()
 
-	srv.subServer = SubServerInstance()
+	srv.subServer = NewPubSubServer(srv.localnode.Node(), srv)
 	srv.subServer.Start()
 
 	srv.loopWG.Add(1)
@@ -883,7 +883,6 @@ running:
 					inboundCount++
 				}
 
-				// TODO pubsub network.NotifyAll
 			}
 			c.cont <- err
 
