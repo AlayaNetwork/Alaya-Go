@@ -55,6 +55,7 @@ require (
 	github.com/peterh/liner v1.0.1-0.20170902204657-a37ad3984311
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/tsdb v0.10.0
+	github.com/prysmaticlabs/go-bitfield v0.0.0-20210809151128-385d8c5e3fb7 // indirect
 	github.com/rjeczalik/notify v0.9.1
 	github.com/robertkrimen/otto v0.0.0-20170205013659-6a77b7cbc37d
 	github.com/robfig/cron v1.2.1-0.20190616124356-61d93e07d1be

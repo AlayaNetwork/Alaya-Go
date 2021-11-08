@@ -158,7 +158,7 @@ func (t *Topic) Subscribe(opts ...SubOpt) (*Subscription, error) {
 
 	out := make(chan *Subscription, 1)
 
-	//t.p.disc.Discover(sub.topic)
+	t.p.disc.Discover(sub.topic)
 
 	select {
 	case t.p.addSub <- &addSubReq{
@@ -184,7 +184,7 @@ func (t *Topic) Relay() (RelayCancelFunc, error) {
 
 	out := make(chan RelayCancelFunc, 1)
 
-	//t.p.disc.Discover(t.topic)
+	t.p.disc.Discover(t.topic)
 
 	select {
 	case t.p.addRelay <- &addRelayReq{
@@ -242,7 +242,7 @@ func (t *Topic) Publish(ctx context.Context, data []byte, opts ...PubOpt) error 
 	}
 
 	if pub.ready != nil {
-		//t.p.disc.Bootstrap(ctx, t.topic, pub.ready)
+		t.p.disc.Bootstrap(ctx, t.topic, pub.ready)
 	}
 
 	return t.p.val.PushLocal(&Message{m, t.p.host.ID(), nil})

@@ -122,7 +122,8 @@ type dialScheduler struct {
 	static     map[enode.ID]*dialTask
 	staticPool []*dialTask
 
-	consensus *dialedTasks
+	consensus     map[enode.ID]*dialTask
+	consensusPool []*dialTask
 
 	// The dial history keeps recently dialed nodes. Members of history are not dialed.
 	history          expHeap
@@ -183,7 +184,7 @@ func newDialScheduler(config dialConfig, it enode.Iterator, setupFunc dialSetupF
 		remPeerCh:       make(chan *conn),
 		addconsensus:    make(chan *enode.Node),
 		removeconsensus: make(chan *enode.Node),
-		consensus:       NewDialedTasks(config.MaxConsensusPeers*2, nil),
+		consensus:       make(map[enode.ID]*dialTask),
 	}
 	d.lastStatsLog = d.clock.Now()
 	d.ctx, d.cancel = context.WithCancel(context.Background())
@@ -229,13 +230,14 @@ func (d *dialScheduler) removeConsensus(n *enode.Node) {
 	}
 }
 
+/*
 func (d *dialScheduler) removeConsensusFromQueue(n *enode.Node) {
 	d.history.remove(string(n.ID().Bytes()))
-}
+}*/
 
-func (d *dialScheduler) initRemoveConsensusPeerFn(removeConsensusPeerFn removeConsensusPeerFn) {
+/*func (d *dialScheduler) initRemoveConsensusPeerFn(removeConsensusPeerFn removeConsensusPeerFn) {
 	d.consensus.InitRemoveConsensusPeerFn(removeConsensusPeerFn)
-}
+}*/
 
 // peerAdded updates the peer set.
 func (d *dialScheduler) peerAdded(c *conn) {
@@ -332,10 +334,28 @@ loop:
 				}
 			}
 		case node := <-d.addconsensus:
-			log.Warn("dial adding consensus node", "node", node)
-			d.consensus.AddTask(&dialTask{flags: consensusDialedConn, dest: node})
+			id := node.ID()
+			_, exists := d.consensus[id]
+			d.log.Trace("Adding consensus node", "id", id, "ip", node.IP(), "added", !exists)
+			if exists {
+				continue loop
+			}
+			task := newDialTask(node, consensusDialedConn)
+			d.consensus[id] = task
+			//todo if Consensus task too musch ,we may cut some
+			if d.checkDial(node) == nil {
+				d.addToConsensusPool(task)
+			}
 		case node := <-d.removeconsensus:
-			d.consensus.RemoveTask(node)
+			id := node.ID()
+			task := d.consensus[id]
+			d.log.Trace("Removing consensus node", "id", id, "ok", task != nil)
+			if task != nil {
+				delete(d.consensus, id)
+				if task.staticPoolIndex >= 0 {
+					d.removeFromConsensusPool(task.staticPoolIndex)
+				}
+			}
 
 		case <-historyExp:
 			d.expireHistory()
@@ -460,25 +480,6 @@ func (d *dialScheduler) startStaticDials(n int) (started int) {
 	return started
 }
 
-func (d *dialScheduler) startConsensusDials(n int) (started int) {
-	// Create dials for consensus nodes if they are not connected.
-	i := 0
-	for _, t := range d.consensus.ListTask() {
-		if i >= n {
-			break
-		}
-		err := d.checkDial(t.dest)
-		switch err {
-		case errNetRestrict, errSelf:
-			d.consensus.RemoveTask(t.dest)
-		case nil:
-			d.startDial(t)
-			i++
-		}
-	}
-	return i
-}
-
 // updateStaticPool attempts to move the given static dial back into staticPool.
 func (d *dialScheduler) updateStaticPool(id enode.ID) {
 	task, ok := d.static[id]
@@ -504,6 +505,45 @@ func (d *dialScheduler) removeFromStaticPool(idx int) {
 	d.staticPool[idx].staticPoolIndex = idx
 	d.staticPool[end] = nil
 	d.staticPool = d.staticPool[:end]
+	task.staticPoolIndex = -1
+}
+
+func (d *dialScheduler) startConsensusDials(n int) (started int) {
+	for started = 0; started < n && len(d.consensusPool) > 0; started++ {
+		//todo if rand here?
+		idx := d.rand.Intn(len(d.consensusPool))
+		task := d.consensusPool[idx]
+		d.startDial(task)
+		d.removeFromConsensusPool(idx)
+	}
+	return started
+}
+
+// updateConsensusPool attempts to move the given consensus dial back into consensusPool.
+func (d *dialScheduler) updateConsensusPool(id enode.ID) {
+	task, ok := d.consensus[id]
+	if ok && task.staticPoolIndex < 0 && d.checkDial(task.dest) == nil {
+		d.addToConsensusPool(task)
+	}
+}
+
+func (d *dialScheduler) addToConsensusPool(task *dialTask) {
+	if task.staticPoolIndex >= 0 {
+		panic("attempt to add task to consensusPool twice")
+	}
+	d.consensusPool = append(d.consensusPool, task)
+	task.staticPoolIndex = len(d.consensusPool) - 1
+}
+
+// removeFromConsensusPool removes the task at idx from consensusPool. It does that by moving the
+// current last element of the pool to idx and then shortening the pool by one.
+func (d *dialScheduler) removeFromConsensusPool(idx int) {
+	task := d.consensusPool[idx]
+	end := len(d.consensusPool) - 1
+	d.consensusPool[idx] = d.consensusPool[end]
+	d.consensusPool[idx].staticPoolIndex = idx
+	d.consensusPool[end] = nil
+	d.consensusPool = d.consensusPool[:end]
 	task.staticPoolIndex = -1
 }
 
