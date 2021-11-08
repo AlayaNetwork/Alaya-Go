@@ -442,7 +442,6 @@ func WithDiscovery(d discovery.Discovery, opts ...DiscoverOpt) Option {
 				return err
 			}
 		}
-
 		p.disc.discovery = &pubSubDiscovery{Discovery: d, opts: discoverOpts.opts}
 		p.disc.options = discoverOpts
 		return nil
@@ -535,7 +534,6 @@ func (p *PubSub) processLoop(ctx context.Context) {
 			ch, ok := p.peers[pid.ID()]
 			if !ok {
 				log.Warn("new stream for unknown peer: ", pid)
-				s.Reset()
 				continue
 			}
 
@@ -543,7 +541,6 @@ func (p *PubSub) processLoop(ctx context.Context) {
 				log.Warn("closing stream for blacklisted peer: ", pid)
 				close(ch)
 				delete(p.peers, pid.ID())
-				s.Reset()
 				continue
 			}
 
@@ -683,7 +680,7 @@ func (p *PubSub) handleDeadPeers() {
 
 		close(ch)
 
-		if p.host.Network().Connectedness(pid) == Connected {
+		/*if p.host.Network().Connectedness(pid) == Connected {
 			// still connected, must be a duplicate connection being closed.
 			// we respawn the writer as we need to ensure there is a stream active
 			log.Debug("peer declared dead but still connected; respawning writer", "writer", pid)
@@ -692,7 +689,7 @@ func (p *PubSub) handleDeadPeers() {
 			go p.handleNewPeer(p.ctx, pid, messages)
 			p.peers[pid] = messages
 			continue
-		}
+		}*/
 
 		delete(p.peers, pid)
 		for t, tmap := range p.topics {

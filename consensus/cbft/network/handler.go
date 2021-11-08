@@ -47,6 +47,9 @@ const (
 	// CbftProtocolLength are the number of implemented message corresponding to cbft protocol versions.
 	CbftProtocolLength = 40
 
+	// DefaultMaximumMessageSize is 1mb.
+	DefaultMaxMessageSize = 1 << 20
+
 	// sendQueueSize is maximum threshold for the queue of messages waiting to be sent.
 	sendQueueSize = 10240
 

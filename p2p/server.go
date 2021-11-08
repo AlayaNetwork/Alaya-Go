@@ -30,8 +30,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/AlayaNetwork/Alaya-Go/p2p/pubsub"
-
 	"github.com/AlayaNetwork/Alaya-Go/p2p/enr"
 
 	"github.com/AlayaNetwork/Alaya-Go/crypto"
@@ -226,8 +224,7 @@ type Server struct {
 	consensus       bool
 	addconsensus    chan *enode.Node
 	removeconsensus chan *enode.Node
-
-	pubsub *pubsub.PubSub
+	subServer       *PubSubServer
 }
 
 type peerOpFunc func(map[enode.ID]*Peer)
@@ -536,6 +533,9 @@ func (srv *Server) Start() (err error) {
 	}
 	srv.setupDialScheduler()
 
+	srv.subServer = NewPubSubServer(srv.localnode.Node(), srv)
+	srv.subServer.Start()
+
 	srv.loopWG.Add(1)
 	go srv.run()
 	return nil
@@ -811,7 +811,6 @@ running:
 			if _, ok := consensusNodes[n.ID()]; ok {
 				delete(consensusNodes, n.ID())
 			}
-			//todo info  all connect peers, update  topic
 			if p, ok := peers[n.ID()]; ok {
 				p.rw.set(consensusDialedConn, false)
 				if !p.rw.is(staticDialedConn | trustedConn | inboundConn) {
@@ -874,6 +873,7 @@ running:
 				if p.Inbound() {
 					inboundCount++
 				}
+
 			}
 			c.cont <- err
 

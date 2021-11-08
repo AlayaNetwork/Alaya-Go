@@ -2,10 +2,7 @@ package pubsub
 
 import (
 	"context"
-	"io"
 	"time"
-
-	"github.com/AlayaNetwork/Alaya-Go/p2p"
 
 	"github.com/libp2p/go-libp2p-core/connmgr"
 
@@ -53,6 +50,7 @@ type Host interface {
 	// peerstore. If there is not an active connection, Connect will issue a
 	// h.Network.Dial, and block until a connection is open, or an error is
 	// returned. // TODO: Relay + NAT.
+	// addConsensusNode
 	Connect(ctx context.Context, pi enode.ID) error
 
 	// SetStreamHandler sets the protocol handler on the Host's Mux.
@@ -91,8 +89,6 @@ type StreamHandler func(Stream)
 // connections (see swarm pkg, and peerstream.Swarm). Connections
 // are encrypted with a TLS-like protocol.
 type Network interface {
-	io.Closer
-
 	// ConnsToPeer returns the connections in this Netowrk for given peer.
 	ConnsToPeer(p enode.ID) []Conn
 
@@ -121,28 +117,11 @@ type Stream interface {
 	// Conn returns the connection this stream is part of.
 	Conn() Conn
 
-	ReadWriter() p2p.MsgReadWriter //
+	Read(interface{}) error
 
-	// Reset closes both ends of the stream. Use this to tell the remote
-	// side to hang up and go away.
-	Reset() error
+	Write(interface{}) error
 
-	// Close closes the stream.
-	//
-	// * Any buffered data for writing will be flushed.
-	// * Future reads will fail.
-	// * Any in-progress reads/writes will be interrupted.
-	//
-	// Close may be asynchronous and _does not_ guarantee receipt of the
-	// data.
-	//
-	// Close closes the stream for both reading and writing.
-	// Close is equivalent to calling `CloseRead` and `CloseWrite`. Importantly, Close will not wait for any form of acknowledgment.
-	// If acknowledgment is required, the caller must call `CloseWrite`, then wait on the stream for a response (or an EOF),
-	// then call Close() to free the stream object.
-	//
-	// When done with a stream, the user must call either Close() or `Reset()` to discard the stream, even after calling `CloseRead` and/or `CloseWrite`.
-	io.Closer
+	Close()
 }
 
 // Conn is a connection to a remote peer. It multiplexes streams.
@@ -150,8 +129,6 @@ type Stream interface {
 // be useful to get information about the peer on the other side:
 //  stream.Conn().RemotePeer()
 type Conn interface {
-	io.Closer
-
 	// ID returns an identifier that uniquely identifies this Conn within this
 	// host, during this run. Connection IDs may repeat across restarts.
 	ID() string
