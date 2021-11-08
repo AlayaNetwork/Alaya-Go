@@ -1,8 +1,8 @@
-package swarm
+package p2p
 
 import (
 	"fmt"
-	"github.com/AlayaNetwork/Alaya-Go/p2p"
+	"github.com/AlayaNetwork/Alaya-Go/log"
 	"github.com/AlayaNetwork/Alaya-Go/p2p/pubsub"
 	"sync/atomic"
 )
@@ -10,7 +10,7 @@ import (
 // Stream is the stream type used by pubsub. In general
 type Stream struct {
 	conn     pubsub.Conn
-	rw       p2p.MsgReadWriter
+	rw       MsgReadWriter
 	protocol atomic.Value
 }
 
@@ -42,15 +42,37 @@ func (s *Stream) SetProtocol(p pubsub.ProtocolID) {
 	s.protocol.Store(p)
 }
 
-func (s *Stream) ReadWriter() p2p.MsgReadWriter {
-	return s.rw
+func (s *Stream) Read(data interface{}) error {
+	msg, err := s.rw.ReadMsg()
+	if err != nil {
+		log.Debug("Failed to read PubSub message", "err", err)
+		return err
+	}
+
+	if err := msg.Decode(data); err != nil {
+		log.Error("Decode PubSub message fail", "err", err)
+		return err
+	}
+	return nil
+}
+
+func (s *Stream) Write(data interface{}) error {
+	if err := Send(s.rw, PubSubMsgCode, data); err != nil {
+		log.Error("Failed to send PubSub message", "err", err)
+		return err
+	}
+	return nil
+}
+
+func (s *Stream) Close() {
+
 }
 
 // newStream creates a new Stream.
-func newStream(conn pubsub.Conn, rw p2p.MsgReadWriter, id pubsub.ProtocolID) *Stream {
+func newStream(conn pubsub.Conn, rw MsgReadWriter, id pubsub.ProtocolID) *Stream {
 	s := &Stream{
-		conn:	conn,
-		rw:		rw,
+		conn: conn,
+		rw:   rw,
 	}
 	s.SetProtocol(id)
 	return s
