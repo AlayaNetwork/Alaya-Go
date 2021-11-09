@@ -17,7 +17,6 @@
 package network
 
 import (
-	"context"
 	"fmt"
 	"github.com/AlayaNetwork/Alaya-Go/log"
 	"github.com/AlayaNetwork/Alaya-Go/p2p"
@@ -37,12 +36,19 @@ const (
 	CbftPubSubProtocolLength = 10
 )
 
-type PubSub struct {
-	host *p2p.Host
-	ps   *pubsub.PubSub
+// Group consensus message
+type RGMsg struct {
+	Code uint64
+	Data interface{}
+}
 
-	topicChan chan string
-	topics    []string
+type PubSub struct {
+	ps *p2p.PubSubServer
+
+	// Messages of all topics subscribed are sent out from this channel uniformly
+	msgCh chan *RGMsg
+	// All topics subscribed
+	topics map[string]map[*pubsub.Topic]struct{}
 	// The set of topics we are subscribed to
 	mySubs map[string]map[*pubsub.Subscription]struct{}
 }
@@ -58,8 +64,8 @@ func (ps *PubSub) handler(peer *p2p.Peer, rw p2p.MsgReadWriter) error {
 	stream := p2p.NewStream(conn, rw, errCh, "")
 	conn.SetStream(stream)
 
-	ps.host.SetStream(peer.ID(), stream)
-	ps.host.NotifyAll(conn)
+	/*ps.host.SetStream(peer.ID(), stream)
+	ps.host.NotifyAll(conn)*/
 
 	handlerErr := <-errCh
 	log.Info("pubsub's handler ends", "err", handlerErr)
@@ -90,17 +96,19 @@ func (ps *PubSub) Protocols() []p2p.Protocol {
 	}
 }
 
-func NewPubSub(localNode *enode.Node, server *p2p.Server) *PubSub {
-	network := p2p.NewNetwork(server)
+func NewPubSub(localNode *enode.Node, server *p2p.PubSubServer) *PubSub {
+	/*network := p2p.NewNetwork(server)
 	host := p2p.NewHost(localNode, network)
-	pubsub, err := pubsub.NewGossipSub(context.Background(), host)
+	gossipSub, err := pubsub.NewGossipSub(context.Background(), host)
 	if err != nil {
 		panic("Failed to NewGossipSub: " + err.Error())
-	}
+	}*/
 
 	return &PubSub{
-		ps:   pubsub,
-		host: host,
+		ps:     server,
+		msgCh:  make(chan *RGMsg),
+		topics: make(map[string]map[*pubsub.Topic]struct{}),
+		mySubs: make(map[string]map[*pubsub.Subscription]struct{}),
 	}
 }
 
@@ -109,7 +117,7 @@ func (ps *PubSub) Subscribe(topic string) error {
 	//if err := ps.ps.PublishMsg(topic); err != nil {
 	//	return err
 	//}
-	ps.topics = append(ps.topics, topic)
+	//ps.topics = append(ps.topics, topic)
 	return nil
 }
 
@@ -124,6 +132,13 @@ func (ps *PubSub) Cancel(topic string) error {
 		}
 		return nil
 	}
-
 	return fmt.Errorf("Can not find", "topic", topic)
+}
+
+func (ps *PubSub) Publish(data *RGMsg) error {
+	return nil
+}
+
+func (ps *PubSub) Receive() *RGMsg {
+	return <-ps.msgCh
 }
