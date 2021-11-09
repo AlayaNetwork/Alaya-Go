@@ -2,14 +2,13 @@ package pubsub
 
 import (
 	"context"
-	"math/rand"
 	"time"
-
-	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
 
 	"github.com/prometheus/common/log"
 
-	discimpl "github.com/AlayaNetwork/Alaya-Go/p2p/pubsub/discovery"
+	"github.com/libp2p/go-libp2p-core/discovery"
+	"github.com/libp2p/go-libp2p-core/peer"
+	//	discimpl "github.com/libp2p/go-libp2p-discovery"
 )
 
 var (
@@ -28,23 +27,24 @@ const discoveryAdvertiseRetryInterval = 2 * time.Minute
 type DiscoverOpt func(*discoverOptions) error
 
 type discoverOptions struct {
-	connFactory BackoffConnectorFactory
-	opts        []discimpl.Option
+	//	connFactory BackoffConnectorFactory
+	opts []discovery.Option
 }
 
 func defaultDiscoverOptions() *discoverOptions {
-	rngSrc := rand.NewSource(rand.Int63())
+	/*rngSrc := rand.NewSource(rand.Int63())
 	minBackoff, maxBackoff := time.Second*10, time.Hour
 	cacheSize := 100
 	dialTimeout := time.Minute * 2
 	discoverOpts := &discoverOptions{
-		connFactory: func(host Host) (*discimpl.BackoffConnector, error) {
+		connFactory: func(host host.Host) (*discimpl.BackoffConnector, error) {
 			backoff := discimpl.NewExponentialBackoff(minBackoff, maxBackoff, discimpl.FullJitter, time.Second, 5.0, 0, rand.New(rngSrc))
 			return discimpl.NewBackoffConnector(host, cacheSize, dialTimeout, backoff)
 		},
 	}
 
-	return discoverOpts
+	return discoverOpts*/
+	return nil
 }
 
 // discover represents the discovery pipeline.
@@ -53,7 +53,7 @@ type discover struct {
 	p *PubSub
 
 	// discovery assists in discovering and advertising peers for a topic
-	discovery discimpl.Discovery
+	discovery discovery.Discovery
 
 	// advertising tracks which topics are being advertised
 	advertising map[string]context.CancelFunc
@@ -68,7 +68,7 @@ type discover struct {
 	done chan string
 
 	// connector handles connecting to new peers found via discovery
-	connector *discimpl.BackoffConnector
+	//	connector *discimpl.BackoffConnector
 
 	// options are the set of options to be used to complete struct construction in Start
 	options *discoverOptions
@@ -94,11 +94,11 @@ func (d *discover) Start(p *PubSub, opts ...DiscoverOpt) error {
 	d.ongoing = make(map[string]struct{})
 	d.done = make(chan string)
 
-	conn, err := d.options.connFactory(p.host)
+	/*conn, err := d.options.connFactory(p.host)
 	if err != nil {
 		return err
 	}
-	d.connector = conn
+	d.connector = conn*/
 
 	go d.discoverLoop()
 	go d.pollTimer()
@@ -230,7 +230,7 @@ func (d *discover) StopAdvertise(topic string) {
 }
 
 // Discover searches for additional peers interested in a given topic
-func (d *discover) Discover(topic string, opts ...discimpl.Option) {
+func (d *discover) Discover(topic string, opts ...discovery.Option) {
 	if d.discovery == nil {
 		return
 	}
@@ -239,7 +239,7 @@ func (d *discover) Discover(topic string, opts ...discimpl.Option) {
 }
 
 // Bootstrap attempts to bootstrap to a given topic. Returns true if bootstrapped successfully, false otherwise.
-func (d *discover) Bootstrap(ctx context.Context, topic string, ready RouterReady, opts ...discimpl.Option) bool {
+func (d *discover) Bootstrap(ctx context.Context, topic string, ready RouterReady, opts ...discovery.Option) bool {
 	if d.discovery == nil {
 		return true
 	}
@@ -296,40 +296,40 @@ func (d *discover) Bootstrap(ctx context.Context, topic string, ready RouterRead
 	}
 }
 
-func (d *discover) handleDiscovery(ctx context.Context, topic string, opts []discimpl.Option) {
-	discoverCtx, cancel := context.WithTimeout(ctx, time.Second*10)
-	defer cancel()
+func (d *discover) handleDiscovery(ctx context.Context, topic string, opts []discovery.Option) {
+	/*discoverCtx, cancel := context.WithTimeout(ctx, time.Second*10)
+	defer cancel()*/
 
-	peerCh, err := d.discovery.FindPeers(discoverCtx, topic, opts...)
-	if err != nil {
-		log.Debugf("error finding peers for topic %s: %v", topic, err)
-		return
-	}
+	/*	peerCh, err := d.discovery.FindPeers(discoverCtx, topic, opts...)
+		if err != nil {
+			log.Debugf("error finding peers for topic %s: %v", topic, err)
+			return
+		}*/
 
-	d.connector.Connect(ctx, peerCh)
+	//d.connector.Connect(ctx, peerCh)
 }
 
 type discoverReq struct {
 	topic string
-	opts  []discimpl.Option
+	opts  []discovery.Option
 	done  chan struct{}
 }
 
 type pubSubDiscovery struct {
-	discimpl.Discovery
-	opts []discimpl.Option
+	discovery.Discovery
+	opts []discovery.Option
 }
 
-func (d *pubSubDiscovery) Advertise(ctx context.Context, ns string, opts ...discimpl.Option) (time.Duration, error) {
+func (d *pubSubDiscovery) Advertise(ctx context.Context, ns string, opts ...discovery.Option) (time.Duration, error) {
 	return d.Discovery.Advertise(ctx, "floodsub:"+ns, append(opts, d.opts...)...)
 }
 
-func (d *pubSubDiscovery) FindPeers(ctx context.Context, ns string, opts ...discimpl.Option) (<-chan *enode.Node, error) {
+func (d *pubSubDiscovery) FindPeers(ctx context.Context, ns string, opts ...discovery.Option) (<-chan peer.AddrInfo, error) {
 	return d.Discovery.FindPeers(ctx, "floodsub:"+ns, append(opts, d.opts...)...)
 }
 
 // WithDiscoveryOpts passes libp2p Discovery options into the PubSub discovery subsystem
-func WithDiscoveryOpts(opts ...discimpl.Option) DiscoverOpt {
+func WithDiscoveryOpts(opts ...discovery.Option) DiscoverOpt {
 	return func(d *discoverOptions) error {
 		d.opts = opts
 		return nil
@@ -337,12 +337,12 @@ func WithDiscoveryOpts(opts ...discimpl.Option) DiscoverOpt {
 }
 
 // BackoffConnectorFactory creates a BackoffConnector that is attached to a given host
-type BackoffConnectorFactory func(host Host) (*discimpl.BackoffConnector, error)
+//type BackoffConnectorFactory func(host host.Host) (*discimpl.BackoffConnector, error)
 
 // WithDiscoverConnector adds a custom connector that deals with how the discovery subsystem connects to peers
-func WithDiscoverConnector(connFactory BackoffConnectorFactory) DiscoverOpt {
+/*func WithDiscoverConnector(connFactory BackoffConnectorFactory) DiscoverOpt {
 	return func(d *discoverOptions) error {
 		d.connFactory = connFactory
 		return nil
 	}
-}
+}*/
