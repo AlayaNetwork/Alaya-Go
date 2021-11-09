@@ -121,7 +121,7 @@ type Stream interface {
 
 	Write(interface{}) error
 
-	Close()
+	Close(err error)
 }
 
 // Conn is a connection to a remote peer. It multiplexes streams.

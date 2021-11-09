@@ -18,6 +18,7 @@ type Stream struct {
 	conn     pubsub.Conn
 	rw       MsgReadWriter
 	protocol atomic.Value
+	errCh    chan error
 }
 
 func (s *Stream) String() string {
@@ -70,14 +71,15 @@ func (s *Stream) Write(data interface{}) error {
 	return nil
 }
 
-func (s *Stream) Close() {
-
+func (s *Stream) Close(err error) {
+	s.errCh <- err
 }
 
-func NewStream(conn pubsub.Conn, rw MsgReadWriter, id pubsub.ProtocolID) *Stream {
+func NewStream(conn pubsub.Conn, rw MsgReadWriter, errCh chan error, id pubsub.ProtocolID) *Stream {
 	s := &Stream{
-		conn: conn,
-		rw:   rw,
+		conn:  conn,
+		rw:    rw,
+		errCh: errCh,
 	}
 	s.SetProtocol(id)
 	return s
