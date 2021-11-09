@@ -40,7 +40,7 @@ type Host interface {
 	ID() *enode.Node
 
 	// Peerstore returns the Host's repository of Peer Addresses and Keys.
-	Peerstore() Peerstore
+	//Peerstore() Peerstore
 
 	// Networks returns the Network interface of the Host
 	Network() Network

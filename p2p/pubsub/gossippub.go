@@ -321,7 +321,7 @@ func WithPeerExchange(doPX bool) Option {
 // message unconditionally forwarded to them. The router will maintain open connections
 // to these peers. Note that the peering agreement should be reciprocal with direct peers
 // symmetrically configured at both ends.
-func WithDirectPeers(pis []*enode.Node) Option {
+/*func WithDirectPeers(pis []*enode.Node) Option {
 	return func(ps *PubSub) error {
 		gs, ok := ps.rt.(*GossipSubRouter)
 		if !ok {
@@ -342,7 +342,7 @@ func WithDirectPeers(pis []*enode.Node) Option {
 
 		return nil
 	}
-}
+}*/
 
 // WithDirectConnectTicks is a gossipsub router option that sets the number of
 // heartbeat ticks between attempting to reconnect direct peers that are not
