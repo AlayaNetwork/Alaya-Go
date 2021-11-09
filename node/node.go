@@ -202,6 +202,8 @@ func (n *Node) Start() error {
 	}
 
 	running := &p2p.Server{Config: n.serverConfig}
+	pubSubServer := p2p.NewPubSubServer(nil, running)
+	running.SetPubSubServer(pubSubServer)
 	n.log.Info("Starting peer-to-peer node", "instance", n.serverConfig.Name)
 
 	// Otherwise copy and specialize the P2P configuration
@@ -215,7 +217,7 @@ func (n *Node) Start() error {
 			EventMux:       n.eventmux,
 			AccountManager: n.accman,
 			serverConfig:   n.serverConfig,
-			p2pServer:      running,
+			pubSubServer:   pubSubServer,
 		}
 		for kind, s := range services { // copy needed for threaded access
 			ctx.services[kind] = s

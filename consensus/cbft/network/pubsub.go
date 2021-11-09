@@ -17,7 +17,6 @@
 package network
 
 import (
-	"context"
 	"fmt"
 	"github.com/AlayaNetwork/Alaya-Go/log"
 	"github.com/AlayaNetwork/Alaya-Go/p2p"
@@ -44,8 +43,7 @@ type RGMsg struct {
 }
 
 type PubSub struct {
-	host *p2p.Host
-	ps   *pubsub.PubSub
+	ps *p2p.PubSubServer
 
 	// Messages of all topics subscribed are sent out from this channel uniformly
 	msgCh chan *RGMsg
@@ -66,8 +64,8 @@ func (ps *PubSub) handler(peer *p2p.Peer, rw p2p.MsgReadWriter) error {
 	stream := p2p.NewStream(conn, rw, errCh, "")
 	conn.SetStream(stream)
 
-	ps.host.SetStream(peer.ID(), stream)
-	ps.host.NotifyAll(conn)
+	/*ps.host.SetStream(peer.ID(), stream)
+	ps.host.NotifyAll(conn)*/
 
 	handlerErr := <-errCh
 	log.Info("pubsub's handler ends", "err", handlerErr)
@@ -98,17 +96,16 @@ func (ps *PubSub) Protocols() []p2p.Protocol {
 	}
 }
 
-func NewPubSub(localNode *enode.Node, server *p2p.Server) *PubSub {
-	network := p2p.NewNetwork(server)
+func NewPubSub(localNode *enode.Node, server *p2p.PubSubServer) *PubSub {
+	/*network := p2p.NewNetwork(server)
 	host := p2p.NewHost(localNode, network)
 	gossipSub, err := pubsub.NewGossipSub(context.Background(), host)
 	if err != nil {
 		panic("Failed to NewGossipSub: " + err.Error())
-	}
+	}*/
 
 	return &PubSub{
-		ps:     gossipSub,
-		host:   host,
+		ps:     server,
 		msgCh:  make(chan *RGMsg),
 		topics: make(map[string]map[*pubsub.Topic]struct{}),
 		mySubs: make(map[string]map[*pubsub.Subscription]struct{}),
