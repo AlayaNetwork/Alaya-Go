@@ -11,6 +11,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/AlayaNetwork/Alaya-Go/p2p/pubsub/discovery"
+
 	"github.com/AlayaNetwork/Alaya-Go/p2p/pubsub/message"
 
 	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
@@ -48,7 +50,7 @@ type PubSub struct {
 
 	val *validation
 
-	//disc *discover
+	disc *discover
 
 	tracer *pubsubTracer
 
@@ -230,12 +232,12 @@ type Option func(*PubSub) error
 // NewPubSub returns a new PubSub management object.
 func NewPubSub(ctx context.Context, h Host, rt PubSubRouter, opts ...Option) (*PubSub, error) {
 	ps := &PubSub{
-		host:       h,
-		ctx:        ctx,
-		rt:         rt,
-		val:        newValidation(),
-		peerFilter: DefaultPeerFilter,
-		//	disc:                  &discover{},
+		host:                  h,
+		ctx:                   ctx,
+		rt:                    rt,
+		val:                   newValidation(),
+		peerFilter:            DefaultPeerFilter,
+		disc:                  &discover{},
 		maxMessageSize:        DefaultMaxMessageSize,
 		peerOutboundQueueSize: 32,
 		signID:                h.ID().ID(),
@@ -290,9 +292,9 @@ func NewPubSub(ctx context.Context, h Host, rt PubSubRouter, opts ...Option) (*P
 		}*/
 	}
 
-	/*	if err := ps.disc.Start(ps); err != nil {
+	if err := ps.disc.Start(ps); err != nil {
 		return nil, err
-	}*/
+	}
 
 	rt.Attach(ps)
 
@@ -431,7 +433,7 @@ func WithBlacklist(b Blacklist) Option {
 }
 
 // WithDiscovery provides a discovery mechanism used to bootstrap and provide peers into PubSub
-/*func WithDiscovery(d discovery.Discovery, opts ...DiscoverOpt) Option {
+func WithDiscovery(d discovery.Discovery, opts ...DiscoverOpt) Option {
 	return func(p *PubSub) error {
 		discoverOpts := defaultDiscoverOptions()
 		for _, opt := range opts {
@@ -444,7 +446,7 @@ func WithBlacklist(b Blacklist) Option {
 		p.disc.options = discoverOpts
 		return nil
 	}
-}*/
+}
 
 // WithEventTracer provides a tracer for the pubsub system
 func WithEventTracer(tracer EventTracer) Option {
@@ -758,7 +760,7 @@ func (p *PubSub) handleRemoveSubscription(sub *Subscription) {
 
 		// stop announcing only if there are no more subs and relays
 		if p.myRelays[sub.topic] == 0 {
-			//p.disc.StopAdvertise(sub.topic)
+			p.disc.StopAdvertise(sub.topic)
 			p.announce(sub.topic, false)
 			p.rt.Leave(sub.topic)
 		}
@@ -775,7 +777,7 @@ func (p *PubSub) handleAddSubscription(req *addSubReq) {
 
 	// announce we want this topic if neither subs nor relays exist so far
 	if len(subs) == 0 && p.myRelays[sub.topic] == 0 {
-		//p.disc.Advertise(sub.topic)
+		p.disc.Advertise(sub.topic)
 		p.announce(sub.topic, true)
 		p.rt.Join(sub.topic)
 	}
@@ -803,7 +805,7 @@ func (p *PubSub) handleAddRelay(req *addRelayReq) {
 
 	// announce we want this topic if neither relays nor subs exist so far
 	if p.myRelays[topic] == 1 && len(p.mySubs[topic]) == 0 {
-		//p.disc.Advertise(topic)
+		p.disc.Advertise(topic)
 		p.announce(topic, true)
 		p.rt.Join(topic)
 	}
@@ -843,7 +845,7 @@ func (p *PubSub) handleRemoveRelay(topic string) {
 
 		// stop announcing only if there are no more relays and subs
 		if len(p.mySubs[topic]) == 0 {
-			//p.disc.StopAdvertise(topic)
+			p.disc.StopAdvertise(topic)
 			p.announce(topic, false)
 			p.rt.Leave(topic)
 		}
