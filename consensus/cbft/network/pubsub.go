@@ -19,6 +19,7 @@ package network
 import (
 	"context"
 	"fmt"
+	"github.com/AlayaNetwork/Alaya-Go/log"
 	"github.com/AlayaNetwork/Alaya-Go/p2p"
 	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
 	"github.com/AlayaNetwork/Alaya-Go/p2p/pubsub"
@@ -51,14 +52,18 @@ func (ps *PubSub) handler(peer *p2p.Peer, rw p2p.MsgReadWriter) error {
 
 	conn := p2p.NewConn(peer.Node(), peer.Inbound())
 
-	stream := p2p.NewStream(conn, rw, "")
+	// Wait for the connection to exit
+	errCh := make(chan error)
+
+	stream := p2p.NewStream(conn, rw, errCh, "")
 	conn.SetStream(stream)
 
 	ps.host.SetStream(peer.ID(), stream)
 	ps.host.NotifyAll(conn)
 
-	// TODO pubsub: stream.linsten close
-	return nil
+	handlerErr := <-errCh
+	log.Info("pubsub's handler ends", "err", handlerErr)
+	return handlerErr
 }
 
 func (ps *PubSub) NodeInfo() interface{} {
