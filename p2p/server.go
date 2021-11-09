@@ -171,6 +171,13 @@ type Config struct {
 	Logger log.Logger `toml:",omitempty"`
 
 	clock mclock.Clock
+
+	TopicKey   string // TopicKey is the ENR key of the topic bitfield in the enr.
+	TopicCount uint64
+
+	MinimumPeersInTopicSearch uint
+
+	MinimumPeersPerTopic int
 }
 
 // Server manages all peer connections.
@@ -381,33 +388,17 @@ func (srv *Server) RemovePeer(node *enode.Node) {
 // server is shut down. If the connection fails for any reason, the server will
 // attempt to reconnect the peer.
 func (srv *Server) AddConsensusPeer(node *enode.Node) {
-	srv.dialsched.addConsensus(node)
+	select {
+	case srv.addconsensus <- node:
+	case <-srv.quit:
+	}
 }
 
 // RemoveConsensusPeer disconnects from the given consensus node
 func (srv *Server) RemoveConsensusPeer(node *enode.Node) {
-	var (
-		ch  chan *PeerEvent
-		sub event.Subscription
-	)
-	// Disconnect the peer on the main loop.
-	srv.doPeerOp(func(peers map[enode.ID]*Peer) {
-		srv.dialsched.removeConsensus(node)
-		if peer := peers[node.ID()]; peer != nil {
-			ch = make(chan *PeerEvent, 1)
-			sub = srv.peerFeed.Subscribe(ch)
-			peer.Disconnect(DiscRequested)
-		}
-	})
-	srv.log.Trace("Removing consensus node from dialstate", "node", node)
-	// Wait for the peer connection to end.
-	if ch != nil {
-		defer sub.Unsubscribe()
-		for ev := range ch {
-			if ev.Peer == node.ID() && ev.Type == PeerEventTypeDrop {
-				return
-			}
-		}
+	select {
+	case srv.removeconsensus <- node:
+	case <-srv.quit:
 	}
 }
 
@@ -692,16 +683,16 @@ func (srv *Server) setupDialScheduler() {
 	}
 	srv.dialsched = newDialScheduler(config, srv.discmix, srv.SetupConn)
 
-	dialstateRemoveConsensusPeerFn := func(node *enode.Node) {
+	/*dialstateRemoveConsensusPeerFn := func(node *enode.Node) {
 		srv.doPeerOp(func(peers map[enode.ID]*Peer) {
 			srv.dialsched.removeConsensusFromQueue(node)
 			if p, ok := peers[node.ID()]; ok {
 				p.Disconnect(DiscRequested)
 			}
 		})
-	}
+	}*/
 
-	srv.dialsched.consensus.InitRemoveConsensusPeerFn(dialstateRemoveConsensusPeerFn)
+	//srv.dialsched.consensus.InitRemoveConsensusPeerFn(dialstateRemoveConsensusPeerFn)
 	for _, n := range srv.StaticNodes {
 		srv.dialsched.addStatic(n)
 	}
@@ -823,7 +814,7 @@ running:
 				}
 				srv.log.Debug("Remove consensus flag", "peer", n.ID, "consensus", srv.consensus)
 				if len(peers) > srv.MaxPeers && !p.rw.is(staticDialedConn|trustedConn) {
-					srv.log.Debug("Disconnect non-consensus node", "peer", n.ID, "flags", p.rw.flags, "peers", len(peers), "consensus", srv.consensus)
+					srv.log.Debug("Disconnect non-consensus node", "peer", n.ID(), "flags", p.rw.flags, "peers", len(peers), "consensus", srv.consensus)
 					p.Disconnect(DiscRequested)
 				}
 			}
