@@ -224,6 +224,8 @@ type Server struct {
 	consensus       bool
 	addconsensus    chan *enode.Node
 	removeconsensus chan *enode.Node
+
+	pubSubServer *PubSubServer
 }
 
 type peerOpFunc func(map[enode.ID]*Peer)
@@ -1298,4 +1300,8 @@ func (srv *Server) watching() {
 			return
 		}
 	}
+}
+
+func (srv *Server) SetPubSubServer(pss *PubSubServer) {
+	srv.pubSubServer = pss
 }

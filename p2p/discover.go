@@ -53,7 +53,7 @@ func (srv *Server) SubscribeTopic(ctx context.Context, topic string) {
 
 // find if we have peers who are subscribed to the same subnet
 func (srv *Server) validPeersExist(subnetTopic string) bool {
-	numOfPeers := srv.subServer.ps.ListPeers(subnetTopic)
+	numOfPeers := srv.pubSubServer.pubsub.ListPeers(subnetTopic)
 	return len(numOfPeers) >= srv.Config.MinimumPeersPerTopic
 }
 
@@ -76,7 +76,7 @@ func (srv *Server) FindPeersWithTopic(ctx context.Context, topic string, thresho
 	iterator := srv.DiscV5.RandomNodes()
 	iterator = filterNodes(ctx, iterator, srv.filterPeerForTopic(srv.topicToIdx(topic)))
 
-	currNum := len(srv.subServer.ps.ListPeers(topic))
+	currNum := len(srv.pubSubServer.pubsub.ListPeers(topic))
 	wg := new(sync.WaitGroup)
 	for {
 		if err := ctx.Err(); err != nil {
@@ -91,7 +91,7 @@ func (srv *Server) FindPeersWithTopic(ctx context.Context, topic string, thresho
 		}
 		// Wait for all dials to be completed.
 		wg.Wait()
-		currNum = len(srv.subServer.ps.ListPeers(topic))
+		currNum = len(srv.pubSubServer.pubsub.ListPeers(topic))
 	}
 	return true, nil
 }
