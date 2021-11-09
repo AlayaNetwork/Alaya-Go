@@ -10,15 +10,14 @@ import (
 
 	"github.com/prysmaticlabs/go-bitfield"
 
-	"github.com/prometheus/common/log"
-
+	"github.com/AlayaNetwork/Alaya-Go/log"
 	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
 	"github.com/AlayaNetwork/Alaya-Go/p2p/enr"
 )
 
-// subscribe to a static subnet  with the given topic and index.A given validator and subscription handler is
+// SubscribeTopic to  the given topic.A given validator and subscription handler is
 // used to handle messages from the subnet. The base protobuf message is used to initialize new messages for decoding.
-func (srv *Server) subscribeTopic(ctx context.Context, topic string) {
+func (srv *Server) SubscribeTopic(ctx context.Context, topic string) {
 
 	ticker := time.NewTicker(time.Second * 1)
 
@@ -35,8 +34,7 @@ func (srv *Server) subscribeTopic(ctx context.Context, topic string) {
 
 				// Check   there are enough peers
 				if !srv.validPeersExist(topic) {
-					log.Debugf("No peers found subscribed to attestation gossip subnet with " +
-						"committee index %d. Searching network for peers subscribed to the subnet.")
+					log.Debug("No peers found subscribed  gossip topic . Searching network for peers subscribed to the topic.", "topic", topic)
 					_, err := srv.FindPeersWithTopic(
 						ctx,
 						topic,
@@ -55,7 +53,7 @@ func (srv *Server) subscribeTopic(ctx context.Context, topic string) {
 
 // find if we have peers who are subscribed to the same subnet
 func (srv *Server) validPeersExist(subnetTopic string) bool {
-	numOfPeers := srv.pubsub.ListPeers(subnetTopic)
+	numOfPeers := srv.subServer.ps.ListPeers(subnetTopic)
 	return len(numOfPeers) >= srv.Config.MinimumPeersPerTopic
 }
 
@@ -78,7 +76,7 @@ func (srv *Server) FindPeersWithTopic(ctx context.Context, topic string, thresho
 	iterator := srv.DiscV5.RandomNodes()
 	iterator = filterNodes(ctx, iterator, srv.filterPeerForTopic(srv.topicToIdx(topic)))
 
-	currNum := len(srv.pubsub.ListPeers(topic))
+	currNum := len(srv.subServer.ps.ListPeers(topic))
 	wg := new(sync.WaitGroup)
 	for {
 		if err := ctx.Err(); err != nil {
@@ -93,7 +91,7 @@ func (srv *Server) FindPeersWithTopic(ctx context.Context, topic string, thresho
 		}
 		// Wait for all dials to be completed.
 		wg.Wait()
-		currNum = len(srv.pubsub.ListPeers(topic))
+		currNum = len(srv.subServer.ps.ListPeers(topic))
 	}
 	return true, nil
 }
@@ -149,10 +147,7 @@ func (srv *Server) filterPeer(node *enode.Node) bool {
 	return true
 }
 
-// RefreshENR uses an epoch to refresh the enr entry for our node
-// with the tracked committee ids for the epoch, allowing our node
-// to be dynamically discoverable by others given our tracked committee ids.
-func (srv *Server) RefreshENR() {
+func (srv *Server) RefreshTopicENR() {
 	// return early if discv5 isnt running
 	if srv.DiscV5 == nil {
 		return
@@ -164,7 +159,7 @@ func (srv *Server) RefreshENR() {
 	}
 	currentBitTopics, err := getBitvector(srv.Config.TopicKey, srv.DiscV5.Self().Record())
 	if err != nil {
-		log.Errorf("Could not retrieve att bitfield: %v", err)
+		log.Error("Could not retrieve att bitfield", "err", err)
 		return
 	}
 
