@@ -19,6 +19,7 @@ package node
 import (
 	"errors"
 	"fmt"
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
 	"math/big"
 	"net"
 	"os"
@@ -202,7 +203,8 @@ func (n *Node) Start() error {
 	}
 
 	running := &p2p.Server{Config: n.serverConfig}
-	pubSubServer := p2p.NewPubSubServer(nil, running)
+	localNode := enode.NewV4(&n.serverConfig.PrivateKey.PublicKey, nil, 0, 0)
+	pubSubServer := p2p.NewPubSubServer(localNode, running)
 	running.SetPubSubServer(pubSubServer)
 	n.log.Info("Starting peer-to-peer node", "instance", n.serverConfig.Name)
 
