@@ -11,8 +11,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/AlayaNetwork/Alaya-Go/p2p/pubsub/discovery"
-
 	"github.com/AlayaNetwork/Alaya-Go/p2p/pubsub/message"
 
 	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
@@ -433,20 +431,20 @@ func WithBlacklist(b Blacklist) Option {
 }
 
 // WithDiscovery provides a discovery mechanism used to bootstrap and provide peers into PubSub
-func WithDiscovery(d discovery.Discovery, opts ...DiscoverOpt) Option {
-	return func(p *PubSub) error {
-		discoverOpts := defaultDiscoverOptions()
-		for _, opt := range opts {
-			err := opt(discoverOpts)
-			if err != nil {
-				return err
-			}
-		}
-		p.disc.discovery = &pubSubDiscovery{Discovery: d, opts: discoverOpts.opts}
-		p.disc.options = discoverOpts
-		return nil
-	}
-}
+//func WithDiscovery(d discovery.Discovery, opts ...DiscoverOpt) Option {
+//	return func(p *PubSub) error {
+//		discoverOpts := defaultDiscoverOptions()
+//		for _, opt := range opts {
+//			err := opt(discoverOpts)
+//			if err != nil {
+//				return err
+//			}
+//		}
+//		p.disc.discovery = &pubSubDiscovery{Discovery: d, opts: discoverOpts.opts}
+//		p.disc.options = discoverOpts
+//		return nil
+//	}
+//}
 
 // WithEventTracer provides a tracer for the pubsub system
 func WithEventTracer(tracer EventTracer) Option {

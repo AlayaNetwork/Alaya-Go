@@ -28,10 +28,6 @@ func (h *Host) ID() *enode.Node {
 	return h.node
 }
 
-func (h *Host) Peerstore() pubsub.Peerstore {
-	return nil
-}
-
 func (h *Host) Network() pubsub.Network {
 	return h.network
 }
