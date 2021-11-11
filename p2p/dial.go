@@ -95,19 +95,17 @@ var (
 //
 type dialScheduler struct {
 	dialConfig
-	setupFunc   dialSetupFunc
-	wg          sync.WaitGroup
-	cancel      context.CancelFunc
-	ctx         context.Context
-	nodesIn     chan *enode.Node
-	doneCh      chan *dialTask
-	addStaticCh chan *enode.Node
-	remStaticCh chan *enode.Node
-	addPeerCh   chan *conn
-	remPeerCh   chan *conn
-
-	addconsensus    chan *enode.Node
-	removeconsensus chan *enode.Node
+	setupFunc        dialSetupFunc
+	wg               sync.WaitGroup
+	cancel           context.CancelFunc
+	ctx              context.Context
+	nodesIn          chan *enode.Node
+	consensusNodesIn chan *dialTask
+	doneCh           chan *dialTask
+	addStaticCh      chan *enode.Node
+	remStaticCh      chan *enode.Node
+	addPeerCh        chan *conn
+	remPeerCh        chan *conn
 
 	// Everything below here belongs to loop and
 	// should only be accessed by code on the loop goroutine.
@@ -121,9 +119,6 @@ type dialScheduler struct {
 	// iterator.
 	static     map[enode.ID]*dialTask
 	staticPool []*dialTask
-
-	consensus     map[enode.ID]*dialTask
-	consensusPool []*dialTask
 
 	// The dial history keeps recently dialed nodes. Members of history are not dialed.
 	history          expHeap
@@ -171,20 +166,18 @@ func (cfg dialConfig) withDefaults() dialConfig {
 
 func newDialScheduler(config dialConfig, it enode.Iterator, setupFunc dialSetupFunc) *dialScheduler {
 	d := &dialScheduler{
-		dialConfig:      config.withDefaults(),
-		setupFunc:       setupFunc,
-		dialing:         make(map[enode.ID]*dialTask),
-		static:          make(map[enode.ID]*dialTask),
-		peers:           make(map[enode.ID]struct{}),
-		doneCh:          make(chan *dialTask),
-		nodesIn:         make(chan *enode.Node),
-		addStaticCh:     make(chan *enode.Node),
-		remStaticCh:     make(chan *enode.Node),
-		addPeerCh:       make(chan *conn),
-		remPeerCh:       make(chan *conn),
-		addconsensus:    make(chan *enode.Node),
-		removeconsensus: make(chan *enode.Node),
-		consensus:       make(map[enode.ID]*dialTask),
+		dialConfig:       config.withDefaults(),
+		setupFunc:        setupFunc,
+		dialing:          make(map[enode.ID]*dialTask),
+		static:           make(map[enode.ID]*dialTask),
+		peers:            make(map[enode.ID]struct{}),
+		doneCh:           make(chan *dialTask),
+		nodesIn:          make(chan *enode.Node),
+		consensusNodesIn: make(chan *dialTask),
+		addStaticCh:      make(chan *enode.Node),
+		remStaticCh:      make(chan *enode.Node),
+		addPeerCh:        make(chan *conn),
+		remPeerCh:        make(chan *conn),
 	}
 	d.lastStatsLog = d.clock.Now()
 	d.ctx, d.cancel = context.WithCancel(context.Background())
@@ -216,19 +209,20 @@ func (d *dialScheduler) removeStatic(n *enode.Node) {
 	}
 }
 
-func (d *dialScheduler) addConsensus(n *enode.Node) {
+func (d *dialScheduler) addConsensus(n *dialTask) {
 	select {
-	case d.addconsensus <- n:
+	case d.consensusNodesIn <- n:
 	case <-d.ctx.Done():
 	}
 }
 
+/*
 func (d *dialScheduler) removeConsensus(n *enode.Node) {
 	select {
 	case d.removeconsensus <- n:
 	case <-d.ctx.Done():
 	}
-}
+}*/
 
 /*
 func (d *dialScheduler) removeConsensusFromQueue(n *enode.Node) {
@@ -264,9 +258,18 @@ func (d *dialScheduler) loop(it enode.Iterator) {
 
 loop:
 	for {
+		select {
+		case task := <-d.consensusNodesIn:
+			if err := d.checkDial(task.dest); err != nil {
+				d.log.Trace("Discarding dial candidate", "id", task.dest.ID(), "ip", task.dest.IP(), "reason", err)
+			} else {
+				d.startDial(task)
+			}
+			continue
+		default:
+		}
 		// Launch new dials if slots are available.
 		slots := d.freeDialSlots()
-		slots -= d.startConsensusDials(slots)
 		slots -= d.startStaticDials(slots)
 		if slots > 0 {
 			nodesCh = d.nodesIn
@@ -281,7 +284,7 @@ loop:
 			if err := d.checkDial(node); err != nil {
 				d.log.Trace("Discarding dial candidate", "id", node.ID(), "ip", node.IP(), "reason", err)
 			} else {
-				d.startDial(newDialTask(node, dynDialedConn))
+				d.startDial(newDialTask(node, dynDialedConn, nil))
 			}
 
 		case task := <-d.doneCh:
@@ -289,9 +292,12 @@ loop:
 			delete(d.dialing, id)
 			d.updateStaticPool(id)
 			d.doneSinceLastLog++
+			if task.doneHook != nil {
+				task.doneHook()
+			}
 
 		case c := <-d.addPeerCh:
-			if c.is(dynDialedConn) || c.is(staticDialedConn) {
+			if c.is(dynDialedConn) || c.is(staticDialedConn) || c.is(consensusDialedConn) {
 				d.dialPeers++
 			}
 			id := c.node.ID()
@@ -304,7 +310,7 @@ loop:
 			// TODO: cancel dials to connected peers
 
 		case c := <-d.remPeerCh:
-			if c.is(dynDialedConn) || c.is(staticDialedConn) {
+			if c.is(dynDialedConn) || c.is(staticDialedConn) || c.is(consensusDialedConn) {
 				d.dialPeers--
 			}
 			delete(d.peers, c.node.ID())
@@ -317,7 +323,7 @@ loop:
 			if exists {
 				continue loop
 			}
-			task := newDialTask(node, staticDialedConn)
+			task := newDialTask(node, staticDialedConn, nil)
 			d.static[id] = task
 			if d.checkDial(node) == nil {
 				d.addToStaticPool(task)
@@ -331,29 +337,6 @@ loop:
 				delete(d.static, id)
 				if task.staticPoolIndex >= 0 {
 					d.removeFromStaticPool(task.staticPoolIndex)
-				}
-			}
-		case node := <-d.addconsensus:
-			id := node.ID()
-			_, exists := d.consensus[id]
-			d.log.Trace("Adding consensus node", "id", id, "ip", node.IP(), "added", !exists)
-			if exists {
-				continue loop
-			}
-			task := newDialTask(node, consensusDialedConn)
-			d.consensus[id] = task
-			//todo if Consensus task too musch ,we may cut some
-			if d.checkDial(node) == nil {
-				d.addToConsensusPool(task)
-			}
-		case node := <-d.removeconsensus:
-			id := node.ID()
-			task := d.consensus[id]
-			d.log.Trace("Removing consensus node", "id", id, "ok", task != nil)
-			if task != nil {
-				delete(d.consensus, id)
-				if task.staticPoolIndex >= 0 {
-					d.removeFromConsensusPool(task.staticPoolIndex)
 				}
 			}
 
@@ -508,45 +491,6 @@ func (d *dialScheduler) removeFromStaticPool(idx int) {
 	task.staticPoolIndex = -1
 }
 
-func (d *dialScheduler) startConsensusDials(n int) (started int) {
-	for started = 0; started < n && len(d.consensusPool) > 0; started++ {
-		//todo if rand here?
-		idx := d.rand.Intn(len(d.consensusPool))
-		task := d.consensusPool[idx]
-		d.startDial(task)
-		d.removeFromConsensusPool(idx)
-	}
-	return started
-}
-
-// updateConsensusPool attempts to move the given consensus dial back into consensusPool.
-func (d *dialScheduler) updateConsensusPool(id enode.ID) {
-	task, ok := d.consensus[id]
-	if ok && task.staticPoolIndex < 0 && d.checkDial(task.dest) == nil {
-		d.addToConsensusPool(task)
-	}
-}
-
-func (d *dialScheduler) addToConsensusPool(task *dialTask) {
-	if task.staticPoolIndex >= 0 {
-		panic("attempt to add task to consensusPool twice")
-	}
-	d.consensusPool = append(d.consensusPool, task)
-	task.staticPoolIndex = len(d.consensusPool) - 1
-}
-
-// removeFromConsensusPool removes the task at idx from consensusPool. It does that by moving the
-// current last element of the pool to idx and then shortening the pool by one.
-func (d *dialScheduler) removeFromConsensusPool(idx int) {
-	task := d.consensusPool[idx]
-	end := len(d.consensusPool) - 1
-	d.consensusPool[idx] = d.consensusPool[end]
-	d.consensusPool[idx].staticPoolIndex = idx
-	d.consensusPool[end] = nil
-	d.consensusPool = d.consensusPool[:end]
-	task.staticPoolIndex = -1
-}
-
 // startDial runs the given dial task in a separate goroutine.
 func (d *dialScheduler) startDial(task *dialTask) {
 	d.log.Trace("Starting p2p dial", "id", task.dest.ID(), "ip", task.dest.IP(), "flag", task.flags)
@@ -568,10 +512,11 @@ type dialTask struct {
 	dest         *enode.Node
 	lastResolved mclock.AbsTime
 	resolveDelay time.Duration
+	doneHook     func()
 }
 
-func newDialTask(dest *enode.Node, flags connFlag) *dialTask {
-	return &dialTask{dest: dest, flags: flags, staticPoolIndex: -1}
+func newDialTask(dest *enode.Node, flags connFlag, done func()) *dialTask {
+	return &dialTask{dest: dest, flags: flags, staticPoolIndex: -1, doneHook: done}
 }
 
 type dialError struct {
@@ -585,8 +530,8 @@ func (t *dialTask) run(d *dialScheduler) {
 
 	err := t.dial(d, t.dest)
 	if err != nil {
-		// For static nodes, resolve one more time if dialing fails.
-		if _, ok := err.(*dialError); ok && t.flags&staticDialedConn != 0 {
+		// For static and consensus nodes, resolve one more time if dialing fails.
+		if _, ok := err.(*dialError); ok && (t.flags&staticDialedConn != 0 || t.flags&consensusDialedConn != 0) {
 			if t.resolve(d) {
 				t.dial(d, t.dest)
 			}
@@ -595,7 +540,7 @@ func (t *dialTask) run(d *dialScheduler) {
 }
 
 func (t *dialTask) needResolve() bool {
-	return t.flags&staticDialedConn != 0 && t.dest.IP() == nil
+	return (t.flags&staticDialedConn != 0 || t.flags&consensusDialedConn != 0) && t.dest.IP() == nil
 }
 
 // resolve attempts to find the current endpoint for the destination
