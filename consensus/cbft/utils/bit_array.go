@@ -114,6 +114,7 @@ func (bA *BitArray) copyBits(bits uint32) *BitArray {
 	}
 }
 
+/*
 // Or returns a bit array resulting from a bitwise OR of the two bit arrays.
 // If the two bit-arrys have different lengths, Or right-pads the smaller of the two bit-arrays with zeroes.
 // Thus the size of the return value is the maximum of the two provided bit arrays.
@@ -133,6 +134,71 @@ func (bA *BitArray) Or(o *BitArray) *BitArray {
 		c.Elems[i] |= o.Elems[i]
 	}
 	return c
+}
+*/
+
+// Or returns a bit array resulting from a bitwise OR of the two bit arrays.
+// If the two bit-arrys have different lengths, Or right-pads the smaller of the two bit-arrays with zeroes.
+// Thus the size of the return value is the maximum of the two provided bit arrays.
+func (bA *BitArray) Or(o *BitArray) *BitArray {
+	if bA == nil && o == nil {
+		return nil
+	}
+	if bA == nil && o != nil {
+		return o.Copy()
+	}
+	if o == nil {
+		return bA.Copy()
+	}
+
+	var c *BitArray
+	smaller := MinInt(len(bA.Elems), len(o.Elems))
+	if bA.Size() > o.Size() {
+		c = bA.Copy()
+		for i := 0; i < smaller; i++ {
+			c.Elems[i] |= o.Elems[i]
+		}
+	} else {
+		c = o.copy()
+		for i := 0; i < smaller; i++ {
+			c.Elems[i] |= bA.Elems[i]
+		}
+	}
+	return c
+}
+
+// HasLength returns the total number of 1 in the array
+func (bA *BitArray) HasLength() int {
+	if bA == nil {
+		return 0
+	}
+
+	length := 0
+	for i := uint32(0); i < bA.Size(); i++ {
+		if bA.GetIndex(i) {
+			length++
+		}
+	}
+	return length
+}
+
+// Determine whether bA contains o
+func (bA *BitArray) Contains(o *BitArray) bool {
+	if bA == nil && o == nil {
+		return true
+	}
+	if bA == nil && o != nil {
+		return false
+	}
+	if o == nil {
+		return true
+	}
+	if bA.Size() < o.Size() {
+		return false
+	}
+
+	v := bA.Or(o)
+	return v.HasLength() == bA.HasLength()
 }
 
 // And returns a bit array resulting from a bitwise AND of the two bit arrays.

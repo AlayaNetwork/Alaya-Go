@@ -82,6 +82,74 @@ func TestAnd(t *testing.T) {
 	}
 }
 
+func TestAndIntuitive(t *testing.T) {
+	testCases := []struct {
+		initBA     string
+		addBA      string
+		expectedBA string
+	}{
+		{`"x"`, `"x"`, `"x"`},
+		{`"xxxxxx"`, `"x_x_x_"`, `"x_x_x_"`},
+		{`"x_x_x_"`, `"xxxxxx"`, `"x_x_x_"`},
+		{`"xxxxxx"`, `"x_x_x_xxxx"`, `"x_x_x_"`},
+		{`"x_x_x_xxxx"`, `"xxxxxx"`, `"x_x_x_"`},
+		{`"xxxxxxxxxx"`, `"x_x_x_"`, `"x_x_x_"`},
+		{`"x_x_x_"`, `"xxxxxxxxxx"`, `"x_x_x_"`},
+		{`"___x__x__x_"`, `"xxxxxxxxxx"`, `"___x__x__x"`},
+		{`"___x__x__x___x_x__x__x"`, `"x_x__x_xx________x"`, `"__________________"`},
+		{`"x_x__x_xx________x"`, `"___x__x__x___x_x__x__x"`, `"__________________"`},
+		{`"_______"`, `"_______xxx_xxx"`, `"_______"`},
+		{`"_______xxx_xxx"`, `"_______"`, `"_______"`},
+	}
+	for _, tc := range testCases {
+		var bA *BitArray
+		err := json.Unmarshal([]byte(tc.initBA), &bA)
+		require.Nil(t, err)
+
+		var o *BitArray
+		err = json.Unmarshal([]byte(tc.addBA), &o)
+		require.Nil(t, err)
+
+		got, _ := json.Marshal(bA.And(o))
+		require.Equal(t, tc.expectedBA, string(got), "%s minus %s doesn't equal %s", tc.initBA, tc.addBA, tc.expectedBA)
+	}
+}
+
+func TestAndScene(t *testing.T) {
+	b1 := NewBitArray(1000)
+	b1.setIndex(uint32(100), true)
+	b1.setIndex(uint32(666), true)
+	b1.setIndex(uint32(888), true)
+	b1.setIndex(uint32(999), true)
+
+	b2 := NewBitArray(500)
+	b2.setIndex(uint32(0), true)
+	b2.setIndex(uint32(100), true)
+	b2.setIndex(uint32(222), true)
+	b2.setIndex(uint32(333), true)
+
+	got, _ := json.Marshal(b2.And(b1))
+	expected := `"____________________________________________________________________________________________________x_______________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________"`
+	assert.Equal(t, expected, string(got))
+
+	b1 = NewBitArray(25)
+	b1.setIndex(5, true)
+	b1.setIndex(15, true)
+	b1.setIndex(20, true)
+
+	b2 = NewBitArray(200)
+	b2.setIndex(5, true)
+	b2.setIndex(15, true)
+	b2.setIndex(88, true)
+	b2.setIndex(188, true)
+
+	result := b2.And(b1)
+	assert.Equal(t, uint32(25), result.Size())
+	assert.Equal(t, true, result.getIndex(5))
+	assert.Equal(t, true, result.getIndex(15))
+	assert.Equal(t, false, result.getIndex(20))
+}
+
 func TestOr(t *testing.T) {
 
 	bA1, _ := randBitArray(51)
@@ -105,6 +173,197 @@ func TestOr(t *testing.T) {
 			t.Error("Wrong bit from bA3", i, bA1.GetIndex(i), bA2.GetIndex(i), bA3.GetIndex(i))
 		}
 	}
+}
+
+func TestOrIntuitive(t *testing.T) {
+	testCases := []struct {
+		initBA     string
+		orBA       string
+		expectedBA string
+	}{
+		{"null", `null`, `null`},
+		{`"x"`, `null`, `"x"`},
+		{`null`, `"x"`, `"x"`},
+		{`"x"`, `"x"`, `"x"`},
+		{`"xxxxxx"`, `"x_x_x_"`, `"xxxxxx"`},
+		{`"x_x_x_"`, `"xxxxxx"`, `"xxxxxx"`},
+		{`"xxxxxx"`, `"x_x_x_xxxx"`, `"xxxxxxxxxx"`},
+		{`"x_x_x_xxxx"`, `"xxxxxx"`, `"xxxxxxxxxx"`},
+		{`"xxxxxxxxxx"`, `"x_x_x_"`, `"xxxxxxxxxx"`},
+		{`"x_x_x_"`, `"xxxxxxxxxx"`, `"xxxxxxxxxx"`},
+		{`"___x__x__x_"`, `"xxxxxxxxxx"`, `"xxxxxxxxxx_"`},
+		{`"___x__x__x___x_x__x__x"`, `"x_x__x_xx________x"`, `"x_xx_xxxxx___x_x_xx__x"`},
+		{`"x_x__x_xx________x"`, `"___x__x__x___x_x__x__x"`, `"x_xx_xxxxx___x_x_xx__x"`},
+		{`"_______"`, `"_______xxx_xxx"`, `"_______xxx_xxx"`},
+		{`"_______xxx_xxx"`, `"_______"`, `"_______xxx_xxx"`},
+		{`"_______xxx_xxx"`, `"_______x_______x__"`, `"_______xxx_xxx_x__"`},
+	}
+	for _, tc := range testCases {
+		var bA *BitArray
+		err := json.Unmarshal([]byte(tc.initBA), &bA)
+		require.Nil(t, err)
+
+		var o *BitArray
+		err = json.Unmarshal([]byte(tc.orBA), &o)
+		require.Nil(t, err)
+
+		got, _ := json.Marshal(bA.Or(o))
+		require.Equal(t, tc.expectedBA, string(got), "%s minus %s doesn't equal %s", tc.initBA, tc.orBA, tc.expectedBA)
+	}
+}
+
+func TestOrScene(t *testing.T) {
+	b1 := NewBitArray(1000)
+	b1.setIndex(uint32(100), true)
+	b1.setIndex(uint32(666), true)
+	b1.setIndex(uint32(888), true)
+	b1.setIndex(uint32(999), true)
+
+	b2 := NewBitArray(500)
+	b2.setIndex(uint32(0), true)
+	b2.setIndex(uint32(100), true)
+	b2.setIndex(uint32(222), true)
+	b2.setIndex(uint32(333), true)
+
+	got, _ := json.Marshal(b2.Or(b1))
+	expected := `"x___________________________________________________________________________________________________x_________________________________________________________________________________________________________________________x______________________________________________________________________________________________________________x____________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________x_____________________________________________________________________________________________________________________________________________________________________________________________________________________________x______________________________________________________________________________________________________________x"`
+	assert.Equal(t, expected, string(got))
+
+	b1 = NewBitArray(25)
+	b1.setIndex(5, true)
+	b1.setIndex(15, true)
+
+	b2 = NewBitArray(200)
+	b2.setIndex(5, true)
+	b2.setIndex(15, true)
+	b2.setIndex(88, true)
+	b2.setIndex(188, true)
+
+	result := b2.Or(b1)
+	assert.Equal(t, true, result.getIndex(188))
+}
+
+func TestContainsIntuitive(t *testing.T) {
+	testCases := []struct {
+		initBA     string
+		orBA       string
+		expectedBA bool
+	}{
+		{"null", `null`, true},
+		{`"x"`, `null`, true},
+		{`null`, `"x"`, false},
+		{`"x"`, `"x"`, true},
+		{`"xxxxxx"`, `"x_x_x_"`, true},
+		{`"x_x_x_"`, `"xxxxxx"`, false},
+		{`"xxxxxx"`, `"x_x_x_xxxx"`, false},
+		{`"x_x_x_xxxx"`, `"xxxxxx"`, false},
+		{`"xxxxxxxxxx"`, `"x_x_x_"`, true},
+		{`"x_x_x_"`, `"xxxxxxxxxx"`, false},
+		{`"___x__x__x_"`, `"xxxxxxxxxx"`, false},
+		{`"___x__x__x___x_x__x__x"`, `"x_x__x_xx________x"`, false},
+		{`"_______"`, `"_______xxx_xxx"`, false},
+		{`"_______xxx_xxx"`, `"_______"`, true},
+		{`"_______xxx_xxx"`, `"_______x_______x__"`, false},
+		{`"x_x__x_xx___x_x__x"`, `"x_x__x_xx___x_x__x"`, true},
+		{`"x_x__x_xx___x_x__x"`, `"__x__x__x___x_x__x"`, true},
+		{`"x_x__x_xx___x_x__x_"`, `"x_x__x_xx___x_x__x"`, true},
+		{`"x_x__x_xx___x_x__x"`, `"x_x__x_xx___x_x__x_"`, false},
+		{`"x_x__x_xx___x_x__x_x"`, `"x_x__x_xx___x_x__x"`, true},
+		{`"x_x__x_xx___x_x__x_x"`, `"__x__x__x___x_x__x"`, true},
+		{`"x_x__x_xx___x_x__x_x"`, `"__xx_x__x___x_x__x"`, false},
+		{`"x_x__x_xx___x_x__x"`, `"__xx_x__x___x_x__x"`, false},
+	}
+	for _, tc := range testCases {
+		var bA *BitArray
+		err := json.Unmarshal([]byte(tc.initBA), &bA)
+		require.Nil(t, err)
+
+		var o *BitArray
+		err = json.Unmarshal([]byte(tc.orBA), &o)
+		require.Nil(t, err)
+
+		b := bA.Contains(o)
+		assert.Equal(t, tc.expectedBA, b)
+	}
+}
+
+func TestContainsScene(t *testing.T) {
+	b1 := NewBitArray(1000)
+	b1.setIndex(uint32(100), true)
+	b1.setIndex(uint32(666), true)
+	b1.setIndex(uint32(888), true)
+	b1.setIndex(uint32(999), true)
+
+	b2 := NewBitArray(1000)
+	b2.setIndex(uint32(0), true)
+	b2.setIndex(uint32(100), true)
+	b2.setIndex(uint32(222), true)
+	b2.setIndex(uint32(333), true)
+	assert.Equal(t, false, b1.Contains(b2))
+
+	b2.setIndex(uint32(0), false)
+	b2.setIndex(uint32(222), false)
+	b2.setIndex(uint32(333), false)
+	assert.Equal(t, true, b1.Contains(b2))
+
+	b2.setIndex(uint32(666), true)
+	b2.setIndex(uint32(888), true)
+	b2.setIndex(uint32(999), true)
+	assert.Equal(t, true, b1.Contains(b2))
+
+	b2.setIndex(uint32(668), true)
+	assert.Equal(t, false, b1.Contains(b2))
+}
+
+func TestHasLengthIntuitive(t *testing.T) {
+	testCases := []struct {
+		initBA     string
+		expectedBA int
+	}{
+		{"null", 0},
+		{`"x"`, 1},
+		{`"xxxxxx"`, 6},
+		{`"x_x_x_"`, 3},
+		{`"x_x_x_xxxx"`, 7},
+		{`"xxxxxxxxxx"`, 10},
+		{`"___x__x__x_"`, 3},
+		{`"___x__x__x___x_x__x__x"`, 7},
+		{`"_______"`, 0},
+		{`"_______xxx_xxx"`, 6},
+		{`"_______x_______x__"`, 2},
+		{`"x_x__x_xx___x_x__x"`, 8},
+		{`"__x__x__x___x_x__x"`, 6},
+		{`"x_x__x_xx___x_x__x_x"`, 9},
+	}
+	for _, tc := range testCases {
+		var bA *BitArray
+		err := json.Unmarshal([]byte(tc.initBA), &bA)
+		require.Nil(t, err)
+		assert.Equal(t, tc.expectedBA, bA.HasLength())
+	}
+}
+
+func TestHasLengthScene(t *testing.T) {
+	b1 := NewBitArray(1000)
+	b1.setIndex(uint32(0), true)
+	b1.setIndex(uint32(100), true)
+	b1.setIndex(uint32(666), true)
+	b1.setIndex(uint32(888), true)
+	b1.setIndex(uint32(999), true)
+	assert.Equal(t, 5, b1.HasLength())
+
+	b1.setIndex(uint32(666), true)
+	b1.setIndex(uint32(888), true)
+	assert.Equal(t, 5, b1.HasLength())
+
+	b1.setIndex(uint32(555), false)
+	assert.Equal(t, 5, b1.HasLength())
+
+	b1.setIndex(uint32(666), false)
+	assert.Equal(t, 4, b1.HasLength())
+
+	var b2 *BitArray
+	assert.Equal(t, 0, b2.HasLength())
 }
 
 func TestSub(t *testing.T) {

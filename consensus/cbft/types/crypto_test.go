@@ -106,3 +106,64 @@ func Test_ViewChangeQC_MaxBlock(t *testing.T) {
 	epoch, viewNumber, blockEpoch, blockViewNumber, blockHash, blockNumber = viewChangeQC.MaxBlock()
 	assert.Equal(t, uint64(0), epoch)
 }
+
+func TestQuorumCertAddSign(t *testing.T) {
+	bls.Init(int(bls.BLS12_381))
+	message := "test merge sign"
+	var k int = 500
+	msk := make([]bls.SecretKey, k)
+	mpk := make([]bls.PublicKey, k)
+	msig := make([]bls.Sign, k)
+	for i := 0; i < k; i++ {
+		msk[i].SetByCSPRNG()
+		mpk[i] = *msk[i].GetPublicKey()
+		msig[i] = *msk[i].Sign(message)
+	}
+
+	verifyQuorumCert := func(qc *QuorumCert) bool {
+		var pub bls.PublicKey
+		for i := uint32(0); i < qc.ValidatorSet.Size(); i++ {
+			if qc.ValidatorSet.GetIndex(i) {
+				pub.Add(&mpk[i])
+			}
+		}
+		var sig bls.Sign
+		if err := sig.Deserialize(qc.Signature.Bytes()); err != nil {
+			return false
+		}
+
+		if sig.Verify(&pub, message) {
+			return true
+		}
+		return false
+	}
+
+	var sig bls.Sign
+	vSet := utils.NewBitArray(uint32(k))
+	for i := 0; i < len(msig)-2; i++ {
+		sig.Add(&msig[i])
+		vSet.SetIndex(uint32(i), true)
+	}
+
+	qc := &QuorumCert{
+		ValidatorSet: vSet,
+	}
+	qc.Signature.SetBytes(sig.Serialize())
+	//fmt.Println("qc Signature", qc.Signature.String())
+	assert.Equal(t, true, verifyQuorumCert(qc))
+
+	// add sign and verify sign
+	for i := len(msig) - 2; i < len(msig); i++ {
+		var s Signature
+		s.SetBytes(msig[i].Serialize())
+		qc.AddSign(s, uint32(i))
+		//fmt.Println("qc Signature", qc.Signature.String())
+		assert.Equal(t, true, verifyQuorumCert(qc))
+	}
+
+	// The public key does not match and cannot be verified
+	var s Signature
+	s.SetBytes(msig[0].Serialize())
+	qc.AddSign(s, uint32(0))
+	assert.Equal(t, false, verifyQuorumCert(qc))
+}

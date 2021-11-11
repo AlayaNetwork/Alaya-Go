@@ -127,10 +127,16 @@ type SafetyRules interface {
 	PrepareVoteRules(vote *protocols.PrepareVote) SafetyError
 
 	// Security rules for viewChange
-	ViewChangeRules(vote *protocols.ViewChange) SafetyError
+	ViewChangeRules(viewChange *protocols.ViewChange) SafetyError
 
 	// Security rules for qcblock
 	QCBlockRules(block *types.Block, qc *ctypes.QuorumCert) SafetyError
+
+	// Security rules for RGBlockQuorumCert
+	RGBlockQuorumCertRules(rgb *protocols.RGBlockQuorumCert) SafetyError
+
+	// Security rules for RGViewChangeQuorumCert
+	RGViewChangeQuorumCertRules(rgv *protocols.RGViewChangeQuorumCert) SafetyError
 }
 
 type baseSafetyRules struct {
@@ -337,7 +343,7 @@ func (r *baseSafetyRules) PrepareVoteRules(vote *protocols.PrepareVote) SafetyEr
 		return newCommonError(fmt.Sprintf("current index block is already qc block,discard msg(index:%d,number:%d,hash:%s)", vote.BlockIndex, vote.BlockNumber, vote.BlockHash.String()))
 	}
 	if r.viewState.Epoch() != vote.Epoch {
-		return r.changeEpochVoteRules(vote)
+		return r.changeEpochRules(vote.Epoch)
 	}
 	if r.viewState.ViewNumber() > vote.ViewNumber {
 		return newCommonError(fmt.Sprintf("viewNumber too low(local:%d, msg:%d)", r.viewState.ViewNumber(), vote.ViewNumber))
@@ -358,9 +364,9 @@ func (r *baseSafetyRules) PrepareVoteRules(vote *protocols.PrepareVote) SafetyEr
 	return nil
 }
 
-func (r *baseSafetyRules) changeEpochVoteRules(vote *protocols.PrepareVote) SafetyError {
-	if r.viewState.Epoch() > vote.Epoch {
-		return newCommonError(fmt.Sprintf("epoch too low(local:%d, msg:%d)", r.viewState.Epoch(), vote.Epoch))
+func (r *baseSafetyRules) changeEpochRules(epoch uint64) SafetyError {
+	if r.viewState.Epoch() > epoch {
+		return newCommonError(fmt.Sprintf("epoch too low(local:%d, msg:%d)", r.viewState.Epoch(), epoch))
 	}
 
 	return newFetchError("new epoch, need fetch blocks")
@@ -371,7 +377,7 @@ func (r *baseSafetyRules) changeEpochVoteRules(vote *protocols.PrepareVote) Safe
 // 2.Synchronization greater than local viewNumber
 func (r *baseSafetyRules) ViewChangeRules(viewChange *protocols.ViewChange) SafetyError {
 	if r.viewState.Epoch() != viewChange.Epoch {
-		return r.changeEpochViewChangeRules(viewChange)
+		return r.changeEpochViewChangeRules(viewChange.Epoch)
 	}
 	if r.viewState.ViewNumber() > viewChange.ViewNumber {
 		return newCommonError(fmt.Sprintf("viewNumber too low(local:%d, msg:%d)", r.viewState.ViewNumber(), viewChange.ViewNumber))
@@ -384,9 +390,9 @@ func (r *baseSafetyRules) ViewChangeRules(viewChange *protocols.ViewChange) Safe
 	return nil
 }
 
-func (r *baseSafetyRules) changeEpochViewChangeRules(viewChange *protocols.ViewChange) SafetyError {
-	if r.viewState.Epoch() > viewChange.Epoch {
-		return newCommonError(fmt.Sprintf("epoch too low(local:%d, msg:%d)", r.viewState.Epoch(), viewChange.Epoch))
+func (r *baseSafetyRules) changeEpochViewChangeRules(epoch uint64) SafetyError {
+	if r.viewState.Epoch() > epoch {
+		return newCommonError(fmt.Sprintf("epoch too low(local:%d, msg:%d)", r.viewState.Epoch(), epoch))
 	}
 
 	return newFetchError("new epoch, need fetch blocks")
@@ -403,6 +409,101 @@ func (r *baseSafetyRules) QCBlockRules(block *types.Block, qc *ctypes.QuorumCert
 	if (r.viewState.Epoch() == qc.Epoch && r.viewState.ViewNumber() < qc.ViewNumber) || (r.viewState.Epoch()+1 == qc.Epoch) {
 		return newViewError("need change view")
 	}
+	return nil
+}
+
+func (r *baseSafetyRules) RGBlockQuorumCertRules(rgb *protocols.RGBlockQuorumCert) SafetyError {
+	alreadyQCBlock := func() bool {
+		return r.blockTree.FindBlockByHash(rgb.BHash()) != nil || rgb.BlockNum() <= r.viewState.HighestLockBlock().NumberU64()
+	}
+
+	existsPrepare := func() bool {
+		prepare := r.viewState.ViewBlockByIndex(rgb.BlockIndx())
+		return prepare != nil && prepare.NumberU64() == rgb.BlockNum() && prepare.Hash() == rgb.BHash()
+	}
+
+	doubtDuplicate := func(exist *protocols.RGBlockQuorumCert) bool {
+		if exist != nil {
+			return rgb.MsgHash() != exist.MsgHash()
+		}
+		return false
+	}
+
+	acceptIndexVote := func() SafetyError {
+		if rgb.BlockIndx() >= r.config.Sys.Amount {
+			return newCommonError(fmt.Sprintf("RGBlockQuorumCert Index higher than amount(index:%d, amount:%d)", rgb.BlockIndx(), r.config.Sys.Amount))
+		}
+		exist := r.viewState.FindRGBlockQuorumCerts(rgb.BlockIndx(), rgb.GroupID, rgb.ValidatorIndex)
+		if doubtDuplicate(exist) {
+			log.Error(fmt.Sprintf("Receive duplicate RGBlockQuorumCert (blockIndex:%d, groupID:%d, validatorIndex:%d)", rgb.BlockIndx(), rgb.GroupID, rgb.ValidatorIndex))
+			// TODO do not return authFailedError temporarily
+			return newCommonError(fmt.Sprintf("Receive duplicate RGBlockQuorumCert (blockIndex:%d, groupID:%d, validatorIndex:%d)", rgb.BlockIndx(), rgb.GroupID, rgb.ValidatorIndex))
+		}
+		if exist != nil {
+			return newCommonError(fmt.Sprintf("RGBlockQuorumCert has exist(blockIndex:%d, groupID:%d, validatorIndex:%d)", rgb.BlockIndx(), rgb.GroupID, rgb.ValidatorIndex))
+		}
+		if !existsPrepare() {
+			return newFetchPrepareError(fmt.Sprintf("current index block not existed,discard msg(index:%d)", rgb.BlockIndx()))
+		}
+		return nil
+	}
+
+	if alreadyQCBlock() {
+		return newCommonError(fmt.Sprintf("current index block is already qc block,discard msg(index:%d,number:%d,hash:%s)", rgb.BlockIndx(), rgb.BlockNum(), rgb.BHash().String()))
+	}
+	if r.viewState.Epoch() != rgb.EpochNum() {
+		return r.changeEpochRules(rgb.EpochNum())
+	}
+	if r.viewState.ViewNumber() > rgb.ViewNum() {
+		return newCommonError(fmt.Sprintf("viewNumber too low(local:%d, msg:%d)", r.viewState.ViewNumber(), rgb.ViewNum()))
+	}
+
+	if r.viewState.ViewNumber() < rgb.ViewNum() {
+		return newFetchError(fmt.Sprintf("viewNumber higher than local(local:%d, msg:%d)", r.viewState.ViewNumber(), rgb.ViewNum()))
+	}
+
+	// if local epoch and viewNumber is the same with msg
+	if err := acceptIndexVote(); err != nil {
+		return err
+	}
+
+	if r.viewState.IsDeadline() {
+		return newCommonError(fmt.Sprintf("view's deadline is expire(over:%d)", time.Since(r.viewState.Deadline())))
+	}
+	return nil
+}
+
+func (r *baseSafetyRules) RGViewChangeQuorumCertRules(rgv *protocols.RGViewChangeQuorumCert) SafetyError {
+	doubtDuplicate := func(exist *protocols.RGViewChangeQuorumCert) bool {
+		if exist != nil {
+			return rgv.MsgHash() != exist.MsgHash()
+		}
+		return false
+	}
+
+	exist := r.viewState.FindRGViewChangeQuorumCerts(rgv.GroupID, rgv.ValidatorIndex)
+	if doubtDuplicate(exist) {
+		log.Error(fmt.Sprintf("Receive duplicate RGViewChangeQuorumCert (groupID:%d, validatorIndex:%d)", rgv.GroupID, rgv.ValidatorIndex))
+		// TODO do not return authFailedError temporarily
+		return newCommonError(fmt.Sprintf("Receive duplicate RGViewChangeQuorumCert (groupID:%d, validatorIndex:%d)", rgv.GroupID, rgv.ValidatorIndex))
+	}
+	if exist != nil {
+		return newCommonError(fmt.Sprintf("RGViewChangeQuorumCert has exist (groupID:%d, validatorIndex:%d)", rgv.GroupID, rgv.ValidatorIndex))
+	}
+
+	viewChangeQC := rgv.ViewChangeQC
+	epoch, viewNumber, _, _, _, _ := viewChangeQC.MaxBlock()
+	if r.viewState.Epoch() != epoch {
+		return r.changeEpochViewChangeRules(epoch)
+	}
+	if r.viewState.ViewNumber() > viewNumber {
+		return newCommonError(fmt.Sprintf("viewNumber too low(local:%d, msg:%d)", r.viewState.ViewNumber(), viewNumber))
+	}
+
+	if r.viewState.ViewNumber() < viewNumber {
+		return newFetchError(fmt.Sprintf("viewNumber higher than local(local:%d, msg:%d)", r.viewState.ViewNumber(), viewNumber))
+	}
+
 	return nil
 }
 

@@ -65,10 +65,13 @@ func ErrResp(code ErrCode, format string, v ...interface{}) error {
 // Consensus message interface, all consensus message
 // types must implement this interface.
 type ConsensusMsg interface {
+	Message
 	EpochNum() uint64
 	ViewNum() uint64
 	BlockNum() uint64
 	NodeIndex() uint32
+	BlockIndx() uint32
+	CheckQC() *QuorumCert
 	CannibalizeBytes() ([]byte, error)
 	Sign() []byte
 	SetSign([]byte)
