@@ -86,8 +86,12 @@ func (srv *Server) FindPeersWithTopic(ctx context.Context, topic string, thresho
 			break
 		}
 		nodes := enode.ReadNodes(iterator, int(srv.Config.MinimumPeersInTopicSearch))
-		for _, node := range nodes {
-			srv.AddConsensusPeer(node)
+
+		for i, _ := range nodes {
+			wg.Add(1)
+			srv.AddConsensusPeerWithDone(nodes[i], func() {
+				wg.Done()
+			})
 		}
 		// Wait for all dials to be completed.
 		wg.Wait()

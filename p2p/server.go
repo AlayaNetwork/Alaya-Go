@@ -222,7 +222,7 @@ type Server struct {
 
 	eventMux        *event.TypeMux
 	consensus       bool
-	addconsensus    chan *enode.Node
+	addconsensus    chan *dialTask
 	removeconsensus chan *enode.Node
 
 	pubSubServer *PubSubServer
@@ -391,7 +391,14 @@ func (srv *Server) RemovePeer(node *enode.Node) {
 // attempt to reconnect the peer.
 func (srv *Server) AddConsensusPeer(node *enode.Node) {
 	select {
-	case srv.addconsensus <- node:
+	case srv.addconsensus <- newDialTask(node, consensusDialedConn, nil):
+	case <-srv.quit:
+	}
+}
+
+func (srv *Server) AddConsensusPeerWithDone(node *enode.Node, done func()) {
+	select {
+	case srv.addconsensus <- newDialTask(node, consensusDialedConn, done):
 	case <-srv.quit:
 	}
 }
@@ -781,22 +788,24 @@ running:
 			// The server was stopped. Run the cleanup logic.
 			break running
 
-		case n := <-srv.addconsensus:
+		case task := <-srv.addconsensus:
 			// This channel is used by AddConsensusNode to add an enode
 			// to the consensus node set.
-			srv.log.Trace("Adding consensus node", "node", n)
+			srv.log.Trace("Adding consensus node", "node", task.dest)
 
-			if id := n.ID(); !bytes.Equal(crypto.Keccak256(srv.ourHandshake.ID), id[:]) {
+			if id := task.dest.ID(); !bytes.Equal(crypto.Keccak256(srv.ourHandshake.ID), id[:]) {
 				srv.log.Debug("We are become an consensus node")
 				srv.consensus = true
 			} else {
-				srv.dialsched.addConsensus(n)
+				consensusNodes[task.dest.ID()] = true
+				if p, ok := peers[task.dest.ID()]; ok {
+					srv.log.Debug("Add consensus flag", "peer", task.dest.ID())
+					p.rw.set(consensusDialedConn, true)
+				} else {
+					srv.dialsched.addConsensus(task)
+				}
 			}
-			consensusNodes[n.ID()] = true
-			if p, ok := peers[n.ID()]; ok {
-				srv.log.Debug("Add consensus flag", "peer", n.ID)
-				p.rw.set(consensusDialedConn, true)
-			}
+
 		case n := <-srv.removeconsensus:
 			// This channel is used by RemoveConsensusNode to remove an enode
 			// from the consensus node set.
@@ -805,7 +814,7 @@ running:
 				srv.log.Debug("We are not an consensus node")
 				srv.consensus = false
 			}
-			srv.dialsched.removeConsensus(n)
+			//srv.dialsched.removeConsensus(n)
 			if _, ok := consensusNodes[n.ID()]; ok {
 				delete(consensusNodes, n.ID())
 			}
@@ -814,7 +823,7 @@ running:
 				if !p.rw.is(staticDialedConn | trustedConn | inboundConn) {
 					p.rw.set(dynDialedConn, true)
 				}
-				srv.log.Debug("Remove consensus flag", "peer", n.ID, "consensus", srv.consensus)
+				srv.log.Debug("Remove consensus flag", "peer", n.ID(), "consensus", srv.consensus)
 				if len(peers) > srv.MaxPeers && !p.rw.is(staticDialedConn|trustedConn) {
 					srv.log.Debug("Disconnect non-consensus node", "peer", n.ID(), "flags", p.rw.flags, "peers", len(peers), "consensus", srv.consensus)
 					p.Disconnect(DiscRequested)
