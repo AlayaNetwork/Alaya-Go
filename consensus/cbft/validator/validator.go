@@ -20,6 +20,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/AlayaNetwork/Alaya-Go/x/gov"
 	"sync"
 
 	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
@@ -312,6 +313,7 @@ type ValidatorPool struct {
 
 	prevValidators    *cbfttypes.Validators // Previous validators
 	currentValidators *cbfttypes.Validators // Current validators
+	nextValidators *cbfttypes.Validators // Next validators
 }
 
 // NewValidatorPool new a validator pool.
@@ -341,9 +343,10 @@ func NewValidatorPool(agency consensus.Agency, blockNumber uint64, epoch uint64,
 	if pool.currentValidators.ValidBlockNumber > 0 {
 		pool.switchPoint = pool.currentValidators.ValidBlockNumber - 1
 	}
-
-	pool.groupID = pool.currentValidators.GroupID(nodeID)
-	pool.unitID = pool.currentValidators.UnitID(nodeID)
+	if gov.Gte0140VersionState(state) {
+		pool.groupID = pool.currentValidators.GroupID(nodeID)
+		pool.unitID = pool.currentValidators.UnitID(nodeID)
+	}
 	log.Debug("Update validator", "validators", pool.currentValidators.String(), "switchpoint", pool.switchPoint, "epoch", pool.epoch, "lastNumber", pool.lastNumber)
 	return pool
 }
@@ -714,7 +717,7 @@ func (vp *ValidatorPool) GetGroupID(epoch uint64, nodeID enode.ID) (uint32, erro
 
 // GroupID return current node's GroupID according epoch
 func (vp *ValidatorPool) GroupID(epoch uint64) (uint32, error) {
-	return vp.GetGroupID(epoch,vp.nodeID)
+	return vp.GetGroupID(epoch, vp.nodeID)
 }
 
 // GetUnitID return index according epoch & NodeID
