@@ -193,7 +193,6 @@ type Cbft struct {
 
 // New returns a new CBFT.
 func New(sysConfig *params.CbftConfig, optConfig *ctypes.OptionsConfig, eventMux *event.TypeMux, ctx *node.ServiceContext) *Cbft {
-	localNode := enode.NewV4(&ctx.NodePriKey().PublicKey, nil, 0, 0)
 	cbft := &Cbft{
 		config:             ctypes.Config{Sys: sysConfig, Option: optConfig},
 		eventMux:           eventMux,
@@ -214,7 +213,7 @@ func New(sysConfig *params.CbftConfig, optConfig *ctypes.OptionsConfig, eventMux
 		statQueues:         make(map[common.Hash]map[string]int),
 		messageHashCache:   mapset.NewSet(),
 		netLatencyMap:      make(map[string]*list.List),
-		pubSub:             network.NewPubSub(localNode, ctx.PubSubServer()),
+		pubSub:             network.NewPubSub(ctx.PubSubServer()),
 	}
 
 	if evPool, err := evidence.NewEvidencePool(ctx, optConfig.EvidenceDir); err == nil {

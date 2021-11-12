@@ -53,7 +53,7 @@ func (srv *Server) SubscribeTopic(ctx context.Context, topic string) {
 
 // find if we have peers who are subscribed to the same subnet
 func (srv *Server) validPeersExist(subnetTopic string) bool {
-	numOfPeers := srv.pubSubServer.pubsub.ListPeers(subnetTopic)
+	numOfPeers := srv.pubSubServer.PubSub().ListPeers(subnetTopic)
 	return len(numOfPeers) >= srv.Config.MinimumPeersPerTopic
 }
 
@@ -76,7 +76,7 @@ func (srv *Server) FindPeersWithTopic(ctx context.Context, topic string, thresho
 	iterator := srv.DiscV5.RandomNodes()
 	iterator = filterNodes(ctx, iterator, srv.filterPeerForTopic(srv.topicToIdx(topic)))
 
-	currNum := len(srv.pubSubServer.pubsub.ListPeers(topic))
+	currNum := len(srv.pubSubServer.PubSub().ListPeers(topic))
 	wg := new(sync.WaitGroup)
 	for {
 		if err := ctx.Err(); err != nil {
@@ -86,12 +86,16 @@ func (srv *Server) FindPeersWithTopic(ctx context.Context, topic string, thresho
 			break
 		}
 		nodes := enode.ReadNodes(iterator, int(srv.Config.MinimumPeersInTopicSearch))
-		for _, node := range nodes {
-			srv.AddConsensusPeer(node)
+
+		for i, _ := range nodes {
+			wg.Add(1)
+			srv.AddConsensusPeerWithDone(nodes[i], func() {
+				wg.Done()
+			})
 		}
 		// Wait for all dials to be completed.
 		wg.Wait()
-		currNum = len(srv.pubSubServer.pubsub.ListPeers(topic))
+		currNum = len(srv.pubSubServer.PubSub().ListPeers(topic))
 	}
 	return true, nil
 }

@@ -229,9 +229,7 @@ func (pm *ProtocolManager) removePeer(id string) {
 		log.Error("Peer removal failed", "peer", id, "err", err)
 	}
 	// Hard disconnect at the networking layer
-	if peer != nil {
-		peer.Peer.Disconnect(p2p.DiscUselessPeer)
-	}
+	peer.Peer.Disconnect(p2p.DiscUselessPeer)
 }
 
 func (pm *ProtocolManager) Start(maxPeers int) {
@@ -413,7 +411,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 					unknown = true
 				} else {
 					query.Origin.Hash, query.Origin.Number = pm.blockchain.GetAncestor(query.Origin.Hash, query.Origin.Number, ancestor, &maxNonCanonical)
-					unknown = (query.Origin.Hash == common.Hash{})
+					unknown = query.Origin.Hash == common.Hash{}
 				}
 			case hashMode && !query.Reverse:
 				// Hash based traversal towards the leaf block
@@ -836,7 +834,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			return errResp(ErrDecode, "msg %v: %v", msg, err)
 		}
 		log.Trace("Handler Receive GetPooledTransactions", "peer", p.id, "hashes", len(query))
-		hashes, txs := pm.answerGetPooledTransactions(query, p)
+		hashes, txs := pm.answerGetPooledTransactions(query)
 		if len(txs) > 0 {
 			log.Trace("Handler Send PooledTransactions", "peer", p.id, "txs", len(txs))
 			return p.SendPooledTransactionsRLP(hashes, txs)
@@ -978,7 +976,7 @@ func (pm *ProtocolManager) BroadcastTxs(txs types.Transactions) {
 		"announce packs", annoPeers, "announced hashes", annoCount)
 }
 
-func (pm *ProtocolManager) answerGetPooledTransactions(query GetPooledTransactionsPacket, peer *peer) ([]common.Hash, []rlp.RawValue) {
+func (pm *ProtocolManager) answerGetPooledTransactions(query GetPooledTransactionsPacket) ([]common.Hash, []rlp.RawValue) {
 	// Gather transactions until the fetch or network limits is reached
 	var (
 		bytes  int

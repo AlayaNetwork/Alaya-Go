@@ -9,7 +9,23 @@ type RPC struct {
 }
 
 func (m *RPC) Size() (n int) {
-	return 0
+	if m == nil {
+		return 0
+	}
+	if m.Subscriptions != nil {
+		for _, v := range m.Subscriptions {
+			n += v.Size()
+		}
+	}
+	if m.Publish != nil {
+		for _, v := range m.Publish {
+			n += v.Size()
+		}
+	}
+	if m.Control != nil {
+		n += m.Control.Size()
+	}
+	return n
 }
 
 func (m *RPC) GetSubscriptions() []*RPC_SubOpts {
@@ -57,7 +73,7 @@ func (m *RPC_SubOpts) Size() (n int) {
 		return 0
 	}
 	if m.Subscribe != nil {
-		n += 2
+		n += 1
 	}
 	if m.Topicid != nil {
 		n += 1 + (len(*m.Topicid))
@@ -174,6 +190,33 @@ func (m *ControlMessage) GetPrune() []*ControlPrune {
 	return nil
 }
 
+func (m *ControlMessage) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	if m.Ihave != nil {
+		for _, v := range m.Ihave {
+			n += v.Size()
+		}
+	}
+	if m.Iwant != nil {
+		for _, v := range m.Iwant {
+			n += v.Size()
+		}
+	}
+	if m.Graft != nil {
+		for _, v := range m.Graft {
+			n += v.Size()
+		}
+	}
+	if m.Prune != nil {
+		for _, v := range m.Prune {
+			n += v.Size()
+		}
+	}
+	return n
+}
+
 type ControlIHave struct {
 	TopicID    *string
 	MessageIDs []string
@@ -243,7 +286,13 @@ func (m *ControlGraft) GetTopicID() string {
 }
 
 func (m *ControlGraft) Size() (n int) {
-	return 0
+	if m == nil {
+		return 0
+	}
+	if m.TopicID != nil {
+		n += len(*m.TopicID)
+	}
+	return n
 }
 
 type ControlPrune struct {
@@ -274,7 +323,21 @@ func (m *ControlPrune) GetBackoff() uint64 {
 }
 
 func (m *ControlPrune) Size() (n int) {
-	return 0
+	if m == nil {
+		return 0
+	}
+	if m.TopicID != nil {
+		n += len(*m.TopicID)
+	}
+	if m.Backoff != nil {
+		n += 8
+	}
+	if m.Peers != nil {
+		for _, p := range m.Peers {
+			n += p.Size()
+		}
+	}
+	return n
 }
 
 type PeerInfo struct {
@@ -294,4 +357,15 @@ func (m *PeerInfo) GetSignedPeerRecord() []byte {
 		return m.SignedPeerRecord
 	}
 	return nil
+}
+
+func (m *PeerInfo) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	n += len(m.PeerID)
+	if m.SignedPeerRecord != nil {
+		n += len(m.SignedPeerRecord)
+	}
+	return n
 }
