@@ -19,6 +19,8 @@ package network
 import (
 	"context"
 	"errors"
+	"fmt"
+	ctypes "github.com/AlayaNetwork/Alaya-Go/consensus/cbft/types"
 	"github.com/AlayaNetwork/Alaya-Go/log"
 	"github.com/AlayaNetwork/Alaya-Go/p2p"
 	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
@@ -51,7 +53,9 @@ type RGMsg struct {
 }
 
 type PubSub struct {
-	pss *p2p.PubSubServer
+	pss         *p2p.PubSubServer
+	config      ctypes.Config
+	getPeerById getByIDFunc // Used to get peer by ID.
 
 	// Messages of all topics subscribed are sent out from this channel uniformly
 	msgCh chan *RGMsg
@@ -72,8 +76,15 @@ func (ps *PubSub) handler(peer *p2p.Peer, rw p2p.MsgReadWriter) error {
 	return handlerErr
 }
 
+func (ps *PubSub) Config() *ctypes.Config {
+	return &ps.config
+}
+
 func (ps *PubSub) NodeInfo() interface{} {
-	return nil
+	cfg := ps.Config()
+	return &NodeInfo{
+		Config: *cfg,
+	}
 }
 
 //Protocols implemented the Protocols method and returned basic information about the CBFT.pubsub protocol.
@@ -90,6 +101,9 @@ func (ps *PubSub) Protocols() []p2p.Protocol {
 				return ps.NodeInfo()
 			},
 			PeerInfo: func(id enode.ID) interface{} {
+				if p, err := ps.getPeerById(fmt.Sprintf("%x", id[:8])); err == nil {
+					return p.Info()
+				}
 				return nil
 			},
 		},
@@ -103,6 +117,11 @@ func NewPubSub(server *p2p.PubSubServer) *PubSub {
 		topics: make(map[string]*pubsub.Topic),
 		mySubs: make(map[string]*pubsub.Subscription),
 	}
+}
+
+func (ps *PubSub) Init(config ctypes.Config, get getByIDFunc) {
+	ps.config = config
+	ps.getPeerById = get
 }
 
 //Subscribe subscribe a topic
