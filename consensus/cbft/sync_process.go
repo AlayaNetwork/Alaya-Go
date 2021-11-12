@@ -211,10 +211,10 @@ func (cbft *Cbft) prepareBlockFetchRules(id string, pb *protocols.PrepareBlock) 
 }
 
 // Get votes and blocks that are not available locally based on the height of the vote
-func (cbft *Cbft) prepareVoteFetchRules(id string, vote *protocols.PrepareVote) {
+func (cbft *Cbft) prepareVoteFetchRules(id string, msg ctypes.ConsensusMsg) {
 	// Greater than QC+1 means the vote is behind
-	if vote.BlockNumber > cbft.state.HighestQCBlock().NumberU64()+1 {
-		for i := uint32(0); i <= vote.BlockIndex; i++ {
+	if msg.BlockNum() > cbft.state.HighestQCBlock().NumberU64()+1 {
+		for i := uint32(0); i <= msg.BlockIndx(); i++ {
 			b, qc := cbft.state.ViewBlockAndQC(i)
 			if b == nil {
 				cbft.SyncPrepareBlock(id, cbft.state.Epoch(), cbft.state.ViewNumber(), i)
@@ -704,7 +704,7 @@ func (cbft *Cbft) MissingPrepareVote() (v *protocols.GetPrepareVote, err error) 
 				unKnownSet := utils.NewBitArray(uint32(len))
 				for i := uint32(0); i < unKnownSet.Size(); i++ {
 					if vote := cbft.csPool.GetPrepareVote(cbft.state.Epoch(), cbft.state.ViewNumber(), index, i); vote != nil {
-						go cbft.ReceiveMessage(vote)
+						go cbft.ReceiveMessage(ctypes.NewInnerMsgInfo(vote.Msg, vote.PeerID))
 						continue
 					}
 					if _, ok := knownVotes[i]; !ok {
@@ -865,7 +865,7 @@ func calAverage(latencyList *list.List) int64 {
 
 func (cbft *Cbft) SyncPrepareBlock(id string, epoch uint64, viewNumber uint64, blockIndex uint32) {
 	if msg := cbft.csPool.GetPrepareBlock(epoch, viewNumber, blockIndex); msg != nil {
-		go cbft.ReceiveMessage(msg)
+		go cbft.ReceiveMessage(ctypes.NewInnerMsgInfo(msg.Msg, msg.PeerID))
 	}
 	if cbft.syncingCache.AddOrReplace(blockIndex) {
 		msg := &protocols.GetPrepareBlock{Epoch: epoch, ViewNumber: viewNumber, BlockIndex: blockIndex}
@@ -881,12 +881,11 @@ func (cbft *Cbft) SyncPrepareBlock(id string, epoch uint64, viewNumber uint64, b
 
 func (cbft *Cbft) SyncBlockQuorumCert(id string, blockNumber uint64, blockHash common.Hash, blockIndex uint32) {
 	if msg := cbft.csPool.GetPrepareQC(cbft.state.Epoch(), cbft.state.ViewNumber(), blockIndex); msg != nil {
-		go cbft.ReceiveMessage(msg)
+		go cbft.ReceiveSyncMsg(ctypes.NewInnerMsgInfo(msg.Msg, msg.PeerID))
 	}
 	if cbft.syncingCache.AddOrReplace(blockHash) {
 		msg := &protocols.GetBlockQuorumCert{BlockHash: blockHash, BlockNumber: blockNumber}
 		cbft.network.Send(id, msg)
 		cbft.log.Debug("Send GetBlockQuorumCert", "peer", id, "msg", msg.String())
 	}
-
 }
