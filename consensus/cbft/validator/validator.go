@@ -733,9 +733,41 @@ func (vp *ValidatorPool) GetUnitID(epoch uint64, nodeID enode.ID) (uint32, error
 
 // UnitID return current node's index according epoch
 func (vp *ValidatorPool) UnitID(epoch uint64) (uint32, error) {
-	return vp.GetUnitID(epoch,vp.nodeID)
+	return vp.GetUnitID(epoch, vp.nodeID)
 }
 
 func NextRound(blockNumber uint64) uint64 {
 	return blockNumber + 1
+}
+
+// Len return number of validators by groupID.
+// 返回指定epoch和分组下的节点总数
+func (vp *ValidatorPool) LenByGroupID(epoch uint64, groupID uint32) int {
+	// TODO
+	return 0
+}
+
+// 查询指定epoch和分组下对应nodeIndex的节点信息，没有对应信息返回nil
+func (vp *ValidatorPool) GetValidatorByGroupIdAndIndex(epoch uint64, groupID, nodeIndex uint32) (*cbfttypes.ValidateNode, error) {
+	// TODO
+	return nil, nil
+}
+
+// 返回指定epoch和分组下所有共识节点的index集合，e.g. [25,26,27,28,29,30...49]
+func (vp *ValidatorPool) GetValidatorIndexesByGroupID(epoch uint64, groupID uint32) ([]uint32, error) {
+	// TODO
+	return nil, nil
+}
+
+// 返回指定epoch和分组下所有共识节点的编组信息，e.g. [[25,26],[27,28],[29,30]...[49]]
+// 严格按编组顺序返回
+func (vp *ValidatorPool) GetCoordinatorIndexesByGroupID(epoch uint64, groupID uint32) ([][]uint32, error) {
+	// TODO
+	return nil, nil
+}
+
+// 返回指定epoch下，nodeID所在的groupID和unitID（两者都是0开始计数），没有对应信息需返回error
+func (vp *ValidatorPool) GetGroupByValidatorID(epoch uint64, nodeID enode.ID) (uint32, uint32, error) {
+	// TODO
+	return 0, 0, nil
 }
