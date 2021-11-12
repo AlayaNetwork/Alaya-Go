@@ -74,5 +74,4 @@ func NewVoteRules(viewState *state.ViewState) VoteRules {
 	return &baseVoteRules{
 		viewState: viewState,
 	}
-
 }
