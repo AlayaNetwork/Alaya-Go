@@ -22,6 +22,7 @@ import (
 
 	"github.com/AlayaNetwork/Alaya-Go/common"
 	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/validator"
+	"github.com/AlayaNetwork/Alaya-Go/log"
 
 	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/protocols"
 	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/state"
