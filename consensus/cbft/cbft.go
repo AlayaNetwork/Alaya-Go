@@ -270,6 +270,9 @@ func (cbft *Cbft) Start(chain consensus.ChainReader, blockCacheWriter consensus.
 	// Start the handler to process the message.
 	go cbft.network.Start()
 
+	// Data required to initialize pubsub
+	cbft.pubSub.Init(cbft.config, cbft.network.GetPeer)
+
 	if cbft.config.Option.Node == nil {
 		cbft.config.Option.Node = enode.NewV4(&cbft.nodeServiceContext.NodePriKey().PublicKey, nil, 0, 0)
 		cbft.config.Option.NodeID = cbft.config.Option.Node.IDv0()
