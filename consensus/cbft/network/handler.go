@@ -110,7 +110,7 @@ func NewEngineManger(engine Cbft) *EngineManager {
 	}
 	handler.blacklist, _ = lru.New(maxBlacklist)
 	// init router
-	handler.router = newRouter(handler.Unregister, handler.getPeer, handler.ConsensusNodes, handler.peerList)
+	handler.router = newRouter(handler.Unregister, handler.GetPeer, handler.ConsensusNodes, handler.peerList)
 	return handler
 }
 
@@ -178,7 +178,7 @@ func (h *EngineManager) PeerSetting(peerID string, bType uint64, blockNumber uin
 }
 
 // GetPeer returns the peer with the specified peerID.
-func (h *EngineManager) getPeer(peerID string) (*peer, error) {
+func (h *EngineManager) GetPeer(peerID string) (*peer, error) {
 	if peerID == "" {
 		return nil, fmt.Errorf("invalid peerID parameter - %v", peerID)
 	}
