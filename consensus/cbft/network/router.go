@@ -150,8 +150,8 @@ func (r *router) filteredPeers(msgType uint64, condition common.Hash) ([]*peer, 
 	// Test the anchor point, please pay attention to let go.
 	//return r.peers()
 	switch msgType {
-	case protocols.PrepareBlockMsg, protocols.PrepareVoteMsg,
-		protocols.ViewChangeMsg, protocols.BlockQuorumCertMsg:
+	case protocols.PrepareBlockMsg, protocols.RGBlockQuorumCertMsg,
+		protocols.RGViewChangeQuorumCertMsg, protocols.BlockQuorumCertMsg:
 		return r.kMixingRandomNodes(condition, r.filter)
 	case protocols.PrepareBlockHashMsg, protocols.GetLatestStatusMsg,
 		protocols.GetViewChangeMsg, protocols.GetPrepareVoteMsg,

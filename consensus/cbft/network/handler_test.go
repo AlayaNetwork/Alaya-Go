@@ -194,6 +194,8 @@ func Test_EngineManager_Handle(t *testing.T) {
 		{newFakePrepareBlock(), protocols.PrepareBlockMsg},
 		{newFakePrepareVote(), protocols.PrepareVoteMsg},
 		{newFakeViewChange(), protocols.ViewChangeMsg},
+		{newFakeRGBlockQuorumCert(), protocols.RGBlockQuorumCertMsg},
+		{newFakeRGViewChangeQuorumCert(), protocols.RGViewChangeQuorumCertMsg},
 		{newFakeGetPrepareBlock(), protocols.GetPrepareBlockMsg},
 		{newFakeGetBlockQuorumCert(), protocols.GetBlockQuorumCertMsg},
 		{newFakeBlockQuorumCert(), protocols.BlockQuorumCertMsg},

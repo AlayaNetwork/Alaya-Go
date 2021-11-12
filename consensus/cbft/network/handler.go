@@ -34,6 +34,7 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/types"
 	"github.com/AlayaNetwork/Alaya-Go/log"
 	"github.com/AlayaNetwork/Alaya-Go/p2p"
+	//"github.com/AlayaNetwork/Alaya-Go/core/cbfttypes"
 )
 
 const (
@@ -277,7 +278,7 @@ func (h *EngineManager) Forwarding(nodeID string, msg types.Message) error {
 	}
 	// PrepareBlockMsg does not forward, the message will be forwarded using PrepareBlockHash.
 	switch msgType {
-	case protocols.PrepareBlockMsg, protocols.PrepareVoteMsg, protocols.ViewChangeMsg:
+	case protocols.PrepareBlockMsg, protocols.RGBlockQuorumCertMsg, protocols.RGViewChangeQuorumCertMsg:
 		err := forward()
 		if err != nil {
 			messageGossipMeter.Mark(1)
@@ -482,6 +483,22 @@ func (h *EngineManager) handleMsg(p *peer) error {
 
 	case msg.Code == protocols.ViewChangeMsg:
 		var request protocols.ViewChange
+		if err := msg.Decode(&request); err != nil {
+			return types.ErrResp(types.ErrDecode, "%v: %v", msg, err)
+		}
+		p.MarkMessageHash((&request).MsgHash())
+		return h.engine.ReceiveMessage(types.NewMsgInfo(&request, p.PeerID()))
+
+	case msg.Code == protocols.RGBlockQuorumCertMsg:
+		var request protocols.RGBlockQuorumCert
+		if err := msg.Decode(&request); err != nil {
+			return types.ErrResp(types.ErrDecode, "%v: %v", msg, err)
+		}
+		p.MarkMessageHash((&request).MsgHash())
+		return h.engine.ReceiveMessage(types.NewMsgInfo(&request, p.PeerID()))
+
+	case msg.Code == protocols.RGViewChangeQuorumCertMsg:
+		var request protocols.RGViewChangeQuorumCert
 		if err := msg.Decode(&request); err != nil {
 			return types.ErrResp(types.ErrDecode, "%v: %v", msg, err)
 		}

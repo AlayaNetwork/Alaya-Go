@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
-
 package network
 
 import (
@@ -56,6 +55,8 @@ func Test_MeteredMsgReadWriter_ReadMsg(t *testing.T) {
 		{protocols.PrepareBlockMsg, 100, 100},
 		{protocols.ViewChangeMsg, 111, 111},
 		{protocols.PrepareVoteMsg, 131, 131},
+		{protocols.RGBlockQuorumCertMsg, 111, 111},
+		{protocols.RGViewChangeQuorumCertMsg, 131, 131},
 		{protocols.GetPrepareBlockMsg, 1, 1},
 		{protocols.GetBlockQuorumCertMsg, 3, 3},
 		{protocols.BlockQuorumCertMsg, 3, 3},
@@ -79,6 +80,14 @@ func Test_MeteredMsgReadWriter_ReadMsg(t *testing.T) {
 		case v.code == protocols.ViewChangeMsg:
 			assert.NotEqual(t, 0, propViewChangeInPacketsMeter.Count())
 			assert.Equal(t, v.want, propViewChangeInTrafficMeter.Count())
+
+		case v.code == protocols.RGBlockQuorumCertMsg:
+			assert.NotEqual(t, 0, propRGBlockQuorumCertInPacketsMeter.Count())
+			assert.Equal(t, v.want, propRGBlockQuorumCertInTrafficMeter.Count())
+
+		case v.code == protocols.RGViewChangeQuorumCertMsg:
+			assert.NotEqual(t, 0, propRGViewChangeQuorumCertInPacketsMeter.Count())
+			assert.Equal(t, v.want, propRGViewChangeQuorumCertInTrafficMeter.Count())
 
 		case v.code == protocols.GetPrepareBlockMsg:
 			assert.NotEqual(t, 0, reqGetPrepareBlockInPacketsMeter.Count())
@@ -129,6 +138,8 @@ func TestMeteredMsgReadWriter_WriteMsg(t *testing.T) {
 		{protocols.PrepareBlockMsg, 100, 100},
 		{protocols.ViewChangeMsg, 111, 111},
 		{protocols.PrepareVoteMsg, 131, 131},
+		{protocols.RGBlockQuorumCertMsg, 111, 111},
+		{protocols.RGViewChangeQuorumCertMsg, 131, 131},
 		{protocols.GetPrepareBlockMsg, 1, 1},
 		{protocols.GetBlockQuorumCertMsg, 3, 3},
 		{protocols.BlockQuorumCertMsg, 3, 3},
@@ -153,6 +164,14 @@ func TestMeteredMsgReadWriter_WriteMsg(t *testing.T) {
 		case v.code == protocols.ViewChangeMsg:
 			assert.NotEqual(t, 0, propViewChangeOutPacketsMeter.Count())
 			assert.Equal(t, v.want, propViewChangeOutTrafficMeter.Count())
+
+		case v.code == protocols.RGBlockQuorumCertMsg:
+			assert.NotEqual(t, 0, propRGBlockQuorumCertOutPacketsMeter.Count())
+			assert.Equal(t, v.want, propRGBlockQuorumCertOutTrafficMeter.Count())
+
+		case v.code == protocols.RGViewChangeQuorumCertMsg:
+			assert.NotEqual(t, 0, propRGViewChangeQuorumCertOutPacketsMeter.Count())
+			assert.Equal(t, v.want, propRGViewChangeQuorumCertOutTrafficMeter.Count())
 
 		case v.code == protocols.GetPrepareBlockMsg:
 			assert.NotEqual(t, 0, reqGetPrepareBlockOutPacketsMeter.Count())

@@ -53,8 +53,8 @@ type RGMsg struct {
 type PubSub struct {
 	pss *p2p.PubSubServer
 
-	// Messages of all topics subscribed are sent out from this channel uniformly
-	msgCh chan *RGMsg
+	receiveCallback func(peerID enode.ID, msg *RGMsg)
+
 	// All topics subscribed
 	topics map[string]*pubsub.Topic
 	// The set of topics we are subscribed to
@@ -96,12 +96,12 @@ func (ps *PubSub) Protocols() []p2p.Protocol {
 	}
 }
 
-func NewPubSub(server *p2p.PubSubServer) *PubSub {
+func NewPubSub(server *p2p.PubSubServer, receiveCallback func(peerID enode.ID, msg *RGMsg)) *PubSub {
 	return &PubSub{
-		pss:    server,
-		msgCh:  make(chan *RGMsg),
-		topics: make(map[string]*pubsub.Topic),
-		mySubs: make(map[string]*pubsub.Subscription),
+		pss:             server,
+		receiveCallback: receiveCallback,
+		topics:          make(map[string]*pubsub.Topic),
+		mySubs:          make(map[string]*pubsub.Subscription),
 	}
 }
 
@@ -144,7 +144,8 @@ func (ps *PubSub) listen(s *pubsub.Subscription) {
 				ps.Cancel(s.Topic())
 				return
 			}
-			ps.msgCh <- &msgData
+			var pid enode.ID // TODO
+			ps.receiveCallback(pid, &msgData)
 		}
 	}
 }
@@ -174,8 +175,4 @@ func (ps *PubSub) Publish(topic string, data *RGMsg) error {
 		return err
 	}
 	return t.Publish(context.Background(), env)
-}
-
-func (ps *PubSub) Receive() *RGMsg {
-	return <-ps.msgCh
 }

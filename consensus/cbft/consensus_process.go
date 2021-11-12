@@ -18,6 +18,8 @@ package cbft
 
 import (
 	"fmt"
+	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/network"
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
 	"time"
 
 	"github.com/pkg/errors"
@@ -379,13 +381,19 @@ func (cbft *Cbft) OnViewTimeout() {
 		return
 	}
 
+	// send viewChange use pubsub
+	if err := cbft.publishTopicMsg(viewChange); err != nil {
+		cbft.log.Error("Publish viewChange failed", "err", err.Error(), "view", cbft.state.ViewString(), "viewChange", viewChange.String())
+		return
+	}
+
 	// write sendViewChange info to wal
 	if !cbft.isLoading() {
 		cbft.bridge.SendViewChange(viewChange)
 	}
 
 	cbft.state.AddViewChange(uint32(node.Index), viewChange)
-	cbft.network.Broadcast(viewChange)
+	//cbft.network.Broadcast(viewChange)
 	cbft.log.Info("Local add viewChange", "index", node.Index, "viewChange", viewChange.String(), "total", cbft.state.ViewChangeLen())
 
 	cbft.tryChangeView()
@@ -590,10 +598,15 @@ func (cbft *Cbft) trySendPrepareVote() {
 		// Only when the view is switched, the block is cleared but the vote is also cleared.
 		// If there is no block, the consensus process is abnormal and should not run.
 		if block == nil {
-			cbft.log.Crit("Try send PrepareVote failed", "err", "vote corresponding block not found", "view", cbft.state.ViewString(), p.String())
+			cbft.log.Crit("Try send PrepareVote failed", "err", "vote corresponding block not found", "view", cbft.state.ViewString(), "vote", p.String())
 		}
 		if b, qc := cbft.blockTree.FindBlockAndQC(block.ParentHash(), block.NumberU64()-1); b != nil || block.NumberU64() == 0 {
 			p.ParentQC = qc
+			// send prepareVote use pubsub
+			if err := cbft.publishTopicMsg(p); err != nil {
+				cbft.log.Error("Publish PrepareVote failed", "err", err.Error(), "view", cbft.state.ViewString(), "vote", p.String())
+				break
+			}
 			hadSend.Push(p)
 			//Determine if the current consensus node is
 			node, _ := cbft.isCurrentValidator()
@@ -601,16 +614,29 @@ func (cbft *Cbft) trySendPrepareVote() {
 			cbft.state.AddPrepareVote(uint32(node.Index), p)
 			pending.Pop()
 
+			//cbft.network.Broadcast(p)
+
 			// write sendPrepareVote info to wal
 			if !cbft.isLoading() {
 				cbft.bridge.SendPrepareVote(block, p)
 			}
-
-			cbft.network.Broadcast(p)
 		} else {
 			break
 		}
 	}
+}
+
+func (cbft *Cbft) publishTopicMsg(msg ctypes.ConsensusMsg) error {
+	groupID, _, err := cbft.getGroupByValidatorID(cbft.state.Epoch(), cbft.Node().ID())
+	if err != nil {
+		return fmt.Errorf("the group info of the current node is not queried, cannot publish the topic message")
+	}
+	topic := cbfttypes.ConsensusGroupTopicName(cbft.state.Epoch(), groupID)
+	return cbft.pubSub.Publish(topic, &network.RGMsg{Code: protocols.MessageType(msg), Data: msg})
+}
+
+func (cbft *Cbft) OnTopicMsg(peerID enode.ID, msg *network.RGMsg) {
+	// TODO
 }
 
 //func (cbft *Cbft) trySendRGBlockQuorumCert() {
