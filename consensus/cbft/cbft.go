@@ -213,7 +213,7 @@ func New(sysConfig *params.CbftConfig, optConfig *ctypes.OptionsConfig, eventMux
 		statQueues:         make(map[common.Hash]map[string]int),
 		messageHashCache:   mapset.NewSet(),
 		netLatencyMap:      make(map[string]*list.List),
-		//pubSub:             network.NewPubSub(ctx.PubSubServer()),
+		pubSub:             network.NewPubSub(ctx.PubSubServer()),
 	}
 
 	if evPool, err := evidence.NewEvidencePool(ctx, optConfig.EvidenceDir); err == nil {
@@ -271,7 +271,7 @@ func (cbft *Cbft) Start(chain consensus.ChainReader, blockCacheWriter consensus.
 	go cbft.network.Start()
 
 	// Data required to initialize pubsub
-	cbft.pubSub.Init(cbft.config, cbft.network.GetPeer)
+	cbft.pubSub.Init(cbft.config, cbft.network.GetPeer, cbft.network.HandleRGMsg)
 
 	if cbft.config.Option.Node == nil {
 		cbft.config.Option.Node = enode.NewV4(&cbft.nodeServiceContext.NodePriKey().PublicKey, nil, 0, 0)
@@ -1516,10 +1516,10 @@ func (cbft *Cbft) checkPrepareQC(msg ctypes.ConsensusMsg) error {
 		viewChangeQC := cm.ViewChangeQC
 		prepareQCs := cm.PrepareQCs
 		for _, qc := range viewChangeQC.QCs {
-			if qc.BlockNumber == 0 && prepareQCs != nil && prepareQCs[qc.BlockHash] != nil {
+			if qc.BlockNumber == 0 && prepareQCs != nil && prepareQCs.FindPrepareQC(qc.BlockHash) != nil {
 				return authFailedError{err: fmt.Errorf("RGViewChangeQuorumCert need not take PrepareQC, RGViewChangeQuorumCert:%s", cm.String())}
 			}
-			if qc.BlockNumber != 0 && (prepareQCs == nil || prepareQCs[qc.BlockHash] == nil) {
+			if qc.BlockNumber != 0 && (prepareQCs == nil || prepareQCs.FindPrepareQC(qc.BlockHash) == nil) {
 				return authFailedError{err: fmt.Errorf("RGViewChangeQuorumCert need take PrepareQC, RGViewChangeQuorumCert:%s", cm.String())}
 			}
 		}
@@ -1647,7 +1647,7 @@ func (cbft *Cbft) verifyConsensusMsg(msg ctypes.ConsensusMsg) (*cbfttypes.Valida
 		prepareQCs := cm.PrepareQCs
 		for _, qc := range viewChangeQC.QCs {
 			if qc.BlockNumber != 0 {
-				if err := cbft.verifyPrepareQC(qc.BlockNumber, qc.BlockHash, prepareQCs[qc.BlockHash]); err != nil {
+				if err := cbft.verifyPrepareQC(qc.BlockNumber, qc.BlockHash, prepareQCs.FindPrepareQC(qc.BlockHash)); err != nil {
 					return nil, err
 				}
 			}

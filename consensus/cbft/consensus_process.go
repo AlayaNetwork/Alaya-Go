@@ -19,7 +19,6 @@ package cbft
 import (
 	"fmt"
 	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/network"
-	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
 	"time"
 
 	"github.com/pkg/errors"
@@ -311,9 +310,9 @@ func (cbft *Cbft) OnRGViewChangeQuorumCert(id string, msg *protocols.RGViewChang
 		if err.Fetch() {
 			viewChangeQC := msg.ViewChangeQC
 			_, _, _, _, blockHash, blockNumber := viewChangeQC.MaxBlock()
-			if msg.PrepareQCs != nil && msg.PrepareQCs[blockHash] != nil {
+			if msg.PrepareQCs != nil && msg.PrepareQCs.FindPrepareQC(blockHash) != nil {
 				cbft.log.Info("Epoch or viewNumber higher than local, try to fetch block", "fetchHash", blockHash, "fetchNumber", blockNumber)
-				cbft.fetchBlock(id, blockHash, blockNumber, msg.PrepareQCs[blockHash])
+				cbft.fetchBlock(id, blockHash, blockNumber, msg.PrepareQCs.FindPrepareQC(blockHash))
 			}
 		}
 		return err
@@ -341,7 +340,7 @@ func (cbft *Cbft) OnRGViewChangeQuorumCert(id string, msg *protocols.RGViewChang
 
 	cbft.state.AddRGViewChangeQuorumCert(node.Index, msg)
 	cbft.richRGViewChangeQuorumCert(msg)
-	cbft.state.AddSelectRGViewChangeQuorumCerts(msg.GroupID, msg.ViewChangeQC, msg.PrepareQCs)
+	cbft.state.AddSelectRGViewChangeQuorumCerts(msg.GroupID, msg.ViewChangeQC, msg.PrepareQCs.FlattenMap())
 	cbft.log.Debug("Receive new RGViewChangeQuorumCert", "msgHash", msg.MsgHash(), "RGViewChangeQuorumCert", msg.String(), "total", cbft.state.RGViewChangeQuorumCertsLen(msg.GroupID))
 	cbft.trySendRGViewChangeQuorumCert()
 
@@ -631,12 +630,10 @@ func (cbft *Cbft) publishTopicMsg(msg ctypes.ConsensusMsg) error {
 	if err != nil {
 		return fmt.Errorf("the group info of the current node is not queried, cannot publish the topic message")
 	}
+	RGMsg := &network.RGMsg{Code: protocols.MessageType(msg), Data: msg}
+	network.MeteredWriteRGMsg(RGMsg)
 	topic := cbfttypes.ConsensusGroupTopicName(cbft.state.Epoch(), groupID)
-	return cbft.pubSub.Publish(topic, &network.RGMsg{Code: protocols.MessageType(msg), Data: msg})
-}
-
-func (cbft *Cbft) OnTopicMsg(peerID enode.ID, msg *network.RGMsg) {
-	// TODO
+	return cbft.pubSub.Publish(topic, RGMsg)
 }
 
 //func (cbft *Cbft) trySendRGBlockQuorumCert() {
@@ -880,7 +877,7 @@ func (cbft *Cbft) mergeSelectedQuorumCerts(node *cbfttypes.ValidateNode, vote *p
 
 func (cbft *Cbft) richRGBlockQuorumCert(rgb *protocols.RGBlockQuorumCert) {
 	mergeVotes := cbft.groupPrepareVotes(rgb.EpochNum(), rgb.BlockIndx(), rgb.GroupID)
-	if mergeVotes == nil && len(mergeVotes) > 0 {
+	if len(mergeVotes) > 0 {
 		for _, v := range mergeVotes {
 			if !rgb.BlockQC.ValidatorSet.GetIndex(v.NodeIndex()) {
 				rgb.BlockQC.AddSign(v.Signature, v.NodeIndex())
@@ -901,7 +898,7 @@ func (cbft *Cbft) mergeSelectedViewChangeQuorumCerts(node *cbfttypes.ValidateNod
 
 func (cbft *Cbft) richRGViewChangeQuorumCert(rgb *protocols.RGViewChangeQuorumCert) {
 	mergeVcs := cbft.groupViewChanges(rgb.EpochNum(), rgb.GroupID)
-	if mergeVcs == nil && len(mergeVcs) > 0 {
+	if len(mergeVcs) > 0 {
 		for _, vc := range mergeVcs {
 			if !rgb.ViewChangeQC.ExistViewChange(vc.Epoch, vc.ViewNumber, vc.BlockHash) {
 				qc := &ctypes.ViewChangeQuorumCert{
@@ -909,22 +906,23 @@ func (cbft *Cbft) richRGViewChangeQuorumCert(rgb *protocols.RGViewChangeQuorumCe
 					ViewNumber:  vc.ViewNumber,
 					BlockHash:   vc.BlockHash,
 					BlockNumber: vc.BlockNumber,
-					//BlockEpoch:      vc.PrepareQC.Epoch,
-					//BlockViewNumber: vc.PrepareQC.ViewNumber,
-					ValidatorSet: utils.NewBitArray(vc.PrepareQC.ValidatorSet.Size()),
 				}
 				if vc.PrepareQC != nil {
 					qc.BlockEpoch = vc.PrepareQC.Epoch
 					qc.BlockViewNumber = vc.PrepareQC.ViewNumber
+					rgb.PrepareQCs.QCs = append(rgb.PrepareQCs.QCs, vc.PrepareQC)
 				}
-				qc.Signature.SetBytes(vc.Signature.Bytes())
+				total := cbft.validatorPool.Len(cbft.state.Epoch())
+				qc.ValidatorSet = utils.NewBitArray(uint32(total))
 				qc.ValidatorSet.SetIndex(vc.ValidatorIndex, true)
+				qc.Signature.SetBytes(vc.Signature.Bytes())
+
 				rgb.ViewChangeQC.QCs = append(rgb.ViewChangeQC.QCs, qc)
-				rgb.PrepareQCs[vc.BlockHash] = vc.PrepareQC
 			} else {
 				for _, qc := range rgb.ViewChangeQC.QCs {
-					if !qc.ValidatorSet.GetIndex(vc.NodeIndex()) {
+					if qc.BlockHash == vc.BlockHash && !qc.ValidatorSet.GetIndex(vc.NodeIndex()) {
 						qc.AddSign(vc.Signature, vc.NodeIndex())
+						break
 					}
 				}
 			}

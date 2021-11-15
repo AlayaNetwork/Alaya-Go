@@ -441,6 +441,34 @@ func (h *EngineManager) handler(p *p2p.Peer, rw p2p.MsgReadWriter) error {
 	}
 }
 
+func (h *EngineManager) HandleRGMsg(p *peer, msg *RGMsg) error {
+	// All messages cannot exceed the maximum specified by the agreement.
+	if msg.Size > protocols.CbftProtocolMaxMsgSize {
+		return types.ErrResp(types.ErrMsgTooLarge, "%v > %v", msg.Size, protocols.CbftProtocolMaxMsgSize)
+	}
+
+	switch {
+	case msg.Code == protocols.RGBlockQuorumCertMsg:
+		if request, ok := msg.Data.(protocols.RGBlockQuorumCert); ok {
+			p.MarkMessageHash((&request).MsgHash())
+			MeteredReadRGMsg(msg)
+			return h.engine.ReceiveMessage(types.NewMsgInfo(&request, p.PeerID()))
+		}
+		return types.ErrResp(types.ErrInvalidRGMsg, "%s: %v", "unmatched code and data", msg.Code)
+
+	case msg.Code == protocols.RGViewChangeQuorumCertMsg:
+		if request, ok := msg.Data.(protocols.RGViewChangeQuorumCert); ok {
+			p.MarkMessageHash((&request).MsgHash())
+			MeteredReadRGMsg(msg)
+			return h.engine.ReceiveMessage(types.NewMsgInfo(&request, p.PeerID()))
+		}
+		return types.ErrResp(types.ErrInvalidRGMsg, "%s: %v", "unmatched code and data", msg.Code)
+
+	default:
+		return types.ErrResp(types.ErrInvalidMsgCode, "%v", msg.Code)
+	}
+}
+
 // Main logic: Distribute according to message type and
 // transfer message to CBFT layer
 func (h *EngineManager) handleMsg(p *peer) error {
@@ -483,22 +511,6 @@ func (h *EngineManager) handleMsg(p *peer) error {
 
 	case msg.Code == protocols.ViewChangeMsg:
 		var request protocols.ViewChange
-		if err := msg.Decode(&request); err != nil {
-			return types.ErrResp(types.ErrDecode, "%v: %v", msg, err)
-		}
-		p.MarkMessageHash((&request).MsgHash())
-		return h.engine.ReceiveMessage(types.NewMsgInfo(&request, p.PeerID()))
-
-	case msg.Code == protocols.RGBlockQuorumCertMsg:
-		var request protocols.RGBlockQuorumCert
-		if err := msg.Decode(&request); err != nil {
-			return types.ErrResp(types.ErrDecode, "%v: %v", msg, err)
-		}
-		p.MarkMessageHash((&request).MsgHash())
-		return h.engine.ReceiveMessage(types.NewMsgInfo(&request, p.PeerID()))
-
-	case msg.Code == protocols.RGViewChangeQuorumCertMsg:
-		var request protocols.RGViewChangeQuorumCert
 		if err := msg.Decode(&request); err != nil {
 			return types.ErrResp(types.ErrDecode, "%v: %v", msg, err)
 		}

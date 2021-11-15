@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
-
 package types
 
 import (
@@ -36,6 +35,7 @@ const (
 	ErrExtraStatusMsg
 	ErrDecode
 	ErrInvalidMsgCode
+	ErrInvalidRGMsg
 	ErrCbftProtocolVersionMismatch
 	ErrNoStatusMsg
 	ErrForkedBlock
@@ -52,6 +52,7 @@ var errorToString = map[int]string{
 	ErrMsgTooLarge:                 "Message too long",
 	ErrDecode:                      "Invalid message",
 	ErrInvalidMsgCode:              "Invalid message code",
+	ErrInvalidRGMsg:                "Invalid RG message",
 	ErrCbftProtocolVersionMismatch: "CBFT Protocol version mismatch",
 	ErrNoStatusMsg:                 "No status message",
 	ErrForkedBlock:                 "Forked Block",

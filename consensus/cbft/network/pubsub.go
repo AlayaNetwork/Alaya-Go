@@ -49,6 +49,7 @@ var (
 // Group consensus message
 type RGMsg struct {
 	Code uint64
+	Size uint32 // Size of the raw payload
 	Data interface{}
 }
 
@@ -57,7 +58,7 @@ type PubSub struct {
 	config      ctypes.Config
 	getPeerById getByIDFunc // Used to get peer by ID.
 
-	receiveCallback func(peerID enode.ID, msg *RGMsg)
+	onReceive receiveCallback
 
 	// All topics subscribed
 	topics map[string]*pubsub.Topic
@@ -110,18 +111,18 @@ func (ps *PubSub) Protocols() []p2p.Protocol {
 	}
 }
 
-func NewPubSub(server *p2p.PubSubServer, receiveCallback func(peerID enode.ID, msg *RGMsg)) *PubSub {
+func NewPubSub(server *p2p.PubSubServer) *PubSub {
 	return &PubSub{
-		pss:             server,
-		receiveCallback: receiveCallback,
-		topics:          make(map[string]*pubsub.Topic),
-		mySubs:          make(map[string]*pubsub.Subscription),
+		pss:    server,
+		topics: make(map[string]*pubsub.Topic),
+		mySubs: make(map[string]*pubsub.Subscription),
 	}
 }
 
-func (ps *PubSub) Init(config ctypes.Config, get getByIDFunc) {
+func (ps *PubSub) Init(config ctypes.Config, get getByIDFunc, onReceive receiveCallback) {
 	ps.config = config
 	ps.getPeerById = get
+	ps.onReceive = onReceive
 }
 
 //Subscribe subscribe a topic
@@ -163,8 +164,8 @@ func (ps *PubSub) listen(s *pubsub.Subscription) {
 				ps.Cancel(s.Topic())
 				return
 			}
-			var pid enode.ID // TODO
-			ps.receiveCallback(pid, &msgData)
+			var p *peer // TODO
+			ps.onReceive(p, &msgData)
 		}
 	}
 }

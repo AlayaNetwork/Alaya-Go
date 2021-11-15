@@ -103,8 +103,13 @@ func newFakeRGViewChangeQuorumCert() *protocols.RGViewChangeQuorumCert {
 			},
 		},
 		ValidatorIndex: 1,
-		PrepareQCs:     nil,
-		Signature:      newSignature(),
+		//PrepareQCs:     nil,
+		PrepareQCs: &ctypes.PrepareQCs{
+			QCs: []*ctypes.QuorumCert{
+				newQuorumCert(),
+			},
+		},
+		Signature: newSignature(),
 	}
 }
 
