@@ -313,9 +313,9 @@ type ValidatorPool struct {
 	// needGroup indicates if validators need grouped
 	needGroup bool
 	// max validators in per group
-	groupValidatorsLimit int
+	groupValidatorsLimit uint8
 	// coordinator limit
-	coordinatorLimit int
+	coordinatorLimit uint8
 
 	prevValidators    *cbfttypes.Validators // Previous round validators
 	currentValidators *cbfttypes.Validators // Current round validators
@@ -323,8 +323,8 @@ type ValidatorPool struct {
 }
 
 // NewValidatorPool new a validator pool.
-func NewValidatorPool(agency consensus.Agency, blockNumber, epoch uint64, nodeID enode.ID,
-	needGroup bool, groupValidatorsLimit, coordinatorLimit int) *ValidatorPool {
+func NewValidatorPool(agency consensus.Agency, blockNumber, epoch uint64, nodeID enode.ID, needGroup bool,
+	groupValidatorsLimit, coordinatorLimit uint8, eventMux *event.TypeMux) *ValidatorPool {
 	pool := &ValidatorPool{
 		agency: agency,
 		nodeID: nodeID,
@@ -354,7 +354,7 @@ func NewValidatorPool(agency consensus.Agency, blockNumber, epoch uint64, nodeID
 		pool.switchPoint = pool.currentValidators.ValidBlockNumber - 1
 	}
 	if(needGroup) {
-		pool.prevValidators.Grouped(groupValidatorsLimit,coordinatorLimit)
+		pool.prevValidators.Grouped(groupValidatorsLimit, coordinatorLimit, eventMux, epoch)
 		pool.unitID = pool.currentValidators.UnitID(nodeID)
 	}
 	log.Debug("Update validator", "validators", pool.currentValidators.String(), "switchpoint", pool.switchPoint, "epoch", pool.epoch, "lastNumber", pool.lastNumber)
@@ -362,7 +362,7 @@ func NewValidatorPool(agency consensus.Agency, blockNumber, epoch uint64, nodeID
 }
 
 // Reset reset validator pool.
-func (vp *ValidatorPool) Reset(blockNumber uint64, epoch uint64) {
+func (vp *ValidatorPool) Reset(blockNumber uint64, epoch uint64, eventMux *event.TypeMux) {
 	if vp.agency.GetLastNumber(blockNumber) == blockNumber {
 		vp.prevValidators, _ = vp.agency.GetValidators(blockNumber)
 		vp.currentValidators, _ = vp.agency.GetValidators(NextRound(blockNumber))
@@ -376,6 +376,10 @@ func (vp *ValidatorPool) Reset(blockNumber uint64, epoch uint64) {
 	}
 	if vp.currentValidators.ValidBlockNumber > 0 {
 		vp.switchPoint = vp.currentValidators.ValidBlockNumber - 1
+	}
+	if vp.needGroup {
+		vp.currentValidators.Grouped(vp.groupValidatorsLimit, vp.coordinatorLimit, eventMux, epoch)
+		vp.unitID = vp.currentValidators.UnitID(vp.nodeID)
 	}
 	log.Debug("Update validator", "validators", vp.currentValidators.String(), "switchpoint", vp.switchPoint, "epoch", vp.epoch, "lastNumber", vp.lastNumber)
 }
@@ -410,7 +414,7 @@ func (vp *ValidatorPool) MockSwitchPoint(number uint64) {
 }
 
 // Update switch validators.
-func (vp *ValidatorPool) Update(blockNumber uint64, epoch uint64, eventMux *event.TypeMux, ) error {
+func (vp *ValidatorPool) Update(blockNumber uint64, epoch uint64, eventMux *event.TypeMux) error {
 	vp.lock.Lock()
 	defer vp.lock.Unlock()
 
@@ -424,6 +428,10 @@ func (vp *ValidatorPool) Update(blockNumber uint64, epoch uint64, eventMux *even
 	if err != nil {
 		log.Error("Get validator error", "blockNumber", blockNumber, "err", err)
 		return err
+	}
+	if vp.needGroup {
+		nds.Grouped(vp.groupValidatorsLimit, vp.coordinatorLimit, eventMux, epoch)
+		vp.unitID = nds.UnitID(vp.nodeID)
 	}
 	vp.prevValidators = vp.currentValidators
 	vp.currentValidators = nds
@@ -477,6 +485,16 @@ func (vp *ValidatorPool) Update(blockNumber uint64, epoch uint64, eventMux *even
 	}
 
 	return nil
+}
+
+// SetupGroup update validatorpool group info
+func (vp *ValidatorPool) SetupGroup(needGroup bool, groupValidatorsLimit, coordinatorLimit uint8) {
+	vp.lock.Lock()
+	defer vp.lock.Unlock()
+
+	vp.needGroup = needGroup
+	vp.groupValidatorsLimit = groupValidatorsLimit
+	vp.coordinatorLimit = coordinatorLimit
 }
 
 // GetValidatorByNodeID get the validator by node id.
@@ -712,6 +730,11 @@ func (vp *ValidatorPool) GetGroupNodes(epoch uint64) []*cbfttypes.GroupValidator
 		return vp.prevValidators.GroupNodes
 	}
 	return vp.currentValidators.GroupNodes
+}
+
+// NeedGroup return if currentValidators need grouped
+func (vp *ValidatorPool) NeedGroup() bool {
+	return vp.needGroup
 }
 
 // GetGroupID return GroupID according epoch & NodeID

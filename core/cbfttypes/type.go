@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/AlayaNetwork/Alaya-Go/event"
 	"github.com/AlayaNetwork/Alaya-Go/log"
 	"math"
 	"sort"
@@ -106,6 +107,11 @@ type Validators struct {
 	//// Sorting based on node index
 	// Node grouping info
 	GroupNodes []*GroupValidators `json:"groupNodes"`
+}
+
+type NewGroupsEvent struct {
+	Topic              string  // consensus:{epoch}:{groupID}
+	Validators         *GroupValidators
 }
 
 func (vn *ValidateNode) String() string {
@@ -293,11 +299,11 @@ func (vs *Validators) UnitID(nodeID enode.ID) uint32 {
 	return unitID
 }
 
-func (gvs *GroupValidators) GroupedUnits(coordinatorLimit int) {
+func (gvs *GroupValidators) GroupedUnits(coordinatorLimit uint8) {
 	unit := make([]uint32, 0, coordinatorLimit)
 	for i, n := range gvs.Nodes {
 		unit = append(unit, n.Index)
-		if len(unit) >= coordinatorLimit || i == len(gvs.Nodes)-1 {
+		if uint8(len(unit)) >= coordinatorLimit || i == len(gvs.Nodes)-1 {
 			gvs.Units = append(gvs.Units, unit)
 			unit = make([]uint32, 0, coordinatorLimit)
 		}
@@ -308,13 +314,13 @@ func (gvs *GroupValidators) GroupedUnits(coordinatorLimit int) {
 // groupValidatorsLimit is a factor to determine how many groups are grouped
 // eg: [validatorCount,groupValidatorsLimit]=
 // [50,25] = 25,25;[43,25] = 22,21; [101,25] = 21,20,20,20,20
-func (vs *Validators) Grouped(groupValidatorsLimit int, coordinatorLimit int) error {
+func (vs *Validators) Grouped(groupValidatorsLimit uint8, coordinatorLimit uint8, eventMux *event.TypeMux, epoch uint64) error {
 	// sort nodes by index
 	if len(vs.SortedNodes) == 0 {
 		vs.Sort()
 	}
 
-	validatorCount := vs.SortedNodes.Len()
+	validatorCount := uint8(vs.SortedNodes.Len())
 	groupNum := validatorCount / groupValidatorsLimit
 	mod := validatorCount % groupValidatorsLimit
 	if mod > 0 {
@@ -324,9 +330,9 @@ func (vs *Validators) Grouped(groupValidatorsLimit int, coordinatorLimit int) er
 	memberMinCount := validatorCount / groupNum
 	remainder := validatorCount % groupNum
 	vs.GroupNodes = make([]*GroupValidators, groupNum, groupNum)
-	begin := 0
-	end := 0
-	for i := 0; i < groupNum; i++ {
+	begin := uint8(0)
+	end := uint8(0)
+	for i := uint8(0); i < groupNum; i++ {
 		begin = end
 		if remainder > 0 {
 			end = begin + memberMinCount + 1
@@ -344,8 +350,10 @@ func (vs *Validators) Grouped(groupValidatorsLimit int, coordinatorLimit int) er
 	}
 
 	// fill group unit
-	for _, gvs := range vs.GroupNodes {
+	for i, gvs := range vs.GroupNodes {
 		gvs.GroupedUnits(coordinatorLimit)
+		topic := ConsensusGroupTopicName(epoch, uint32(i))
+		eventMux.Post(NewGroupsEvent{Topic:topic, Validators: gvs})
 	}
 	return nil
 }

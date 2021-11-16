@@ -278,11 +278,14 @@ func (cbft *Cbft) Start(chain consensus.ChainReader, blockCache consensus.BlockC
 		cbft.config.Option.NodeID = cbft.config.Option.Node.IDv0()
 		cbft.config.Option.NodePriKey = cbft.nodeServiceContext.NodePriKey()
 	}
+	needGroup := blockCache.GetActiveVersion(block.Header().SealHash()) >= params.FORKVERSION_0_17_0
+	groupValidatorsLimit := cbft.config.Sys.GroupValidatorsLimit
+	coordinatorLimit := cbft.config.Sys.CoordinatorLimit
 	if isGenesis() {
-		cbft.validatorPool = validator.NewValidatorPool(agency, block.NumberU64(), cstate.DefaultEpoch, cbft.config.Option.Node.ID())
+		cbft.validatorPool = validator.NewValidatorPool(agency, block.NumberU64(), cstate.DefaultEpoch, cbft.config.Option.Node.ID(), needGroup, groupValidatorsLimit, coordinatorLimit, cbft.eventMux)
 		cbft.changeView(cstate.DefaultEpoch, cstate.DefaultViewNumber, block, qc, nil)
 	} else {
-		cbft.validatorPool = validator.NewValidatorPool(agency, block.NumberU64(), qc.Epoch, cbft.config.Option.Node.ID())
+		cbft.validatorPool = validator.NewValidatorPool(agency, block.NumberU64(), qc.Epoch, cbft.config.Option.Node.ID(), needGroup, groupValidatorsLimit, coordinatorLimit, cbft.eventMux)
 		cbft.changeView(qc.Epoch, qc.ViewNumber, block, qc, nil)
 	}
 
@@ -1086,7 +1089,7 @@ func (cbft *Cbft) FastSyncCommitHead(block *types.Block) error {
 			return
 		}
 
-		cbft.validatorPool.Reset(block.NumberU64(), qc.Epoch)
+		cbft.validatorPool.Reset(block.NumberU64(), qc.Epoch, cbft.eventMux)
 
 		cbft.blockTree.Reset(block, qc)
 		cbft.changeView(qc.Epoch, qc.ViewNumber, block, qc, nil)

@@ -394,15 +394,6 @@ func (bcr *BlockChainReactor) GetValidators(blockNumber uint64) (*cbfttypes.Vali
 	return plugin.StakingInstance().GetValidator(blockNumber)
 }
 
-func (bcr *BlockChainReactor) GetGroupedValidator(blockNumber uint64, groupValidatorsLimit int, coordinatorLimit int) (*cbfttypes.Validators, error) {
-	vds, err := plugin.StakingInstance().GetValidator(blockNumber)
-	if nil != err {
-		return nil, err
-	}
-	vds.Grouped(groupValidatorsLimit,coordinatorLimit)
-	return vds, nil
-}
-
 func (bcr *BlockChainReactor) IsCandidateNode(nodeID enode.IDv0) bool {
 	return plugin.StakingInstance().IsCandidateNode(nodeID)
 }
