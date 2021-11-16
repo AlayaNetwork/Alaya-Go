@@ -288,12 +288,6 @@ func (bm *BftMock) ShouldSeal(curTime time.Time) (bool, error) {
 	return true, nil
 }
 
-// OnBlockSignature received a new block signature
-// Need to verify if the signature is signed by nodeID
-func (bm *BftMock) OnBlockSignature(chain ChainReader, nodeID enode.IDv0, sig *cbfttypes.BlockSignature) error {
-	return nil
-}
-
 // OnNewBlock processes the BFT signatures
 func (bm *BftMock) OnNewBlock(chain ChainReader, block *types.Block) error {
 	return nil
