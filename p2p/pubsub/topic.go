@@ -219,7 +219,7 @@ func (t *Topic) Publish(ctx context.Context, data []byte, opts ...PubOpt) error 
 		Data:  data,
 		Topic: &t.topic,
 		From:  t.p.host.ID().ID(),
-		Seqno: nil,
+		Seqno: t.p.nextSeqno(),
 	}
 	/*if t.p.signID != enode.ZeroID {
 		m.From = t.p.signID
