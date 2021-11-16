@@ -94,8 +94,12 @@ func (sv SortedIndexValidatorNode) Swap(i, j int)      { sv[i], sv[j] = sv[j], s
 func (sv SortedIndexValidatorNode) Less(i, j int) bool { return sv[i].Index < sv[j].Index }
 
 type GroupValidators struct {
+	// all nodes in this group
 	Nodes []*ValidateNode
+	// Coordinators' index  C0>C1>C2>C3...
 	Units [][]uint32
+	// The group ID
+	groupID uint32
 }
 
 type Validators struct {
@@ -104,6 +108,7 @@ type Validators struct {
 
 	// Sorting based on node index
 	SortedNodes SortedIndexValidatorNode `json:"sortedNodes"`
+
 	//// Sorting based on node index
 	// Node grouping info
 	GroupNodes []*GroupValidators `json:"groupNodes"`
@@ -294,7 +299,7 @@ func (vs *Validators) UnitID(nodeID enode.ID) uint32 {
 	return unitID
 }
 
-func (gvs *GroupValidators) GroupedUnits(coordinatorLimit int) error {
+func (gvs *GroupValidators) GroupedUnits(coordinatorLimit int) {
 	unit := make([]uint32, 0, coordinatorLimit)
 	for i, n := range gvs.Nodes {
 		unit = append(unit, n.Index)
@@ -303,7 +308,6 @@ func (gvs *GroupValidators) GroupedUnits(coordinatorLimit int) error {
 			unit = make([]uint32, 0, coordinatorLimit)
 		}
 	}
-	return nil
 }
 
 // Grouped fill validators into groups
@@ -341,6 +345,7 @@ func (vs *Validators) Grouped(groupValidatorsLimit int, coordinatorLimit int) er
 		}
 		groupValidators := new(GroupValidators)
 		groupValidators.Nodes = vs.SortedNodes[begin:end]
+		groupValidators.groupID = uint32(i)
 		vs.GroupNodes[i] = groupValidators
 	}
 

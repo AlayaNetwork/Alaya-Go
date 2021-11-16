@@ -112,19 +112,19 @@ func (e authFailedError) AuthFailed() bool {
 // Cbft is the core structure of the consensus engine
 // and is responsible for handling consensus logic.
 type Cbft struct {
-	config           ctypes.Config
-	eventMux         *event.TypeMux
-	closeOnce        sync.Once
-	exitCh           chan struct{}
-	txPool           consensus.TxPoolReset
-	blockChain       consensus.ChainReader
-	blockCacheWriter consensus.BlockCacheWriter
-	peerMsgCh        chan *ctypes.MsgInfo
-	syncMsgCh        chan *ctypes.MsgInfo
-	evPool           evidence.EvidencePool
-	log              log.Logger
-	network          *network.EngineManager
-	pubSub           *network.PubSub
+	config     ctypes.Config
+	eventMux   *event.TypeMux
+	closeOnce  sync.Once
+	exitCh     chan struct{}
+	txPool     consensus.TxPoolReset
+	blockChain consensus.ChainReader
+	blockCache consensus.BlockCache
+	peerMsgCh  chan *ctypes.MsgInfo
+	syncMsgCh  chan *ctypes.MsgInfo
+	evPool     evidence.EvidencePool
+	log        log.Logger
+	network    *network.EngineManager
+	pubSub     *network.PubSub
 
 	start    int32
 	syncing  int32
@@ -226,12 +226,12 @@ func New(sysConfig *params.CbftConfig, optConfig *ctypes.OptionsConfig, eventMux
 }
 
 // Start starts consensus engine.
-func (cbft *Cbft) Start(chain consensus.ChainReader, blockCacheWriter consensus.BlockCacheWriter, txPool consensus.TxPoolReset, agency consensus.Agency) error {
+func (cbft *Cbft) Start(chain consensus.ChainReader, blockCache consensus.BlockCache, txPool consensus.TxPoolReset, agency consensus.Agency) error {
 	cbft.log.Info("~ Start cbft consensus")
 	cbft.blockChain = chain
 	cbft.txPool = txPool
-	cbft.blockCacheWriter = blockCacheWriter
-	cbft.asyncExecutor = executor.NewAsyncExecutor(blockCacheWriter.Execute)
+	cbft.blockCache = blockCache
+	cbft.asyncExecutor = executor.NewAsyncExecutor(blockCache.Execute)
 
 	//Initialize block tree
 	block := chain.GetBlock(chain.CurrentHeader().Hash(), chain.CurrentHeader().Number.Uint64())
@@ -937,7 +937,7 @@ func (cbft *Cbft) InsertChain(block *types.Block) error {
 		return errors.New("orphan block")
 	}
 
-	err = cbft.blockCacheWriter.Execute(block, parent)
+	err = cbft.blockCache.Execute(block, parent)
 	if err != nil {
 		cbft.log.Error("Executing block failed", "number", block.Number(), "hash", block.Hash(), "parent", parent.Hash(), "parentHash", block.ParentHash(), "err", err)
 		return errors.New("failed to executed block")

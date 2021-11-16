@@ -1301,7 +1301,7 @@ func (cbft *Cbft) clearInvalidBlocks(newBlock *types.Block) {
 			rollback = append(rollback, block)
 		}
 	}
-	cbft.blockCacheWriter.ClearCache(cbft.state.HighestCommitBlock())
+	cbft.blockCache.ClearCache(cbft.state.HighestCommitBlock())
 
 	//todo proposer is myself
 	cbft.txPool.ForkedReset(newHead, rollback)

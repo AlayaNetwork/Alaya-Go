@@ -99,7 +99,7 @@ func (bm *BftMock) FastSyncCommitHead(block *types.Block) error {
 }
 
 // Start is a fake interface, no need to implement.
-func (bm *BftMock) Start(chain ChainReader, blockCacheWriter BlockCacheWriter, pool TxPoolReset, agency Agency) error {
+func (bm *BftMock) Start(chain ChainReader, blockCacheWriter BlockCache, pool TxPoolReset, agency Agency) error {
 	// todo implement me
 	return nil
 }
