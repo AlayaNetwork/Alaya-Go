@@ -1,14 +1,9 @@
 package p2p
 
 import (
-	"bytes"
 	"context"
 	"sync"
 	"time"
-
-	"github.com/pkg/errors"
-
-	"github.com/prysmaticlabs/go-bitfield"
 
 	"github.com/AlayaNetwork/Alaya-Go/log"
 	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
@@ -57,9 +52,10 @@ func (srv *Server) validPeersExist(subnetTopic string) bool {
 	return len(numOfPeers) >= srv.Config.MinimumPeersPerTopic
 }
 
+/*
 func (srv *Server) topicToIdx(topic string) uint64 {
 	return 0
-}
+}*/
 
 // FindPeersWithTopic performs a network search for peers
 // subscribed to a particular subnet. Then we try to connect
@@ -74,7 +70,7 @@ func (srv *Server) FindPeersWithTopic(ctx context.Context, topic string, thresho
 
 	//topic += s.Encoding().ProtocolSuffix()
 	iterator := srv.DiscV5.RandomNodes()
-	iterator = filterNodes(ctx, iterator, srv.filterPeerForTopic(srv.topicToIdx(topic)))
+	iterator = filterNodes(ctx, iterator, srv.filterPeerForTopic(topic))
 
 	currNum := len(srv.pubSubServer.PubSub().ListPeers(topic))
 	wg := new(sync.WaitGroup)
@@ -101,23 +97,23 @@ func (srv *Server) FindPeersWithTopic(ctx context.Context, topic string, thresho
 }
 
 // returns a method with filters peers specifically for a particular attestation subnet.
-func (srv *Server) filterPeerForTopic(index uint64) func(node *enode.Node) bool {
+func (srv *Server) filterPeerForTopic(topic string) func(node *enode.Node) bool {
 	return func(node *enode.Node) bool {
 		if !srv.filterPeer(node) {
 			return false
 		}
-		topics, err := srv.getTopics(node.Record())
-		if err != nil {
+		srv.topicSubscriberMu.RLock()
+		defer srv.topicSubscriberMu.RUnlock()
+		nodes, ok := srv.topicSubscriber[topic]
+		if !ok {
 			return false
 		}
-		indExists := false
-		for _, comIdx := range topics {
-			if comIdx == index {
-				indExists = true
-				break
+		for _, peer := range nodes {
+			if peer == node.ID() {
+				return true
 			}
 		}
-		return indExists
+		return false
 	}
 }
 
@@ -151,6 +147,7 @@ func (srv *Server) filterPeer(node *enode.Node) bool {
 	return true
 }
 
+/*
 func (srv *Server) RefreshTopicENR() {
 	// return early if discv5 isnt running
 	if srv.DiscV5 == nil {
@@ -225,4 +222,4 @@ func byteCount(bitCount int) int {
 		numOfBytes++
 	}
 	return numOfBytes
-}
+}*/

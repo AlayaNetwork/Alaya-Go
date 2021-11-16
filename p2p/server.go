@@ -226,6 +226,9 @@ type Server struct {
 	removeconsensus chan *enode.Node
 
 	pubSubServer *PubSubServer
+
+	topicSubscriberMu sync.RWMutex
+	topicSubscriber   map[string][]enode.ID
 }
 
 type peerOpFunc func(map[enode.ID]*Peer)
