@@ -24,7 +24,6 @@ import (
 	"time"
 
 	"github.com/AlayaNetwork/Alaya-Go/consensus"
-	"github.com/AlayaNetwork/Alaya-Go/core/cbfttypes"
 	"github.com/AlayaNetwork/Alaya-Go/eth/downloader"
 
 	"github.com/deckarep/golang-set"
@@ -733,26 +732,6 @@ func (ps *peerSet) PeersWithoutConsensus(engine consensus.Engine) []*peer {
 	}
 
 	return list
-}
-
-type preBlockEvent struct {
-	block *types.Block
-}
-
-type signatureEvent struct {
-	SignHash  common.Hash // Signature hash，header[0:32]
-	Hash      common.Hash // Block hash，header[:]
-	Number    *big.Int
-	Signature *common.BlockConfirmSign
-}
-
-// SendPrepareBlock propagates an entire block to a remote peer.
-func (p *peer) SendPrepareBlock(block *types.Block) error {
-	return p2p.Send(p.rw, PrepareBlockMsg, []interface{}{block})
-}
-
-func (p *peer) SendSignature(signature *cbfttypes.BlockSignature) error {
-	return p2p.Send(p.rw, BlockSignatureMsg, []interface{}{signature.SignHash, signature.Hash, signature.Number, signature.Signature})
 }
 
 // RequestTxs fetches a batch of transactions from a remote node.

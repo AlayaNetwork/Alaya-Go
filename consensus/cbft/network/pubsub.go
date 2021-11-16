@@ -19,6 +19,8 @@ package network
 import (
 	"context"
 	"errors"
+	"fmt"
+	ctypes "github.com/AlayaNetwork/Alaya-Go/consensus/cbft/types"
 	"github.com/AlayaNetwork/Alaya-Go/log"
 	"github.com/AlayaNetwork/Alaya-Go/p2p"
 	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
@@ -47,14 +49,17 @@ var (
 // Group consensus message
 type RGMsg struct {
 	Code uint64
+	Size uint32 // Size of the raw payload
 	Data interface{}
 }
 
 type PubSub struct {
-	pss *p2p.PubSubServer
+	pss         *p2p.PubSubServer
+	config      ctypes.Config
+	getPeerById getByIDFunc // Used to get peer by ID.
 
-	// Messages of all topics subscribed are sent out from this channel uniformly
-	msgCh chan *RGMsg
+	onReceive receiveCallback
+
 	// All topics subscribed
 	topics map[string]*pubsub.Topic
 	// The set of topics we are subscribed to
@@ -72,8 +77,15 @@ func (ps *PubSub) handler(peer *p2p.Peer, rw p2p.MsgReadWriter) error {
 	return handlerErr
 }
 
+func (ps *PubSub) Config() *ctypes.Config {
+	return &ps.config
+}
+
 func (ps *PubSub) NodeInfo() interface{} {
-	return nil
+	cfg := ps.Config()
+	return &NodeInfo{
+		Config: *cfg,
+	}
 }
 
 //Protocols implemented the Protocols method and returned basic information about the CBFT.pubsub protocol.
@@ -90,6 +102,9 @@ func (ps *PubSub) Protocols() []p2p.Protocol {
 				return ps.NodeInfo()
 			},
 			PeerInfo: func(id enode.ID) interface{} {
+				if p, err := ps.getPeerById(fmt.Sprintf("%x", id[:8])); err == nil {
+					return p.Info()
+				}
 				return nil
 			},
 		},
@@ -99,10 +114,15 @@ func (ps *PubSub) Protocols() []p2p.Protocol {
 func NewPubSub(server *p2p.PubSubServer) *PubSub {
 	return &PubSub{
 		pss:    server,
-		msgCh:  make(chan *RGMsg),
 		topics: make(map[string]*pubsub.Topic),
 		mySubs: make(map[string]*pubsub.Subscription),
 	}
+}
+
+func (ps *PubSub) Init(config ctypes.Config, get getByIDFunc, onReceive receiveCallback) {
+	ps.config = config
+	ps.getPeerById = get
+	ps.onReceive = onReceive
 }
 
 //Subscribe subscribe a topic
@@ -144,7 +164,8 @@ func (ps *PubSub) listen(s *pubsub.Subscription) {
 				ps.Cancel(s.Topic())
 				return
 			}
-			ps.msgCh <- &msgData
+			var p *peer // TODO
+			ps.onReceive(p, &msgData)
 		}
 	}
 }
@@ -174,8 +195,4 @@ func (ps *PubSub) Publish(topic string, data *RGMsg) error {
 		return err
 	}
 	return t.Publish(context.Background(), env)
-}
-
-func (ps *PubSub) Receive() *RGMsg {
-	return <-ps.msgCh
 }

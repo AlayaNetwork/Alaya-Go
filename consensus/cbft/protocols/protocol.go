@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
-
 package protocols
 
 import (
@@ -896,12 +895,12 @@ func (rgb *RGBlockQuorumCert) SetSign(sign []byte) {
 }
 
 type RGViewChangeQuorumCert struct {
-	GroupID        uint32                             `json:"groupID"`      // Unique identifier for group.
-	ViewChangeQC   *ctypes.ViewChangeQC               `json:"viewchangeQC"` // viewChange aggregate signature
-	ValidatorIndex uint32                             `json:"validatorIndex"`
-	PrepareQCs     map[common.Hash]*ctypes.QuorumCert `json:"prepareQCs" rlp:"nil"`
-	Signature      ctypes.Signature                   `json:"signature"` // RGViewChangeQuorumCert signature information
-	messageHash    atomic.Value                       `rlp:"-"`
+	GroupID        uint32               `json:"groupID"`      // Unique identifier for group.
+	ViewChangeQC   *ctypes.ViewChangeQC `json:"viewchangeQC"` // viewChange aggregate signature
+	ValidatorIndex uint32               `json:"validatorIndex"`
+	PrepareQCs     *ctypes.PrepareQCs   `json:"prepareQCs" rlp:"nil"`
+	Signature      ctypes.Signature     `json:"signature"` // RGViewChangeQuorumCert signature information
+	messageHash    atomic.Value         `rlp:"-"`
 }
 
 func (rgv *RGViewChangeQuorumCert) String() string {

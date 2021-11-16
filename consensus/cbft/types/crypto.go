@@ -355,3 +355,24 @@ func (v ViewChangeQC) ExistViewChange(epoch, viewNumber uint64, blockHash common
 func (v *ViewChangeQC) AppendQuorumCert(viewChangeQC *ViewChangeQuorumCert) {
 	v.QCs = append(v.QCs, viewChangeQC)
 }
+
+type PrepareQCs struct {
+	QCs []*QuorumCert `json:"qcs"`
+}
+
+func (p PrepareQCs) FindPrepareQC(hash common.Hash) *QuorumCert {
+	for _, qc := range p.QCs {
+		if qc.BlockHash == hash {
+			return qc
+		}
+	}
+	return nil
+}
+
+func (p PrepareQCs) FlattenMap() map[common.Hash]*QuorumCert {
+	m := make(map[common.Hash]*QuorumCert)
+	for _, qc := range p.QCs {
+		m[qc.BlockHash] = qc
+	}
+	return m
+}

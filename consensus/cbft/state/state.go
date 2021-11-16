@@ -903,7 +903,7 @@ func (vs *ViewState) SelectRGViewChangeQuorumCertsLen(groupID uint32) int {
 	return vs.selectedRGViewChangeQuorumCerts.RGViewChangeQuorumCertsLen(groupID)
 }
 
-func (vs *ViewState) FindMaxGroupRGViewChangeQuorumCert(groupID uint32) (*ctypes.ViewChangeQC, map[common.Hash]*ctypes.QuorumCert) {
+func (vs *ViewState) FindMaxGroupRGViewChangeQuorumCert(groupID uint32) (*ctypes.ViewChangeQC, *ctypes.PrepareQCs) {
 	return vs.selectedRGViewChangeQuorumCerts.FindMaxGroupRGViewChangeQuorumCert(groupID)
 }
 
@@ -1420,14 +1420,14 @@ func (srg *selectedRGViewChangeQuorumCerts) RGViewChangeQuorumCertsLen(groupID u
 }
 
 // Returns the QuorumCert with the most signatures in specified group
-func (srg *selectedRGViewChangeQuorumCerts) FindMaxGroupRGViewChangeQuorumCert(groupID uint32) (*ctypes.ViewChangeQC, map[common.Hash]*ctypes.QuorumCert) {
+func (srg *selectedRGViewChangeQuorumCerts) FindMaxGroupRGViewChangeQuorumCert(groupID uint32) (*ctypes.ViewChangeQC, *ctypes.PrepareQCs) {
 	rgqcs := srg.GroupRGViewChangeQuorumCerts[groupID]
 	if rgqcs == nil || len(rgqcs.QuorumCerts) <= 0 {
 		return nil, nil
 	}
 
 	viewChangeQC := &ctypes.ViewChangeQC{QCs: make([]*ctypes.ViewChangeQuorumCert, 0)}
-	prepareQCs := make(map[common.Hash]*ctypes.QuorumCert)
+	prepareQCs := &ctypes.PrepareQCs{QCs: make([]*ctypes.QuorumCert, 0)}
 	for hash, qcs := range rgqcs.QuorumCerts {
 		max := qcs[0]
 		for i := 1; i < len(qcs); i++ {
@@ -1436,7 +1436,7 @@ func (srg *selectedRGViewChangeQuorumCerts) FindMaxGroupRGViewChangeQuorumCert(g
 			}
 		}
 		viewChangeQC.QCs = append(viewChangeQC.QCs, max)
-		prepareQCs[hash] = srg.PrepareQCs[hash]
+		prepareQCs.QCs = append(prepareQCs.QCs, srg.PrepareQCs[hash])
 	}
 	return viewChangeQC, prepareQCs
 }

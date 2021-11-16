@@ -24,7 +24,6 @@ import (
 	"fmt"
 	"github.com/AlayaNetwork/Alaya-Go/log"
 	"math"
-	"math/big"
 	"sort"
 
 	"github.com/AlayaNetwork/Alaya-Go/common/hexutil"
@@ -39,22 +38,17 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/crypto/bls"
 )
 
-// Block's Signature info
-type BlockSignature struct {
-	SignHash  common.Hash // Signature hash，header[0:32]
-	Hash      common.Hash // Block hash，header[:]
-	Number    *big.Int
-	Signature *common.BlockConfirmSign
+const (
+	TopicConsensus = "consensus:%d"    // consensus:{epoch}
+	TopicGroup     = "consensus:%d:%d" // consensus:{epoch}:{groupID}
+)
+
+func ConsensusTopicName(epoch uint64) string {
+	return fmt.Sprintf(TopicConsensus, epoch)
 }
 
-func (bs *BlockSignature) Copy() *BlockSignature {
-	sign := *bs.Signature
-	return &BlockSignature{
-		SignHash:  bs.SignHash,
-		Hash:      bs.Hash,
-		Number:    new(big.Int).Set(bs.Number),
-		Signature: &sign,
-	}
+func ConsensusGroupTopicName(epoch uint64, groupID uint32) string {
+	return fmt.Sprintf(TopicGroup, epoch, groupID)
 }
 
 type UpdateChainStateFn func(qcState, lockState, commitState *protocols.State)
@@ -275,7 +269,7 @@ func (vs *Validators) GroupID(nodeID enode.ID) uint32 {
 			groupID = groupID + 1
 		}
 	}
-	return  groupID
+	return groupID
 }
 
 func (vs *Validators) UnitID(nodeID enode.ID) uint32 {
@@ -324,7 +318,7 @@ func (vs *Validators) Grouped(groupValidatorsLimit int, coordinatorLimit int) er
 	groupNum := validatorCount / groupValidatorsLimit
 	mod := validatorCount % groupValidatorsLimit
 	if mod > 0 {
-		groupNum = groupNum +1
+		groupNum = groupNum + 1
 	}
 
 	memberMinCount := validatorCount / groupNum
@@ -336,7 +330,7 @@ func (vs *Validators) Grouped(groupValidatorsLimit int, coordinatorLimit int) er
 		begin = end
 		if remainder > 0 {
 			end = begin + memberMinCount + 1
-			remainder =  remainder - 1
+			remainder = remainder - 1
 		} else {
 			end = begin + memberMinCount
 		}

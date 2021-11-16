@@ -14,16 +14,17 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
-
 package network
 
 import (
+	"github.com/AlayaNetwork/Alaya-Go/rlp"
 	"testing"
 
 	"github.com/AlayaNetwork/Alaya-Go/metrics"
 
 	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/protocols"
 
+	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/types"
 	"github.com/AlayaNetwork/Alaya-Go/p2p"
 	"github.com/stretchr/testify/assert"
 )
@@ -69,44 +70,74 @@ func Test_MeteredMsgReadWriter_ReadMsg(t *testing.T) {
 		readMsg(v.code, v.size)
 		switch {
 		case v.code == protocols.PrepareBlockMsg:
-			assert.NotEqual(t, 0, propPrepareBlockInPacketsMeter.Count())
+			//assert.NotEqual(t, 0, propPrepareBlockInPacketsMeter.Count())
+			assert.Equal(t, int64(1), propPrepareBlockInPacketsMeter.Count())
 			assert.Equal(t, v.want, propPrepareBlockInTrafficMeter.Count())
 
 		case v.code == protocols.PrepareVoteMsg:
-			assert.NotEqual(t, 0, propPrepareVoteInPacketsMeter.Count())
+			//assert.NotEqual(t, 0, propPrepareVoteInPacketsMeter.Count())
+			assert.Equal(t, int64(1), propPrepareVoteInPacketsMeter.Count())
 			assert.Equal(t, v.want, propPrepareVoteInTrafficMeter.Count())
 
 		case v.code == protocols.ViewChangeMsg:
 			assert.NotEqual(t, 0, propViewChangeInPacketsMeter.Count())
+			assert.Equal(t, int64(1), propViewChangeInPacketsMeter.Count())
 			assert.Equal(t, v.want, propViewChangeInTrafficMeter.Count())
 
 		case v.code == protocols.GetPrepareBlockMsg:
-			assert.NotEqual(t, 0, reqGetPrepareBlockInPacketsMeter.Count())
+			//assert.NotEqual(t, 0, reqGetPrepareBlockInPacketsMeter.Count())
+			assert.Equal(t, int64(1), reqGetPrepareBlockInPacketsMeter.Count())
 			assert.Equal(t, v.want, reqGetPrepareBlockInTrafficMeter.Count())
 
 		case v.code == protocols.GetBlockQuorumCertMsg:
-			assert.NotEqual(t, 0, reqGetQuorumCertInPacketsMeter.Count())
+			//assert.NotEqual(t, 0, reqGetQuorumCertInPacketsMeter.Count())
+			assert.Equal(t, int64(1), reqGetQuorumCertInPacketsMeter.Count())
 			assert.Equal(t, v.want, reqGetQuorumCertInTrafficMeter.Count())
 
 		case v.code == protocols.BlockQuorumCertMsg:
-			assert.NotEqual(t, 0, reqBlockQuorumCertInPacketsMeter.Count())
+			//assert.NotEqual(t, 0, reqBlockQuorumCertInPacketsMeter.Count())
+			assert.Equal(t, int64(1), reqBlockQuorumCertInPacketsMeter.Count())
 			assert.Equal(t, v.want, reqBlockQuorumCertInTrafficMeter.Count())
 
 		case v.code == protocols.GetPrepareVoteMsg:
-			assert.NotEqual(t, 0, reqGetPrepareVoteInPacketsMeter.Count())
+			//assert.NotEqual(t, 0, reqGetPrepareVoteInPacketsMeter.Count())
+			assert.Equal(t, int64(1), reqGetPrepareVoteInPacketsMeter.Count())
 			assert.Equal(t, v.want, reqGetPrepareVoteInTrafficMeter.Count())
 
 		case v.code == protocols.PrepareVotesMsg:
-			assert.NotEqual(t, 0, reqPrepareVotesInPacketsMeter.Count())
+			//assert.NotEqual(t, 0, reqPrepareVotesInPacketsMeter.Count())
+			assert.Equal(t, int64(1), reqPrepareVotesInPacketsMeter.Count())
 			assert.Equal(t, v.want, reqPrepareVotesInTrafficMeter.Count())
 
 		case v.code == protocols.GetQCBlockListMsg:
-			assert.NotEqual(t, 0, reqGetQCBlockListInPacketsMeter.Count())
+			//assert.NotEqual(t, 0, reqGetQCBlockListInPacketsMeter.Count())
+			assert.Equal(t, int64(1), reqGetQCBlockListInPacketsMeter.Count())
 			assert.Equal(t, v.want, reqGetQCBlockListInTrafficMeter.Count())
 
 		case v.code == protocols.QCBlockListMsg:
-			assert.NotEqual(t, 0, reqQCBlockListInPacketsMeter.Count())
+			//assert.NotEqual(t, 0, reqQCBlockListInPacketsMeter.Count())
+			assert.Equal(t, int64(1), reqQCBlockListInPacketsMeter.Count())
 			assert.Equal(t, v.want, reqGetQCBlockListInTrafficMeter.Count())
+		}
+	}
+	testRGCases := []struct {
+		code uint64
+		size uint32
+		want int64
+	}{
+		{protocols.RGBlockQuorumCertMsg, 111, 111},
+		{protocols.RGViewChangeQuorumCertMsg, 131, 131},
+	}
+	for _, v := range testRGCases {
+		MeteredReadRGMsg(&RGMsg{Code: v.code, Size: v.size})
+		switch {
+		case v.code == protocols.RGBlockQuorumCertMsg:
+			assert.Equal(t, int64(1), propRGBlockQuorumCertInPacketsMeter.Count())
+			assert.Equal(t, v.want, propRGBlockQuorumCertInTrafficMeter.Count())
+
+		case v.code == protocols.RGViewChangeQuorumCertMsg:
+			assert.Equal(t, int64(1), propRGViewChangeQuorumCertInPacketsMeter.Count())
+			assert.Equal(t, v.want, propRGViewChangeQuorumCertInTrafficMeter.Count())
 		}
 	}
 }
@@ -181,6 +212,27 @@ func TestMeteredMsgReadWriter_WriteMsg(t *testing.T) {
 		case v.code == protocols.QCBlockListMsg:
 			assert.NotEqual(t, 0, reqQCBlockListOutPacketsMeter.Count())
 			assert.Equal(t, v.want, reqQCBlockListOutTrafficMeter.Count())
+		}
+	}
+	testRGCases := []struct {
+		code uint64
+		data types.ConsensusMsg
+	}{
+		{protocols.RGBlockQuorumCertMsg, newFakeRGBlockQuorumCert()},
+		{protocols.RGViewChangeQuorumCertMsg, newFakeRGViewChangeQuorumCert()},
+	}
+	for _, v := range testRGCases {
+		MeteredWriteRGMsg(&RGMsg{Code: v.code, Data: v.data})
+		size, _, err := rlp.EncodeToReader(v.data)
+		assert.Nil(t, err)
+		switch {
+		case v.code == protocols.RGBlockQuorumCertMsg:
+			assert.Equal(t, int64(1), propRGBlockQuorumCertOutPacketsMeter.Count())
+			assert.Equal(t, int64(size), propRGBlockQuorumCertOutTrafficMeter.Count())
+
+		case v.code == protocols.RGViewChangeQuorumCertMsg:
+			assert.Equal(t, int64(1), propRGViewChangeQuorumCertOutPacketsMeter.Count())
+			assert.Equal(t, int64(size), propRGViewChangeQuorumCertOutTrafficMeter.Count())
 		}
 	}
 }
