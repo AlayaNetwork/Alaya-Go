@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
-
 package types
 
 import (
@@ -25,6 +24,7 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/common/hexutil"
 	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/utils"
 	"github.com/AlayaNetwork/Alaya-Go/crypto"
+	"github.com/AlayaNetwork/Alaya-Go/crypto/bls"
 	"github.com/AlayaNetwork/Alaya-Go/rlp"
 )
 
@@ -94,6 +94,10 @@ func (q QuorumCert) CannibalizeBytes() ([]byte, error) {
 }
 
 func (q QuorumCert) Len() int {
+	if q.ValidatorSet == nil {
+		return 0
+	}
+
 	length := 0
 	for i := uint32(0); i < q.ValidatorSet.Size(); i++ {
 		if q.ValidatorSet.GetIndex(i) {
@@ -107,7 +111,54 @@ func (q *QuorumCert) String() string {
 	if q == nil {
 		return ""
 	}
-	return fmt.Sprintf("{Epoch:%d,ViewNumber:%d,Hash:%s,Number:%d,Index:%d,ValidatorSet:%s}", q.Epoch, q.ViewNumber, q.BlockHash.TerminalString(), q.BlockNumber, q.BlockIndex, q.ValidatorSet.String())
+	return fmt.Sprintf("{Epoch:%d,ViewNumber:%d,Hash:%s,Number:%d,Index:%d,Signature:%s,ValidatorSet:%s}", q.Epoch, q.ViewNumber, q.BlockHash.TerminalString(), q.BlockNumber, q.BlockIndex, q.Signature.String(), q.ValidatorSet.String())
+}
+
+// Add a new signature to the aggregate signature
+// Note: Call this method to ensure that the new signature does not exist in the aggregate signature, otherwise the entire aggregate signature will be wrong
+func (q *QuorumCert) AddSign(sign Signature, NodeIndex uint32) bool {
+	if q == nil {
+		return false
+	}
+	var (
+		addSig bls.Sign
+		blsSig bls.Sign
+	)
+	if err := addSig.Deserialize(sign.Bytes()); err != nil {
+		return false
+	}
+	if err := blsSig.Deserialize(q.Signature.Bytes()); err != nil {
+		return false
+	}
+	blsSig.Add(&addSig)
+	q.Signature.SetBytes(blsSig.Serialize())
+	q.ValidatorSet.SetIndex(NodeIndex, true)
+	return true
+}
+
+func (q *QuorumCert) HigherSign(c *QuorumCert) bool {
+	if q == nil && c == nil {
+		return false
+	}
+	if q == nil && c != nil {
+		return false
+	}
+	if c == nil {
+		return true
+	}
+	if !q.EqualState(c) {
+		return false
+	}
+	return q.ValidatorSet.HasLength() >= c.ValidatorSet.HasLength()
+}
+
+func (q *QuorumCert) EqualState(c *QuorumCert) bool {
+	return q.Epoch == c.Epoch &&
+		q.ViewNumber == c.ViewNumber &&
+		q.BlockHash == c.BlockHash &&
+		q.BlockNumber == c.BlockNumber &&
+		q.BlockIndex == c.BlockIndex &&
+		q.ValidatorSet.Size() == c.ValidatorSet.Size()
 }
 
 // if the two quorumCert have the same blockNumber
@@ -151,6 +202,10 @@ func (q ViewChangeQuorumCert) CannibalizeBytes() ([]byte, error) {
 }
 
 func (q ViewChangeQuorumCert) Len() int {
+	if q.ValidatorSet == nil {
+		return 0
+	}
+
 	length := 0
 	for i := uint32(0); i < q.ValidatorSet.Size(); i++ {
 		if q.ValidatorSet.GetIndex(i) {
@@ -189,6 +244,54 @@ func (q *ViewChangeQuorumCert) Copy() *ViewChangeQuorumCert {
 	}
 }
 
+// Add a new signature to the aggregate signature
+// Note: Call this method to ensure that the new signature does not exist in the aggregate signature, otherwise the entire aggregate signature will be wrong
+func (q *ViewChangeQuorumCert) AddSign(sign Signature, NodeIndex uint32) bool {
+	if q == nil {
+		return false
+	}
+	var (
+		addSig bls.Sign
+		blsSig bls.Sign
+	)
+	if err := addSig.Deserialize(sign.Bytes()); err != nil {
+		return false
+	}
+	if err := blsSig.Deserialize(q.Signature.Bytes()); err != nil {
+		return false
+	}
+	blsSig.Add(&addSig)
+	q.Signature.SetBytes(blsSig.Serialize())
+	q.ValidatorSet.SetIndex(NodeIndex, true)
+	return true
+}
+
+func (q *ViewChangeQuorumCert) HigherSign(c *ViewChangeQuorumCert) bool {
+	if q == nil && c == nil {
+		return false
+	}
+	if q == nil && c != nil {
+		return false
+	}
+	if c == nil {
+		return true
+	}
+	if !q.EqualState(c) {
+		return false
+	}
+	return q.ValidatorSet.HasLength() >= c.ValidatorSet.HasLength()
+}
+
+func (q *ViewChangeQuorumCert) EqualState(c *ViewChangeQuorumCert) bool {
+	return q.Epoch == c.Epoch &&
+		q.ViewNumber == c.ViewNumber &&
+		q.BlockHash == c.BlockHash &&
+		q.BlockNumber == c.BlockNumber &&
+		q.BlockEpoch == c.BlockEpoch &&
+		q.BlockViewNumber == c.BlockViewNumber &&
+		q.ValidatorSet.Size() == c.ValidatorSet.Size()
+}
+
 func (v ViewChangeQC) EqualAll(epoch uint64, viewNumber uint64) error {
 	for _, v := range v.QCs {
 		if v.ViewNumber != viewNumber || v.Epoch != epoch {
@@ -224,6 +327,17 @@ func (v ViewChangeQC) Len() int {
 	return length
 }
 
+func (v ViewChangeQC) ValidatorSet() *utils.BitArray {
+	if len(v.QCs) > 0 {
+		vSet := v.QCs[0].ValidatorSet
+		for i := 1; i < len(v.QCs); i++ {
+			vSet = vSet.Or(v.QCs[i].ValidatorSet)
+		}
+		return vSet
+	}
+	return nil
+}
+
 func (v ViewChangeQC) String() string {
 	epoch, view, blockEpoch, blockViewNumber, hash, number := v.MaxBlock()
 	return fmt.Sprintf("{Epoch:%d,ViewNumber:%d,BlockEpoch:%d,BlockViewNumber:%d,Hash:%s,Number:%d}", epoch, view, blockEpoch, blockViewNumber, hash.TerminalString(), number)
@@ -240,4 +354,25 @@ func (v ViewChangeQC) ExistViewChange(epoch, viewNumber uint64, blockHash common
 
 func (v *ViewChangeQC) AppendQuorumCert(viewChangeQC *ViewChangeQuorumCert) {
 	v.QCs = append(v.QCs, viewChangeQC)
+}
+
+type PrepareQCs struct {
+	QCs []*QuorumCert `json:"qcs"`
+}
+
+func (p PrepareQCs) FindPrepareQC(hash common.Hash) *QuorumCert {
+	for _, qc := range p.QCs {
+		if qc.BlockHash == hash {
+			return qc
+		}
+	}
+	return nil
+}
+
+func (p PrepareQCs) FlattenMap() map[common.Hash]*QuorumCert {
+	m := make(map[common.Hash]*QuorumCert)
+	for _, qc := range p.QCs {
+		m[qc.BlockHash] = qc
+	}
+	return m
 }

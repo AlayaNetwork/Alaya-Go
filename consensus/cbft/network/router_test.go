@@ -179,7 +179,8 @@ func Test_Router_FilteredPeers(t *testing.T) {
 		cond    common.Hash
 	}{
 		{protocols.PrepareBlockMsg, common.Hash{}},
-		{protocols.PrepareVoteMsg, presetMessageHash},
+		{protocols.RGBlockQuorumCertMsg, presetMessageHash},
+		{protocols.RGViewChangeQuorumCertMsg, presetMessageHash},
 		{protocols.PrepareBlockHashMsg, common.Hash{}},
 		{protocols.PrepareBlockHashMsg, presetMessageHash},
 	}
@@ -190,8 +191,8 @@ func Test_Router_FilteredPeers(t *testing.T) {
 		}
 		t.Logf("filtered len: %d", len(peers))
 		switch v.msgType {
-		case protocols.PrepareBlockMsg, protocols.PrepareVoteMsg,
-			protocols.ViewChangeMsg, protocols.BlockQuorumCertMsg:
+		case protocols.PrepareBlockMsg, protocols.RGBlockQuorumCertMsg,
+			protocols.RGViewChangeQuorumCertMsg, protocols.BlockQuorumCertMsg:
 			if v.cond == (common.Hash{}) {
 				//assert.Equal(t, testingPeerCount, len(peers))
 				t.Log(testingPeerCount)

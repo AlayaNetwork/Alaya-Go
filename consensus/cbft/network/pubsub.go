@@ -17,11 +17,16 @@
 package network
 
 import (
+	"context"
+	"errors"
 	"fmt"
+	ctypes "github.com/AlayaNetwork/Alaya-Go/consensus/cbft/types"
 	"github.com/AlayaNetwork/Alaya-Go/log"
 	"github.com/AlayaNetwork/Alaya-Go/p2p"
 	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
 	"github.com/AlayaNetwork/Alaya-Go/p2p/pubsub"
+	"github.com/AlayaNetwork/Alaya-Go/rlp"
+	"sync"
 )
 
 const (
@@ -36,44 +41,51 @@ const (
 	CbftPubSubProtocolLength = 10
 )
 
+var (
+	ErrExistsTopic    = errors.New("topic already exists")
+	ErrNotExistsTopic = errors.New("topic does not exist")
+)
+
 // Group consensus message
 type RGMsg struct {
 	Code uint64
+	Size uint32 // Size of the raw payload
 	Data interface{}
 }
 
 type PubSub struct {
-	ps *p2p.PubSubServer
+	pss         *p2p.PubSubServer
+	config      ctypes.Config
+	getPeerById getByIDFunc // Used to get peer by ID.
 
-	// Messages of all topics subscribed are sent out from this channel uniformly
-	msgCh chan *RGMsg
+	onReceive receiveCallback
+
 	// All topics subscribed
-	topics map[string]map[*pubsub.Topic]struct{}
+	topics map[string]*pubsub.Topic
 	// The set of topics we are subscribed to
-	mySubs map[string]map[*pubsub.Subscription]struct{}
+	mySubs map[string]*pubsub.Subscription
+	sync.Mutex
 }
 
 // Protocol.Run()
 func (ps *PubSub) handler(peer *p2p.Peer, rw p2p.MsgReadWriter) error {
 
-	conn := p2p.NewConn(peer.Node(), peer.Inbound())
-
-	// Wait for the connection to exit
-	errCh := make(chan error)
-
-	stream := p2p.NewStream(conn, rw, errCh, "")
-	conn.SetStream(stream)
-
-	/*ps.host.SetStream(peer.ID(), stream)
-	ps.host.NotifyAll(conn)*/
+	errCh := ps.pss.NewConn(peer, rw)
 
 	handlerErr := <-errCh
 	log.Info("pubsub's handler ends", "err", handlerErr)
 	return handlerErr
 }
 
+func (ps *PubSub) Config() *ctypes.Config {
+	return &ps.config
+}
+
 func (ps *PubSub) NodeInfo() interface{} {
-	return nil
+	cfg := ps.Config()
+	return &NodeInfo{
+		Config: *cfg,
+	}
 }
 
 //Protocols implemented the Protocols method and returned basic information about the CBFT.pubsub protocol.
@@ -90,55 +102,97 @@ func (ps *PubSub) Protocols() []p2p.Protocol {
 				return ps.NodeInfo()
 			},
 			PeerInfo: func(id enode.ID) interface{} {
+				if p, err := ps.getPeerById(fmt.Sprintf("%x", id[:8])); err == nil {
+					return p.Info()
+				}
 				return nil
 			},
 		},
 	}
 }
 
-func NewPubSub(localNode *enode.Node, server *p2p.PubSubServer) *PubSub {
-	/*network := p2p.NewNetwork(server)
-	host := p2p.NewHost(localNode, network)
-	gossipSub, err := pubsub.NewGossipSub(context.Background(), host)
-	if err != nil {
-		panic("Failed to NewGossipSub: " + err.Error())
-	}*/
-
+func NewPubSub(server *p2p.PubSubServer) *PubSub {
 	return &PubSub{
-		ps:     server,
-		msgCh:  make(chan *RGMsg),
-		topics: make(map[string]map[*pubsub.Topic]struct{}),
-		mySubs: make(map[string]map[*pubsub.Subscription]struct{}),
+		pss:    server,
+		topics: make(map[string]*pubsub.Topic),
+		mySubs: make(map[string]*pubsub.Subscription),
 	}
+}
+
+func (ps *PubSub) Init(config ctypes.Config, get getByIDFunc, onReceive receiveCallback) {
+	ps.config = config
+	ps.getPeerById = get
+	ps.onReceive = onReceive
 }
 
 //Subscribe subscribe a topic
 func (ps *PubSub) Subscribe(topic string) error {
-	//if err := ps.ps.PublishMsg(topic); err != nil {
-	//	return err
-	//}
-	//ps.topics = append(ps.topics, topic)
+	ps.Lock()
+	defer ps.Unlock()
+	if _, ok := ps.mySubs[topic]; ok {
+		return ErrExistsTopic
+	}
+	t, err := ps.pss.PubSub().Join(topic)
+	if err != nil {
+		return err
+	}
+	subscription, err := t.Subscribe()
+	if err != nil {
+		return err
+	}
+	ps.topics[topic] = t
+	ps.mySubs[topic] = subscription
+
+	go ps.listen(subscription)
 	return nil
+}
+
+func (ps *PubSub) listen(s *pubsub.Subscription) {
+	for {
+		msg, err := s.Next(context.Background())
+		if err != nil {
+			if err != pubsub.ErrSubscriptionCancelled {
+				ps.Cancel(s.Topic())
+			}
+			log.Error("Failed to listen to topic message", "error", err)
+			return
+		}
+		if msg != nil {
+			var msgData RGMsg
+			if err := rlp.DecodeBytes(msg.Data, &msgData); err != nil {
+				log.Error("Failed to parse topic message", "error", err)
+				ps.Cancel(s.Topic())
+				return
+			}
+			var p *peer // TODO
+			ps.onReceive(p, &msgData)
+		}
+	}
 }
 
 //UnSubscribe a topic
 func (ps *PubSub) Cancel(topic string) error {
-	sm := ps.mySubs[topic]
-	if sm != nil {
-		for s, _ := range sm {
-			if s != nil {
-				s.Cancel()
-			}
-		}
-		return nil
+	ps.Lock()
+	defer ps.Unlock()
+	sb := ps.mySubs[topic]
+	if sb != nil {
+		sb.Cancel()
+		delete(ps.mySubs, topic)
+		delete(ps.topics, topic)
 	}
-	return fmt.Errorf("Can not find", "topic", topic)
-}
-
-func (ps *PubSub) Publish(data *RGMsg) error {
 	return nil
 }
 
-func (ps *PubSub) Receive() *RGMsg {
-	return <-ps.msgCh
+func (ps *PubSub) Publish(topic string, data *RGMsg) error {
+	ps.Lock()
+	defer ps.Unlock()
+	t := ps.topics[topic]
+	if t == nil {
+		return ErrNotExistsTopic
+	}
+	env, err := rlp.EncodeToBytes(data)
+	if err != nil {
+		return err
+	}
+	return t.Publish(context.Background(), env)
 }

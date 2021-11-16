@@ -17,16 +17,19 @@
 package state
 
 import (
+	"fmt"
 	"math/big"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 
+	"encoding/json"
 	"github.com/AlayaNetwork/Alaya-Go/common"
 	"github.com/AlayaNetwork/Alaya-Go/common/math"
 	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/protocols"
 	ctypes "github.com/AlayaNetwork/Alaya-Go/consensus/cbft/types"
+	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/utils"
 	"github.com/AlayaNetwork/Alaya-Go/core/types"
 )
 
@@ -220,5 +223,119 @@ func TestNewViewChanges(t *testing.T) {
 	assert.Equal(t, 10, viewState.ViewChangeLen())
 	assert.Equal(t, 10, len(viewState.AllViewChange()))
 	assert.Equal(t, uint32(9), viewState.ViewChangeByIndex(9).ValidatorIndex)
+}
 
+func TestViewRGBlockQuorumCerts(t *testing.T) {
+	v := newViewRGBlockQuorumCerts()
+	v.AddRGBlockQuorumCerts(0, &protocols.RGBlockQuorumCert{
+		GroupID: 1,
+		BlockQC: &ctypes.QuorumCert{
+			BlockIndex: 0,
+		},
+		ValidatorIndex: 11,
+	})
+	v.AddRGBlockQuorumCerts(0, &protocols.RGBlockQuorumCert{
+		GroupID: 2,
+		BlockQC: &ctypes.QuorumCert{
+			BlockIndex: 0,
+		},
+		ValidatorIndex: 22,
+	})
+	v.AddRGBlockQuorumCerts(0, &protocols.RGBlockQuorumCert{
+		GroupID: 1,
+		BlockQC: &ctypes.QuorumCert{
+			BlockIndex: 0,
+		},
+		ValidatorIndex: 12,
+	})
+	v.AddRGBlockQuorumCerts(1, &protocols.RGBlockQuorumCert{
+		GroupID: 3,
+		BlockQC: &ctypes.QuorumCert{
+			BlockIndex: 1,
+		},
+		ValidatorIndex: 33,
+	})
+	v.AddRGBlockQuorumCerts(1, &protocols.RGBlockQuorumCert{
+		GroupID: 5,
+		BlockQC: &ctypes.QuorumCert{
+			BlockIndex: 1,
+		},
+		ValidatorIndex: 55,
+	})
+	v.AddRGBlockQuorumCerts(2, &protocols.RGBlockQuorumCert{
+		GroupID: 1,
+		BlockQC: &ctypes.QuorumCert{
+			BlockIndex: 2,
+		},
+		ValidatorIndex: 11,
+	})
+	v.AddRGBlockQuorumCerts(2, &protocols.RGBlockQuorumCert{
+		GroupID: 2,
+		BlockQC: &ctypes.QuorumCert{
+			BlockIndex: 2,
+		},
+		ValidatorIndex: 22,
+	})
+	v.AddRGBlockQuorumCerts(0, &protocols.RGBlockQuorumCert{
+		GroupID: 1,
+		BlockQC: &ctypes.QuorumCert{
+			BlockIndex: 0,
+		},
+		ValidatorIndex: 12,
+	})
+	//c, _ := json.Marshal(v)
+	//fmt.Println(string(c))
+
+	assert.Equal(t, 2, v.RGBlockQuorumCertsLen(0, 1))
+	assert.Equal(t, 1, v.RGBlockQuorumCertsLen(2, 1))
+	assert.Equal(t, 0, v.RGBlockQuorumCertsLen(2, 3))
+	assert.Equal(t, 0, v.RGBlockQuorumCertsLen(3, 1))
+
+	assert.Nil(t, v.FindRGBlockQuorumCerts(3, 1, 1))
+	assert.Nil(t, v.FindRGBlockQuorumCerts(0, 3, 1))
+	assert.Nil(t, v.FindRGBlockQuorumCerts(0, 1, 13))
+	assert.Equal(t, uint32(11), v.FindRGBlockQuorumCerts(0, 1, 11).ValidatorIndex)
+}
+
+func TestSelectedRGBlockQuorumCerts(t *testing.T) {
+	bitArrayStr := []string{
+		`"x"`,
+		`"xxxx"`,
+		`"xx"`,
+		`"x_x_x_"`,
+		`"xx__x_"`,
+		`"xxx_x_"`,
+	}
+
+	bitArray := func(index int) *utils.BitArray {
+		var ba *utils.BitArray
+		json.Unmarshal([]byte(bitArrayStr[index]), &ba)
+		return ba
+	}
+
+	s := newSelectedRGBlockQuorumCerts()
+	for i, _ := range bitArrayStr {
+		s.AddRGQuorumCerts(0, 1, &ctypes.QuorumCert{
+			BlockIndex:   0,
+			ValidatorSet: bitArray(i),
+		}, nil)
+	}
+	for i, _ := range bitArrayStr {
+		s.AddRGQuorumCerts(0, 2, &ctypes.QuorumCert{
+			BlockIndex:   0,
+			ValidatorSet: bitArray(i),
+		}, nil)
+	}
+	for i, _ := range bitArrayStr {
+		s.AddRGQuorumCerts(1, 1, &ctypes.QuorumCert{
+			BlockIndex:   0,
+			ValidatorSet: bitArray(i),
+		}, nil)
+	}
+	c, _ := json.Marshal(s)
+	fmt.Println(string(c))
+
+	assert.Equal(t, 2, len(s.FindRGQuorumCerts(0, 1)))
+	assert.Equal(t, 2, len(s.FindRGQuorumCerts(0, 2)))
+	assert.Equal(t, 2, len(s.FindRGQuorumCerts(1, 1)))
 }

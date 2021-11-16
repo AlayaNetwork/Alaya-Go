@@ -187,7 +187,9 @@ func TestAgg(t *testing.T) {
 	}
 
 	testPrepareQC(t, cnode)
+	testCombinePrepareQC(t, cnode)
 	testViewChangeQC(t, cnode)
+	testCombineViewChangeQC(t, cnode)
 }
 
 func testPrepareQC(t *testing.T, cnode []*Cbft) {
@@ -200,12 +202,47 @@ func testPrepareQC(t *testing.T, cnode []*Cbft) {
 		pbs[uint32(i)] = pb
 	}
 	qc := cnode[0].generatePrepareQC(pbs)
-	fmt.Println(qc)
 
 	assert.Nil(t, cnode[0].verifyPrepareQC(qc.BlockNumber, qc.BlockHash, qc))
 	qc.ValidatorSet = nil
 	assert.NotNil(t, cnode[0].verifyPrepareQC(qc.BlockNumber, qc.BlockHash, qc))
+}
 
+func testCombinePrepareQC(t *testing.T, cnode []*Cbft) {
+	pbs := make(map[uint32]*protocols.PrepareVote)
+
+	for i := 0; i < len(cnode); i++ {
+		pb := &protocols.PrepareVote{ValidatorIndex: uint32(i)}
+		assert.NotNil(t, cnode[i])
+		cnode[i].signMsgByBls(pb)
+		pbs[uint32(i)] = pb
+	}
+	qc1 := cnode[0].generatePrepareQC(pbs)
+	//fmt.Println(qc1.String())
+
+	// combine
+	qcs := make([]*ctypes.QuorumCert, 0, len(pbs))
+	for i, v := range pbs {
+		vSet := utils.NewBitArray(uint32(len(pbs)))
+		vSet.SetIndex(i, true)
+		qcs = append(qcs, &ctypes.QuorumCert{
+			Epoch:        v.Epoch,
+			ViewNumber:   v.ViewNumber,
+			BlockHash:    v.BlockHash,
+			BlockNumber:  v.BlockNumber,
+			BlockIndex:   v.BlockIndex,
+			Signature:    v.Signature,
+			ValidatorSet: vSet,
+		})
+	}
+	qc2 := cnode[0].combinePrepareQC(qcs)
+	//fmt.Println(qc2.String())
+
+	assert.Equal(t, qc1.String(), qc2.String())
+	assert.Nil(t, cnode[0].verifyPrepareQC(qc1.BlockNumber, qc1.BlockHash, qc1))
+	assert.Nil(t, cnode[0].verifyPrepareQC(qc2.BlockNumber, qc2.BlockHash, qc2))
+	qc2.ValidatorSet = nil
+	assert.NotNil(t, cnode[0].verifyPrepareQC(qc2.BlockNumber, qc2.BlockHash, qc2))
 }
 
 func testViewChangeQC(t *testing.T, cnode []*Cbft) {
@@ -223,6 +260,47 @@ func testViewChangeQC(t *testing.T, cnode []*Cbft) {
 	assert.Equal(t, uint64(len(cnode)-1), num)
 
 	assert.Nil(t, cnode[0].verifyViewChangeQC(qc))
+}
+
+func testCombineViewChangeQC(t *testing.T, cnode []*Cbft) {
+	pbs := make(map[uint32]*protocols.ViewChange)
+
+	for i := 0; i < len(cnode); i++ {
+		pb := &protocols.ViewChange{BlockHash: common.BigToHash(big.NewInt(int64(i))), BlockNumber: uint64(i), ValidatorIndex: uint32(i)}
+		assert.NotNil(t, cnode[i])
+		cnode[i].signMsgByBls(pb)
+		pbs[uint32(i)] = pb
+	}
+	qc1 := cnode[0].generateViewChangeQC(pbs)
+	//fmt.Println(qc1.String())
+	assert.Len(t, qc1.QCs, len(cnode))
+	_, _, _, _, _, num := qc1.MaxBlock()
+	assert.Equal(t, uint64(len(cnode)-1), num)
+
+	assert.Nil(t, cnode[0].verifyViewChangeQC(qc1))
+
+	// combine
+	qcs := make([]*ctypes.ViewChangeQC, 0, len(pbs))
+	for i, v := range pbs {
+		vSet := utils.NewBitArray(uint32(len(pbs)))
+		vSet.SetIndex(i, true)
+		qcs = append(qcs, &ctypes.ViewChangeQC{
+			QCs: []*ctypes.ViewChangeQuorumCert{
+				{
+					Epoch:        v.Epoch,
+					ViewNumber:   v.ViewNumber,
+					BlockHash:    v.BlockHash,
+					BlockNumber:  v.BlockNumber,
+					Signature:    v.Signature,
+					ValidatorSet: vSet,
+				},
+			},
+		})
+	}
+
+	qc2 := cnode[0].combineViewChangeQC(qcs)
+	//fmt.Println(qc2.String())
+	assert.Nil(t, cnode[0].verifyViewChangeQC(qc2))
 }
 
 func TestNode(t *testing.T) {

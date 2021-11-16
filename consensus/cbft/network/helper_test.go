@@ -34,6 +34,7 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/utils"
 	"github.com/AlayaNetwork/Alaya-Go/core/types"
 
+	ctypes "github.com/AlayaNetwork/Alaya-Go/consensus/cbft/types"
 	"github.com/AlayaNetwork/Alaya-Go/p2p"
 )
 
@@ -71,6 +72,44 @@ func newFakePrepareVote() *protocols.PrepareVote {
 		BlockIndex:  1,
 		ParentQC:    newQuorumCert(),
 		Signature:   newSignature(),
+	}
+}
+
+func newFakeRGBlockQuorumCert() *protocols.RGBlockQuorumCert {
+	return &protocols.RGBlockQuorumCert{
+		GroupID:        1,
+		BlockQC:        newQuorumCert(),
+		ValidatorIndex: 1,
+		ParentQC:       nil,
+		Signature:      newSignature(),
+	}
+}
+
+func newFakeRGViewChangeQuorumCert() *protocols.RGViewChangeQuorumCert {
+	return &protocols.RGViewChangeQuorumCert{
+		GroupID: 1,
+		ViewChangeQC: &ctypes.ViewChangeQC{
+			QCs: []*ctypes.ViewChangeQuorumCert{
+				{
+					Epoch:           1,
+					ViewNumber:      1,
+					BlockHash:       common.BytesToHash([]byte("I'm hash")),
+					BlockNumber:     1,
+					BlockEpoch:      1,
+					BlockViewNumber: 1,
+					Signature:       newSignature(),
+					ValidatorSet:    utils.NewBitArray(25),
+				},
+			},
+		},
+		ValidatorIndex: 1,
+		//PrepareQCs:     nil,
+		PrepareQCs: &ctypes.PrepareQCs{
+			QCs: []*ctypes.QuorumCert{
+				newQuorumCert(),
+			},
+		},
+		Signature: newSignature(),
 	}
 }
 

@@ -34,6 +34,7 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/types"
 	"github.com/AlayaNetwork/Alaya-Go/log"
 	"github.com/AlayaNetwork/Alaya-Go/p2p"
+	//"github.com/AlayaNetwork/Alaya-Go/core/cbfttypes"
 )
 
 const (
@@ -110,7 +111,7 @@ func NewEngineManger(engine Cbft) *EngineManager {
 	}
 	handler.blacklist, _ = lru.New(maxBlacklist)
 	// init router
-	handler.router = newRouter(handler.Unregister, handler.getPeer, handler.ConsensusNodes, handler.peerList)
+	handler.router = newRouter(handler.Unregister, handler.GetPeer, handler.ConsensusNodes, handler.peerList)
 	return handler
 }
 
@@ -178,7 +179,7 @@ func (h *EngineManager) PeerSetting(peerID string, bType uint64, blockNumber uin
 }
 
 // GetPeer returns the peer with the specified peerID.
-func (h *EngineManager) getPeer(peerID string) (*peer, error) {
+func (h *EngineManager) GetPeer(peerID string) (*peer, error) {
 	if peerID == "" {
 		return nil, fmt.Errorf("invalid peerID parameter - %v", peerID)
 	}
@@ -277,7 +278,7 @@ func (h *EngineManager) Forwarding(nodeID string, msg types.Message) error {
 	}
 	// PrepareBlockMsg does not forward, the message will be forwarded using PrepareBlockHash.
 	switch msgType {
-	case protocols.PrepareBlockMsg, protocols.PrepareVoteMsg, protocols.ViewChangeMsg:
+	case protocols.PrepareBlockMsg, protocols.RGBlockQuorumCertMsg, protocols.RGViewChangeQuorumCertMsg:
 		err := forward()
 		if err != nil {
 			messageGossipMeter.Mark(1)
@@ -437,6 +438,34 @@ func (h *EngineManager) handler(p *p2p.Peer, rw p2p.MsgReadWriter) error {
 			p.Log().Error("CBFT message handling failed", "peerID", peer.PeerID(), "err", err)
 			return err
 		}
+	}
+}
+
+func (h *EngineManager) HandleRGMsg(p *peer, msg *RGMsg) error {
+	// All messages cannot exceed the maximum specified by the agreement.
+	if msg.Size > protocols.CbftProtocolMaxMsgSize {
+		return types.ErrResp(types.ErrMsgTooLarge, "%v > %v", msg.Size, protocols.CbftProtocolMaxMsgSize)
+	}
+
+	switch {
+	case msg.Code == protocols.RGBlockQuorumCertMsg:
+		if request, ok := msg.Data.(protocols.RGBlockQuorumCert); ok {
+			p.MarkMessageHash((&request).MsgHash())
+			MeteredReadRGMsg(msg)
+			return h.engine.ReceiveMessage(types.NewMsgInfo(&request, p.PeerID()))
+		}
+		return types.ErrResp(types.ErrInvalidRGMsg, "%s: %v", "unmatched code and data", msg.Code)
+
+	case msg.Code == protocols.RGViewChangeQuorumCertMsg:
+		if request, ok := msg.Data.(protocols.RGViewChangeQuorumCert); ok {
+			p.MarkMessageHash((&request).MsgHash())
+			MeteredReadRGMsg(msg)
+			return h.engine.ReceiveMessage(types.NewMsgInfo(&request, p.PeerID()))
+		}
+		return types.ErrResp(types.ErrInvalidRGMsg, "%s: %v", "unmatched code and data", msg.Code)
+
+	default:
+		return types.ErrResp(types.ErrInvalidMsgCode, "%v", msg.Code)
 	}
 }
 

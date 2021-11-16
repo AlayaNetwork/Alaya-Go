@@ -37,10 +37,11 @@ import (
 // the number of nodes selected per broadcast.
 const DefaultFanOut = 5
 
-type unregisterFunc func(id string) error          // Unregister peer from peerSet.
-type getByIDFunc func(id string) (*peer, error)    // Get peer based on ID.
-type consensusNodesFunc func() ([]enode.ID, error) // Get a list of consensus nodes.
-type peersFunc func() ([]*peer, error)             // Get a list of all neighbor nodes.
+type unregisterFunc func(id string) error            // Unregister peer from peerSet.
+type getByIDFunc func(id string) (*peer, error)      // Get peer based on ID.
+type consensusNodesFunc func() ([]enode.ID, error)   // Get a list of consensus nodes.
+type peersFunc func() ([]*peer, error)               // Get a list of all neighbor nodes.
+type receiveCallback func(p *peer, msg *RGMsg) error // Callback function for receiving topic messages
 
 // Router implements the message protocol of gossip.
 //
@@ -150,8 +151,8 @@ func (r *router) filteredPeers(msgType uint64, condition common.Hash) ([]*peer, 
 	// Test the anchor point, please pay attention to let go.
 	//return r.peers()
 	switch msgType {
-	case protocols.PrepareBlockMsg, protocols.PrepareVoteMsg,
-		protocols.ViewChangeMsg, protocols.BlockQuorumCertMsg:
+	case protocols.PrepareBlockMsg, protocols.RGBlockQuorumCertMsg,
+		protocols.RGViewChangeQuorumCertMsg, protocols.BlockQuorumCertMsg:
 		return r.kMixingRandomNodes(condition, r.filter)
 	case protocols.PrepareBlockHashMsg, protocols.GetLatestStatusMsg,
 		protocols.GetViewChangeMsg, protocols.GetPrepareVoteMsg,

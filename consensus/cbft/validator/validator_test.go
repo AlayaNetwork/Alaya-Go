@@ -32,7 +32,6 @@ import (
 
 	"github.com/AlayaNetwork/Alaya-Go/core/rawdb"
 
-	"github.com/AlayaNetwork/Alaya-Go/core/cbfttypes"
 	"github.com/AlayaNetwork/Alaya-Go/core/snapshotdb"
 	"github.com/AlayaNetwork/Alaya-Go/core/state"
 
@@ -43,6 +42,7 @@ import (
 	vm2 "github.com/AlayaNetwork/Alaya-Go/common/vm"
 	"github.com/AlayaNetwork/Alaya-Go/consensus"
 	"github.com/AlayaNetwork/Alaya-Go/core"
+	"github.com/AlayaNetwork/Alaya-Go/core/cbfttypes"
 	"github.com/AlayaNetwork/Alaya-Go/core/types"
 	"github.com/AlayaNetwork/Alaya-Go/core/vm"
 	"github.com/AlayaNetwork/Alaya-Go/crypto"
@@ -143,7 +143,7 @@ func newTestNodeByNum(num int) []params.CbftNode {
 		var sec bls.SecretKey
 		sec.SetByCSPRNG()
 		node := params.CbftNode{
-			Node: enode.NewV4(randomPubKey(), nil, 0, 0),
+			Node:      enode.NewV4(randomPubKey(), nil, 0, 0),
 			BlsPubKey: *sec.GetPublicKey(),
 		}
 		nodes = append(nodes, node)
@@ -648,7 +648,7 @@ func TestGetGroupID(t *testing.T) {
 	agency := newTestInnerAgency(nodes)
 	vp := NewValidatorPool(agency, 0, 0, nodes[0].Node.ID())
 
-	grpID,_ := vp.GetGroupID(0, nodes[0].Node.ID())
+	grpID, _ := vp.GetGroupID(0, nodes[0].Node.ID())
 	assert.Equal(t, 0, grpID)
 }
 
@@ -658,7 +658,6 @@ func TestGetUintID(t *testing.T) {
 	agency := newTestInnerAgency(nodes)
 	vp := NewValidatorPool(agency, 0, 0, nodes[0].Node.ID())
 
-	untID,_ := vp.GetGroupID(0, nodes[0].Node.ID())
+	untID, _ := vp.GetGroupID(0, nodes[0].Node.ID())
 	assert.Equal(t, 0, untID)
 }
-

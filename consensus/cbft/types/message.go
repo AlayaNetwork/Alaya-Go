@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
-
 package types
 
 import (
@@ -36,6 +35,7 @@ const (
 	ErrExtraStatusMsg
 	ErrDecode
 	ErrInvalidMsgCode
+	ErrInvalidRGMsg
 	ErrCbftProtocolVersionMismatch
 	ErrNoStatusMsg
 	ErrForkedBlock
@@ -52,6 +52,7 @@ var errorToString = map[int]string{
 	ErrMsgTooLarge:                 "Message too long",
 	ErrDecode:                      "Invalid message",
 	ErrInvalidMsgCode:              "Invalid message code",
+	ErrInvalidRGMsg:                "Invalid RG message",
 	ErrCbftProtocolVersionMismatch: "CBFT Protocol version mismatch",
 	ErrNoStatusMsg:                 "No status message",
 	ErrForkedBlock:                 "Forked Block",
@@ -65,10 +66,13 @@ func ErrResp(code ErrCode, format string, v ...interface{}) error {
 // Consensus message interface, all consensus message
 // types must implement this interface.
 type ConsensusMsg interface {
+	Message
 	EpochNum() uint64
 	ViewNum() uint64
 	BlockNum() uint64
 	NodeIndex() uint32
+	BlockIndx() uint32
+	CheckQC() *QuorumCert
 	CannibalizeBytes() ([]byte, error)
 	Sign() []byte
 	SetSign([]byte)
