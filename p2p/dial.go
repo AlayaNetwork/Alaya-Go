@@ -540,7 +540,7 @@ func (t *dialTask) run(d *dialScheduler) {
 }
 
 func (t *dialTask) needResolve() bool {
-	return (t.flags&staticDialedConn != 0 || t.flags&consensusDialedConn != 0) && t.dest.IP() == nil
+	return (t.flags&staticDialedConn != 0) && t.dest.IP() == nil
 }
 
 // resolve attempts to find the current endpoint for the destination
