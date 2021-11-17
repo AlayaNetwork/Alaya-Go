@@ -360,7 +360,10 @@ type PrepareQCs struct {
 	QCs []*QuorumCert `json:"qcs"`
 }
 
-func (p PrepareQCs) FindPrepareQC(hash common.Hash) *QuorumCert {
+func (p *PrepareQCs) FindPrepareQC(hash common.Hash) *QuorumCert {
+	if p == nil || len(p.QCs) <= 0 {
+		return nil
+	}
 	for _, qc := range p.QCs {
 		if qc.BlockHash == hash {
 			return qc
@@ -369,10 +372,17 @@ func (p PrepareQCs) FindPrepareQC(hash common.Hash) *QuorumCert {
 	return nil
 }
 
-func (p PrepareQCs) FlattenMap() map[common.Hash]*QuorumCert {
+func (p *PrepareQCs) FlattenMap() map[common.Hash]*QuorumCert {
+	if p == nil || len(p.QCs) <= 0 {
+		return nil
+	}
 	m := make(map[common.Hash]*QuorumCert)
 	for _, qc := range p.QCs {
 		m[qc.BlockHash] = qc
 	}
 	return m
+}
+
+func (p *PrepareQCs) AppendQuorumCert(qc *QuorumCert) {
+	p.QCs = append(p.QCs, qc)
 }

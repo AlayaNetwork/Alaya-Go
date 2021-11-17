@@ -828,10 +828,6 @@ func (vs *ViewState) FindRGBlockQuorumCerts(blockIndex, groupID, validatorIndex 
 	return vs.viewRGBlockQuorumCerts.FindRGBlockQuorumCerts(blockIndex, groupID, validatorIndex)
 }
 
-//func (vs *ViewState) FindGroupRGBlockQuorumCerts(blockIndex, groupID uint32) map[uint32]*protocols.RGBlockQuorumCert {
-//	return vs.viewRGBlockQuorumCerts.FindGroupRGBlockQuorumCerts(blockIndex, groupID)
-//}
-
 func (vs *ViewState) AddRGBlockQuorumCert(nodeIndex uint32, rgb *protocols.RGBlockQuorumCert) {
 	vs.viewRGBlockQuorumCerts.AddRGBlockQuorumCerts(rgb.BlockIndx(), rgb)
 }
@@ -893,9 +889,9 @@ func (vs *ViewState) AddSelectRGViewChangeQuorumCerts(groupID uint32, rgqc *ctyp
 	vs.selectedRGViewChangeQuorumCerts.AddRGViewChangeQuorumCerts(groupID, rgqcs, prepareQCs)
 }
 
-func (vs *ViewState) MergeViewChanges(groupID uint32, vcs []*protocols.ViewChange) {
+func (vs *ViewState) MergeViewChanges(groupID uint32, vcs []*protocols.ViewChange, validatorLen int) {
 	for _, vc := range vcs {
-		vs.selectedRGViewChangeQuorumCerts.MergeViewChange(groupID, vc)
+		vs.selectedRGViewChangeQuorumCerts.MergeViewChange(groupID, vc, uint32(validatorLen))
 	}
 }
 
@@ -1045,6 +1041,13 @@ func (brg *viewRGBlockQuorumCerts) clear() {
 	brg.BlockRGBlockQuorumCerts = make(map[uint32]*groupRGBlockQuorumCerts)
 }
 
+func (brg *viewRGBlockQuorumCerts) String() string {
+	if s, err := json.Marshal(brg); err == nil {
+		return string(s)
+	}
+	return ""
+}
+
 func (vrg *validatorRGBlockQuorumCerts) findRGBlockQuorumCerts(validatorIndex uint32) *protocols.RGBlockQuorumCert {
 	if ps, ok := vrg.ValidatorRGBlockQuorumCerts[validatorIndex]; ok {
 		return ps
@@ -1065,15 +1068,6 @@ func (brg *viewRGBlockQuorumCerts) FindRGBlockQuorumCerts(blockIndex, groupID, v
 	}
 	return nil
 }
-
-//func (brg *viewRGBlockQuorumCerts) FindGroupRGBlockQuorumCerts(blockIndex, groupID uint32) map[uint32]*protocols.RGBlockQuorumCert {
-//	if ps, ok := brg.BlockRGBlockQuorumCerts[blockIndex]; ok {
-//		if gs, ok := ps.GroupRGBlockQuorumCerts[groupID]; ok {
-//			return gs.ValidatorRGBlockQuorumCerts
-//		}
-//	}
-//	return nil
-//}
 
 func (brg *viewRGBlockQuorumCerts) RGBlockQuorumCertsLen(blockIndex, groupID uint32) int {
 	if ps, ok := brg.BlockRGBlockQuorumCerts[blockIndex]; ok {
@@ -1127,13 +1121,16 @@ func (grg *QuorumCerts) addRGQuorumCerts(groupID uint32, rgqc *ctypes.QuorumCert
 					return
 				}
 				if rgqc.ValidatorSet.Contains(ps[i].ValidatorSet) {
-					grg.GroupQuorumCerts[groupID] = append(grg.GroupQuorumCerts[groupID][:i], grg.GroupQuorumCerts[groupID][i+1:]...)
+					ps = append(ps[:i], ps[i+1:]...)
+					//grg.GroupQuorumCerts[groupID] = append(grg.GroupQuorumCerts[groupID][:i], grg.GroupQuorumCerts[groupID][i+1:]...)
 					//return
 				}
 			}
 		}
 		if len(ps) < maxSelectedRGLimit {
-			grg.GroupQuorumCerts[groupID] = append(grg.GroupQuorumCerts[groupID], rgqc)
+			ps = append(ps, rgqc)
+			grg.GroupQuorumCerts[groupID] = ps
+			//grg.GroupQuorumCerts[groupID] = append(grg.GroupQuorumCerts[groupID], rgqc)
 		}
 	} else {
 		qcs := make([]*ctypes.QuorumCert, 0, maxSelectedRGLimit)
@@ -1145,76 +1142,86 @@ func (grg *QuorumCerts) addRGQuorumCerts(groupID uint32, rgqc *ctypes.QuorumCert
 func (srg *selectedRGBlockQuorumCerts) AddRGQuorumCerts(blockIndex, groupID uint32, rgqc *ctypes.QuorumCert, parentQC *ctypes.QuorumCert) {
 	if ps, ok := srg.BlockRGBlockQuorumCerts[blockIndex]; ok {
 		ps.addRGQuorumCerts(groupID, rgqc)
-		if ps.ParentQC == nil {
+		if ps.ParentQC == nil && parentQC != nil {
 			ps.ParentQC = parentQC
 		}
 	} else {
 		grg := newQuorumCerts()
 		grg.addRGQuorumCerts(groupID, rgqc)
-		grg.ParentQC = parentQC
+		if parentQC != nil {
+			grg.ParentQC = parentQC
+		}
 		srg.BlockRGBlockQuorumCerts[blockIndex] = grg
 	}
 }
 
+func (grg *QuorumCerts) findRGQuorumCerts(groupID uint32) []*ctypes.QuorumCert {
+	if gs, ok := grg.GroupQuorumCerts[groupID]; ok {
+		return gs
+	}
+	return nil
+}
+
 func (srg *selectedRGBlockQuorumCerts) FindRGQuorumCerts(blockIndex, groupID uint32) []*ctypes.QuorumCert {
 	if ps, ok := srg.BlockRGBlockQuorumCerts[blockIndex]; ok {
-		if gs, ok := ps.GroupQuorumCerts[groupID]; ok {
-			return gs
-		}
+		return ps.findRGQuorumCerts(groupID)
 	}
 	return nil
 }
 
 func (srg *selectedRGBlockQuorumCerts) RGQuorumCertsLen(blockIndex, groupID uint32) int {
 	if ps, ok := srg.BlockRGBlockQuorumCerts[blockIndex]; ok {
-		if gs, ok := ps.GroupQuorumCerts[groupID]; ok {
-			return len(gs)
-		}
+		gs := ps.findRGQuorumCerts(groupID)
+		return len(gs)
 	}
 	return 0
+}
+
+func findMaxQuorumCert(qcs []*ctypes.QuorumCert) *ctypes.QuorumCert {
+	if len(qcs) > 0 {
+		m := qcs[0]
+		for i := 1; i < len(qcs); i++ {
+			if qcs[i].HigherSign(m) {
+				m = qcs[i]
+			}
+		}
+		return m
+	}
+	return nil
 }
 
 // Returns the QuorumCert with the most signatures in each group
 func (srg *selectedRGBlockQuorumCerts) FindMaxRGQuorumCerts(blockIndex uint32) []*ctypes.QuorumCert {
 	if ps, ok := srg.BlockRGBlockQuorumCerts[blockIndex]; ok {
-		var maxs []*ctypes.QuorumCert
+		var groupMaxs []*ctypes.QuorumCert // The QuorumCert with the largest number of signatures per group
 		if len(ps.GroupQuorumCerts) > 0 {
-			maxs = make([]*ctypes.QuorumCert, 0, len(ps.GroupQuorumCerts))
+			groupMaxs = make([]*ctypes.QuorumCert, 0, len(ps.GroupQuorumCerts))
 			for _, qcs := range ps.GroupQuorumCerts {
-				m := qcs[0]
-				for i := 1; i < len(qcs); i++ {
-					if qcs[i].HigherSign(m) {
-						m = qcs[i]
-					}
+				max := findMaxQuorumCert(qcs)
+				if max != nil {
+					groupMaxs = append(groupMaxs, max)
 				}
-				maxs = append(maxs, m)
 			}
 		}
-		return maxs
+		return groupMaxs
 	}
 	return nil
 }
 
 // Returns the QuorumCert with the most signatures in specified group
 func (srg *selectedRGBlockQuorumCerts) FindMaxGroupRGQuorumCert(blockIndex, groupID uint32) (*ctypes.QuorumCert, *ctypes.QuorumCert) {
-	if ps, ok := srg.BlockRGBlockQuorumCerts[blockIndex]; ok {
-		parentQC := ps.ParentQC
-		if gs, ok := ps.GroupQuorumCerts[groupID]; ok {
-			max := gs[0]
-			for i := 1; i < len(gs); i++ {
-				if gs[i].HigherSign(max) {
-					max = gs[i]
-				}
-			}
-			return max, parentQC
-		}
+	gs := srg.FindRGQuorumCerts(blockIndex, groupID)
+	max := findMaxQuorumCert(gs)
+	if max != nil {
+		parentQC := srg.BlockRGBlockQuorumCerts[blockIndex].ParentQC
+		return max, parentQC
 	}
 	return nil, nil
 }
 
 func (srg *selectedRGBlockQuorumCerts) MergePrepareVote(blockIndex, groupID uint32, vote *protocols.PrepareVote) {
 	rgqcs := srg.FindRGQuorumCerts(blockIndex, groupID)
-	if rgqcs == nil || len(rgqcs) <= 0 {
+	if len(rgqcs) <= 0 {
 		return
 	}
 
@@ -1223,10 +1230,44 @@ func (srg *selectedRGBlockQuorumCerts) MergePrepareVote(blockIndex, groupID uint
 			qc.AddSign(vote.Signature, vote.NodeIndex())
 		}
 	}
+	// merge again
+	deleteIndexes := make(map[int]struct{})
+	for i := 0; i < len(rgqcs); i++ {
+		if _, ok := deleteIndexes[i]; ok {
+			continue
+		}
+		for j := 0; j < len(rgqcs); j++ {
+			if _, ok := deleteIndexes[j]; ok || j == i {
+				continue
+			}
+			if rgqcs[i].ValidatorSet.Contains(rgqcs[j].ValidatorSet) {
+				deleteIndexes[j] = struct{}{}
+			} else if rgqcs[j].ValidatorSet.Contains(rgqcs[i].ValidatorSet) {
+				deleteIndexes[i] = struct{}{}
+				break
+			}
+		}
+	}
+	if len(deleteIndexes) > 0 {
+		merged := make([]*ctypes.QuorumCert, 0)
+		for i := 0; i < len(rgqcs); i++ {
+			if _, ok := deleteIndexes[i]; !ok {
+				merged = append(merged, rgqcs[i])
+			}
+		}
+		srg.BlockRGBlockQuorumCerts[blockIndex].GroupQuorumCerts[groupID] = merged
+	}
 }
 
 func (srg *selectedRGBlockQuorumCerts) clear() {
 	srg.BlockRGBlockQuorumCerts = make(map[uint32]*QuorumCerts)
+}
+
+func (srg *selectedRGBlockQuorumCerts) String() string {
+	if s, err := json.Marshal(srg); err == nil {
+		return string(s)
+	}
+	return ""
 }
 
 // viewRGViewChangeQuorumCerts
@@ -1270,7 +1311,7 @@ func (brg *viewRGViewChangeQuorumCerts) AddRGViewChangeQuorumCerts(rg *protocols
 	}
 }
 
-func (vrg *validatorRGViewChangeQuorumCerts) FindRGViewChangeQuorumCerts(validatorIndex uint32) *protocols.RGViewChangeQuorumCert {
+func (vrg *validatorRGViewChangeQuorumCerts) findRGViewChangeQuorumCerts(validatorIndex uint32) *protocols.RGViewChangeQuorumCert {
 	if ps, ok := vrg.ValidatorRGViewChangeQuorumCerts[validatorIndex]; ok {
 		return ps
 	}
@@ -1279,7 +1320,7 @@ func (vrg *validatorRGViewChangeQuorumCerts) FindRGViewChangeQuorumCerts(validat
 
 func (brg *viewRGViewChangeQuorumCerts) FindRGViewChangeQuorumCerts(groupID uint32, validatorIndex uint32) *protocols.RGViewChangeQuorumCert {
 	if ps, ok := brg.GroupRGViewChangeQuorumCerts[groupID]; ok {
-		return ps.FindRGViewChangeQuorumCerts(validatorIndex)
+		return ps.findRGViewChangeQuorumCerts(validatorIndex)
 	}
 	return nil
 }
@@ -1304,6 +1345,13 @@ func (brg *viewRGViewChangeQuorumCerts) RGViewChangeQuorumCertsIndexes(groupID u
 
 func (brg *viewRGViewChangeQuorumCerts) clear() {
 	brg.GroupRGViewChangeQuorumCerts = make(map[uint32]*validatorRGViewChangeQuorumCerts)
+}
+
+func (brg *viewRGViewChangeQuorumCerts) String() string {
+	if s, err := json.Marshal(brg); err == nil {
+		return string(s)
+	}
+	return ""
 }
 
 // selectedRGViewChangeQuorumCerts
@@ -1337,13 +1385,16 @@ func (grg *ViewChangeQuorumCerts) addRGViewChangeQuorumCert(hash common.Hash, rg
 					return
 				}
 				if rgqc.ValidatorSet.Contains(ps[i].ValidatorSet) {
-					grg.QuorumCerts[hash] = append(grg.QuorumCerts[hash][:i], grg.QuorumCerts[hash][i+1:]...)
+					ps = append(ps[:i], ps[i+1:]...)
+					//grg.QuorumCerts[hash] = append(grg.QuorumCerts[hash][:i], grg.QuorumCerts[hash][i+1:]...)
 					//return
 				}
 			}
 		}
 		if len(ps) < maxSelectedRGLimit {
-			grg.QuorumCerts[hash] = append(grg.QuorumCerts[hash], rgqc)
+			ps = append(ps, rgqc)
+			grg.QuorumCerts[hash] = ps
+			//grg.QuorumCerts[hash] = append(grg.QuorumCerts[hash], rgqc)
 		}
 	} else {
 		qcs := make([]*ctypes.ViewChangeQuorumCert, 0, maxSelectedRGLimit)
@@ -1366,77 +1417,119 @@ func (srg *selectedRGViewChangeQuorumCerts) AddRGViewChangeQuorumCerts(groupID u
 		grg.addRGViewChangeQuorumCerts(rgqcs)
 		srg.GroupRGViewChangeQuorumCerts[groupID] = grg
 	}
-	for hash, qc := range prepareQCs {
-		if srg.PrepareQCs[hash] == nil {
-			srg.PrepareQCs[hash] = qc
+	if len(prepareQCs) > 0 {
+		for hash, qc := range prepareQCs {
+			if srg.PrepareQCs[hash] == nil {
+				srg.PrepareQCs[hash] = qc
+			}
 		}
 	}
 }
 
-func (srg *selectedRGViewChangeQuorumCerts) MergeViewChange(groupID uint32, vc *protocols.ViewChange) {
-	rgqcs := srg.GroupRGViewChangeQuorumCerts[groupID]
-	if rgqcs == nil || len(rgqcs.QuorumCerts) <= 0 {
+func (srg *selectedRGViewChangeQuorumCerts) findRGQuorumCerts(groupID uint32) map[common.Hash][]*ctypes.ViewChangeQuorumCert {
+	if ps, ok := srg.GroupRGViewChangeQuorumCerts[groupID]; ok {
+		if ps != nil && len(ps.QuorumCerts) > 0 {
+			return ps.QuorumCerts
+		}
+	}
+	return nil
+}
+
+func (srg *selectedRGViewChangeQuorumCerts) MergeViewChange(groupID uint32, vc *protocols.ViewChange, validatorLen uint32) {
+	rgqcs := srg.findRGQuorumCerts(groupID)
+	if len(rgqcs) <= 0 {
 		// If there is no aggregate signature under the group at this time, then the single ViewChange is not merged
 		return
 	}
 
-	if qcs, ok := rgqcs.QuorumCerts[vc.BHash()]; ok {
+	if qcs, ok := rgqcs[vc.BHash()]; ok {
 		for _, qc := range qcs {
 			if !qc.ValidatorSet.GetIndex(vc.NodeIndex()) {
 				qc.AddSign(vc.Signature, vc.NodeIndex())
 			}
 		}
+		// merge again
+		deleteIndexes := make(map[int]struct{})
+		for i := 0; i < len(qcs); i++ {
+			if _, ok := deleteIndexes[i]; ok {
+				continue
+			}
+			for j := 0; j < len(qcs); j++ {
+				if _, ok := deleteIndexes[j]; ok || j == i {
+					continue
+				}
+				if qcs[i].ValidatorSet.Contains(qcs[j].ValidatorSet) {
+					deleteIndexes[j] = struct{}{}
+				} else if qcs[j].ValidatorSet.Contains(qcs[i].ValidatorSet) {
+					deleteIndexes[i] = struct{}{}
+					break
+				}
+			}
+		}
+		if len(deleteIndexes) > 0 {
+			merged := make([]*ctypes.ViewChangeQuorumCert, 0)
+			for i := 0; i < len(qcs); i++ {
+				if _, ok := deleteIndexes[i]; !ok {
+					merged = append(merged, qcs[i])
+				}
+			}
+			srg.GroupRGViewChangeQuorumCerts[groupID].QuorumCerts[vc.BHash()] = merged
+		}
 	} else {
 		qcs := make([]*ctypes.ViewChangeQuorumCert, 0, maxSelectedRGLimit)
 		qc := &ctypes.ViewChangeQuorumCert{
-			Epoch:       vc.Epoch,
-			ViewNumber:  vc.ViewNumber,
-			BlockHash:   vc.BlockHash,
-			BlockNumber: vc.BlockNumber,
-			//BlockEpoch:      vc.PrepareQC.Epoch,
-			//BlockViewNumber: vc.PrepareQC.ViewNumber,
-			ValidatorSet: utils.NewBitArray(vc.PrepareQC.ValidatorSet.Size()),
+			Epoch:        vc.Epoch,
+			ViewNumber:   vc.ViewNumber,
+			BlockHash:    vc.BlockHash,
+			BlockNumber:  vc.BlockNumber,
+			ValidatorSet: utils.NewBitArray(validatorLen),
 		}
 		if vc.PrepareQC != nil {
 			qc.BlockEpoch = vc.PrepareQC.Epoch
 			qc.BlockViewNumber = vc.PrepareQC.ViewNumber
+			srg.PrepareQCs[vc.BHash()] = vc.PrepareQC
 		}
 		qc.Signature.SetBytes(vc.Signature.Bytes())
 		qc.ValidatorSet.SetIndex(vc.ValidatorIndex, true)
 		qcs = append(qcs, qc)
 
 		srg.GroupRGViewChangeQuorumCerts[groupID].QuorumCerts[vc.BHash()] = qcs
-		srg.PrepareQCs[vc.BHash()] = vc.PrepareQC
 	}
 }
 
 func (srg *selectedRGViewChangeQuorumCerts) RGViewChangeQuorumCertsLen(groupID uint32) int {
-	if ps, ok := srg.GroupRGViewChangeQuorumCerts[groupID]; ok {
-		if ps != nil {
-			return len(ps.QuorumCerts)
-		}
-	}
-	return 0
+	rgqcs := srg.findRGQuorumCerts(groupID)
+	return len(rgqcs)
 }
 
 // Returns the QuorumCert with the most signatures in specified group
 func (srg *selectedRGViewChangeQuorumCerts) FindMaxGroupRGViewChangeQuorumCert(groupID uint32) (*ctypes.ViewChangeQC, *ctypes.PrepareQCs) {
-	rgqcs := srg.GroupRGViewChangeQuorumCerts[groupID]
-	if rgqcs == nil || len(rgqcs.QuorumCerts) <= 0 {
+	findMaxQuorumCert := func(qcs []*ctypes.ViewChangeQuorumCert) *ctypes.ViewChangeQuorumCert {
+		if len(qcs) > 0 {
+			m := qcs[0]
+			for i := 1; i < len(qcs); i++ {
+				if qcs[i].HigherSign(m) {
+					m = qcs[i]
+				}
+			}
+			return m
+		}
+		return nil
+	}
+
+	rgqcs := srg.findRGQuorumCerts(groupID)
+	if len(rgqcs) <= 0 {
 		return nil, nil
 	}
 
 	viewChangeQC := &ctypes.ViewChangeQC{QCs: make([]*ctypes.ViewChangeQuorumCert, 0)}
 	prepareQCs := &ctypes.PrepareQCs{QCs: make([]*ctypes.QuorumCert, 0)}
-	for hash, qcs := range rgqcs.QuorumCerts {
-		max := qcs[0]
-		for i := 1; i < len(qcs); i++ {
-			if qcs[i].HigherSign(max) {
-				max = qcs[i]
-			}
-		}
+	for hash, qcs := range rgqcs {
+		max := findMaxQuorumCert(qcs)
 		viewChangeQC.QCs = append(viewChangeQC.QCs, max)
-		prepareQCs.QCs = append(prepareQCs.QCs, srg.PrepareQCs[hash])
+		if srg.PrepareQCs != nil && srg.PrepareQCs[hash] != nil {
+			prepareQCs.QCs = append(prepareQCs.QCs, srg.PrepareQCs[hash])
+		}
 	}
 	return viewChangeQC, prepareQCs
 }
@@ -1455,4 +1548,11 @@ func (srg *selectedRGViewChangeQuorumCerts) FindMaxRGViewChangeQuorumCert() []*c
 func (srg *selectedRGViewChangeQuorumCerts) clear() {
 	srg.GroupRGViewChangeQuorumCerts = make(map[uint32]*ViewChangeQuorumCerts)
 	srg.PrepareQCs = make(map[common.Hash]*ctypes.QuorumCert)
+}
+
+func (srg *selectedRGViewChangeQuorumCerts) String() string {
+	if s, err := json.Marshal(srg); err == nil {
+		return string(s)
+	}
+	return ""
 }

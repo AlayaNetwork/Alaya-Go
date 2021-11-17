@@ -1516,11 +1516,11 @@ func (cbft *Cbft) checkPrepareQC(msg ctypes.ConsensusMsg) error {
 		viewChangeQC := cm.ViewChangeQC
 		prepareQCs := cm.PrepareQCs
 		for _, qc := range viewChangeQC.QCs {
-			if qc.BlockNumber == 0 && prepareQCs != nil && prepareQCs.FindPrepareQC(qc.BlockHash) != nil {
-				return authFailedError{err: fmt.Errorf("RGViewChangeQuorumCert need not take PrepareQC, RGViewChangeQuorumCert:%s", cm.String())}
+			if qc.BlockNumber == 0 && prepareQCs.FindPrepareQC(qc.BlockHash) != nil {
+				return authFailedError{err: fmt.Errorf("RGViewChangeQuorumCert need not take PrepareQC, blockNumber:%d, blockHash:%s, RGViewChangeQuorumCert:%s", qc.BlockNumber, qc.BlockHash.TerminalString(), cm.String())}
 			}
-			if qc.BlockNumber != 0 && (prepareQCs == nil || prepareQCs.FindPrepareQC(qc.BlockHash) == nil) {
-				return authFailedError{err: fmt.Errorf("RGViewChangeQuorumCert need take PrepareQC, RGViewChangeQuorumCert:%s", cm.String())}
+			if qc.BlockNumber != 0 && prepareQCs.FindPrepareQC(qc.BlockHash) == nil {
+				return authFailedError{err: fmt.Errorf("RGViewChangeQuorumCert need take PrepareQC, blockNumber:%d, blockHash:%s, RGViewChangeQuorumCert:%s", qc.BlockNumber, qc.BlockHash.TerminalString(), cm.String())}
 			}
 		}
 	default:
@@ -1934,6 +1934,9 @@ func (cbft *Cbft) verifyQuorumCert(qc *ctypes.QuorumCert) error {
 }
 
 func (cbft *Cbft) validateViewChangeQC(viewChangeQC *ctypes.ViewChangeQC, validatorLimit int) error {
+
+	// TODO
+	// 校验 ValidatorSet 是否重复
 
 	//vcEpoch, _, _, _, _, _ := viewChangeQC.MaxBlock()
 
