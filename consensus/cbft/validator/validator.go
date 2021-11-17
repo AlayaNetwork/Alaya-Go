@@ -313,9 +313,9 @@ type ValidatorPool struct {
 	// needGroup indicates if validators need grouped
 	needGroup bool
 	// max validators in per group
-	groupValidatorsLimit uint8
+	groupValidatorsLimit uint32
 	// coordinator limit
-	coordinatorLimit uint8
+	coordinatorLimit uint32
 
 	prevValidators    *cbfttypes.Validators // Previous round validators
 	currentValidators *cbfttypes.Validators // Current round validators
@@ -323,8 +323,7 @@ type ValidatorPool struct {
 }
 
 // NewValidatorPool new a validator pool.
-func NewValidatorPool(agency consensus.Agency, blockNumber, epoch uint64, nodeID enode.ID, needGroup bool,
-	groupValidatorsLimit, coordinatorLimit uint8, eventMux *event.TypeMux) *ValidatorPool {
+func NewValidatorPool(agency consensus.Agency, blockNumber, epoch uint64, nodeID enode.ID, needGroup bool, groupValidatorsLimit, coordinatorLimit uint32, eventMux *event.TypeMux) *ValidatorPool {
 	pool := &ValidatorPool{
 		agency: agency,
 		nodeID: nodeID,
@@ -439,56 +438,11 @@ func (vp *ValidatorPool) Update(blockNumber uint64, epoch uint64, eventMux *even
 	vp.lastNumber = vp.agency.GetLastNumber(NextRound(blockNumber))
 	vp.epoch = epoch
 	log.Info("Update validator", "validators", nds.String(), "switchpoint", vp.switchPoint, "epoch", vp.epoch, "lastNumber", vp.lastNumber)
-
-	isValidatorBefore := vp.isValidator(epoch-1, vp.nodeID)
-
-	isValidatorAfter := vp.isValidator(epoch, vp.nodeID)
-
-	if isValidatorBefore {
-		// If we are still a consensus node, that adding
-		// new validators as consensus peer, and removing
-		// validators. Added as consensus peersis because
-		// we need to keep connect with other validators
-		// in the consensus stages. Also we are not needed
-		// to keep connect with old validators.
-		if isValidatorAfter {
-			for nodeID, vnode := range vp.currentValidators.Nodes {
-				if node, _ := vp.prevValidators.FindNodeByID(nodeID); node == nil {
-					eventMux.Post(cbfttypes.AddValidatorEvent{Node: enode.NewV4(vnode.PubKey, nil, 0, 0)})
-					log.Trace("Post AddValidatorEvent", "nodeID", nodeID.String())
-				}
-			}
-
-			for nodeID, vnode := range vp.prevValidators.Nodes {
-				if node, _ := vp.currentValidators.FindNodeByID(nodeID); node == nil {
-					eventMux.Post(cbfttypes.RemoveValidatorEvent{Node: enode.NewV4(vnode.PubKey, nil, 0, 0)})
-					log.Trace("Post RemoveValidatorEvent", "nodeID", nodeID.String())
-				}
-			}
-		} else {
-			for nodeID, vnode := range vp.prevValidators.Nodes {
-				eventMux.Post(cbfttypes.RemoveValidatorEvent{Node: enode.NewV4(vnode.PubKey, nil, 0, 0)})
-				log.Trace("Post RemoveValidatorEvent", "nodeID", nodeID.String())
-			}
-		}
-	} else {
-		// We are become a consensus node, that adding all
-		// validators as consensus peer except us. Added as
-		// consensus peers is because we need to keep connecting
-		// with other validators in the consensus stages.
-		if isValidatorAfter {
-			for nodeID, vnode := range vp.currentValidators.Nodes {
-				eventMux.Post(cbfttypes.AddValidatorEvent{Node: enode.NewV4(vnode.PubKey, nil, 0, 0)})
-				log.Trace("Post AddValidatorEvent", "nodeID", nodeID.String())
-			}
-		}
-	}
-
 	return nil
 }
 
 // SetupGroup update validatorpool group info
-func (vp *ValidatorPool) SetupGroup(needGroup bool, groupValidatorsLimit, coordinatorLimit uint8) {
+func (vp *ValidatorPool) SetupGroup(needGroup bool, groupValidatorsLimit, coordinatorLimit uint32) {
 	vp.lock.Lock()
 	defer vp.lock.Unlock()
 
@@ -587,6 +541,9 @@ func (vp *ValidatorPool) validatorList(epoch uint64) []enode.ID {
 }
 
 func (vp *ValidatorPool) Validators(epoch uint64) *cbfttypes.Validators {
+	vp.lock.RLock()
+	defer vp.lock.RUnlock()
+
 	if vp.epochToBlockNumber(epoch) <= vp.switchPoint {
 		return vp.prevValidators
 	}
@@ -605,9 +562,6 @@ func (vp *ValidatorPool) VerifyHeader(header *types.Header) error {
 
 // IsValidator check if the node is validator.
 func (vp *ValidatorPool) IsValidator(epoch uint64, nodeID enode.ID) bool {
-	vp.lock.RLock()
-	defer vp.lock.RUnlock()
-
 	return vp.isValidator(epoch, nodeID)
 }
 
@@ -723,6 +677,9 @@ func (vp *ValidatorPool) Commit(block *types.Block) error {
 
 // GetGroupNodes return GroupValidators according epoch
 func (vp *ValidatorPool) GetGroupNodes(epoch uint64) []*cbfttypes.GroupValidators {
+	vp.lock.RLock()
+	defer vp.lock.RUnlock()
+
 	if epoch > vp.epoch {
 		panic(fmt.Sprintf("get unknown epoch, current:%d, request:%d", vp.epoch, epoch))
 	}
@@ -734,11 +691,17 @@ func (vp *ValidatorPool) GetGroupNodes(epoch uint64) []*cbfttypes.GroupValidator
 
 // NeedGroup return if currentValidators need grouped
 func (vp *ValidatorPool) NeedGroup() bool {
+	vp.lock.RLock()
+	defer vp.lock.RUnlock()
+
 	return vp.needGroup
 }
 
 // GetGroupID return GroupID according epoch & NodeID
 func (vp *ValidatorPool) GetGroupID(epoch uint64, nodeID enode.ID) (uint32, error) {
+	vp.lock.RLock()
+	defer vp.lock.RUnlock()
+
 	if epoch > vp.epoch {
 		panic(fmt.Sprintf("get unknown epoch, current:%d, request:%d", vp.epoch, epoch))
 	}
@@ -748,13 +711,11 @@ func (vp *ValidatorPool) GetGroupID(epoch uint64, nodeID enode.ID) (uint32, erro
 	return vp.currentValidators.GroupID(nodeID), nil
 }
 
-// GroupID return current node's GroupID according epoch
-func (vp *ValidatorPool) GroupID(epoch uint64) (uint32, error) {
-	return vp.GetGroupID(epoch, vp.nodeID)
-}
-
 // GetUnitID return index according epoch & NodeID
 func (vp *ValidatorPool) GetUnitID(epoch uint64, nodeID enode.ID) (uint32, error) {
+	vp.lock.RLock()
+	defer vp.lock.RUnlock()
+
 	if epoch > vp.epoch {
 		panic(fmt.Sprintf("get unknown epoch, current:%d, request:%d", vp.epoch, epoch))
 	}
@@ -776,31 +737,67 @@ func NextRound(blockNumber uint64) uint64 {
 // Len return number of validators by groupID.
 // 返回指定epoch和分组下的节点总数
 func (vp *ValidatorPool) LenByGroupID(epoch uint64, groupID uint32) int {
-	// TODO
-	return 0
+	vp.lock.RLock()
+	defer vp.lock.RUnlock()
+
+	if epoch+1 == vp.epoch {
+		return vp.prevValidators.MembersCount(groupID)
+	}
+	return vp.currentValidators.MembersCount(groupID)
 }
 
-// 查询指定epoch和分组下对应nodeIndex的节点信息，没有对应信息返回nil
-func (vp *ValidatorPool) GetValidatorByGroupIdAndIndex(epoch uint64, groupID, nodeIndex uint32) (*cbfttypes.ValidateNode, error) {
-	// TODO
-	return nil, nil
+// 查询指定epoch下对应nodeIndex的节点信息，没有对应信息返回nil
+func (vp *ValidatorPool) GetValidatorByGroupIdAndIndex(epoch uint64, nodeIndex uint32) (*cbfttypes.ValidateNode,error) {
+	vp.lock.RLock()
+	defer vp.lock.RUnlock()
+
+	if epoch+1 == vp.epoch {
+		return vp.prevValidators.FindNodeByIndex(int(nodeIndex))
+	}
+	return vp.currentValidators.FindNodeByIndex(int(nodeIndex))
 }
 
 // 返回指定epoch和分组下所有共识节点的index集合，e.g. [25,26,27,28,29,30...49]
 func (vp *ValidatorPool) GetValidatorIndexesByGroupID(epoch uint64, groupID uint32) ([]uint32, error) {
-	// TODO
-	return nil, nil
+	vp.lock.RLock()
+	defer vp.lock.RUnlock()
+
+	if epoch+1 == vp.epoch {
+		return vp.prevValidators.GetValidatorIndexes(groupID)
+	}
+	return vp.currentValidators.GetValidatorIndexes(groupID)
 }
 
-// 返回指定epoch和分组下所有共识节点的编组信息，e.g. [[25,26],[27,28],[29,30]...[49]]
+// 返回指定epoch和分组下所有共识节点的协调节点编组信息，e.g. [[25,26],[27,28],[29,30]...[49]]
 // 严格按编组顺序返回
 func (vp *ValidatorPool) GetCoordinatorIndexesByGroupID(epoch uint64, groupID uint32) ([][]uint32, error) {
-	// TODO
-	return nil, nil
+	vp.lock.RLock()
+	defer vp.lock.RUnlock()
+
+	var validators *cbfttypes.Validators
+	if epoch+1 == vp.epoch {
+		validators = vp.prevValidators
+	} else {
+		validators = vp.currentValidators
+	}
+	if groupID >= uint32(len(validators.GroupNodes)) {
+		return nil, fmt.Errorf("GetCoordinatorIndexesByGroupID: wrong groupid[%d]!",groupID)
+	}
+	return validators.GroupNodes[groupID].Units, nil
 }
 
 // 返回指定epoch下，nodeID所在的groupID和unitID（两者都是0开始计数），没有对应信息需返回error
 func (vp *ValidatorPool) GetGroupByValidatorID(epoch uint64, nodeID enode.ID) (uint32, uint32, error) {
-	// TODO
-	return 0, 0, nil
+	vp.lock.RLock()
+	defer vp.lock.RUnlock()
+
+	var validators *cbfttypes.Validators
+	if epoch+1 == vp.epoch {
+		validators = vp.prevValidators
+	} else {
+		validators = vp.currentValidators
+	}
+	groupID := validators.GroupID(nodeID)
+	unitID := validators.UnitID(nodeID)
+	return groupID, unitID, nil
 }
