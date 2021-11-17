@@ -100,7 +100,7 @@ func (d *StaticAgency) GetLastNumber(blockNumber uint64) uint64 {
 	return 0
 }
 
-func (d *StaticAgency) GetValidator(uint64) (*cbfttypes.Validators, error) {
+func (d *StaticAgency) GetValidators(uint64) (*cbfttypes.Validators, error) {
 	return d.validators, nil
 }
 
@@ -148,7 +148,7 @@ func (d *MockAgency) GetLastNumber(blockNumber uint64) uint64 {
 	return 0
 }
 
-func (d *MockAgency) GetValidator(blockNumber uint64) (*cbfttypes.Validators, error) {
+func (d *MockAgency) GetValidators(blockNumber uint64) (*cbfttypes.Validators, error) {
 	if blockNumber > d.interval && blockNumber%d.interval == 1 {
 		d.validators.ValidBlockNumber = d.validators.ValidBlockNumber + d.interval + 1
 	}
@@ -204,7 +204,7 @@ func (ia *InnerAgency) GetLastNumber(blockNumber uint64) uint64 {
 	if blockNumber <= ia.defaultBlocksPerRound {
 		lastBlockNumber = ia.defaultBlocksPerRound
 	} else {
-		vds, err := ia.GetValidator(blockNumber)
+		vds, err := ia.GetValidators(blockNumber)
 		if err != nil {
 			log.Error("Get validator fail", "blockNumber", blockNumber)
 			return 0
@@ -233,7 +233,7 @@ func (ia *InnerAgency) GetLastNumber(blockNumber uint64) uint64 {
 	return lastBlockNumber
 }
 
-func (ia *InnerAgency) GetValidator(blockNumber uint64) (v *cbfttypes.Validators, err error) {
+func (ia *InnerAgency) GetValidators(blockNumber uint64) (v *cbfttypes.Validators, err error) {
 	defaultValidators := *ia.defaultValidators
 	baseNumber := blockNumber
 	if blockNumber == 0 {
@@ -295,42 +295,54 @@ func (ia *InnerAgency) OnCommit(block *types.Block) error {
 // ValidatorPool a pool storing validators.
 type ValidatorPool struct {
 	agency consensus.Agency
-
 	lock sync.RWMutex
 
 	// Current node's public key
 	nodeID enode.ID
-	// The group ID of the current node
-	groupID uint32
-	// Uint ID of the group where the current node is located
-	unitID uint32
+
 	// A block number which validators switch to current.
 	switchPoint uint64
 	lastNumber  uint64
 
+	// current epoch
 	epoch uint64
 
-	prevValidators    *cbfttypes.Validators // Previous validators
-	currentValidators *cbfttypes.Validators // Current validators
+	// Uint ID of the group where the current node is located
+	unitID uint32
+
+	// needGroup indicates if validators need grouped
+	needGroup bool
+	// max validators in per group
+	groupValidatorsLimit uint8
+	// coordinator limit
+	coordinatorLimit uint8
+
+	prevValidators    *cbfttypes.Validators // Previous round validators
+	currentValidators *cbfttypes.Validators // Current round validators
+	nextValidators *cbfttypes.Validators // Next round validators
 }
 
 // NewValidatorPool new a validator pool.
-func NewValidatorPool(agency consensus.Agency, blockNumber uint64, epoch uint64, nodeID enode.ID) *ValidatorPool {
+func NewValidatorPool(agency consensus.Agency, blockNumber, epoch uint64, nodeID enode.ID, needGroup bool,
+	groupValidatorsLimit, coordinatorLimit uint8, eventMux *event.TypeMux) *ValidatorPool {
 	pool := &ValidatorPool{
 		agency: agency,
 		nodeID: nodeID,
 		epoch:  epoch,
+		needGroup: needGroup,
+		groupValidatorsLimit: groupValidatorsLimit,
+		coordinatorLimit: coordinatorLimit,
 	}
-	// FIXME: Check `GetValidator` return error
+	// FIXME: Check `GetValidators` return error
 	if agency.GetLastNumber(blockNumber) == blockNumber {
-		pool.prevValidators, _ = agency.GetValidator(blockNumber)
-		pool.currentValidators, _ = agency.GetValidator(NextRound(blockNumber))
+		pool.prevValidators, _ = agency.GetValidators(blockNumber)
+		pool.currentValidators, _ = agency.GetValidators(NextRound(blockNumber))
 		pool.lastNumber = agency.GetLastNumber(NextRound(blockNumber))
 		if blockNumber != 0 {
 			pool.epoch += 1
 		}
 	} else {
-		pool.currentValidators, _ = agency.GetValidator(blockNumber)
+		pool.currentValidators, _ = agency.GetValidators(blockNumber)
 		pool.prevValidators = pool.currentValidators
 		pool.lastNumber = agency.GetLastNumber(blockNumber)
 	}
@@ -341,28 +353,33 @@ func NewValidatorPool(agency consensus.Agency, blockNumber uint64, epoch uint64,
 	if pool.currentValidators.ValidBlockNumber > 0 {
 		pool.switchPoint = pool.currentValidators.ValidBlockNumber - 1
 	}
-
-	pool.groupID = pool.currentValidators.GroupID(nodeID)
-	pool.unitID = pool.currentValidators.UnitID(nodeID)
+	if(needGroup) {
+		pool.prevValidators.Grouped(groupValidatorsLimit, coordinatorLimit, eventMux, epoch)
+		pool.unitID = pool.currentValidators.UnitID(nodeID)
+	}
 	log.Debug("Update validator", "validators", pool.currentValidators.String(), "switchpoint", pool.switchPoint, "epoch", pool.epoch, "lastNumber", pool.lastNumber)
 	return pool
 }
 
 // Reset reset validator pool.
-func (vp *ValidatorPool) Reset(blockNumber uint64, epoch uint64) {
+func (vp *ValidatorPool) Reset(blockNumber uint64, epoch uint64, eventMux *event.TypeMux) {
 	if vp.agency.GetLastNumber(blockNumber) == blockNumber {
-		vp.prevValidators, _ = vp.agency.GetValidator(blockNumber)
-		vp.currentValidators, _ = vp.agency.GetValidator(NextRound(blockNumber))
+		vp.prevValidators, _ = vp.agency.GetValidators(blockNumber)
+		vp.currentValidators, _ = vp.agency.GetValidators(NextRound(blockNumber))
 		vp.lastNumber = vp.agency.GetLastNumber(NextRound(blockNumber))
 		vp.epoch = epoch + 1
 	} else {
-		vp.currentValidators, _ = vp.agency.GetValidator(blockNumber)
+		vp.currentValidators, _ = vp.agency.GetValidators(blockNumber)
 		vp.prevValidators = vp.currentValidators
 		vp.lastNumber = vp.agency.GetLastNumber(blockNumber)
 		vp.epoch = epoch
 	}
 	if vp.currentValidators.ValidBlockNumber > 0 {
 		vp.switchPoint = vp.currentValidators.ValidBlockNumber - 1
+	}
+	if vp.needGroup {
+		vp.currentValidators.Grouped(vp.groupValidatorsLimit, vp.coordinatorLimit, eventMux, epoch)
+		vp.unitID = vp.currentValidators.UnitID(vp.nodeID)
 	}
 	log.Debug("Update validator", "validators", vp.currentValidators.String(), "switchpoint", vp.switchPoint, "epoch", vp.epoch, "lastNumber", vp.lastNumber)
 }
@@ -407,10 +424,14 @@ func (vp *ValidatorPool) Update(blockNumber uint64, epoch uint64, eventMux *even
 		return errors.New("already updated before")
 	}
 
-	nds, err := vp.agency.GetValidator(NextRound(blockNumber))
+	nds, err := vp.agency.GetValidators(NextRound(blockNumber))
 	if err != nil {
 		log.Error("Get validator error", "blockNumber", blockNumber, "err", err)
 		return err
+	}
+	if vp.needGroup {
+		nds.Grouped(vp.groupValidatorsLimit, vp.coordinatorLimit, eventMux, epoch)
+		vp.unitID = nds.UnitID(vp.nodeID)
 	}
 	vp.prevValidators = vp.currentValidators
 	vp.currentValidators = nds
@@ -464,6 +485,16 @@ func (vp *ValidatorPool) Update(blockNumber uint64, epoch uint64, eventMux *even
 	}
 
 	return nil
+}
+
+// SetupGroup update validatorpool group info
+func (vp *ValidatorPool) SetupGroup(needGroup bool, groupValidatorsLimit, coordinatorLimit uint8) {
+	vp.lock.Lock()
+	defer vp.lock.Unlock()
+
+	vp.needGroup = needGroup
+	vp.groupValidatorsLimit = groupValidatorsLimit
+	vp.coordinatorLimit = coordinatorLimit
 }
 
 // GetValidatorByNodeID get the validator by node id.
@@ -701,6 +732,11 @@ func (vp *ValidatorPool) GetGroupNodes(epoch uint64) []*cbfttypes.GroupValidator
 	return vp.currentValidators.GroupNodes
 }
 
+// NeedGroup return if currentValidators need grouped
+func (vp *ValidatorPool) NeedGroup() bool {
+	return vp.needGroup
+}
+
 // GetGroupID return GroupID according epoch & NodeID
 func (vp *ValidatorPool) GetGroupID(epoch uint64, nodeID enode.ID) (uint32, error) {
 	if epoch > vp.epoch {
@@ -709,7 +745,7 @@ func (vp *ValidatorPool) GetGroupID(epoch uint64, nodeID enode.ID) (uint32, erro
 	if epoch+1 == vp.epoch {
 		return vp.prevValidators.GroupID(nodeID), nil
 	}
-	return vp.groupID, nil
+	return vp.currentValidators.GroupID(nodeID), nil
 }
 
 // GroupID return current node's GroupID according epoch

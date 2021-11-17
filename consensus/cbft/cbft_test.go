@@ -80,7 +80,7 @@ func TestBls(t *testing.T) {
 	agency := validator.NewStaticAgency(nodes)
 
 	cbft := &Cbft{
-		validatorPool: validator.NewValidatorPool(agency, 0, 0, nodes[0].Node.ID()),
+		validatorPool: validator.NewValidatorPool(agency, 0, 0, nodes[0].Node.ID(),false, 0, 0),
 		config: ctypes.Config{
 			Option: &ctypes.OptionsConfig{
 				BlsPriKey: owner,
@@ -105,7 +105,7 @@ func TestPrepareBlockBls(t *testing.T) {
 	agency := validator.NewStaticAgency([]params.CbftNode{node})
 
 	cbft := &Cbft{
-		validatorPool: validator.NewValidatorPool(agency, 0, 0, node.Node.ID()),
+		validatorPool: validator.NewValidatorPool(agency, 0, 0, node.Node.ID(),false, 0, 0),
 		config: ctypes.Config{
 			Option: &ctypes.OptionsConfig{
 				BlsPriKey: owner,
@@ -174,7 +174,7 @@ func TestAgg(t *testing.T) {
 
 	for i := 0; i < num; i++ {
 		cnode[i] = &Cbft{
-			validatorPool: validator.NewValidatorPool(agency, 0, 0, nodes[0].Node.ID()),
+			validatorPool: validator.NewValidatorPool(agency, 0, 0, nodes[0].Node.ID(),false, 0, 0),
 			config: ctypes.Config{
 				Option: &ctypes.OptionsConfig{
 					BlsPriKey: sk[i],
@@ -518,7 +518,7 @@ func testValidatorSwitch(t *testing.T) {
 					_, qqc := nodes[i].engine.blockTree.FindBlockAndQC(qcBlock.Hash(), qcBlock.NumberU64())
 					assert.NotNil(t, qqc)
 					p := nodes[ii].engine.state.HighestQCBlock()
-					assert.Nil(t, nodes[ii].engine.blockCacheWriter.Execute(qcBlock, p), fmt.Sprintf("execute block error, parent: %d block: %d", p.NumberU64(), qcBlock.NumberU64()))
+					assert.Nil(t, nodes[ii].engine.blockCache.Execute(qcBlock, p), fmt.Sprintf("execute block error, parent: %d block: %d", p.NumberU64(), qcBlock.NumberU64()))
 					assert.Nil(t, nodes[ii].engine.OnInsertQCBlock([]*types.Block{qcBlock}, []*ctypes.QuorumCert{qqc}))
 				}
 
@@ -527,7 +527,7 @@ func testValidatorSwitch(t *testing.T) {
 					_, qqc := nodes[i].engine.blockTree.FindBlockAndQC(qcBlock.Hash(), qcBlock.NumberU64())
 					assert.NotNil(t, qqc)
 					p := switchNode.engine.state.HighestQCBlock()
-					assert.Nil(t, switchNode.engine.blockCacheWriter.Execute(qcBlock, p), fmt.Sprintf("execute block error, parent: %d block: %d", p.NumberU64(), qcBlock.NumberU64()))
+					assert.Nil(t, switchNode.engine.blockCache.Execute(qcBlock, p), fmt.Sprintf("execute block error, parent: %d block: %d", p.NumberU64(), qcBlock.NumberU64()))
 					assert.Nil(t, switchNode.engine.OnInsertQCBlock([]*types.Block{qcBlock}, []*ctypes.QuorumCert{qqc}))
 				}
 			}
@@ -577,7 +577,7 @@ func testValidatorSwitch(t *testing.T) {
 		_, qqc := nodes[0].engine.blockTree.FindBlockAndQC(qcBlock.Hash(), qcBlock.NumberU64())
 		assert.NotNil(t, qqc)
 		p := nodes[3].engine.state.HighestQCBlock()
-		assert.Nil(t, nodes[3].engine.blockCacheWriter.Execute(qcBlock, p), fmt.Sprintf("execute block error, parent: %d block: %d", p.NumberU64(), qcBlock.NumberU64()))
+		assert.Nil(t, nodes[3].engine.blockCache.Execute(qcBlock, p), fmt.Sprintf("execute block error, parent: %d block: %d", p.NumberU64(), qcBlock.NumberU64()))
 		assert.Nil(t, nodes[3].engine.OnInsertQCBlock([]*types.Block{qcBlock}, []*ctypes.QuorumCert{qqc}))
 	}
 

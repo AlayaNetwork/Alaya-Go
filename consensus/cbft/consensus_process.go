@@ -19,6 +19,7 @@ package cbft
 import (
 	"fmt"
 	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/network"
+	"github.com/AlayaNetwork/Alaya-Go/params"
 	"time"
 
 	"github.com/pkg/errors"
@@ -1091,6 +1092,12 @@ func (cbft *Cbft) tryChangeView() {
 			(qc != nil && qc.Epoch == cbft.state.Epoch() && shouldSwitch)
 	}()
 
+	// should grouped according max commit block's state
+	shouldGroup := func() bool {
+		activeVersion := cbft.blockCache.GetActiveVersion(cbft.state.HighestCommitBlock().Header().SealHash())
+		return cbft.validatorPool.NeedGroup() || activeVersion >= params.FORKVERSION_0_17_0
+	}
+
 	if shouldSwitch {
 		if err := cbft.validatorPool.Update(block.NumberU64(), cbft.state.Epoch()+1, cbft.eventMux); err == nil {
 			cbft.log.Info("Update validator success", "number", block.NumberU64())
@@ -1108,6 +1115,11 @@ func (cbft *Cbft) tryChangeView() {
 			cbft.changeView(cbft.state.Epoch(), increasing(), block, qc, nil)
 		}
 		return
+	}
+
+	// TODO: get groupvalidatorslimit and coordinatorlimit from gov
+	if shouldGroup() {
+		cbft.validatorPool.SetupGroup(true, 0, 0)
 	}
 
 	threshold := cbft.threshold(cbft.currentValidatorLen())
@@ -1325,7 +1337,7 @@ func (cbft *Cbft) clearInvalidBlocks(newBlock *types.Block) {
 			rollback = append(rollback, block)
 		}
 	}
-	cbft.blockCacheWriter.ClearCache(cbft.state.HighestCommitBlock())
+	cbft.blockCache.ClearCache(cbft.state.HighestCommitBlock())
 
 	//todo proposer is myself
 	cbft.txPool.ForkedReset(newHead, rollback)
