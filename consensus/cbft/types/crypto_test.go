@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
-
 package types
 
 import (
@@ -25,6 +24,7 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/utils"
 
 	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/crypto/bls"
 )
 
 func Test_QuorumCert(t *testing.T) {
