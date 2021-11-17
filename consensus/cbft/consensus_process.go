@@ -244,7 +244,7 @@ func (cbft *Cbft) enoughSigns(epoch uint64, groupID uint32, signs int) bool {
 
 // Determine whether the signer of the RGBlockQuorumCert message is a member of the group
 func (cbft *Cbft) isGroupMember(epoch uint64, groupID uint32, nodeIndex uint32) bool {
-	if v, err := cbft.validatorPool.GetValidatorByGroupIdAndIndex(epoch, groupID, nodeIndex); err != nil || v == nil {
+	if v, err := cbft.validatorPool.GetValidatorByGroupIdAndIndex(epoch, nodeIndex); err != nil || v == nil {
 		return false
 	}
 	return true

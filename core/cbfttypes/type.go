@@ -153,6 +153,25 @@ func (vs *Validators) NodeList() []enode.ID {
 	return nodeList
 }
 
+func (vs *Validators) MembersCount(groupID uint32) int {
+	if groupID >= uint32(len(vs.GroupNodes)) {
+		log.Error("MembersCount: wrong groupid","groupID",groupID)
+		return 0
+	}
+	return len(vs.GroupNodes[groupID].Nodes)
+}
+
+func (vs *Validators) GetValidatorIndexes(groupid uint32) ([]uint32, error) {
+	if groupid >= uint32(len(vs.GroupNodes)) {
+		return nil, fmt.Errorf("MembersCount: wrong groupid[%d]",groupid)
+	}
+	ids := make([]uint32, 0)
+	for _,node := range vs.GroupNodes[groupid].Nodes {
+		ids = append(ids, node.Index)
+	}
+	return ids,nil
+}
+
 func (vs *Validators) NodeListByIndexes(indexes []uint32) ([]*ValidateNode, error) {
 	if len(vs.SortedNodes) == 0 {
 		vs.Sort()
@@ -263,7 +282,7 @@ func (vs *Validators) GroupID(nodeID enode.ID) uint32 {
 	idx, err := vs.Index(nodeID)
 	if err != nil {
 		log.Error("get preValidator index failed!", "err", err)
-		return idx
+		return math.MaxUint32
 	}
 
 	groupID := uint32(0)
@@ -299,11 +318,11 @@ func (vs *Validators) UnitID(nodeID enode.ID) uint32 {
 	return unitID
 }
 
-func (gvs *GroupValidators) GroupedUnits(coordinatorLimit uint8) {
+func (gvs *GroupValidators) GroupedUnits(coordinatorLimit uint32) {
 	unit := make([]uint32, 0, coordinatorLimit)
 	for i, n := range gvs.Nodes {
 		unit = append(unit, n.Index)
-		if uint8(len(unit)) >= coordinatorLimit || i == len(gvs.Nodes)-1 {
+		if uint32(len(unit)) >= coordinatorLimit || i == len(gvs.Nodes)-1 {
 			gvs.Units = append(gvs.Units, unit)
 			unit = make([]uint32, 0, coordinatorLimit)
 		}
@@ -314,13 +333,13 @@ func (gvs *GroupValidators) GroupedUnits(coordinatorLimit uint8) {
 // groupValidatorsLimit is a factor to determine how many groups are grouped
 // eg: [validatorCount,groupValidatorsLimit]=
 // [50,25] = 25,25;[43,25] = 22,21; [101,25] = 21,20,20,20,20
-func (vs *Validators) Grouped(groupValidatorsLimit uint8, coordinatorLimit uint8, eventMux *event.TypeMux, epoch uint64) error {
+func (vs *Validators) Grouped(groupValidatorsLimit uint32, coordinatorLimit uint32, eventMux *event.TypeMux, epoch uint64) error {
 	// sort nodes by index
 	if len(vs.SortedNodes) == 0 {
 		vs.Sort()
 	}
 
-	validatorCount := uint8(vs.SortedNodes.Len())
+	validatorCount := uint32(vs.SortedNodes.Len())
 	groupNum := validatorCount / groupValidatorsLimit
 	mod := validatorCount % groupValidatorsLimit
 	if mod > 0 {
@@ -330,9 +349,9 @@ func (vs *Validators) Grouped(groupValidatorsLimit uint8, coordinatorLimit uint8
 	memberMinCount := validatorCount / groupNum
 	remainder := validatorCount % groupNum
 	vs.GroupNodes = make([]*GroupValidators, groupNum, groupNum)
-	begin := uint8(0)
-	end := uint8(0)
-	for i := uint8(0); i < groupNum; i++ {
+	begin := uint32(0)
+	end := uint32(0)
+	for i := uint32(0); i < groupNum; i++ {
 		begin = end
 		if remainder > 0 {
 			end = begin + memberMinCount + 1
