@@ -20,6 +20,7 @@ package network
 import (
 	"bytes"
 	"fmt"
+	"github.com/AlayaNetwork/Alaya-Go/p2p"
 	"math"
 	"reflect"
 	"sync"
@@ -37,11 +38,11 @@ import (
 // the number of nodes selected per broadcast.
 const DefaultFanOut = 5
 
-type unregisterFunc func(id string) error            // Unregister peer from peerSet.
-type getByIDFunc func(id string) (*peer, error)      // Get peer based on ID.
-type consensusNodesFunc func() ([]enode.ID, error)   // Get a list of consensus nodes.
-type peersFunc func() ([]*peer, error)               // Get a list of all neighbor nodes.
-type receiveCallback func(p *peer, msg *RGMsg) error // Callback function for receiving topic messages
+type unregisterFunc func(id string) error              // Unregister peer from peerSet.
+type getByIDFunc func(id string) (*peer, error)        // Get peer based on ID.
+type consensusNodesFunc func() ([]enode.ID, error)     // Get a list of consensus nodes.
+type peersFunc func() ([]*peer, error)                 // Get a list of all neighbor nodes.
+type receiveCallback func(p *peer, msg *p2p.Msg) error // Callback function for receiving topic messages
 
 // Router implements the message protocol of gossip.
 //
