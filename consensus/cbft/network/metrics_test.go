@@ -129,7 +129,7 @@ func Test_MeteredMsgReadWriter_ReadMsg(t *testing.T) {
 		{protocols.RGViewChangeQuorumCertMsg, 131, 131},
 	}
 	for _, v := range testRGCases {
-		MeteredReadRGMsg(&RGMsg{Code: v.code, Size: v.size})
+		MeteredReadRGMsg(&p2p.Msg{Code: v.code, Size: v.size})
 		switch {
 		case v.code == protocols.RGBlockQuorumCertMsg:
 			assert.Equal(t, int64(1), propRGBlockQuorumCertInPacketsMeter.Count())
@@ -222,7 +222,7 @@ func TestMeteredMsgReadWriter_WriteMsg(t *testing.T) {
 		{protocols.RGViewChangeQuorumCertMsg, newFakeRGViewChangeQuorumCert()},
 	}
 	for _, v := range testRGCases {
-		MeteredWriteRGMsg(&RGMsg{Code: v.code, Data: v.data})
+		MeteredWriteRGMsg(v.code, v.data)
 		size, _, err := rlp.EncodeToReader(v.data)
 		assert.Nil(t, err)
 		switch {

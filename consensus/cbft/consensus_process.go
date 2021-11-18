@@ -640,10 +640,9 @@ func (cbft *Cbft) publishTopicMsg(msg ctypes.ConsensusMsg) error {
 	if err != nil {
 		return fmt.Errorf("the group info of the current node is not queried, cannot publish the topic message")
 	}
-	RGMsg := &network.RGMsg{Code: protocols.MessageType(msg), Data: msg}
-	network.MeteredWriteRGMsg(RGMsg)
+	network.MeteredWriteRGMsg(protocols.MessageType(msg), msg)
 	topic := cbfttypes.ConsensusGroupTopicName(cbft.state.Epoch(), groupID)
-	return cbft.pubSub.Publish(topic, RGMsg)
+	return cbft.pubSub.Publish(topic, protocols.MessageType(msg), msg)
 }
 
 //func (cbft *Cbft) trySendRGBlockQuorumCert() {

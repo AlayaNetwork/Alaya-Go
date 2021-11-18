@@ -8,6 +8,15 @@ type RPC struct {
 	Control       *ControlMessage
 }
 
+func IsEmpty(rpc *RPC) bool {
+	if rpc != nil {
+		if rpc.Subscriptions != nil || rpc.Publish != nil || rpc.Control != nil {
+			return false
+		}
+	}
+	return true
+}
+
 func (m *RPC) Size() (n int) {
 	if m == nil {
 		return 0

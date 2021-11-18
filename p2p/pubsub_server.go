@@ -3,19 +3,19 @@ package p2p
 import (
 	"context"
 	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
-	pubsub2 "github.com/AlayaNetwork/Alaya-Go/p2p/pubsub"
+	"github.com/AlayaNetwork/Alaya-Go/p2p/pubsub"
 )
 
 type PubSubServer struct {
 	p2pServer *Server
-	pubSub    *pubsub2.PubSub
+	pubSub    *pubsub.PubSub
 	host      *Host
 }
 
 func NewPubSubServer(localNode *enode.Node, p2pServer *Server) *PubSubServer {
 	network := NewNetwork(p2pServer)
 	host := NewHost(localNode, network)
-	gossipSub, err := pubsub2.NewGossipSub(context.Background(), host)
+	gossipSub, err := pubsub.NewGossipSub(context.Background(), host)
 	if err != nil {
 		panic("Failed to NewGossipSub: " + err.Error())
 	}
@@ -23,6 +23,7 @@ func NewPubSubServer(localNode *enode.Node, p2pServer *Server) *PubSubServer {
 	return &PubSubServer{
 		p2pServer: p2pServer,
 		pubSub:    gossipSub,
+		host:      host,
 	}
 }
 
@@ -30,7 +31,7 @@ func (pss *PubSubServer) Host() *Host {
 	return pss.host
 }
 
-func (pss *PubSubServer) PubSub() *pubsub2.PubSub {
+func (pss *PubSubServer) PubSub() *pubsub.PubSub {
 	return pss.pubSub
 }
 
