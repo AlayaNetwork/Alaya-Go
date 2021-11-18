@@ -62,12 +62,15 @@ type TxPoolReset interface {
 	Reset(newBlock *types.Block)
 }
 
-// BlockCacheWriter executions block, you need to pass in the parent
+// BlockCache executions block, you need to pass in the parent
 // block to find the parent block state
-type BlockCacheWriter interface {
+type BlockCache interface {
 	Execute(block *types.Block, parent *types.Block) error
 	ClearCache(block *types.Block)
 	WriteBlock(block *types.Block) error
+
+	// CurrentActiveVersion return current gov version
+	GetActiveVersion(sealhash common.Hash) uint32
 }
 
 // Engine is an algorithm agnostic consensus engine.
@@ -161,7 +164,7 @@ type Agency interface {
 	Flush(header *types.Header) error
 	VerifyHeader(header *types.Header, stateDB *state.StateDB) error
 	GetLastNumber(blockNumber uint64) uint64
-	GetValidator(blockNumber uint64) (*cbfttypes.Validators, error)
+	GetValidators(blockNumber uint64) (*cbfttypes.Validators, error)
 	IsCandidateNode(nodeID enode.IDv0) bool
 	OnCommit(block *types.Block) error
 }
@@ -171,7 +174,7 @@ type Agency interface {
 type Bft interface {
 	Engine
 
-	Start(chain ChainReader, blockCacheWriter BlockCacheWriter, pool TxPoolReset, agency Agency) error
+	Start(chain ChainReader, blockCache BlockCache, pool TxPoolReset, agency Agency) error
 
 	// Returns the current consensus node address list.
 	ConsensusNodes() ([]enode.ID, error)

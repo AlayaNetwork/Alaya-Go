@@ -218,20 +218,20 @@ func (t *Topic) Publish(ctx context.Context, data []byte, opts ...PubOpt) error 
 	m := &message.Message{
 		Data:  data,
 		Topic: &t.topic,
-		From:  enode.ZeroID,
-		Seqno: nil,
+		From:  t.p.host.ID().ID(),
+		Seqno: t.p.nextSeqno(),
 	}
-	if t.p.signID != enode.ZeroID {
+	/*if t.p.signID != enode.ZeroID {
 		m.From = t.p.signID
 		m.Seqno = t.p.nextSeqno()
-	}
-	if t.p.signKey != nil {
-		/*m.From = t.p.signID.Bytes()
+	}*/
+	/*if t.p.signKey != nil {
+		m.From = t.p.signID.Bytes()
 		err := signMessage(t.p.signID, t.p.signKey, m)
 		if err != nil {
 			return err
-		}*/
-	}
+		}
+	}*/
 
 	pub := &PublishOptions{}
 	for _, opt := range opts {

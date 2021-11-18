@@ -87,7 +87,7 @@ func (cbft *Cbft) fetchBlock(id string, hash common.Hash, number uint64, qc *cty
 						"parentHash", parentBlock.Hash(), "parentNumber", parentBlock.NumberU64())
 					return
 				}
-				if err := cbft.blockCacheWriter.Execute(block, parentBlock); err != nil {
+				if err := cbft.blockCache.Execute(block, parentBlock); err != nil {
 					cbft.log.Error("Execute block failed", "hash", block.Hash(), "number", block.NumberU64(), "error", err)
 					return
 				}
@@ -166,7 +166,7 @@ func (cbft *Cbft) fetchBlock(id string, hash common.Hash, number uint64, qc *cty
 				//	return
 				//}
 
-				if err := cbft.blockCacheWriter.Execute(forkedBlock, parentBlock); err != nil {
+				if err := cbft.blockCache.Execute(forkedBlock, parentBlock); err != nil {
 					cbft.log.Error("Execute forked block failed", "hash", forkedBlock.Hash(), "number", forkedBlock.NumberU64(), "error", err)
 					return
 				}

@@ -297,7 +297,7 @@ func (cbft *Cbft) recoveryCommitState(commit *protocols.State, parent *types.Blo
 		return err
 	}
 	commit.Block.SetExtraData(extra)
-	if err := cbft.blockCacheWriter.WriteBlock(commit.Block); err != nil {
+	if err := cbft.blockCache.WriteBlock(commit.Block); err != nil {
 		return err
 	}
 	if err := cbft.validatorPool.Commit(commit.Block); err != nil {
@@ -459,7 +459,7 @@ func contiguousChainBlock(p *types.Block, s *types.Block) bool {
 	return contiguous
 }
 
-// executeBlock call blockCacheWriter to execute block.
+// executeBlock call blockCache to execute block.
 func (cbft *Cbft) executeBlock(block *types.Block, parent *types.Block, index uint32) error {
 	if parent == nil {
 		if parent, _ = cbft.blockTree.FindBlockAndQC(block.ParentHash(), block.NumberU64()-1); parent == nil {
@@ -468,7 +468,7 @@ func (cbft *Cbft) executeBlock(block *types.Block, parent *types.Block, index ui
 			}
 		}
 	}
-	if err := cbft.blockCacheWriter.Execute(block, parent); err != nil {
+	if err := cbft.blockCache.Execute(block, parent); err != nil {
 		return fmt.Errorf("execute block failed, blockNum:%d, blockHash:%s, parentNum:%d, parentHash:%s, err:%s", block.NumberU64(), block.Hash().String(), parent.NumberU64(), parent.Hash().String(), err.Error())
 	}
 	return nil
