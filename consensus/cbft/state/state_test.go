@@ -17,7 +17,6 @@
 package state
 
 import (
-	"fmt"
 	"math/big"
 	"testing"
 	"time"
@@ -225,117 +224,347 @@ func TestNewViewChanges(t *testing.T) {
 	assert.Equal(t, uint32(9), viewState.ViewChangeByIndex(9).ValidatorIndex)
 }
 
+func newQuorumCert(blockIndex uint32) *ctypes.QuorumCert {
+	return &ctypes.QuorumCert{
+		Epoch:        1,
+		ViewNumber:   1,
+		BlockHash:    common.Hash{},
+		BlockNumber:  1,
+		BlockIndex:   blockIndex,
+		Signature:    ctypes.Signature{},
+		ValidatorSet: utils.NewBitArray(32),
+	}
+}
+
 func TestViewRGBlockQuorumCerts(t *testing.T) {
+	testCases := []struct {
+		blockIndex     uint32
+		groupID        uint32
+		validatorIndex uint32
+	}{
+		{0, 1, 11},
+		{0, 2, 22},
+		{0, 1, 12},
+		{1, 3, 33},
+		{1, 5, 55},
+		{2, 1, 11},
+		{2, 2, 22},
+		{2, 2, 23},
+		{0, 1, 12}, // duplicate data
+	}
+
 	v := newViewRGBlockQuorumCerts()
-	v.AddRGBlockQuorumCerts(0, &protocols.RGBlockQuorumCert{
-		GroupID: 1,
-		BlockQC: &ctypes.QuorumCert{
-			BlockIndex: 0,
-		},
-		ValidatorIndex: 11,
-	})
-	v.AddRGBlockQuorumCerts(0, &protocols.RGBlockQuorumCert{
-		GroupID: 2,
-		BlockQC: &ctypes.QuorumCert{
-			BlockIndex: 0,
-		},
-		ValidatorIndex: 22,
-	})
-	v.AddRGBlockQuorumCerts(0, &protocols.RGBlockQuorumCert{
-		GroupID: 1,
-		BlockQC: &ctypes.QuorumCert{
-			BlockIndex: 0,
-		},
-		ValidatorIndex: 12,
-	})
-	v.AddRGBlockQuorumCerts(1, &protocols.RGBlockQuorumCert{
-		GroupID: 3,
-		BlockQC: &ctypes.QuorumCert{
-			BlockIndex: 1,
-		},
-		ValidatorIndex: 33,
-	})
-	v.AddRGBlockQuorumCerts(1, &protocols.RGBlockQuorumCert{
-		GroupID: 5,
-		BlockQC: &ctypes.QuorumCert{
-			BlockIndex: 1,
-		},
-		ValidatorIndex: 55,
-	})
-	v.AddRGBlockQuorumCerts(2, &protocols.RGBlockQuorumCert{
-		GroupID: 1,
-		BlockQC: &ctypes.QuorumCert{
-			BlockIndex: 2,
-		},
-		ValidatorIndex: 11,
-	})
-	v.AddRGBlockQuorumCerts(2, &protocols.RGBlockQuorumCert{
-		GroupID: 2,
-		BlockQC: &ctypes.QuorumCert{
-			BlockIndex: 2,
-		},
-		ValidatorIndex: 22,
-	})
-	v.AddRGBlockQuorumCerts(0, &protocols.RGBlockQuorumCert{
-		GroupID: 1,
-		BlockQC: &ctypes.QuorumCert{
-			BlockIndex: 0,
-		},
-		ValidatorIndex: 12,
-	})
-	//c, _ := json.Marshal(v)
-	//fmt.Println(string(c))
+	for _, c := range testCases {
+		v.AddRGBlockQuorumCerts(c.blockIndex, &protocols.RGBlockQuorumCert{
+			GroupID:        c.groupID,
+			BlockQC:        newQuorumCert(c.blockIndex),
+			ValidatorIndex: c.validatorIndex,
+		})
+	}
+
+	//fmt.Println(v.String())
 
 	assert.Equal(t, 2, v.RGBlockQuorumCertsLen(0, 1))
+	assert.Equal(t, 1, v.RGBlockQuorumCertsLen(0, 2))
+	assert.Equal(t, 1, v.RGBlockQuorumCertsLen(1, 3))
+	assert.Equal(t, 1, v.RGBlockQuorumCertsLen(1, 5))
 	assert.Equal(t, 1, v.RGBlockQuorumCertsLen(2, 1))
+	assert.Equal(t, 2, v.RGBlockQuorumCertsLen(2, 2))
 	assert.Equal(t, 0, v.RGBlockQuorumCertsLen(2, 3))
 	assert.Equal(t, 0, v.RGBlockQuorumCertsLen(3, 1))
 
 	assert.Nil(t, v.FindRGBlockQuorumCerts(3, 1, 1))
 	assert.Nil(t, v.FindRGBlockQuorumCerts(0, 3, 1))
 	assert.Nil(t, v.FindRGBlockQuorumCerts(0, 1, 13))
+	assert.NotNil(t, v.FindRGBlockQuorumCerts(1, 3, 33))
 	assert.Equal(t, uint32(11), v.FindRGBlockQuorumCerts(0, 1, 11).ValidatorIndex)
+
+	assert.Equal(t, []uint32{11, 12}, v.RGBlockQuorumCertsIndexes(0, 1))
 }
 
 func TestSelectedRGBlockQuorumCerts(t *testing.T) {
-	bitArrayStr := []string{
-		`"x"`,
-		`"xxxx"`,
-		`"xx"`,
-		`"x_x_x_"`,
-		`"xx__x_"`,
-		`"xxx_x_"`,
+	testCases := []struct {
+		blockIndex      uint32
+		groupID         uint32
+		ValidatorSetStr string
+	}{
+		{0, 1, `"x"`},
+		{0, 1, `"xxxx__"`},
+		{0, 1, `"xx"`},
+		{0, 1, `"x_x_x_"`},
+		{0, 1, `"xx__x_"`},
+		{0, 1, `"xxx_x_"`},
+
+		{1, 1, `"x"`},
+		{1, 1, `"xxxx"`},
+		{1, 1, `"xx"`},
+		{1, 1, `"x_x_x_"`},
+		{1, 1, `"xx__x_"`},
+		{1, 1, `"xxx_x_"`},
+		{1, 1, `"xxxxx_"`}, // contains all
+
+		{0, 2, `"x_____"`},
+		{0, 2, `"_x____"`},
+		{0, 2, `"__x___"`},
+		{0, 2, `"___x__"`},
+		{0, 2, `"____x_"`},
+		{0, 2, `"_____x"`}, // exceed the limit
+
+		{1, 2, `"x"`},
+		{1, 2, `"xxxxx_"`}, // contains all
+		{1, 2, `"xx"`},
+		{1, 2, `"x_x_x_"`},
+		{1, 2, `"xx__x_"`},
+		{1, 2, `"xxx_x_"`},
+		{1, 2, `"xxxx"`},
+
+		{2, 2, `"x_x_x_"`},
+		{2, 2, `"x_xx_x"`},
+		{2, 2, `"_x_xx_"`},
+		{2, 2, `"xx__x_"`},
+		{2, 2, `"_x__xx"`},
 	}
 
-	bitArray := func(index int) *utils.BitArray {
+	bitArray := func(bitArrayStr string) *utils.BitArray {
 		var ba *utils.BitArray
-		json.Unmarshal([]byte(bitArrayStr[index]), &ba)
+		json.Unmarshal([]byte(bitArrayStr), &ba)
 		return ba
+
+	}
+
+	marshalBitArray := func(arr *utils.BitArray) string {
+		if b, err := json.Marshal(arr); err == nil {
+			return string(b)
+		}
+		return ""
 	}
 
 	s := newSelectedRGBlockQuorumCerts()
-	for i, _ := range bitArrayStr {
-		s.AddRGQuorumCerts(0, 1, &ctypes.QuorumCert{
-			BlockIndex:   0,
-			ValidatorSet: bitArray(i),
-		}, nil)
+	for _, c := range testCases {
+		s.AddRGQuorumCerts(c.blockIndex, c.groupID, &ctypes.QuorumCert{
+			BlockIndex:   c.blockIndex,
+			ValidatorSet: bitArray(c.ValidatorSetStr),
+		}, newQuorumCert(c.blockIndex))
 	}
-	for i, _ := range bitArrayStr {
-		s.AddRGQuorumCerts(0, 2, &ctypes.QuorumCert{
-			BlockIndex:   0,
-			ValidatorSet: bitArray(i),
-		}, nil)
-	}
-	for i, _ := range bitArrayStr {
-		s.AddRGQuorumCerts(1, 1, &ctypes.QuorumCert{
-			BlockIndex:   0,
-			ValidatorSet: bitArray(i),
-		}, nil)
-	}
-	c, _ := json.Marshal(s)
-	fmt.Println(string(c))
+
+	//fmt.Println(s.String())
 
 	assert.Equal(t, 2, len(s.FindRGQuorumCerts(0, 1)))
-	assert.Equal(t, 2, len(s.FindRGQuorumCerts(0, 2)))
-	assert.Equal(t, 2, len(s.FindRGQuorumCerts(1, 1)))
+	assert.Equal(t, 1, len(s.FindRGQuorumCerts(1, 1)))
+	assert.Equal(t, 5, s.RGQuorumCertsLen(0, 2))
+	assert.Equal(t, 1, s.RGQuorumCertsLen(1, 2))
+	assert.Equal(t, 5, s.RGQuorumCertsLen(2, 2))
+	assert.Equal(t, 0, s.RGQuorumCertsLen(0, 3))
+	assert.Equal(t, 0, s.RGQuorumCertsLen(3, 0))
+
+	max, parentQC := s.FindMaxGroupRGQuorumCert(0, 1)
+	assert.Equal(t, uint32(0), max.BlockIndex)
+	assert.Equal(t, `"xxx_x_"`, marshalBitArray(max.ValidatorSet))
+	assert.Equal(t, uint32(0), parentQC.BlockIndex)
+
+	maxs := s.FindMaxRGQuorumCerts(1)
+	assert.Equal(t, uint32(1), maxs[1].BlockIndex)
+	assert.Equal(t, `"xxxxx_"`, marshalBitArray(maxs[1].ValidatorSet))
+
+	// test merge vote
+	s.MergePrepareVote(0, 2, &protocols.PrepareVote{
+		BlockIndex:     0,
+		ValidatorIndex: 5,
+	})
+	assert.Equal(t, 5, s.RGQuorumCertsLen(0, 2))
+	max, parentQC = s.FindMaxGroupRGQuorumCert(0, 2)
+	assert.Equal(t, `"____xx"`, marshalBitArray(max.ValidatorSet))
+	// test merge vote
+	s.MergePrepareVote(2, 2, &protocols.PrepareVote{
+		BlockIndex:     2,
+		ValidatorIndex: 2,
+	})
+	assert.Equal(t, 4, s.RGQuorumCertsLen(2, 2))
+	// test merge vote
+	s.MergePrepareVote(2, 2, &protocols.PrepareVote{
+		BlockIndex:     2,
+		ValidatorIndex: 0,
+	})
+	assert.Equal(t, 3, s.RGQuorumCertsLen(2, 2))
+	// test merge vote
+	s.MergePrepareVote(2, 2, &protocols.PrepareVote{
+		BlockIndex:     2,
+		ValidatorIndex: 3,
+	})
+	assert.Equal(t, 1, s.RGQuorumCertsLen(2, 2))
+	max, _ = s.FindMaxGroupRGQuorumCert(2, 2)
+	assert.Equal(t, `"xxxxxx"`, marshalBitArray(max.ValidatorSet))
+	//a := s.FindRGQuorumCerts(2, 2)
+	//for _, v := range a {
+	//	fmt.Println(marshalBitArray(v.ValidatorSet))
+	//}
+}
+
+func TestViewRGViewChangeQuorumCerts(t *testing.T) {
+	testCases := []struct {
+		groupID        uint32
+		validatorIndex uint32
+	}{
+		{1, 11},
+		{2, 22},
+		{1, 12},
+		{3, 33},
+		{5, 55},
+		{1, 11}, // duplicate data
+		{2, 22}, // duplicate data
+		{2, 23},
+		{1, 12}, // duplicate data
+	}
+
+	v := newViewRGViewChangeQuorumCerts()
+	for _, c := range testCases {
+		v.AddRGViewChangeQuorumCerts(&protocols.RGViewChangeQuorumCert{
+			GroupID:        c.groupID,
+			ViewChangeQC:   &ctypes.ViewChangeQC{},
+			ValidatorIndex: c.validatorIndex,
+		})
+	}
+
+	//fmt.Println(v.String())
+
+	assert.Equal(t, 2, v.RGViewChangeQuorumCertsLen(1))
+	assert.Equal(t, 2, v.RGViewChangeQuorumCertsLen(2))
+	assert.Equal(t, 1, v.RGViewChangeQuorumCertsLen(3))
+	assert.Equal(t, 0, v.RGViewChangeQuorumCertsLen(4))
+	assert.Equal(t, 1, v.RGViewChangeQuorumCertsLen(5))
+
+	rg := v.FindRGViewChangeQuorumCerts(1, 12)
+	assert.NotNil(t, rg)
+	assert.Equal(t, uint32(12), rg.ValidatorIndex)
+
+	assert.Equal(t, []uint32{22, 23}, v.RGViewChangeQuorumCertsIndexes(2))
+}
+
+func TestSelectedRGViewChangeQuorumCerts(t *testing.T) {
+	testCases := []struct {
+		groupID         uint32
+		blockNumber     int64
+		ValidatorSetStr string
+	}{
+		{0, 1, `"x___________"`},
+		{0, 1, `"xxxx________"`},
+		{0, 1, `"xx__________"`},
+		{0, 1, `"x_x_x_______"`},
+		{0, 1, `"xx__x_______"`},
+		{0, 1, `"xxx_x_______"`},
+		{0, 2, `"______x_____"`},
+		{0, 2, `"______xxxx__"`},
+		{0, 2, `"______xx____"`},
+		{0, 2, `"______x_x_x_"`},
+		{0, 2, `"______xx__x_"`},
+		{0, 2, `"______xxx_x_"`},
+
+		{2, 1, `"x___________"`},
+		{2, 1, `"xxxx________"`},
+		{2, 1, `"xx__________"`},
+		{2, 1, `"x_x_x_______"`},
+		{2, 1, `"xx__x_______"`},
+		{2, 1, `"xxx_x_______"`},
+		{2, 3, `"______x_____"`},
+		{2, 3, `"______xxxx__"`},
+		{2, 3, `"______xx____"`},
+		{2, 3, `"______x_x_x_"`},
+		{2, 3, `"______xx__x_"`},
+		{2, 3, `"______xxx_x_"`},
+	}
+
+	bitArray := func(bitArrayStr string) *utils.BitArray {
+		var ba *utils.BitArray
+		json.Unmarshal([]byte(bitArrayStr), &ba)
+		return ba
+
+	}
+
+	marshalBitArray := func(arr *utils.BitArray) string {
+		if b, err := json.Marshal(arr); err == nil {
+			return string(b)
+		}
+		return ""
+	}
+
+	s := newSelectedRGViewChangeQuorumCerts()
+	for _, c := range testCases {
+		hash := common.BigToHash(big.NewInt(int64(c.blockNumber)))
+		rgqcs := map[common.Hash]*ctypes.ViewChangeQuorumCert{
+			hash: {
+				BlockNumber:  uint64(c.blockNumber),
+				BlockHash:    hash,
+				Signature:    ctypes.Signature{},
+				ValidatorSet: bitArray(c.ValidatorSetStr),
+			},
+		}
+		prepareQCs := map[common.Hash]*ctypes.QuorumCert{
+			hash: {
+				BlockNumber: uint64(c.blockNumber),
+				BlockHash:   hash,
+			},
+		}
+		s.AddRGViewChangeQuorumCerts(c.groupID, rgqcs, prepareQCs)
+	}
+
+	//fmt.Println(s.String())
+
+	assert.Equal(t, 2, len(s.findRGQuorumCerts(0)))
+	assert.Equal(t, 0, len(s.findRGQuorumCerts(1)))
+	assert.Equal(t, 0, s.RGViewChangeQuorumCertsLen(1))
+	assert.Equal(t, 2, s.RGViewChangeQuorumCertsLen(2))
+	viewChangeQC, prepareQCs := s.FindMaxGroupRGViewChangeQuorumCert(0)
+	assert.Equal(t, 2, len(viewChangeQC.QCs))
+	for _, qc := range viewChangeQC.QCs {
+		if qc.BlockNumber == uint64(1) {
+			assert.Equal(t, `"xxx_x_______"`, marshalBitArray(qc.ValidatorSet))
+		} else if qc.BlockNumber == uint64(2) {
+			assert.Equal(t, `"______xxx_x_"`, marshalBitArray(qc.ValidatorSet))
+		}
+	}
+
+	assert.Equal(t, 2, len(prepareQCs.QCs))
+	//assert.Equal(t, uint64(1), prepareQCs.QCs[0].BlockNumber)
+	//assert.Equal(t, uint64(2), prepareQCs.QCs[1].BlockNumber)
+
+	maxs := s.FindMaxRGViewChangeQuorumCert()
+	assert.Equal(t, 2, len(maxs))
+	if maxs[1].QCs[0].BlockNumber == uint64(1) {
+		assert.Equal(t, `"xxx_x_______"`, marshalBitArray(maxs[1].QCs[0].ValidatorSet))
+	} else if maxs[1].QCs[0].BlockNumber == uint64(3) {
+		assert.Equal(t, `"______xxx_x_"`, marshalBitArray(maxs[1].QCs[0].ValidatorSet))
+	}
+
+	// merge viewchange
+	s.MergeViewChange(0, &protocols.ViewChange{
+		BlockNumber:    3,
+		BlockHash:      common.BigToHash(big.NewInt(int64(3))),
+		ValidatorIndex: 6,
+	}, 12)
+	assert.Equal(t, 3, s.RGViewChangeQuorumCertsLen(0))
+	viewChangeQC, prepareQCs = s.FindMaxGroupRGViewChangeQuorumCert(0)
+	assert.Equal(t, 3, len(viewChangeQC.QCs))
+	for _, qc := range viewChangeQC.QCs {
+		if qc.BlockNumber == uint64(1) {
+			assert.Equal(t, `"xxx_x_______"`, marshalBitArray(qc.ValidatorSet))
+		} else if qc.BlockNumber == uint64(2) {
+			assert.Equal(t, `"______xxx_x_"`, marshalBitArray(qc.ValidatorSet))
+		} else if qc.BlockNumber == uint64(3) {
+			assert.Equal(t, `"______x_____"`, marshalBitArray(qc.ValidatorSet))
+		}
+	}
+	assert.Equal(t, 3, len(prepareQCs.QCs))
+
+	// merge viewchange
+	s.MergeViewChange(0, &protocols.ViewChange{
+		BlockNumber:    1,
+		BlockHash:      common.BigToHash(big.NewInt(int64(1))),
+		ValidatorIndex: 3,
+	}, 12)
+	//fmt.Println(s.String())
+	m := s.findRGQuorumCerts(0)
+	v, ok := m[common.BigToHash(big.NewInt(int64(1)))]
+	assert.True(t, true, ok)
+	assert.Equal(t, 1, len(v))
+	assert.Equal(t, `"xxxxx_______"`, marshalBitArray(v[0].ValidatorSet))
 }

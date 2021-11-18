@@ -215,7 +215,7 @@ func TestStaticAgency(t *testing.T) {
 	vds := newValidators(nodes, 0)
 
 	agency := NewStaticAgency(nodes)
-	validators, err := agency.GetValidator(0)
+	validators, err := agency.GetValidators(0)
 	assert.True(t, err == nil)
 	assert.Equal(t, *vds, *validators)
 	assert.True(t, agency.Sign(nil) == nil)
@@ -332,12 +332,12 @@ func TestInnerAgency(t *testing.T) {
 	assert.True(t, agency.GetLastNumber(81) == 120)
 	assert.True(t, agency.GetLastNumber(110) == 120)
 
-	validators, err := agency.GetValidator(0)
+	validators, err := agency.GetValidators(0)
 	assert.True(t, err == nil)
 	assert.Equal(t, *vds, *validators)
 	assert.True(t, blockchain.Genesis() != nil)
 
-	newVds, err := agency.GetValidator(81)
+	newVds, err := agency.GetValidators(81)
 	assert.True(t, err == nil)
 	assert.True(t, newVds.Len() == 4)
 	assert.True(t, newVds.ValidBlockNumber == 81)
@@ -351,7 +351,7 @@ func TestInnerAgency(t *testing.T) {
 	assert.True(t, newVds.String() != "")
 	assert.False(t, newVds.Equal(validators))
 
-	defaultVds, _ := agency.GetValidator(60)
+	defaultVds, _ := agency.GetValidators(60)
 	assert.True(t, defaultVds.Equal(validators))
 
 	assert.True(t, agency.GetLastNumber(120) == 120)
@@ -447,7 +447,7 @@ func TestValidatorPool(t *testing.T) {
 	nodes := newTestNode()
 	agency := newTestInnerAgency(nodes)
 
-	validatorPool := NewValidatorPool(agency, 0, 0, nodes[0].Node.ID())
+	validatorPool := NewValidatorPool(agency, 0, 0, nodes[0].Node.ID(),false, 0, 0, nil)
 	assert.False(t, validatorPool.ShouldSwitch(0))
 	assert.True(t, validatorPool.ShouldSwitch(40))
 
@@ -533,7 +533,7 @@ func TestValidatorPoolVerify(t *testing.T) {
 	nodes = append(nodes, params.CbftNode{Node: n4, BlsPubKey: *sec4.GetPublicKey()})
 
 	agency := newTestInnerAgency(nodes)
-	vp := NewValidatorPool(agency, 0, 0, nodes[0].Node.ID())
+	vp := NewValidatorPool(agency, 0, 0, nodes[0].Node.ID(),false, 0, 0, nil)
 
 	m := "test sig"
 
@@ -594,7 +594,7 @@ func (m *mockAgency) VerifyHeader(*types.Header, *state.StateDB) error { return 
 
 func (m *mockAgency) GetLastNumber(blockNumber uint64) uint64 { return m.lastNumber }
 
-func (m *mockAgency) GetValidator(blockNumber uint64) (*cbfttypes.Validators, error) {
+func (m *mockAgency) GetValidators(blockNumber uint64) (*cbfttypes.Validators, error) {
 	return &cbfttypes.Validators{
 		ValidBlockNumber: blockNumber,
 	}, nil
@@ -606,14 +606,14 @@ func (m *mockAgency) OnCommit(block *types.Block) error { return nil }
 
 func TestValidatorPoolReset(t *testing.T) {
 	agency := newMockAgency(100)
-	vp := NewValidatorPool(agency, 0, 0, enode.ID{})
+	vp := NewValidatorPool(agency, 0, 0, enode.ID{},false, 0, 0, nil)
 
-	vp.Reset(100, 10)
+	vp.Reset(100, 10, nil)
 	assert.Equal(t, vp.switchPoint, uint64(100))
 	assert.Equal(t, vp.epoch, uint64(11))
 
 	agency.lastNumber = 200
-	vp.Reset(150, 15)
+	vp.Reset(150, 15, nil)
 	assert.Equal(t, vp.epoch, uint64(15))
 	assert.Equal(t, vp.switchPoint, uint64(149))
 }
@@ -621,21 +621,21 @@ func TestValidatorPoolReset(t *testing.T) {
 func TestValidatorGrouped(t *testing.T) {
 	nodes := newTestNodeByNum(100)
 	vs := newValidators(nodes, 0)
-	vs.Grouped(25, 5)
+	vs.Grouped(25, 5, nil, 0)
 	assert.Equal(t, 4, len(vs.GroupNodes))
 	assert.Equal(t, 25, len(vs.GroupNodes[3].Nodes))
 	assert.Equal(t, uint32(74), vs.GroupNodes[2].Nodes[24].Index)
 	assert.Equal(t, 5, len(vs.GroupNodes[2].Units))
 	assert.Equal(t, uint32(74), vs.GroupNodes[2].Units[4][4])
 
-	vs.Grouped(28, 5)
+	vs.Grouped(28, 5, nil, 0)
 	assert.Equal(t, 4, len(vs.GroupNodes))
 	assert.Equal(t, 25, len(vs.GroupNodes[0].Nodes))
 	assert.Equal(t, 25, len(vs.GroupNodes[2].Nodes))
 	assert.Equal(t, 25, len(vs.GroupNodes[3].Nodes))
 	assert.Equal(t, uint32(79), vs.GroupNodes[3].Units[0][4])
 
-	vs.Grouped(19, 3)
+	vs.Grouped(19, 3, nil, 0)
 	assert.Equal(t, 6, len(vs.GroupNodes))
 	assert.Equal(t, 17, len(vs.GroupNodes[0].Nodes))
 	assert.Equal(t, 6, len(vs.GroupNodes[2].Units))
@@ -646,7 +646,7 @@ func TestGetGroupID(t *testing.T) {
 	bls.Init(bls.BLS12_381)
 	nodes := newTestNodeByNum(100)
 	agency := newTestInnerAgency(nodes)
-	vp := NewValidatorPool(agency, 0, 0, nodes[0].Node.ID())
+	vp := NewValidatorPool(agency, 0, 0, nodes[0].Node.ID(),false, 0, 0, nil)
 
 	grpID, _ := vp.GetGroupID(0, nodes[0].Node.ID())
 	assert.Equal(t, 0, grpID)
@@ -656,7 +656,7 @@ func TestGetUintID(t *testing.T) {
 	bls.Init(bls.BLS12_381)
 	nodes := newTestNodeByNum(100)
 	agency := newTestInnerAgency(nodes)
-	vp := NewValidatorPool(agency, 0, 0, nodes[0].Node.ID())
+	vp := NewValidatorPool(agency, 0, 0, nodes[0].Node.ID(),false, 0, 0, nil)
 
 	untID, _ := vp.GetGroupID(0, nodes[0].Node.ID())
 	assert.Equal(t, 0, untID)

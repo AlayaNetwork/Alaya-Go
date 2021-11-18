@@ -112,19 +112,19 @@ func (e authFailedError) AuthFailed() bool {
 // Cbft is the core structure of the consensus engine
 // and is responsible for handling consensus logic.
 type Cbft struct {
-	config           ctypes.Config
-	eventMux         *event.TypeMux
-	closeOnce        sync.Once
-	exitCh           chan struct{}
-	txPool           consensus.TxPoolReset
-	blockChain       consensus.ChainReader
-	blockCacheWriter consensus.BlockCacheWriter
-	peerMsgCh        chan *ctypes.MsgInfo
-	syncMsgCh        chan *ctypes.MsgInfo
-	evPool           evidence.EvidencePool
-	log              log.Logger
-	network          *network.EngineManager
-	pubSub           *network.PubSub
+	config     ctypes.Config
+	eventMux   *event.TypeMux
+	closeOnce  sync.Once
+	exitCh     chan struct{}
+	txPool     consensus.TxPoolReset
+	blockChain consensus.ChainReader
+	blockCache consensus.BlockCache
+	peerMsgCh  chan *ctypes.MsgInfo
+	syncMsgCh  chan *ctypes.MsgInfo
+	evPool     evidence.EvidencePool
+	log        log.Logger
+	network    *network.EngineManager
+	pubSub     *network.PubSub
 
 	start    int32
 	syncing  int32
@@ -226,12 +226,12 @@ func New(sysConfig *params.CbftConfig, optConfig *ctypes.OptionsConfig, eventMux
 }
 
 // Start starts consensus engine.
-func (cbft *Cbft) Start(chain consensus.ChainReader, blockCacheWriter consensus.BlockCacheWriter, txPool consensus.TxPoolReset, agency consensus.Agency) error {
+func (cbft *Cbft) Start(chain consensus.ChainReader, blockCache consensus.BlockCache, txPool consensus.TxPoolReset, agency consensus.Agency) error {
 	cbft.log.Info("~ Start cbft consensus")
 	cbft.blockChain = chain
 	cbft.txPool = txPool
-	cbft.blockCacheWriter = blockCacheWriter
-	cbft.asyncExecutor = executor.NewAsyncExecutor(blockCacheWriter.Execute)
+	cbft.blockCache = blockCache
+	cbft.asyncExecutor = executor.NewAsyncExecutor(blockCache.Execute)
 
 	//Initialize block tree
 	block := chain.GetBlock(chain.CurrentHeader().Hash(), chain.CurrentHeader().Number.Uint64())
@@ -261,7 +261,7 @@ func (cbft *Cbft) Start(chain consensus.ChainReader, blockCacheWriter consensus.
 	cbft.state.SetHighestCommitBlock(block)
 
 	// init RGMsg broadcast manager
-	cbft.RGBroadcastManager = NewRGBroadcastManager(cbft, 1) // TODO cycleNumber
+	cbft.RGBroadcastManager = NewRGBroadcastManager(cbft)
 
 	// init handler and router to process message.
 	// cbft -> handler -> router.
@@ -278,11 +278,14 @@ func (cbft *Cbft) Start(chain consensus.ChainReader, blockCacheWriter consensus.
 		cbft.config.Option.NodeID = cbft.config.Option.Node.IDv0()
 		cbft.config.Option.NodePriKey = cbft.nodeServiceContext.NodePriKey()
 	}
+	needGroup := blockCache.GetActiveVersion(block.Header().SealHash()) >= params.FORKVERSION_0_17_0
+	groupValidatorsLimit := cbft.config.Sys.GroupValidatorsLimit
+	coordinatorLimit := cbft.config.Sys.CoordinatorLimit
 	if isGenesis() {
-		cbft.validatorPool = validator.NewValidatorPool(agency, block.NumberU64(), cstate.DefaultEpoch, cbft.config.Option.Node.ID())
+		cbft.validatorPool = validator.NewValidatorPool(agency, block.NumberU64(), cstate.DefaultEpoch, cbft.config.Option.Node.ID(), needGroup, groupValidatorsLimit, coordinatorLimit, cbft.eventMux)
 		cbft.changeView(cstate.DefaultEpoch, cstate.DefaultViewNumber, block, qc, nil)
 	} else {
-		cbft.validatorPool = validator.NewValidatorPool(agency, block.NumberU64(), qc.Epoch, cbft.config.Option.Node.ID())
+		cbft.validatorPool = validator.NewValidatorPool(agency, block.NumberU64(), qc.Epoch, cbft.config.Option.Node.ID(), needGroup, groupValidatorsLimit, coordinatorLimit, cbft.eventMux)
 		cbft.changeView(qc.Epoch, qc.ViewNumber, block, qc, nil)
 	}
 
@@ -940,7 +943,7 @@ func (cbft *Cbft) InsertChain(block *types.Block) error {
 		return errors.New("orphan block")
 	}
 
-	err = cbft.blockCacheWriter.Execute(block, parent)
+	err = cbft.blockCache.Execute(block, parent)
 	if err != nil {
 		cbft.log.Error("Executing block failed", "number", block.Number(), "hash", block.Hash(), "parent", parent.Hash(), "parentHash", block.ParentHash(), "err", err)
 		return errors.New("failed to executed block")
@@ -1086,7 +1089,7 @@ func (cbft *Cbft) FastSyncCommitHead(block *types.Block) error {
 			return
 		}
 
-		cbft.validatorPool.Reset(block.NumberU64(), qc.Epoch)
+		cbft.validatorPool.Reset(block.NumberU64(), qc.Epoch, cbft.eventMux)
 
 		cbft.blockTree.Reset(block, qc)
 		cbft.changeView(qc.Epoch, qc.ViewNumber, block, qc, nil)
@@ -1115,6 +1118,7 @@ func (cbft *Cbft) Close() error {
 		cbft.asyncExecutor.Stop()
 	}
 	cbft.bridge.Close()
+	cbft.RGBroadcastManager.Close()
 	return nil
 }
 
@@ -1516,11 +1520,11 @@ func (cbft *Cbft) checkPrepareQC(msg ctypes.ConsensusMsg) error {
 		viewChangeQC := cm.ViewChangeQC
 		prepareQCs := cm.PrepareQCs
 		for _, qc := range viewChangeQC.QCs {
-			if qc.BlockNumber == 0 && prepareQCs != nil && prepareQCs.FindPrepareQC(qc.BlockHash) != nil {
-				return authFailedError{err: fmt.Errorf("RGViewChangeQuorumCert need not take PrepareQC, RGViewChangeQuorumCert:%s", cm.String())}
+			if qc.BlockNumber == 0 && prepareQCs.FindPrepareQC(qc.BlockHash) != nil {
+				return authFailedError{err: fmt.Errorf("RGViewChangeQuorumCert need not take PrepareQC, blockNumber:%d, blockHash:%s, RGViewChangeQuorumCert:%s", qc.BlockNumber, qc.BlockHash.TerminalString(), cm.String())}
 			}
-			if qc.BlockNumber != 0 && (prepareQCs == nil || prepareQCs.FindPrepareQC(qc.BlockHash) == nil) {
-				return authFailedError{err: fmt.Errorf("RGViewChangeQuorumCert need take PrepareQC, RGViewChangeQuorumCert:%s", cm.String())}
+			if qc.BlockNumber != 0 && prepareQCs.FindPrepareQC(qc.BlockHash) == nil {
+				return authFailedError{err: fmt.Errorf("RGViewChangeQuorumCert need take PrepareQC, blockNumber:%d, blockHash:%s, RGViewChangeQuorumCert:%s", qc.BlockNumber, qc.BlockHash.TerminalString(), cm.String())}
 			}
 		}
 	default:
@@ -1935,9 +1939,6 @@ func (cbft *Cbft) verifyQuorumCert(qc *ctypes.QuorumCert) error {
 
 func (cbft *Cbft) validateViewChangeQC(viewChangeQC *ctypes.ViewChangeQC, validatorLimit int) error {
 
-	//vcEpoch, _, _, _, _, _ := viewChangeQC.MaxBlock()
-
-	//maxLimit := cbft.validatorPool.Len(vcEpoch)
 	if len(viewChangeQC.QCs) > validatorLimit {
 		return fmt.Errorf("viewchangeQC exceed validator max limit, total:%d, validatorLimit:%d", len(viewChangeQC.QCs), validatorLimit)
 	}
@@ -1946,7 +1947,12 @@ func (cbft *Cbft) validateViewChangeQC(viewChangeQC *ctypes.ViewChangeQC, valida
 	// check signature number
 	signsTotal := viewChangeQC.Len()
 	if signsTotal < threshold {
-		return fmt.Errorf("viewchange has small number of signature total:%d, threshold:%d", signsTotal, threshold)
+		return fmt.Errorf("viewchangeQC has small number of signature, total:%d, threshold:%d", signsTotal, threshold)
+	}
+	// check for duplicate signers
+	anoherTotal := viewChangeQC.ValidatorSet().HasLength()
+	if signsTotal != anoherTotal {
+		return fmt.Errorf("viewchangeQC has duplicate signers, signsTotal:%d, anoherTotal:%d", signsTotal, anoherTotal)
 	}
 
 	var err error
