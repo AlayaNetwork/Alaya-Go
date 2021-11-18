@@ -244,10 +244,17 @@ func (cbft *Cbft) enoughSigns(epoch uint64, groupID uint32, signs int) bool {
 
 // Determine whether the signer of the RGBlockQuorumCert message is a member of the group
 func (cbft *Cbft) isGroupMember(epoch uint64, groupID uint32, nodeIndex uint32) bool {
-	if v, err := cbft.validatorPool.GetValidatorByGroupIdAndIndex(epoch, nodeIndex); err != nil || v == nil {
+	// Index collection of the group members
+	indexes, err := cbft.validatorPool.GetValidatorIndexesByGroupID(epoch, groupID)
+	if err != nil || indexes == nil {
 		return false
 	}
-	return true
+	for _, index := range indexes {
+		if index == nodeIndex {
+			return true
+		}
+	}
+	return false
 }
 
 // Determine whether the aggregate signers in the RGBlockQuorumCert message are all members of the group
@@ -283,8 +290,9 @@ func (cbft *Cbft) AllowRGQuorumCert(msg ctypes.ConsensusMsg) error {
 		validatorSet = rg.BlockQC.ValidatorSet
 	case *protocols.RGViewChangeQuorumCert:
 		groupID = rg.GroupID
-		signsTotal = rg.ViewChangeQC.Len()
+		//signsTotal = rg.ViewChangeQC.Len()
 		validatorSet = rg.ViewChangeQC.ValidatorSet()
+		signsTotal = validatorSet.HasLength()
 	}
 
 	if !cbft.enoughSigns(epoch, groupID, signsTotal) {
@@ -1305,7 +1313,6 @@ func (cbft *Cbft) changeView(epoch, viewNumber uint64, block *types.Block, qc *c
 	cbft.csPool.Purge(epoch, viewNumber)
 
 	cbft.state.ResetView(epoch, viewNumber)
-	cbft.RGBroadcastManager.Reset(1) // TODO cycleNumber
 	cbft.state.SetViewTimer(interval())
 	cbft.state.SetLastViewChangeQC(viewChangeQC)
 
@@ -1318,6 +1325,7 @@ func (cbft *Cbft) changeView(epoch, viewNumber uint64, block *types.Block, qc *c
 	if !cbft.isLoading() {
 		cbft.bridge.ConfirmViewChange(epoch, viewNumber, block, qc, viewChangeQC, preEpoch, preViewNumber)
 	}
+	cbft.RGBroadcastManager.Reset()
 	cbft.clearInvalidBlocks(block)
 	cbft.evPool.Clear(epoch, viewNumber)
 	// view change maybe lags behind the other nodes,active sync prepare block

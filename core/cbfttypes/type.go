@@ -77,7 +77,6 @@ type ValidateNode struct {
 	PubKey    *ecdsa.PublicKey   `json:"-"`
 	NodeID    enode.ID           `json:"nodeID"`
 	BlsPubKey *bls.PublicKey     `json:"blsPubKey"`
-	Distance  int
 }
 
 type ValidateNodeMap map[enode.ID]*ValidateNode
@@ -110,8 +109,8 @@ type Validators struct {
 }
 
 type NewGroupsEvent struct {
-	Topic              string  // consensus:{epoch}:{groupID}
-	Validators         *GroupValidators
+	Topic      string // consensus:{epoch}:{groupID}
+	Validators *GroupValidators
 }
 
 func (vn *ValidateNode) String() string {
@@ -155,7 +154,7 @@ func (vs *Validators) NodeList() []enode.ID {
 
 func (vs *Validators) MembersCount(groupID uint32) int {
 	if groupID >= uint32(len(vs.GroupNodes)) {
-		log.Error("MembersCount: wrong groupid","groupID",groupID)
+		log.Error("MembersCount: wrong groupid", "groupID", groupID)
 		return 0
 	}
 	return len(vs.GroupNodes[groupID].Nodes)
@@ -163,13 +162,13 @@ func (vs *Validators) MembersCount(groupID uint32) int {
 
 func (vs *Validators) GetValidatorIndexes(groupid uint32) ([]uint32, error) {
 	if groupid >= uint32(len(vs.GroupNodes)) {
-		return nil, fmt.Errorf("MembersCount: wrong groupid[%d]",groupid)
+		return nil, fmt.Errorf("MembersCount: wrong groupid[%d]", groupid)
 	}
 	ids := make([]uint32, 0)
-	for _,node := range vs.GroupNodes[groupid].Nodes {
+	for _, node := range vs.GroupNodes[groupid].Nodes {
 		ids = append(ids, node.Index)
 	}
-	return ids,nil
+	return ids, nil
 }
 
 func (vs *Validators) NodeListByIndexes(indexes []uint32) ([]*ValidateNode, error) {
@@ -372,7 +371,7 @@ func (vs *Validators) Grouped(groupValidatorsLimit uint32, coordinatorLimit uint
 	for i, gvs := range vs.GroupNodes {
 		gvs.GroupedUnits(coordinatorLimit)
 		topic := ConsensusGroupTopicName(epoch, uint32(i))
-		eventMux.Post(NewGroupsEvent{Topic:topic, Validators: gvs})
+		eventMux.Post(NewGroupsEvent{Topic: topic, Validators: gvs})
 	}
 	return nil
 }

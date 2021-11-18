@@ -261,7 +261,7 @@ func (cbft *Cbft) Start(chain consensus.ChainReader, blockCache consensus.BlockC
 	cbft.state.SetHighestCommitBlock(block)
 
 	// init RGMsg broadcast manager
-	cbft.RGBroadcastManager = NewRGBroadcastManager(cbft, 1) // TODO cycleNumber
+	cbft.RGBroadcastManager = NewRGBroadcastManager(cbft)
 
 	// init handler and router to process message.
 	// cbft -> handler -> router.
@@ -1118,6 +1118,7 @@ func (cbft *Cbft) Close() error {
 		cbft.asyncExecutor.Stop()
 	}
 	cbft.bridge.Close()
+	cbft.RGBroadcastManager.Close()
 	return nil
 }
 
@@ -1938,12 +1939,6 @@ func (cbft *Cbft) verifyQuorumCert(qc *ctypes.QuorumCert) error {
 
 func (cbft *Cbft) validateViewChangeQC(viewChangeQC *ctypes.ViewChangeQC, validatorLimit int) error {
 
-	// TODO
-	// 校验 ValidatorSet 是否重复
-
-	//vcEpoch, _, _, _, _, _ := viewChangeQC.MaxBlock()
-
-	//maxLimit := cbft.validatorPool.Len(vcEpoch)
 	if len(viewChangeQC.QCs) > validatorLimit {
 		return fmt.Errorf("viewchangeQC exceed validator max limit, total:%d, validatorLimit:%d", len(viewChangeQC.QCs), validatorLimit)
 	}
@@ -1952,7 +1947,12 @@ func (cbft *Cbft) validateViewChangeQC(viewChangeQC *ctypes.ViewChangeQC, valida
 	// check signature number
 	signsTotal := viewChangeQC.Len()
 	if signsTotal < threshold {
-		return fmt.Errorf("viewchange has small number of signature total:%d, threshold:%d", signsTotal, threshold)
+		return fmt.Errorf("viewchangeQC has small number of signature, total:%d, threshold:%d", signsTotal, threshold)
+	}
+	// check for duplicate signers
+	anoherTotal := viewChangeQC.ValidatorSet().HasLength()
+	if signsTotal != anoherTotal {
+		return fmt.Errorf("viewchangeQC has duplicate signers, signsTotal:%d, anoherTotal:%d", signsTotal, anoherTotal)
 	}
 
 	var err error

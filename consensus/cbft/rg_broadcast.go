@@ -51,8 +51,6 @@ type awaitingJob struct {
 type RGBroadcastManager struct {
 	cbft *Cbft
 
-	cycleNumber int64
-
 	delayDuration time.Duration
 
 	// A collection of RGBlockQuorumCert messages waiting to be sent
@@ -77,11 +75,15 @@ type RGBroadcastManager struct {
 }
 
 // NewBridge creates a new Bridge to update consensus state and consensus msg.
-func NewRGBroadcastManager(cbft *Cbft, cycleNumber int64) *RGBroadcastManager {
+func NewRGBroadcastManager(cbft *Cbft) *RGBroadcastManager {
+	_, unitID, err := cbft.getGroupByValidatorID(cbft.state.Epoch(), cbft.Node().ID())
+	if err != nil {
+		cbft.log.Trace("The current node is not a consensus node, no need to start RGBroadcastManager", "epoch", cbft.state.Epoch(), "nodeID", cbft.Node().ID().String())
+		unitID = 0
+	}
 	m := &RGBroadcastManager{
 		cbft:                            cbft,
-		cycleNumber:                     cycleNumber,
-		delayDuration:                   time.Duration(cycleNumber) * coordinatorWaitTimeout,
+		delayDuration:                   time.Duration(unitID) * coordinatorWaitTimeout,
 		awaitingRGBlockQuorumCerts:      make(map[uint64]*awaitingJob),
 		hadSendRGBlockQuorumCerts:       make(map[uint64]*protocols.RGBlockQuorumCert),
 		awaitingRGViewChangeQuorumCerts: make(map[uint64]*awaitingJob),
@@ -348,7 +350,7 @@ func (m *RGBroadcastManager) AsyncSendRGQuorumCert(a awaiting) {
 	}
 }
 
-func (m *RGBroadcastManager) Reset(cycleNumber int64) {
+func (m *RGBroadcastManager) Reset() {
 	m.mux.Lock()
 	defer m.mux.Unlock()
 
@@ -358,8 +360,12 @@ func (m *RGBroadcastManager) Reset(cycleNumber int64) {
 	for _, await := range m.awaitingRGViewChangeQuorumCerts {
 		await.jobTimer.Stop()
 	}
-	m.cycleNumber = cycleNumber
-	m.delayDuration = time.Duration(cycleNumber) * coordinatorWaitTimeout
+	_, unitID, err := m.cbft.getGroupByValidatorID(m.cbft.state.Epoch(), m.cbft.Node().ID())
+	if err != nil {
+		m.cbft.log.Trace("The current node is not a consensus node, no need to start RGBroadcastManager", "epoch", m.cbft.state.Epoch(), "nodeID", m.cbft.Node().ID().String())
+		unitID = 0
+	}
+	m.delayDuration = time.Duration(unitID) * coordinatorWaitTimeout
 	m.awaitingRGBlockQuorumCerts = make(map[uint64]*awaitingJob)
 	m.hadSendRGBlockQuorumCerts = make(map[uint64]*protocols.RGBlockQuorumCert)
 	m.awaitingRGViewChangeQuorumCerts = make(map[uint64]*awaitingJob)
