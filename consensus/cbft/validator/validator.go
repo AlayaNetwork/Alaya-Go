@@ -295,7 +295,7 @@ func (ia *InnerAgency) OnCommit(block *types.Block) error {
 // ValidatorPool a pool storing validators.
 type ValidatorPool struct {
 	agency consensus.Agency
-	lock sync.RWMutex
+	lock   sync.RWMutex
 
 	// Current node's public key
 	nodeID enode.ID
@@ -319,18 +319,18 @@ type ValidatorPool struct {
 
 	prevValidators    *cbfttypes.Validators // Previous round validators
 	currentValidators *cbfttypes.Validators // Current round validators
-	nextValidators *cbfttypes.Validators // Next round validators
+	nextValidators    *cbfttypes.Validators // Next round validators
 }
 
 // NewValidatorPool new a validator pool.
 func NewValidatorPool(agency consensus.Agency, blockNumber, epoch uint64, nodeID enode.ID, needGroup bool, groupValidatorsLimit, coordinatorLimit uint32, eventMux *event.TypeMux) *ValidatorPool {
 	pool := &ValidatorPool{
-		agency: agency,
-		nodeID: nodeID,
-		epoch:  epoch,
-		needGroup: needGroup,
+		agency:               agency,
+		nodeID:               nodeID,
+		epoch:                epoch,
+		needGroup:            needGroup,
 		groupValidatorsLimit: groupValidatorsLimit,
-		coordinatorLimit: coordinatorLimit,
+		coordinatorLimit:     coordinatorLimit,
 	}
 	// FIXME: Check `GetValidators` return error
 	if agency.GetLastNumber(blockNumber) == blockNumber {
@@ -352,7 +352,7 @@ func NewValidatorPool(agency consensus.Agency, blockNumber, epoch uint64, nodeID
 	if pool.currentValidators.ValidBlockNumber > 0 {
 		pool.switchPoint = pool.currentValidators.ValidBlockNumber - 1
 	}
-	if(needGroup) {
+	if needGroup {
 		pool.prevValidators.Grouped(groupValidatorsLimit, coordinatorLimit, eventMux, epoch)
 		pool.unitID = pool.currentValidators.UnitID(nodeID)
 	}
@@ -736,16 +736,16 @@ func (vp *ValidatorPool) LenByGroupID(epoch uint64, groupID uint32) int {
 	return vp.currentValidators.MembersCount(groupID)
 }
 
-// 查询指定epoch下对应nodeIndex的节点信息，没有对应信息返回nil
-func (vp *ValidatorPool) GetValidatorByGroupIdAndIndex(epoch uint64, nodeIndex uint32) (*cbfttypes.ValidateNode,error) {
-	vp.lock.RLock()
-	defer vp.lock.RUnlock()
-
-	if vp.epochToBlockNumber(epoch) <= vp.switchPoint {
-		return vp.prevValidators.FindNodeByIndex(int(nodeIndex))
-	}
-	return vp.currentValidators.FindNodeByIndex(int(nodeIndex))
-}
+//// 查询指定epoch下对应nodeIndex的节点信息，没有对应信息返回nil
+//func (vp *ValidatorPool) GetValidatorByGroupIdAndIndex(epoch uint64, nodeIndex uint32) (*cbfttypes.ValidateNode,error) {
+//	vp.lock.RLock()
+//	defer vp.lock.RUnlock()
+//
+//	if epoch+1 == vp.epoch {
+//		return vp.prevValidators.FindNodeByIndex(int(nodeIndex))
+//	}
+//	return vp.currentValidators.FindNodeByIndex(int(nodeIndex))
+//}
 
 // 返回指定epoch和分组下所有共识节点的index集合，e.g. [25,26,27,28,29,30...49]
 func (vp *ValidatorPool) GetValidatorIndexesByGroupID(epoch uint64, groupID uint32) ([]uint32, error) {
@@ -772,7 +772,7 @@ func (vp *ValidatorPool) GetCoordinatorIndexesByGroupID(epoch uint64, groupID ui
 	}
 
 	if groupID >= uint32(len(validators.GroupNodes)) {
-		return nil, fmt.Errorf("GetCoordinatorIndexesByGroupID: wrong groupid[%d]!",groupID)
+		return nil, fmt.Errorf("GetCoordinatorIndexesByGroupID: wrong groupid[%d]!", groupID)
 	}
 	return validators.GroupNodes[groupID].Units, nil
 }

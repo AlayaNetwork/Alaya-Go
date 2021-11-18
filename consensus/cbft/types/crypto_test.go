@@ -14,10 +14,10 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
-
 package types
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -25,6 +25,7 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/utils"
 
 	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/crypto/bls"
 )
 
 func Test_QuorumCert(t *testing.T) {
@@ -105,6 +106,43 @@ func Test_ViewChangeQC_MaxBlock(t *testing.T) {
 	viewChangeQC.QCs = nil
 	epoch, viewNumber, blockEpoch, blockViewNumber, blockHash, blockNumber = viewChangeQC.MaxBlock()
 	assert.Equal(t, uint64(0), epoch)
+}
+
+func TestValidatorSet(t *testing.T) {
+	testCases := []struct {
+		ValidatorSetStr string
+	}{
+		{`"x_x_x_xxxx"`},
+		{`"xxxxxx"`},
+		{`"xx__________"`},
+		{`"x_x_x_______"`},
+		{`"xx__x_______"`},
+		{`"x_x_x_xxxx"`},
+		{`"______x_____"`},
+		{`"______xxxx__"`},
+		{`"______xx____"`},
+		{`"______x_x_x_"`},
+		{`"______xx__x_"`},
+		{`"______xxx_x____"`},
+	}
+
+	bitArray := func(bitArrayStr string) *utils.BitArray {
+		var ba *utils.BitArray
+		json.Unmarshal([]byte(bitArrayStr), &ba)
+		return ba
+
+	}
+
+	viewChangeQC := &ViewChangeQC{QCs: make([]*ViewChangeQuorumCert, 0)}
+	for _, c := range testCases {
+		qc := &ViewChangeQuorumCert{
+			ValidatorSet: bitArray(c.ValidatorSetStr),
+		}
+		viewChangeQC.QCs = append(viewChangeQC.QCs, qc)
+	}
+	assert.Equal(t, 45, viewChangeQC.Len())
+	assert.Equal(t, uint32(15), viewChangeQC.ValidatorSet().Size())
+	assert.Equal(t, 11, viewChangeQC.ValidatorSet().HasLength())
 }
 
 func TestQuorumCertAddSign(t *testing.T) {

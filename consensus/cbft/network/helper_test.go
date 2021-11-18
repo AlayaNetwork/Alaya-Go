@@ -80,7 +80,7 @@ func newFakeRGBlockQuorumCert() *protocols.RGBlockQuorumCert {
 		GroupID:        1,
 		BlockQC:        newQuorumCert(),
 		ValidatorIndex: 1,
-		ParentQC:       nil,
+		ParentQC:       newQuorumCert(),
 		Signature:      newSignature(),
 	}
 }
