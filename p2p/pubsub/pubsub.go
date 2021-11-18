@@ -1109,7 +1109,7 @@ func (p *PubSub) pushMsg(msg *Message) {
 
 func (p *PubSub) checkSigningPolicy(msg *Message) error {
 	// reject unsigned messages when strict before we even process the id
-	if p.signPolicy.mustVerify() {
+	/*if p.signPolicy.mustVerify() {
 		if p.signPolicy.mustSign() {
 			if msg.Signature == nil {
 				p.tracer.RejectMessage(msg, RejectMissingSignature)
@@ -1134,7 +1134,7 @@ func (p *PubSub) checkSigningPolicy(msg *Message) error {
 				}
 			}
 		}
-	}
+	}*/
 
 	return nil
 }

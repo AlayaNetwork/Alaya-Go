@@ -19,6 +19,7 @@ package cbft
 import (
 	"fmt"
 	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/network"
+	"github.com/AlayaNetwork/Alaya-Go/params"
 	"time"
 
 	"github.com/pkg/errors"
@@ -243,7 +244,7 @@ func (cbft *Cbft) enoughSigns(epoch uint64, groupID uint32, signs int) bool {
 
 // Determine whether the signer of the RGBlockQuorumCert message is a member of the group
 func (cbft *Cbft) isGroupMember(epoch uint64, groupID uint32, nodeIndex uint32) bool {
-	if v, err := cbft.validatorPool.GetValidatorByGroupIdAndIndex(epoch, groupID, nodeIndex); err != nil || v == nil {
+	if v, err := cbft.validatorPool.GetValidatorByGroupIdAndIndex(epoch, nodeIndex); err != nil || v == nil {
 		return false
 	}
 	return true
@@ -251,8 +252,9 @@ func (cbft *Cbft) isGroupMember(epoch uint64, groupID uint32, nodeIndex uint32) 
 
 // Determine whether the aggregate signers in the RGBlockQuorumCert message are all members of the group
 func (cbft *Cbft) allGroupMember(epoch uint64, groupID uint32, validatorSet *utils.BitArray) bool {
-	var indexes []uint32 // Index collection of the group members
-	if indexes, err := cbft.validatorPool.GetValidatorIndexesByGroupID(epoch, groupID); err != nil || indexes == nil {
+	// Index collection of the group members
+	indexes, err := cbft.validatorPool.GetValidatorIndexesByGroupID(epoch, groupID)
+	if err != nil || indexes == nil {
 		return false
 	}
 	total := cbft.validatorPool.Len(epoch)
@@ -791,7 +793,9 @@ func (cbft *Cbft) trySendRGViewChangeQuorumCert() {
 			// get parentQC
 			prepareQCs := make(map[common.Hash]*ctypes.QuorumCert)
 			for _, v := range groupViewChanges {
-				prepareQCs[v.BlockHash] = v.PrepareQC
+				if v.PrepareQC != nil {
+					prepareQCs[v.BlockHash] = v.PrepareQC
+				}
 			}
 			// Add SelectRGViewChangeQuorumCerts
 			cbft.state.AddSelectRGViewChangeQuorumCerts(groupID, rgqc, prepareQCs)
@@ -893,30 +897,32 @@ func (cbft *Cbft) mergeSelectedViewChangeQuorumCerts(node *cbfttypes.ValidateNod
 		cbft.log.Error("Failed to find the group info of the node", "epoch", vc.EpochNum(), "nodeID", node.NodeID.TerminalString(), "error", err)
 		return
 	}
-	cbft.state.MergeViewChanges(groupID, []*protocols.ViewChange{vc})
+	validatorLen := cbft.validatorPool.Len(cbft.state.Epoch())
+	cbft.state.MergeViewChanges(groupID, []*protocols.ViewChange{vc}, validatorLen)
 }
 
 func (cbft *Cbft) richRGViewChangeQuorumCert(rgb *protocols.RGViewChangeQuorumCert) {
 	mergeVcs := cbft.groupViewChanges(rgb.EpochNum(), rgb.GroupID)
 	if len(mergeVcs) > 0 {
+		total := cbft.validatorPool.Len(cbft.state.Epoch())
 		for _, vc := range mergeVcs {
 			if !rgb.ViewChangeQC.ExistViewChange(vc.Epoch, vc.ViewNumber, vc.BlockHash) {
 				qc := &ctypes.ViewChangeQuorumCert{
-					Epoch:       vc.Epoch,
-					ViewNumber:  vc.ViewNumber,
-					BlockHash:   vc.BlockHash,
-					BlockNumber: vc.BlockNumber,
+					Epoch:        vc.Epoch,
+					ViewNumber:   vc.ViewNumber,
+					BlockHash:    vc.BlockHash,
+					BlockNumber:  vc.BlockNumber,
+					ValidatorSet: utils.NewBitArray(uint32(total)),
 				}
 				if vc.PrepareQC != nil {
 					qc.BlockEpoch = vc.PrepareQC.Epoch
 					qc.BlockViewNumber = vc.PrepareQC.ViewNumber
-					rgb.PrepareQCs.QCs = append(rgb.PrepareQCs.QCs, vc.PrepareQC)
+					rgb.PrepareQCs.AppendQuorumCert(vc.PrepareQC)
 				}
-				total := cbft.validatorPool.Len(cbft.state.Epoch())
-				qc.ValidatorSet = utils.NewBitArray(uint32(total))
 				qc.ValidatorSet.SetIndex(vc.ValidatorIndex, true)
 				qc.Signature.SetBytes(vc.Signature.Bytes())
 
+				rgb.ViewChangeQC.AppendQuorumCert(qc)
 				rgb.ViewChangeQC.QCs = append(rgb.ViewChangeQC.QCs, qc)
 			} else {
 				for _, qc := range rgb.ViewChangeQC.QCs {
@@ -990,7 +996,7 @@ func (cbft *Cbft) findQCBlock() {
 	enoughRGQuorumCerts := func() bool {
 		rgqcs = cbft.state.FindMaxRGQuorumCerts(next)
 		size := 0
-		if rgqcs != nil && len(rgqcs) > 0 {
+		if len(rgqcs) > 0 {
 			for _, qc := range rgqcs {
 				size += qc.ValidatorSet.HasLength()
 			}
@@ -1091,6 +1097,12 @@ func (cbft *Cbft) tryChangeView() {
 			(qc != nil && qc.Epoch == cbft.state.Epoch() && shouldSwitch)
 	}()
 
+	// should grouped according max commit block's state
+	shouldGroup := func() bool {
+		activeVersion := cbft.blockCache.GetActiveVersion(cbft.state.HighestCommitBlock().Header().SealHash())
+		return cbft.validatorPool.NeedGroup() || activeVersion >= params.FORKVERSION_0_17_0
+	}
+
 	if shouldSwitch {
 		if err := cbft.validatorPool.Update(block.NumberU64(), cbft.state.Epoch()+1, cbft.eventMux); err == nil {
 			cbft.log.Info("Update validator success", "number", block.NumberU64())
@@ -1108,6 +1120,11 @@ func (cbft *Cbft) tryChangeView() {
 			cbft.changeView(cbft.state.Epoch(), increasing(), block, qc, nil)
 		}
 		return
+	}
+
+	// TODO: get groupvalidatorslimit and coordinatorlimit from gov
+	if shouldGroup() {
+		cbft.validatorPool.SetupGroup(true, 0, 0)
 	}
 
 	threshold := cbft.threshold(cbft.currentValidatorLen())
@@ -1325,7 +1342,7 @@ func (cbft *Cbft) clearInvalidBlocks(newBlock *types.Block) {
 			rollback = append(rollback, block)
 		}
 	}
-	cbft.blockCacheWriter.ClearCache(cbft.state.HighestCommitBlock())
+	cbft.blockCache.ClearCache(cbft.state.HighestCommitBlock())
 
 	//todo proposer is myself
 	cbft.txPool.ForkedReset(newHead, rollback)

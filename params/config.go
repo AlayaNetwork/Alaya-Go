@@ -195,6 +195,8 @@ type CbftConfig struct {
 	Amount        uint32     `json:"amount,omitempty"`        //The maximum number of blocks generated per cycle
 	InitialNodes  []CbftNode `json:"initialNodes,omitempty"`  //Genesis consensus node
 	ValidatorMode string     `json:"validatorMode,omitempty"` //Validator mode for easy testing
+	GroupValidatorsLimit uint32	`json:"GroupValidatorsLimit,omitempty"` //Max validators per group
+	CoordinatorLimit uint32	`json:"CoordinatorLimit,omitempty"` //Coordinators Limit C0>C1>C2...
 }
 
 // CliqueConfig is the consensus engine configs for proof-of-authority based sealing.

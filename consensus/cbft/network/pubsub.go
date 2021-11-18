@@ -49,7 +49,7 @@ var (
 // Group consensus message
 type RGMsg struct {
 	Code uint64
-	Size uint32 // Size of the raw payload
+	Size int `rlp:"-"` // Size of the raw payload
 	Data interface{}
 }
 
@@ -164,8 +164,13 @@ func (ps *PubSub) listen(s *pubsub.Subscription) {
 				ps.Cancel(s.Topic())
 				return
 			}
-			var p *peer // TODO
-			ps.onReceive(p, &msgData)
+			msgData.Size = len(msg.Data)
+			fromPeer, err := ps.getPeerById(msg.From.TerminalString())
+			if err != nil {
+				log.Error("Failed to execute getPeerById", "err", err)
+			} else {
+				ps.onReceive(fromPeer, &msgData)
+			}
 		}
 	}
 }
@@ -194,5 +199,6 @@ func (ps *PubSub) Publish(topic string, data *RGMsg) error {
 	if err != nil {
 		return err
 	}
+
 	return t.Publish(context.Background(), env)
 }

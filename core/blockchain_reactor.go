@@ -390,7 +390,7 @@ func (bcr *BlockChainReactor) GetLastNumber(blockNumber uint64) uint64 {
 	return plugin.StakingInstance().GetLastNumber(blockNumber)
 }
 
-func (bcr *BlockChainReactor) GetValidator(blockNumber uint64) (*cbfttypes.Validators, error) {
+func (bcr *BlockChainReactor) GetValidators(blockNumber uint64) (*cbfttypes.Validators, error) {
 	return plugin.StakingInstance().GetValidator(blockNumber)
 }
 

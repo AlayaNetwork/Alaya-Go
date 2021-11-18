@@ -19,6 +19,7 @@ package core
 import (
 	"errors"
 	"fmt"
+	"github.com/AlayaNetwork/Alaya-Go/x/gov"
 	"sort"
 	"sync"
 	"time"
@@ -346,6 +347,12 @@ func (bcc *BlockChainCache) WriteBlock(block *types.Block) error {
 
 	log.Info("Successfully write new block", "hash", block.Hash(), "number", block.NumberU64())
 	return nil
+}
+
+// CurrentActiveVersion return current gov version
+func (bcc *BlockChainCache) GetActiveVersion(sealHash common.Hash) uint32 {
+	state := bcc.ReadStateDB(sealHash)
+	return gov.GetCurrentActiveVersion(state)
 }
 
 type sealHashNumber struct {
