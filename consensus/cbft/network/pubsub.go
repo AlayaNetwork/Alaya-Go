@@ -174,7 +174,7 @@ func (ps *PubSub) listen(s *pubsub.Subscription) {
 				log.Trace("Receive a message from myself", "fromId", subMsg.From.TerminalString())
 				continue
 			}
-			fromPeer, err := ps.getPeerById(subMsg.From.TerminalString())
+			fromPeer, err := ps.getPeerById(subMsg.ReceivedFrom.ID().TerminalString())
 			if err != nil {
 				log.Error("Failed to execute getPeerById", "err", err)
 			} else {
