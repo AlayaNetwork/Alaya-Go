@@ -152,12 +152,11 @@ func (vs *Validators) NodeList() []enode.ID {
 	return nodeList
 }
 
-func (vs *Validators) MembersCount(groupID uint32) int {
+func (vs *Validators) MembersCount(groupID uint32) (int, error) {
 	if groupID >= uint32(len(vs.GroupNodes)) {
-		log.Error("MembersCount: wrong groupid", "groupID", groupID)
-		return 0
+		return 0, fmt.Errorf("wrong groupid[%d]", groupID)
 	}
-	return len(vs.GroupNodes[groupID].Nodes)
+	return len(vs.GroupNodes[groupID].Nodes), nil
 }
 
 func (vs *Validators) GetValidatorIndexes(groupid uint32) ([]uint32, error) {
@@ -273,15 +272,14 @@ func (vs *Validators) Sort() {
 	sort.Sort(vs.SortedNodes)
 }
 
-func (vs *Validators) GroupID(nodeID enode.ID) uint32 {
+func (vs *Validators) GroupID(nodeID enode.ID) (uint32, error) {
 	if len(vs.SortedNodes) == 0 {
 		vs.Sort()
 	}
 
 	idx, err := vs.Index(nodeID)
 	if err != nil {
-		log.Error("get preValidator index failed!", "err", err)
-		return math.MaxUint32
+		return math.MaxUint32, err
 	}
 
 	groupID := uint32(0)
@@ -293,7 +291,7 @@ func (vs *Validators) GroupID(nodeID enode.ID) uint32 {
 			groupID = groupID + 1
 		}
 	}
-	return groupID
+	return groupID, nil
 }
 
 func (vs *Validators) UnitID(nodeID enode.ID) uint32 {
@@ -307,7 +305,7 @@ func (vs *Validators) UnitID(nodeID enode.ID) uint32 {
 		return idx
 	}
 
-	groupID := vs.GroupID(nodeID)
+	groupID, _ := vs.GroupID(nodeID)
 	unitID := uint32(0)
 	for i, node := range vs.GroupNodes[groupID].Nodes {
 		if idx == node.Index {
