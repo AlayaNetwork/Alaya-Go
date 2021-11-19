@@ -17,9 +17,11 @@
 package network
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"github.com/AlayaNetwork/Alaya-Go/common"
 	ctypes "github.com/AlayaNetwork/Alaya-Go/consensus/cbft/types"
 	"github.com/AlayaNetwork/Alaya-Go/log"
 	"github.com/AlayaNetwork/Alaya-Go/p2p"
@@ -47,10 +49,9 @@ var (
 )
 
 // Group consensus message
-type RGMsg struct {
+type GMsg struct {
 	Code uint64
-	Size int `rlp:"-"` // Size of the raw payload
-	Data interface{}
+	Data []byte
 }
 
 type PubSub struct {
@@ -149,7 +150,7 @@ func (ps *PubSub) Subscribe(topic string) error {
 
 func (ps *PubSub) listen(s *pubsub.Subscription) {
 	for {
-		msg, err := s.Next(context.Background())
+		subMsg, err := s.Next(context.Background())
 		if err != nil {
 			if err != pubsub.ErrSubscriptionCancelled {
 				ps.Cancel(s.Topic())
@@ -157,19 +158,27 @@ func (ps *PubSub) listen(s *pubsub.Subscription) {
 			log.Error("Failed to listen to topic message", "error", err)
 			return
 		}
-		if msg != nil {
-			var msgData RGMsg
-			if err := rlp.DecodeBytes(msg.Data, &msgData); err != nil {
+		if subMsg != nil {
+			var gmsg GMsg
+			if err := rlp.DecodeBytes(subMsg.Data, &gmsg); err != nil {
 				log.Error("Failed to parse topic message", "error", err)
 				ps.Cancel(s.Topic())
 				return
 			}
-			msgData.Size = len(msg.Data)
-			fromPeer, err := ps.getPeerById(msg.From.TerminalString())
+			msg := p2p.Msg{
+				Code:    gmsg.Code,
+				Size:    uint32(len(subMsg.Data)),
+				Payload: bytes.NewReader(common.CopyBytes(gmsg.Data)),
+			}
+			if ps.pss.Host().ID().ID() == subMsg.From {
+				log.Trace("Receive a message from myself", "fromId", subMsg.From.TerminalString())
+				continue
+			}
+			fromPeer, err := ps.getPeerById(subMsg.ReceivedFrom.ID().TerminalString())
 			if err != nil {
 				log.Error("Failed to execute getPeerById", "err", err)
 			} else {
-				ps.onReceive(fromPeer, &msgData)
+				ps.onReceive(fromPeer, &msg)
 			}
 		}
 	}
@@ -188,14 +197,22 @@ func (ps *PubSub) Cancel(topic string) error {
 	return nil
 }
 
-func (ps *PubSub) Publish(topic string, data *RGMsg) error {
+func (ps *PubSub) Publish(topic string, code uint64, data interface{}) error {
 	ps.Lock()
 	defer ps.Unlock()
 	t := ps.topics[topic]
 	if t == nil {
 		return ErrNotExistsTopic
 	}
-	env, err := rlp.EncodeToBytes(data)
+	dataEnv, err := rlp.EncodeToBytes(data)
+	if err != nil {
+		return err
+	}
+	gmsg := &GMsg{
+		Code: code,
+		Data: dataEnv,
+	}
+	env, err := rlp.EncodeToBytes(gmsg)
 	if err != nil {
 		return err
 	}

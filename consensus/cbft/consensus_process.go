@@ -19,7 +19,6 @@ package cbft
 import (
 	"fmt"
 	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/network"
-	"github.com/AlayaNetwork/Alaya-Go/params"
 	"time"
 
 	"github.com/pkg/errors"
@@ -640,10 +639,9 @@ func (cbft *Cbft) publishTopicMsg(msg ctypes.ConsensusMsg) error {
 	if err != nil {
 		return fmt.Errorf("the group info of the current node is not queried, cannot publish the topic message")
 	}
-	RGMsg := &network.RGMsg{Code: protocols.MessageType(msg), Data: msg}
-	network.MeteredWriteRGMsg(RGMsg)
+	network.MeteredWriteRGMsg(protocols.MessageType(msg), msg)
 	topic := cbfttypes.ConsensusGroupTopicName(cbft.state.Epoch(), groupID)
-	return cbft.pubSub.Publish(topic, RGMsg)
+	return cbft.pubSub.Publish(topic, protocols.MessageType(msg), msg)
 }
 
 //func (cbft *Cbft) trySendRGBlockQuorumCert() {
@@ -1123,12 +1121,6 @@ func (cbft *Cbft) tryChangeView() {
 			(qc != nil && qc.Epoch == cbft.state.Epoch() && shouldSwitch)
 	}()
 
-	// should grouped according max commit block's state
-	shouldGroup := func() bool {
-		activeVersion := cbft.blockCache.GetActiveVersion(cbft.state.HighestCommitBlock().Header().SealHash())
-		return cbft.validatorPool.NeedGroup() || activeVersion >= params.FORKVERSION_0_17_0
-	}
-
 	if shouldSwitch {
 		if err := cbft.validatorPool.Update(block.NumberU64(), cbft.state.Epoch()+1, cbft.eventMux); err == nil {
 			cbft.log.Info("Update validator success", "number", block.NumberU64())
@@ -1147,6 +1139,7 @@ func (cbft *Cbft) tryChangeView() {
 		}
 		return
 	}
+
 
 	// TODO: get groupvalidatorslimit and coordinatorlimit from gov
 	if shouldGroup() {

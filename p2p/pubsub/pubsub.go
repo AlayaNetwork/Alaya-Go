@@ -637,9 +637,9 @@ func (p *PubSub) handlePendingPeers() {
 	p.newPeersPrioLk.Unlock()
 
 	for pid := range newPeers {
-		if p.host.Network().Connectedness(pid) != Connected {
+		/*if p.host.Network().Connectedness(pid) != Connected {
 			continue
-		}
+		}*/
 
 		if _, ok := p.peers[pid]; ok {
 			log.Debug("already have connection to peer: ", pid)

@@ -2,7 +2,6 @@ package pubsub
 
 import (
 	"context"
-
 	"github.com/AlayaNetwork/Alaya-Go/p2p/pubsub/message"
 
 	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
@@ -145,9 +144,11 @@ func (p *PubSub) handleSendingMessages(ctx context.Context, s Stream, outgoing <
 				return
 			}
 
-			if err := s.Write(&rpc.RPC); err != nil {
-				log.Error("Send message fail", "err", err)
-				return
+			if !message.IsEmpty(&rpc.RPC) {
+				if err := s.Write(&rpc.RPC); err != nil {
+					log.Error("Send message fail", "err", err)
+					return
+				}
 			}
 
 		/*	err := writeMsg(&rpc.RPC)
@@ -166,12 +167,14 @@ func rpcWithSubs(subs ...*message.RPC_SubOpts) *RPC {
 	return &RPC{
 		RPC: message.RPC{
 			Subscriptions: subs,
+			Publish:       make([]*message.Message, 0),
+			Control:       &message.ControlMessage{},
 		},
 	}
 }
 
 func rpcWithMessages(msgs ...*message.Message) *RPC {
-	return &RPC{RPC: message.RPC{Publish: msgs}}
+	return &RPC{RPC: message.RPC{Publish: msgs, Subscriptions: make([]*message.RPC_SubOpts, 0), Control: &message.ControlMessage{}}}
 }
 
 func rpcWithControl(msgs []*message.Message,
@@ -181,7 +184,8 @@ func rpcWithControl(msgs []*message.Message,
 	prune []*message.ControlPrune) *RPC {
 	return &RPC{
 		RPC: message.RPC{
-			Publish: msgs,
+			Subscriptions: make([]*message.RPC_SubOpts, 0),
+			Publish:       msgs,
 			Control: &message.ControlMessage{
 				Ihave: ihave,
 				Iwant: iwant,
