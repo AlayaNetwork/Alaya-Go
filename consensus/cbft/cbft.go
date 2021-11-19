@@ -2006,7 +2006,7 @@ func (cbft *Cbft) verifyViewChangeQC(viewChangeQC *ctypes.ViewChangeQC) error {
 	// check parameter validity
 	validatorLimit := cbft.validatorPool.Len(vcEpoch)
 	if err := cbft.validateViewChangeQC(viewChangeQC, validatorLimit); err != nil {
-		return err
+		return authFailedError{err}
 	}
 
 	return cbft.verifyViewChangeQuorumCerts(viewChangeQC)

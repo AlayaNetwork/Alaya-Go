@@ -18,7 +18,9 @@ package types
 
 import (
 	"encoding/json"
+	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -204,4 +206,35 @@ func TestQuorumCertAddSign(t *testing.T) {
 	s.SetBytes(msig[0].Serialize())
 	qc.AddSign(s, uint32(0))
 	assert.Equal(t, false, verifyQuorumCert(qc))
+}
+
+func TestAddSign(t *testing.T) {
+	bls.Init(int(bls.BLS12_381))
+	message := "test merge sign"
+	var k int = 100000
+	msk := make([]bls.SecretKey, k)
+	mpk := make([]bls.PublicKey, k)
+	msig := make([]bls.Sign, k)
+	msignature := make([]Signature, k)
+	for i := 0; i < 1; i++ {
+		msk[i].SetByCSPRNG()
+		mpk[i] = *msk[i].GetPublicKey()
+		msig[i] = *msk[i].Sign(message)
+		msignature[i].SetBytes(msig[i].Serialize())
+	}
+
+	qc := &QuorumCert{
+		Signature:    Signature{},
+		ValidatorSet: utils.NewBitArray(uint32(300)),
+	}
+	qc.Signature.SetBytes(msig[0].Serialize())
+	qc.ValidatorSet.SetIndex(0, true)
+
+	start := common.Millis(time.Now())
+	fmt.Println("test", "start", start)
+	for i := 1; i < k; i++ {
+		qc.AddSign(qc.Signature, uint32(i%300))
+	}
+	end := common.Millis(time.Now())
+	fmt.Println("test", "end", end, "v", qc.ValidatorSet.HasLength())
 }

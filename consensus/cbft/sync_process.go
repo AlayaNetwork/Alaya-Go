@@ -679,6 +679,40 @@ func (cbft *Cbft) MissingViewChangeNodes() (v *protocols.GetViewChange, err erro
 	return
 }
 
+func (cbft *Cbft) KnownVoteIndexes(blockIndex uint32) []uint32 {
+	groupNodes := cbft.validatorPool.GetGroupByValidator(cbft.state.Epoch())
+	allVotes := cbft.state.AllPrepareVoteByIndex(blockIndex)
+	known := make([]uint32, 0)
+	for groupID, indexes := range groupNodes {
+		qc, _ := cbft.state.FindMaxGroupRGQuorumCert(blockIndex, groupID)
+		for _, index := range indexes {
+			if _, ok := allVotes[index]; ok {
+				known = append(known, index)
+			} else if qc != nil && qc.HasSign(index) {
+				known = append(known, index)
+			}
+		}
+	}
+	return known
+}
+
+func (cbft *Cbft) KnownViewChangeIndexes() []uint32 {
+	groupNodes := cbft.validatorPool.GetGroupByValidator(cbft.state.Epoch())
+	allViewChanges := cbft.state.AllViewChange()
+	known := make([]uint32, 0)
+	for groupID, indexes := range groupNodes {
+		qc, _ := cbft.state.FindMaxGroupRGViewChangeQuorumCert(groupID)
+		for _, index := range indexes {
+			if _, ok := allViewChanges[index]; ok {
+				known = append(known, index)
+			} else if qc != nil && qc.HasSign(index) {
+				known = append(known, index)
+			}
+		}
+	}
+	return known
+}
+
 // MissingPrepareVote returns missing vote.
 func (cbft *Cbft) MissingPrepareVote() (v *protocols.GetPrepareVote, err error) {
 	result := make(chan struct{})

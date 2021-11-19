@@ -801,3 +801,8 @@ func (vp *ValidatorPool) GetGroupByValidatorID(epoch uint64, nodeID enode.ID) (u
 	unitID := validators.UnitID(nodeID)
 	return groupID, unitID, nil
 }
+
+// 返回指定epoch下节点的分组信息，key=groupID，value=分组节点index集合
+func (vp *ValidatorPool) GetGroupByValidator(epoch uint64) map[uint32][]uint32 {
+	return nil
+}
