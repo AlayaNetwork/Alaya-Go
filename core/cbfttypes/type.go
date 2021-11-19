@@ -69,6 +69,11 @@ type RemoveValidatorEvent struct {
 	Node *enode.Node
 }
 
+type NewGroupsEvent struct {
+	Topic      string // consensus:{epoch}:{groupID}
+	Validators *GroupValidators
+}
+
 type UpdateValidatorEvent struct{}
 
 type ValidateNode struct {
@@ -106,11 +111,6 @@ type Validators struct {
 	//// Sorting based on node index
 	// Node grouping info
 	GroupNodes []*GroupValidators `json:"groupNodes"`
-}
-
-type NewGroupsEvent struct {
-	Topic      string // consensus:{epoch}:{groupID}
-	Validators *GroupValidators
 }
 
 func (vn *ValidateNode) String() string {

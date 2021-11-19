@@ -20,6 +20,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/AlayaNetwork/Alaya-Go/x/xutil"
 	"sync"
 
 	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
@@ -417,8 +418,9 @@ func (vp *ValidatorPool) Update(blockNumber uint64, epoch uint64, eventMux *even
 	vp.lock.Lock()
 	defer vp.lock.Unlock()
 
-	// Only updated once
-	if blockNumber <= vp.switchPoint {
+	isElection := xutil.IsElection(blockNumber)
+	// Election block update nextValidators
+	if blockNumber <= vp.switchPoint && !isElection {
 		log.Debug("Already update validator before", "blockNumber", blockNumber, "switchPoint", vp.switchPoint)
 		return errors.New("already updated before")
 	}
@@ -428,21 +430,31 @@ func (vp *ValidatorPool) Update(blockNumber uint64, epoch uint64, eventMux *even
 		log.Error("Get validator error", "blockNumber", blockNumber, "err", err)
 		return err
 	}
+
 	if vp.needGroup {
 		nds.Grouped(vp.groupValidatorsLimit, vp.coordinatorLimit, eventMux, epoch)
 		vp.unitID = nds.UnitID(vp.nodeID)
 	}
-	vp.prevValidators = vp.currentValidators
-	vp.currentValidators = nds
-	vp.switchPoint = nds.ValidBlockNumber - 1
-	vp.lastNumber = vp.agency.GetLastNumber(NextRound(blockNumber))
-	vp.epoch = epoch
-	log.Info("Update validator", "validators", nds.String(), "switchpoint", vp.switchPoint, "epoch", vp.epoch, "lastNumber", vp.lastNumber)
+
+	if isElection && vp.needGroup {
+		vp.nextValidators = nds
+		log.Info("Update nextValidators", "validators", nds.String(), "switchpoint", vp.switchPoint, "epoch", vp.epoch, "lastNumber", vp.lastNumber)
+	} else {
+		vp.prevValidators = vp.currentValidators
+		vp.currentValidators = nds
+		vp.switchPoint = nds.ValidBlockNumber - 1
+		vp.lastNumber = vp.agency.GetLastNumber(NextRound(blockNumber))
+		vp.epoch = epoch
+		log.Info("Update validator", "validators", nds.String(), "switchpoint", vp.switchPoint, "epoch", vp.epoch, "lastNumber", vp.lastNumber)
+	}
 	return nil
 }
 
 // SetupGroup update validatorpool group info
 func (vp *ValidatorPool) SetupGroup(needGroup bool, groupValidatorsLimit, coordinatorLimit uint32) {
+	if vp.needGroup {
+		return
+	}
 	vp.lock.Lock()
 	defer vp.lock.Unlock()
 
