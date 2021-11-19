@@ -318,6 +318,7 @@ func (m *RGBroadcastManager) broadcastFunc(a awaiting) {
 		m.cbft.network.Broadcast(rg)
 		m.hadSendRGBlockQuorumCerts[msg.Index()] = rg
 		delete(m.awaitingRGBlockQuorumCerts, msg.Index())
+		m.cbft.state.AddRGBlockQuorumCert(node.Index, rg)
 	case *awaitingRGViewQC:
 		viewChangeQC, prepareQCs := m.cbft.state.FindMaxGroupRGViewChangeQuorumCert(msg.GroupID())
 		if viewChangeQC == nil {
@@ -337,6 +338,7 @@ func (m *RGBroadcastManager) broadcastFunc(a awaiting) {
 		m.cbft.network.Broadcast(rg)
 		m.hadSendRGViewChangeQuorumCerts[msg.Index()] = rg
 		delete(m.awaitingRGViewChangeQuorumCerts, msg.Index())
+		m.cbft.state.AddRGViewChangeQuorumCert(node.Index, rg)
 	}
 }
 
