@@ -22,6 +22,7 @@ import (
 	"crypto/elliptic"
 	"encoding/json"
 	"fmt"
+	"github.com/AlayaNetwork/Alaya-Go/x/xutil"
 	"strings"
 	"sync/atomic"
 
@@ -1349,6 +1350,21 @@ func (cbft *Cbft) commitBlock(commitBlock *types.Block, commitQC *ctypes.QuorumC
 		SyncState:          cbft.commitErrCh,
 		ChainStateUpdateCB: func() { cbft.bridge.UpdateChainState(qcState, lockState, commitState) },
 	})
+
+	// should grouped according max commit block's state
+	shouldGroup := func() bool {
+		activeVersion := cbft.blockCache.GetActiveVersion(cbft.state.HighestCommitBlock().Header().SealHash())
+		return cbft.validatorPool.NeedGroup() || activeVersion >= params.FORKVERSION_0_17_0
+	}
+
+	// post NewGroupsEvent to join topic according group info
+	if xutil.IsElection(cpy.NumberU64()) {
+		// TODO: get groupvalidatorslimit and coordinatorlimit from gov
+		if shouldGroup() {
+			cbft.validatorPool.SetupGroup(true, 0, 0)
+		}
+		cbft.validatorPool.Update(cpy.NumberU64(), cbft.state.Epoch()+1, cbft.eventMux)
+	}
 }
 
 // Evidences implements functions in API.

@@ -646,7 +646,7 @@ func TestGetGroupID(t *testing.T) {
 	bls.Init(bls.BLS12_381)
 	nodes := newTestNodeByNum(100)
 	agency := newTestInnerAgency(nodes)
-	vp := NewValidatorPool(agency, 0, 0, nodes[0].Node.ID(),false, 0, 0, nil)
+	vp := NewValidatorPool(agency, 0, 0, nodes[0].Node.ID(),true, 25, 5, nil)
 
 	grpID, _ := vp.GetGroupID(0, nodes[0].Node.ID())
 	assert.Equal(t, 0, grpID)

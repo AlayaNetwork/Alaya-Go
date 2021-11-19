@@ -204,6 +204,7 @@ func IsEndOfEpoch(blockNumber uint64) bool {
 	return mod == 0
 }
 
+// TODO update this function according group consensus @clearly
 func IsElection(blockNumber uint64) bool {
 	tmp := blockNumber + xcom.ElectionDistance()
 	mod := tmp % ConsensusSize()
