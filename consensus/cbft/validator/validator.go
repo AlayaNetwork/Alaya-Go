@@ -675,16 +675,6 @@ func (vp *ValidatorPool) Commit(block *types.Block) error {
 	return vp.agency.OnCommit(block)
 }
 
-// GetGroupNodes return GroupValidators according epoch
-func (vp *ValidatorPool) GetGroupNodes(epoch uint64) []*cbfttypes.GroupValidators {
-	vp.lock.RLock()
-	defer vp.lock.RUnlock()
-	if vp.epochToBlockNumber(epoch) <= vp.switchPoint {
-		return vp.prevValidators.GroupNodes
-	}
-	return vp.currentValidators.GroupNodes
-}
-
 // NeedGroup return if currentValidators need grouped
 func (vp *ValidatorPool) NeedGroup() bool {
 	vp.lock.RLock()
@@ -699,9 +689,9 @@ func (vp *ValidatorPool) GetGroupID(epoch uint64, nodeID enode.ID) (uint32, erro
 	defer vp.lock.RUnlock()
 
 	if vp.epochToBlockNumber(epoch) <= vp.switchPoint {
-		return vp.prevValidators.GroupID(nodeID), nil
+		return vp.prevValidators.GroupID(nodeID)
 	}
-	return vp.currentValidators.GroupID(nodeID), nil
+	return vp.currentValidators.GroupID(nodeID)
 }
 
 // GetUnitID return index according epoch & NodeID
@@ -730,10 +720,12 @@ func (vp *ValidatorPool) LenByGroupID(epoch uint64, groupID uint32) int {
 	vp.lock.RLock()
 	defer vp.lock.RUnlock()
 
+	grouplen := 0
 	if vp.epochToBlockNumber(epoch) <= vp.switchPoint {
-		return vp.prevValidators.MembersCount(groupID)
+		grouplen, _ = vp.prevValidators.MembersCount(groupID)
 	}
-	return vp.currentValidators.MembersCount(groupID)
+	grouplen, _ = vp.currentValidators.MembersCount(groupID)
+	return grouplen
 }
 
 //// 查询指定epoch下对应nodeIndex的节点信息，没有对应信息返回nil
@@ -788,7 +780,10 @@ func (vp *ValidatorPool) GetGroupByValidatorID(epoch uint64, nodeID enode.ID) (u
 	} else {
 		validators = vp.currentValidators
 	}
-	groupID := validators.GroupID(nodeID)
+	groupID, err := validators.GroupID(nodeID)
+	if nil != err {
+		return 0, 0, err
+	}
 	unitID := validators.UnitID(nodeID)
 	return groupID, unitID, nil
 }
