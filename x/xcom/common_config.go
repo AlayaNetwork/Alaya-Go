@@ -200,8 +200,8 @@ func EcParams0140() ([]byte, error) {
 // Calculate the rlp of the new parameter and return it to the upper storage.
 func EcParams0170() ([]byte, error) {
 	params := commonConfigExtend {
-		MaxGroupValidators: ece.CommonExt.MaxGroupValidators,
-		CoordinatorsLimit:  ece.CommonExt.CoordinatorsLimit,
+		MaxGroupValidators: ece.Common.MaxGroupValidators,
+		CoordinatorsLimit:  ece.Common.CoordinatorsLimit,
 	}
 	bytes, err := rlp.EncodeToBytes(params)
 	if err != nil {
@@ -317,7 +317,7 @@ func getDefaultEMConfig(netId int8) *EconomicModel {
 			Restricting: restrictingConfigExtend{
 				MinimumRelease: new(big.Int).Mul(oneAtp, new(big.Int).SetInt64(80)),
 			},
-			CommonExt: commonConfigExtend{
+			Common: commonConfigExtend{
 				MaxGroupValidators: 25,
 				CoordinatorsLimit: 5,
 			},
@@ -903,9 +903,9 @@ func CalcPNew(sqrtWeight float64) float64 {
 }
 
 func MaxGroupValidators() uint32 {
-	return ece.CommonExt.MaxGroupValidators
+	return ece.Common.MaxGroupValidators
 }
 
 func CoordinatorsLimit() uint32 {
-	return ece.CommonExt.CoordinatorsLimit
+	return ece.Common.CoordinatorsLimit
 }
