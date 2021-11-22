@@ -162,7 +162,7 @@ type EconomicModel struct {
 type EconomicModelExtend struct {
 	Reward      rewardConfigExtend      `json:"reward"`
 	Restricting restrictingConfigExtend `json:"restricting"`
-	CommonExt   commonConfigExtend      `json:"CommonExt"`
+	Common      commonConfigExtend      `json:"Common"`
 }
 
 type rewardConfigExtend struct {
