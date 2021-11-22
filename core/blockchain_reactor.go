@@ -81,7 +81,7 @@ func (bcr *BlockChainReactor) Start(mode string) {
 	if mode == common.PPOS_VALIDATOR_MODE {
 		// Subscribe events for confirmed blocks
 		bcr.bftResultSub = bcr.eventMux.Subscribe(cbfttypes.CbftResult{})
-		// start the loop rutine
+		// start the loop routine
 		go bcr.loop()
 	}
 }

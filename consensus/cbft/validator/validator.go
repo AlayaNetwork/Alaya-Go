@@ -452,9 +452,6 @@ func (vp *ValidatorPool) Update(blockNumber uint64, epoch uint64, eventMux *even
 
 // SetupGroup update validatorpool group info
 func (vp *ValidatorPool) SetupGroup(needGroup bool, groupValidatorsLimit, coordinatorLimit uint32) {
-	if vp.needGroup {
-		return
-	}
 	vp.lock.Lock()
 	defer vp.lock.Unlock()
 
