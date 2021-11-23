@@ -20,7 +20,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/AlayaNetwork/Alaya-Go/x/xcom"
 	"github.com/AlayaNetwork/Alaya-Go/x/xutil"
 	"sync"
 
@@ -457,8 +456,8 @@ func (vp *ValidatorPool) SetupGroup(needGroup bool) {
 	defer vp.lock.Unlock()
 
 	vp.needGroup = needGroup
-	vp.groupValidatorsLimit = xcom.MaxGroupValidators()
-	vp.coordinatorLimit = xcom.CoordinatorsLimit()
+	vp.groupValidatorsLimit = xutil.MaxGroupValidators()
+	vp.coordinatorLimit = xutil.CoordinatorsLimit()
 }
 
 // GetValidatorByNodeID get the validator by node id.
