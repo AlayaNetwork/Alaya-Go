@@ -22,7 +22,6 @@ import (
 	"crypto/elliptic"
 	"encoding/json"
 	"fmt"
-	"github.com/AlayaNetwork/Alaya-Go/x/xcom"
 	"github.com/AlayaNetwork/Alaya-Go/x/xutil"
 	"strings"
 	"sync/atomic"
