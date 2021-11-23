@@ -74,14 +74,6 @@ func EpochSize() uint64 {
 	return xcom.EpochSize()
 }
 
-func MaxGroupValidators() uint32 {
-	return xcom.MaxGroupValidators()
-}
-
-func CoordinatorsLimit() uint32 {
-	return xcom.CoordinatorsLimit()
-}
-
 // EpochsPerYear returns how many epochs per year
 func EpochsPerYear() uint64 {
 	epochBlocks := CalcBlocksEachEpoch()
