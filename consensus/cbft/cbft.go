@@ -1362,7 +1362,7 @@ func (cbft *Cbft) commitBlock(commitBlock *types.Block, commitQC *ctypes.QuorumC
 	if xutil.IsElection(cpy.NumberU64(), activeVersion) {
 		// TODO: get groupvalidatorslimit and coordinatorlimit from gov
 		if shouldGroup() {
-			cbft.validatorPool.SetupGroup(true, xcom.MaxGroupValidators(), xcom.CoordinatorsLimit())
+			cbft.validatorPool.SetupGroup(true, xutil.MaxGroupValidators(), xutil.CoordinatorsLimit())
 		}
 		cbft.validatorPool.Update(cpy.NumberU64(), cbft.state.Epoch()+1, cbft.eventMux)
 	}
