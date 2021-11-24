@@ -69,6 +69,11 @@ type RemoveValidatorEvent struct {
 	Node *enode.Node
 }
 
+type NewGroupsEvent struct {
+	Topic      string // consensus:{epoch}:{groupID}
+	Validators *GroupValidators
+}
+
 type UpdateValidatorEvent struct{}
 
 type ValidateNode struct {
@@ -77,7 +82,6 @@ type ValidateNode struct {
 	PubKey    *ecdsa.PublicKey   `json:"-"`
 	NodeID    enode.ID           `json:"nodeID"`
 	BlsPubKey *bls.PublicKey     `json:"blsPubKey"`
-	Distance  int
 }
 
 type ValidateNodeMap map[enode.ID]*ValidateNode
@@ -107,11 +111,6 @@ type Validators struct {
 	//// Sorting based on node index
 	// Node grouping info
 	GroupNodes []*GroupValidators `json:"groupNodes"`
-}
-
-type NewGroupsEvent struct {
-	Topic              string  // consensus:{epoch}:{groupID}
-	Validators         *GroupValidators
 }
 
 func (vn *ValidateNode) String() string {
@@ -153,23 +152,22 @@ func (vs *Validators) NodeList() []enode.ID {
 	return nodeList
 }
 
-func (vs *Validators) MembersCount(groupID uint32) int {
+func (vs *Validators) MembersCount(groupID uint32) (int, error) {
 	if groupID >= uint32(len(vs.GroupNodes)) {
-		log.Error("MembersCount: wrong groupid","groupID",groupID)
-		return 0
+		return 0, fmt.Errorf("wrong groupid[%d]", groupID)
 	}
-	return len(vs.GroupNodes[groupID].Nodes)
+	return len(vs.GroupNodes[groupID].Nodes), nil
 }
 
 func (vs *Validators) GetValidatorIndexes(groupid uint32) ([]uint32, error) {
 	if groupid >= uint32(len(vs.GroupNodes)) {
-		return nil, fmt.Errorf("MembersCount: wrong groupid[%d]",groupid)
+		return nil, fmt.Errorf("MembersCount: wrong groupid[%d]", groupid)
 	}
 	ids := make([]uint32, 0)
-	for _,node := range vs.GroupNodes[groupid].Nodes {
+	for _, node := range vs.GroupNodes[groupid].Nodes {
 		ids = append(ids, node.Index)
 	}
-	return ids,nil
+	return ids, nil
 }
 
 func (vs *Validators) NodeListByIndexes(indexes []uint32) ([]*ValidateNode, error) {
@@ -274,15 +272,14 @@ func (vs *Validators) Sort() {
 	sort.Sort(vs.SortedNodes)
 }
 
-func (vs *Validators) GroupID(nodeID enode.ID) uint32 {
+func (vs *Validators) GroupID(nodeID enode.ID) (uint32, error) {
 	if len(vs.SortedNodes) == 0 {
 		vs.Sort()
 	}
 
 	idx, err := vs.Index(nodeID)
 	if err != nil {
-		log.Error("get preValidator index failed!", "err", err)
-		return math.MaxUint32
+		return math.MaxUint32, err
 	}
 
 	groupID := uint32(0)
@@ -294,7 +291,7 @@ func (vs *Validators) GroupID(nodeID enode.ID) uint32 {
 			groupID = groupID + 1
 		}
 	}
-	return groupID
+	return groupID, nil
 }
 
 func (vs *Validators) UnitID(nodeID enode.ID) uint32 {
@@ -308,7 +305,7 @@ func (vs *Validators) UnitID(nodeID enode.ID) uint32 {
 		return idx
 	}
 
-	groupID := vs.GroupID(nodeID)
+	groupID, _ := vs.GroupID(nodeID)
 	unitID := uint32(0)
 	for i, node := range vs.GroupNodes[groupID].Nodes {
 		if idx == node.Index {
@@ -372,7 +369,7 @@ func (vs *Validators) Grouped(groupValidatorsLimit uint32, coordinatorLimit uint
 	for i, gvs := range vs.GroupNodes {
 		gvs.GroupedUnits(coordinatorLimit)
 		topic := ConsensusGroupTopicName(epoch, uint32(i))
-		eventMux.Post(NewGroupsEvent{Topic:topic, Validators: gvs})
+		eventMux.Post(NewGroupsEvent{Topic: topic, Validators: gvs})
 	}
 	return nil
 }

@@ -441,7 +441,7 @@ func (h *EngineManager) handler(p *p2p.Peer, rw p2p.MsgReadWriter) error {
 	}
 }
 
-func (h *EngineManager) HandleRGMsg(p *peer, msg *RGMsg) error {
+func (h *EngineManager) HandleRGMsg(p *peer, msg *p2p.Msg) error {
 	// All messages cannot exceed the maximum specified by the agreement.
 	if msg.Size > protocols.CbftProtocolMaxMsgSize {
 		return types.ErrResp(types.ErrMsgTooLarge, "%v > %v", msg.Size, protocols.CbftProtocolMaxMsgSize)
@@ -449,7 +449,8 @@ func (h *EngineManager) HandleRGMsg(p *peer, msg *RGMsg) error {
 
 	switch {
 	case msg.Code == protocols.RGBlockQuorumCertMsg:
-		if request, ok := msg.Data.(protocols.RGBlockQuorumCert); ok {
+		var request protocols.RGBlockQuorumCert
+		if err := msg.Decode(&request); err != nil {
 			p.MarkMessageHash((&request).MsgHash())
 			MeteredReadRGMsg(msg)
 			return h.engine.ReceiveMessage(types.NewMsgInfo(&request, p.PeerID()))
@@ -457,7 +458,8 @@ func (h *EngineManager) HandleRGMsg(p *peer, msg *RGMsg) error {
 		return types.ErrResp(types.ErrInvalidRGMsg, "%s: %v", "unmatched code and data", msg.Code)
 
 	case msg.Code == protocols.RGViewChangeQuorumCertMsg:
-		if request, ok := msg.Data.(protocols.RGViewChangeQuorumCert); ok {
+		var request protocols.RGViewChangeQuorumCert
+		if err := msg.Decode(&request); err != nil {
 			p.MarkMessageHash((&request).MsgHash())
 			MeteredReadRGMsg(msg)
 			return h.engine.ReceiveMessage(types.NewMsgInfo(&request, p.PeerID()))

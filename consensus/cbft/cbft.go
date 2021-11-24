@@ -22,6 +22,7 @@ import (
 	"crypto/elliptic"
 	"encoding/json"
 	"fmt"
+	"github.com/AlayaNetwork/Alaya-Go/x/xutil"
 	"strings"
 	"sync/atomic"
 
@@ -261,7 +262,7 @@ func (cbft *Cbft) Start(chain consensus.ChainReader, blockCache consensus.BlockC
 	cbft.state.SetHighestCommitBlock(block)
 
 	// init RGMsg broadcast manager
-	cbft.RGBroadcastManager = NewRGBroadcastManager(cbft, 1) // TODO cycleNumber
+	cbft.RGBroadcastManager = NewRGBroadcastManager(cbft)
 
 	// init handler and router to process message.
 	// cbft -> handler -> router.
@@ -1118,6 +1119,7 @@ func (cbft *Cbft) Close() error {
 		cbft.asyncExecutor.Stop()
 	}
 	cbft.bridge.Close()
+	cbft.RGBroadcastManager.Close()
 	return nil
 }
 
@@ -1348,6 +1350,21 @@ func (cbft *Cbft) commitBlock(commitBlock *types.Block, commitQC *ctypes.QuorumC
 		SyncState:          cbft.commitErrCh,
 		ChainStateUpdateCB: func() { cbft.bridge.UpdateChainState(qcState, lockState, commitState) },
 	})
+
+	// should grouped according max commit block's state
+	shouldGroup := func() bool {
+		activeVersion := cbft.blockCache.GetActiveVersion(cbft.state.HighestCommitBlock().Header().SealHash())
+		return cbft.validatorPool.NeedGroup() || activeVersion >= params.FORKVERSION_0_17_0
+	}
+
+	// post NewGroupsEvent to join topic according group info
+	if xutil.IsElection(cpy.NumberU64()) {
+		// TODO: get groupvalidatorslimit and coordinatorlimit from gov
+		if shouldGroup() {
+			cbft.validatorPool.SetupGroup(true, 0, 0)
+		}
+		cbft.validatorPool.Update(cpy.NumberU64(), cbft.state.Epoch()+1, cbft.eventMux)
+	}
 }
 
 // Evidences implements functions in API.
@@ -1938,12 +1955,6 @@ func (cbft *Cbft) verifyQuorumCert(qc *ctypes.QuorumCert) error {
 
 func (cbft *Cbft) validateViewChangeQC(viewChangeQC *ctypes.ViewChangeQC, validatorLimit int) error {
 
-	// TODO
-	// 校验 ValidatorSet 是否重复
-
-	//vcEpoch, _, _, _, _, _ := viewChangeQC.MaxBlock()
-
-	//maxLimit := cbft.validatorPool.Len(vcEpoch)
 	if len(viewChangeQC.QCs) > validatorLimit {
 		return fmt.Errorf("viewchangeQC exceed validator max limit, total:%d, validatorLimit:%d", len(viewChangeQC.QCs), validatorLimit)
 	}
@@ -1952,7 +1963,12 @@ func (cbft *Cbft) validateViewChangeQC(viewChangeQC *ctypes.ViewChangeQC, valida
 	// check signature number
 	signsTotal := viewChangeQC.Len()
 	if signsTotal < threshold {
-		return fmt.Errorf("viewchange has small number of signature total:%d, threshold:%d", signsTotal, threshold)
+		return fmt.Errorf("viewchangeQC has small number of signature, total:%d, threshold:%d", signsTotal, threshold)
+	}
+	// check for duplicate signers
+	anoherTotal := viewChangeQC.ValidatorSet().HasLength()
+	if signsTotal != anoherTotal {
+		return fmt.Errorf("viewchangeQC has duplicate signers, signsTotal:%d, anoherTotal:%d", signsTotal, anoherTotal)
 	}
 
 	var err error
@@ -2006,7 +2022,7 @@ func (cbft *Cbft) verifyViewChangeQC(viewChangeQC *ctypes.ViewChangeQC) error {
 	// check parameter validity
 	validatorLimit := cbft.validatorPool.Len(vcEpoch)
 	if err := cbft.validateViewChangeQC(viewChangeQC, validatorLimit); err != nil {
-		return err
+		return authFailedError{err}
 	}
 
 	return cbft.verifyViewChangeQuorumCerts(viewChangeQC)

@@ -17,7 +17,10 @@
 package types
 
 import (
+	"encoding/json"
+	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -107,6 +110,43 @@ func Test_ViewChangeQC_MaxBlock(t *testing.T) {
 	assert.Equal(t, uint64(0), epoch)
 }
 
+func TestValidatorSet(t *testing.T) {
+	testCases := []struct {
+		ValidatorSetStr string
+	}{
+		{`"x_x_x_xxxx"`},
+		{`"xxxxxx"`},
+		{`"xx__________"`},
+		{`"x_x_x_______"`},
+		{`"xx__x_______"`},
+		{`"x_x_x_xxxx"`},
+		{`"______x_____"`},
+		{`"______xxxx__"`},
+		{`"______xx____"`},
+		{`"______x_x_x_"`},
+		{`"______xx__x_"`},
+		{`"______xxx_x____"`},
+	}
+
+	bitArray := func(bitArrayStr string) *utils.BitArray {
+		var ba *utils.BitArray
+		json.Unmarshal([]byte(bitArrayStr), &ba)
+		return ba
+
+	}
+
+	viewChangeQC := &ViewChangeQC{QCs: make([]*ViewChangeQuorumCert, 0)}
+	for _, c := range testCases {
+		qc := &ViewChangeQuorumCert{
+			ValidatorSet: bitArray(c.ValidatorSetStr),
+		}
+		viewChangeQC.QCs = append(viewChangeQC.QCs, qc)
+	}
+	assert.Equal(t, 45, viewChangeQC.Len())
+	assert.Equal(t, uint32(15), viewChangeQC.ValidatorSet().Size())
+	assert.Equal(t, 11, viewChangeQC.ValidatorSet().HasLength())
+}
+
 func TestQuorumCertAddSign(t *testing.T) {
 	bls.Init(int(bls.BLS12_381))
 	message := "test merge sign"
@@ -166,4 +206,35 @@ func TestQuorumCertAddSign(t *testing.T) {
 	s.SetBytes(msig[0].Serialize())
 	qc.AddSign(s, uint32(0))
 	assert.Equal(t, false, verifyQuorumCert(qc))
+}
+
+func TestAddSign(t *testing.T) {
+	bls.Init(int(bls.BLS12_381))
+	message := "test merge sign"
+	var k int = 100000
+	msk := make([]bls.SecretKey, k)
+	mpk := make([]bls.PublicKey, k)
+	msig := make([]bls.Sign, k)
+	msignature := make([]Signature, k)
+	for i := 0; i < 1; i++ {
+		msk[i].SetByCSPRNG()
+		mpk[i] = *msk[i].GetPublicKey()
+		msig[i] = *msk[i].Sign(message)
+		msignature[i].SetBytes(msig[i].Serialize())
+	}
+
+	qc := &QuorumCert{
+		Signature:    Signature{},
+		ValidatorSet: utils.NewBitArray(uint32(300)),
+	}
+	qc.Signature.SetBytes(msig[0].Serialize())
+	qc.ValidatorSet.SetIndex(0, true)
+
+	start := common.Millis(time.Now())
+	fmt.Println("test", "start", start)
+	for i := 1; i < k; i++ {
+		qc.AddSign(qc.Signature, uint32(i%300))
+	}
+	end := common.Millis(time.Now())
+	fmt.Println("test", "end", end, "v", qc.ValidatorSet.HasLength())
 }

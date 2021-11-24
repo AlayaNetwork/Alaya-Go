@@ -19,6 +19,7 @@ package network
 import (
 	"github.com/AlayaNetwork/Alaya-Go/common"
 	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/protocols"
+	ctypes "github.com/AlayaNetwork/Alaya-Go/consensus/cbft/types"
 	"github.com/AlayaNetwork/Alaya-Go/metrics"
 	"github.com/AlayaNetwork/Alaya-Go/p2p"
 	"github.com/AlayaNetwork/Alaya-Go/rlp"
@@ -141,7 +142,7 @@ func (rw *meteredMsgReadWriter) Init(version int) {
 	rw.version = version
 }
 
-func MeteredReadRGMsg(msg *RGMsg) {
+func MeteredReadRGMsg(msg *p2p.Msg) {
 	if !metrics.Enabled {
 		return
 	}
@@ -201,23 +202,23 @@ func (rw *meteredMsgReadWriter) ReadMsg() (p2p.Msg, error) {
 	return msg, err
 }
 
-func MeteredWriteRGMsg(msg *RGMsg) {
+func MeteredWriteRGMsg(code uint64, msg ctypes.ConsensusMsg) {
 	if !metrics.Enabled {
 		return
 	}
-	size, _, err := rlp.EncodeToReader(msg.Data)
+	size, _, err := rlp.EncodeToReader(msg)
 	if err != nil {
 		return
 	}
 	packets, traffic := miscOutPacketsMeter, miscOutTrafficMeter
 	switch {
-	case msg.Code == protocols.RGBlockQuorumCertMsg:
+	case code == protocols.RGBlockQuorumCertMsg:
 		packets, traffic = propRGBlockQuorumCertOutPacketsMeter, propRGBlockQuorumCertOutTrafficMeter
-		common.RGBlockQuorumCertEgressTrafficMeter.Mark(int64(msg.Size))
+		common.RGBlockQuorumCertEgressTrafficMeter.Mark(int64(size))
 
-	case msg.Code == protocols.RGViewChangeQuorumCertMsg:
+	case code == protocols.RGViewChangeQuorumCertMsg:
 		packets, traffic = propRGViewChangeQuorumCertOutPacketsMeter, propRGViewChangeQuorumCertOutTrafficMeter
-		common.RGViewChangeQuorumCertEgressTrafficMeter.Mark(int64(msg.Size))
+		common.RGViewChangeQuorumCertEgressTrafficMeter.Mark(int64(size))
 	}
 	packets.Mark(1)
 	traffic.Mark(int64(size))
