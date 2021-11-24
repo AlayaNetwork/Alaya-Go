@@ -175,8 +175,8 @@ type restrictingConfigExtend struct {
 
 type commonConfigExtend struct {
 	// add by 0.17.0
-	MaxGroupValidators  uint32 `json:"MaxGroupValidators"`  // max validators count in 1 group
-	CoordinatorsLimit   uint32 `json:"CoordinatorLimit"`    // max Coordinators count in 1 group
+	MaxGroupValidators  uint32 `json:"caxGroupValidators"`  // max validators count in 1 group
+	CoordinatorsLimit   uint32 `json:"coordinatorLimit"`    // max Coordinators count in 1 group
 }
 
 // New parameters added in version 0.14.0 need to be saved on the chain.
