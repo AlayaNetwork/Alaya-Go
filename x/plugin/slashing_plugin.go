@@ -105,8 +105,8 @@ func (sp *SlashingPlugin) SetDecodeEvidenceFun(f func(dupType consensus.Evidence
 func (sp *SlashingPlugin) BeginBlock(blockHash common.Hash, header *types.Header, state xcom.StateDB) error {
 	// If it is the first block in each round, Delete old pack amount record.
 	// Do this from the second consensus round
-	if xutil.IsBeginOfConsensus(header.Number.Uint64()) && header.Number.Uint64() > 1 {
-		if err := sp.switchEpoch(header.Number.Uint64(), blockHash); nil != err {
+	if xutil.IsBeginOfConsensus(header.Number.Uint64(), header.GetActiveVersion()) && header.Number.Uint64() > 1 {
+		if err := sp.switchEpoch(header, blockHash); nil != err {
 			log.Error("Failed to BeginBlock,  call switchEpoch is failed", "blockNumber", header.Number.Uint64(), "blockHash", blockHash.TerminalString(), "err", err)
 			return err
 		}
@@ -118,10 +118,10 @@ func (sp *SlashingPlugin) BeginBlock(blockHash common.Hash, header *types.Header
 	// If it is the 230th block of each round,
 	// it will punish the node with abnormal block rate.
 	// Do this from the second consensus round
-	if header.Number.Uint64() > xutil.ConsensusSize() && xutil.IsElection(header.Number.Uint64()) {
+	if header.Number.Uint64() > xcom.ConsensusSize(header.GetActiveVersion()) && xutil.IsElection(header.Number.Uint64(), header.GetActiveVersion()) {
 		log.Debug("Call GetPrePackAmount", "blockNumber", header.Number.Uint64(), "blockHash",
-			blockHash.TerminalString(), "consensusSize", xutil.ConsensusSize(), "electionDistance", xcom.ElectionDistance())
-		if result, err := sp.GetPrePackAmount(header.Number.Uint64(), header.ParentHash); nil != err {
+			blockHash.TerminalString(), "consensusSize", xcom.ConsensusSize(header.GetActiveVersion()), "electionDistance", xcom.ElectionDistance())
+		if result, err := sp.GetPrePackAmount(header, header.ParentHash); nil != err {
 			return err
 		} else {
 			if nil == result {
@@ -129,7 +129,7 @@ func (sp *SlashingPlugin) BeginBlock(blockHash common.Hash, header *types.Header
 				return errors.New("packAmount data not found")
 			}
 
-			preRoundVal, err := stk.getPreValList(blockHash, header.Number.Uint64(), QueryStartIrr)
+			preRoundVal, err := stk.getPreValList(blockHash, header.Number.Uint64(), QueryStartIrr, header.GetActiveVersion())
 			if nil != err {
 				log.Error("Failed to BeginBlock, query previous round validators is failed", "blockNumber", header.Number.Uint64(), "blockHash", blockHash.TerminalString(), "err", err)
 				return err
@@ -204,7 +204,7 @@ func (sp *SlashingPlugin) zeroProduceProcess(blockHash common.Hash, header *type
 		return nil, err
 	}
 
-	preRound := xutil.CalculateRound(header.Number.Uint64()) - 1
+	preRound := xutil.CalculateRound(header.Number.Uint64(), header.GetActiveVersion()) - 1
 	log.Info("Call zeroProduceProcess start", "blockNumber", blockNumber, "blockHash", blockHash, "preRound", preRound, "zeroProduceNumberThreshold", zeroProduceNumberThreshold, "zeroProduceCumulativeTime", zeroProduceCumulativeTime, "waitSlashingNodeListSize", waitSlashingNodeList)
 	if len(waitSlashingNodeList) > 0 {
 		for index := 0; index < len(waitSlashingNodeList); index++ {
@@ -230,7 +230,7 @@ func (sp *SlashingPlugin) zeroProduceProcess(blockHash common.Hash, header *type
 			if ok && isProduced {
 				isDelete = true
 			} else {
-				if amount, err := sp.getPackAmount(blockNumber, blockHash, nodeId); nil != err {
+				if amount, err := sp.getPackAmount(blockNumber, blockHash, nodeId, header.GetActiveVersion()); nil != err {
 					return nil, err
 				} else if amount > 0 {
 					isDelete = true
@@ -297,7 +297,7 @@ func (sp *SlashingPlugin) zeroProduceProcess(blockHash common.Hash, header *type
 				continue
 			}
 
-			slashItem, err := sp.checkSlashing(header.Number.Uint64(), blockHash, waitSlashingNode, preRound, zeroProduceCumulativeTime, zeroProduceNumberThreshold)
+			slashItem, err := sp.checkSlashing(header.Number.Uint64(), blockHash, waitSlashingNode, preRound, zeroProduceCumulativeTime, zeroProduceNumberThreshold, header.GetActiveVersion())
 			if nil != err {
 				return nil, err
 			}
@@ -317,7 +317,7 @@ func (sp *SlashingPlugin) zeroProduceProcess(blockHash common.Hash, header *type
 				Round:    preRound,
 				CountBit: 1,
 			}
-			slashItem, err := sp.checkSlashing(header.Number.Uint64(), blockHash, waitSlashingNode, preRound, zeroProduceCumulativeTime, zeroProduceNumberThreshold)
+			slashItem, err := sp.checkSlashing(header.Number.Uint64(), blockHash, waitSlashingNode, preRound, zeroProduceCumulativeTime, zeroProduceNumberThreshold, header.GetActiveVersion())
 			if nil != err {
 				return nil, err
 			}
@@ -337,7 +337,7 @@ func (sp *SlashingPlugin) zeroProduceProcess(blockHash common.Hash, header *type
 	return slashQueue, nil
 }
 
-func (sp *SlashingPlugin) checkSlashing(blockNumber uint64, blockHash common.Hash, waitSlashingNode *WaitSlashingNode, preRound uint64, zeroProduceCumulativeTime uint16, zeroProduceNumberThreshold uint16) (*staking.SlashNodeItem, error) {
+func (sp *SlashingPlugin) checkSlashing(blockNumber uint64, blockHash common.Hash, waitSlashingNode *WaitSlashingNode, preRound uint64, zeroProduceCumulativeTime uint16, zeroProduceNumberThreshold uint16, version uint32) (*staking.SlashNodeItem, error) {
 	nodeId := waitSlashingNode.NodeId
 	// If the range of the time window is satisfied, and the number of zero blocks is satisfied, a penalty is imposed.
 	if diff := uint16(preRound - waitSlashingNode.Round + 1); diff == zeroProduceCumulativeTime {
@@ -376,7 +376,7 @@ func (sp *SlashingPlugin) checkSlashing(blockNumber uint64, blockHash common.Has
 			}
 
 			slashAmount := new(big.Int).SetUint64(0)
-			totalBalance := calcCanTotalBalance(blockNumber, canMutable)
+			totalBalance := calcCanTotalBalance(blockNumber, canMutable, version)
 			blocksReward, err := gov.GovernSlashBlocksReward(blockNumber, blockHash)
 			if nil != err {
 				log.Error("Failed to zeroProduceProcess, query GovernSlashBlocksReward is failed", "blockNumber", blockNumber, "blockHash", blockHash.TerminalString(), "err", err)
@@ -435,8 +435,8 @@ func (sp *SlashingPlugin) setWaitSlashingNodeList(blockNumber uint64, blockHash 
 	return nil
 }
 
-func (sp *SlashingPlugin) getPackAmount(blockNumber uint64, blockHash common.Hash, nodeId enode.IDv0) (uint32, error) {
-	value, err := sp.db.Get(blockHash, buildKey(blockNumber, nodeId.Bytes()))
+func (sp *SlashingPlugin) getPackAmount(blockNumber uint64, blockHash common.Hash, nodeId enode.IDv0, version uint32) (uint32, error) {
+	value, err := sp.db.Get(blockHash, buildKey(blockNumber, nodeId.Bytes(), version))
 	if snapshotdb.NonDbNotFoundErr(err) {
 		return 0, err
 	}
@@ -454,11 +454,11 @@ func (sp *SlashingPlugin) setPackAmount(blockHash common.Hash, header *types.Hea
 	if nil != err {
 		return err
 	}
-	if value, err := sp.getPackAmount(header.Number.Uint64(), blockHash, nodeId); nil != err {
+	if value, err := sp.getPackAmount(header.Number.Uint64(), blockHash, nodeId, header.GetActiveVersion()); nil != err {
 		return err
 	} else {
 		value++
-		if err := sp.db.Put(blockHash, buildKey(header.Number.Uint64(), nodeId.Bytes()), common.Uint32ToBytes(value)); nil != err {
+		if err := sp.db.Put(blockHash, buildKey(header.Number.Uint64(), nodeId.Bytes(), header.GetActiveVersion()), common.Uint32ToBytes(value)); nil != err {
 			return err
 		}
 		log.Debug("Call setPackAmount finished", "blockNumber", header.Number.Uint64(), "blockHash", blockHash.TerminalString(), "nodeId", nodeId.TerminalString(), "value", value)
@@ -466,9 +466,9 @@ func (sp *SlashingPlugin) setPackAmount(blockHash common.Hash, header *types.Hea
 	return nil
 }
 
-func (sp *SlashingPlugin) switchEpoch(blockNumber uint64, blockHash common.Hash) error {
+func (sp *SlashingPlugin) switchEpoch(header *types.Header, blockHash common.Hash) error {
 
-	iter := sp.db.Ranking(blockHash, buildPrefixByRound(xutil.CalculateRound(blockNumber)-2), 0)
+	iter := sp.db.Ranking(blockHash, buildPrefixByRound(xutil.CalculateRound(header.Number.Uint64(), header.GetActiveVersion())-2), 0)
 	if err := iter.Error(); nil != err {
 		return err
 	}
@@ -477,20 +477,20 @@ func (sp *SlashingPlugin) switchEpoch(blockNumber uint64, blockHash common.Hash)
 	for iter.Next() {
 		key := iter.Key()
 		value := iter.Value()
-		log.Debug("Call switchEpoch ranking old", "blockNumber", blockNumber, "key", hex.EncodeToString(key), "value", common.BytesToUint32(value))
+		log.Debug("Call switchEpoch ranking old", "blockNumber", header.Number.Uint64(), "key", hex.EncodeToString(key), "value", common.BytesToUint32(value))
 		if err := sp.db.Del(blockHash, key); nil != err {
 			return err
 		}
 		count++
 	}
-	log.Info("Call switchEpoch finished", "blockNumber", blockNumber, "blockHash", blockHash.TerminalString(), "count", count)
+	log.Info("Call switchEpoch finished", "blockNumber", header.Number.Uint64(), "blockHash", blockHash.TerminalString(), "count", count)
 	return nil
 }
 
 // Get the consensus rate of all nodes in the previous round
-func (sp *SlashingPlugin) GetPrePackAmount(blockNumber uint64, parentHash common.Hash) (map[enode.IDv0]uint32, error) {
+func (sp *SlashingPlugin) GetPrePackAmount(header *types.Header, parentHash common.Hash) (map[enode.IDv0]uint32, error) {
 	result := make(map[enode.IDv0]uint32)
-	prefixKey := buildPrefixByRound(xutil.CalculateRound(blockNumber) - 1)
+	prefixKey := buildPrefixByRound(xutil.CalculateRound(header.Number.Uint64(), header.GetActiveVersion()) - 1)
 	iter := sp.db.Ranking(parentHash, prefixKey, 0)
 
 	if err := iter.Error(); nil != err {
@@ -528,8 +528,9 @@ func (sp *SlashingPlugin) Slash(evidence consensus.Evidence, blockHash common.Ha
 			"blockNumber", blockNumber, "blockHash", blockHash.TerminalString(), "evidenceBlockNumber", evidence.BlockNumber())
 		return slashing.ErrBlockNumberTooHigh
 	}
-	evidenceEpoch := xutil.CalculateEpoch(evidence.BlockNumber())
-	blocksOfEpoch := xutil.CalcBlocksEachEpoch()
+	currentVeriosn := gov.GetCurrentActiveVersion(stateDB)
+	evidenceEpoch := xutil.CalculateEpoch(evidence.BlockNumber(), currentVeriosn)
+	blocksOfEpoch := xutil.CalcBlocksEachEpoch(currentVeriosn)
 	invalidNum := evidenceEpoch * blocksOfEpoch
 	if invalidNum < blockNumber {
 
@@ -594,7 +595,7 @@ func (sp *SlashingPlugin) Slash(evidence consensus.Evidence, blockHash common.Ha
 		return slashing.ErrBlsPubKeyMismatch
 	}
 
-	if has, err := stk.checkRoundValidatorAddr(blockHash, evidence.BlockNumber(), canAddr); nil != err {
+	if has, err := stk.checkRoundValidatorAddr(blockHash, evidence.BlockNumber(), canAddr, currentVeriosn); nil != err {
 		log.Error("Failed to Slash, checkRoundValidatorAddr is failed", "blockNumber", blockNumber, "blockHash", blockHash.TerminalString(),
 			"evidenceBlockNum", evidence.BlockNumber(), "canAddr", canAddr.Hex(), "err", err)
 		return slashing.ErrDuplicateSignVerify
@@ -625,7 +626,7 @@ func (sp *SlashingPlugin) Slash(evidence consensus.Evidence, blockHash common.Ha
 		return err
 	}
 
-	totalBalance := calcCanTotalBalance(blockNumber, canMutable)
+	totalBalance := calcCanTotalBalance(blockNumber, canMutable, currentVeriosn)
 	slashAmount := calcAmountByRate(totalBalance, uint64(fraction), TenThousandDenominator)
 
 	log.Info("Call SlashCandidates on executeSlash", "blockNumber", blockNumber, "blockHash", blockHash.TerminalString(),
@@ -681,12 +682,12 @@ func duplicateSignKey(nodeId enode.IDv0, blockNumber uint64, dupType consensus.E
 	return append(append(nodeId.Bytes(), common.Uint64ToBytes(blockNumber)...), common.Uint16ToBytes(uint16(dupType))...)
 }
 
-func buildKey(blockNumber uint64, key []byte) []byte {
-	return append(buildPrefix(blockNumber), key...)
+func buildKey(blockNumber uint64, key []byte, version uint32) []byte {
+	return append(buildPrefix(blockNumber, version), key...)
 }
 
-func buildPrefix(blockNumber uint64) []byte {
-	return buildPrefixByRound(xutil.CalculateRound(blockNumber))
+func buildPrefix(blockNumber uint64, version uint32) []byte {
+	return buildPrefixByRound(xutil.CalculateRound(blockNumber, version))
 }
 
 func buildPrefixByRound(round uint64) []byte {
@@ -714,9 +715,9 @@ func parseNodeId(header *types.Header) (enode.IDv0, error) {
 	}
 }
 
-func calcCanTotalBalance(blockNumber uint64, candidate *staking.CandidateMutable) *big.Int {
+func calcCanTotalBalance(blockNumber uint64, candidate *staking.CandidateMutable, version uint32) *big.Int {
 	// Recalculate the quality deposit
-	lazyCalcStakeAmount(xutil.CalculateEpoch(blockNumber), candidate)
+	lazyCalcStakeAmount(xutil.CalculateEpoch(blockNumber, version), candidate)
 	return new(big.Int).Add(candidate.Released, candidate.RestrictingPlan)
 }
 

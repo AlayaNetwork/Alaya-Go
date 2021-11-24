@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
-
 package xcom
 
 import (
@@ -63,7 +62,7 @@ const (
 	IncreaseIssuanceRatioLowerLimit   = 0
 
 	// When electing consensus nodes, it is used to calculate the P value of the binomial distribution
-	ElectionBase = 25	// New expectations
+	ElectionBase = 25 // New expectations
 
 	ElectionBaseL1 = 3000
 	ElectionBaseL2 = 6000
@@ -485,9 +484,9 @@ func CheckSlashBlocksReward(rewards int) error {
 	return nil
 }
 
-func CheckZeroProduceCumulativeTime(zeroProduceCumulativeTime uint16, zeroProduceNumberThreshold uint16) error {
-	if zeroProduceCumulativeTime < zeroProduceNumberThreshold || zeroProduceCumulativeTime > uint16(EpochSize()) {
-		return common.InvalidParameter.Wrap(fmt.Sprintf("The ZeroProduceCumulativeTime must be [%d, %d]", zeroProduceNumberThreshold, uint16(EpochSize())))
+func CheckZeroProduceCumulativeTime(zeroProduceCumulativeTime uint16, zeroProduceNumberThreshold uint16, version uint32) error {
+	if zeroProduceCumulativeTime < zeroProduceNumberThreshold || zeroProduceCumulativeTime > uint16(EpochSize(version)) {
+		return common.InvalidParameter.Wrap(fmt.Sprintf("The ZeroProduceCumulativeTime must be [%d, %d]", zeroProduceNumberThreshold, uint16(EpochSize(version))))
 	}
 	return nil
 }
@@ -527,7 +526,7 @@ func CheckZeroProduceFreezeDuration(zeroProduceFreezeDuration uint64, unStakeFre
 	return nil
 }
 
-func CheckEconomicModel() error {
+func CheckEconomicModel(version uint32) error {
 	if nil == ec {
 		return errors.New("EconomicModel config is nil")
 	}
@@ -607,7 +606,7 @@ func CheckEconomicModel() error {
 		return err
 	}
 
-	if uint16(EpochSize()) > maxZeroProduceCumulativeTime {
+	if uint16(EpochSize(version)) > maxZeroProduceCumulativeTime {
 		return fmt.Errorf("the number of consensus rounds in a settlement cycle cannot be greater than maxZeroProduceCumulativeTime(%d)", maxZeroProduceCumulativeTime)
 	}
 
@@ -615,7 +614,7 @@ func CheckEconomicModel() error {
 		return err
 	}
 
-	if err := CheckZeroProduceCumulativeTime(ec.Slashing.ZeroProduceCumulativeTime, ec.Slashing.ZeroProduceNumberThreshold); nil != err {
+	if err := CheckZeroProduceCumulativeTime(ec.Slashing.ZeroProduceCumulativeTime, ec.Slashing.ZeroProduceNumberThreshold, version); nil != err {
 		return err
 	}
 
@@ -663,7 +662,8 @@ func Interval() uint64 {
 func BlocksWillCreate() uint64 {
 	return ec.Common.PerRoundBlocks
 }
-func MaxConsensusVals() uint64 {
+func MaxConsensusVals(version uint32) uint64 {
+
 	return ec.Common.MaxConsensusVals
 }
 
@@ -671,12 +671,12 @@ func AdditionalCycleTime() uint64 {
 	return ec.Common.AdditionalCycleTime
 }
 
-func ConsensusSize() uint64 {
-	return BlocksWillCreate() * MaxConsensusVals()
+func ConsensusSize(version uint32) uint64 {
+	return BlocksWillCreate() * MaxConsensusVals(version)
 }
 
-func EpochSize() uint64 {
-	consensusSize := ConsensusSize()
+func EpochSize(version uint32) uint64 {
+	consensusSize := ConsensusSize(version)
 	em := MaxEpochMinutes()
 	i := Interval()
 

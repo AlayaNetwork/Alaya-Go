@@ -96,7 +96,7 @@ type Ethereum struct {
 	gasPrice      *big.Int
 	networkID     uint64
 	netRPCService *ethapi.PublicNetAPI
-	lock sync.RWMutex // Protects the variadic fields (e.g. gas price and etherbase)
+	lock          sync.RWMutex // Protects the variadic fields (e.g. gas price and etherbase)
 }
 
 func (s *Ethereum) AddLesServer(ls LesServer) {
@@ -333,8 +333,13 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 			handlePlugin(reactor)
 			agency = reactor
 
+			currentstate, err := blockChainCache.State()
+			if err != nil {
+				return nil, err
+			}
+
 			//register Govern parameter verifiers
-			gov.RegisterGovernParamVerifiers()
+			gov.RegisterGovernParamVerifiers(gov.GetCurrentActiveVersion(currentstate))
 		}
 
 		if err := recoverSnapshotDB(blockChainCache); err != nil {

@@ -25,6 +25,8 @@ import (
 	"math/big"
 	"sync"
 
+	"github.com/AlayaNetwork/Alaya-Go/x/gov"
+
 	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
 
 	"github.com/AlayaNetwork/Alaya-Go/common"
@@ -45,17 +47,18 @@ import (
 )
 
 type BlockChainReactor struct {
-	vh            *handler.VrfHandler
-	eventMux      *event.TypeMux
-	bftResultSub  *event.TypeMuxSubscription
-	basePluginMap map[int]plugin.BasePlugin // xxPlugin container
-	beginRule     []int                     // Order rules for xxPlugins called in BeginBlocker
-	endRule       []int                     // Order rules for xxPlugins called in EndBlocker
-	validatorMode string                    // mode: static, inner, ppos
-	NodeId        enode.IDv0                // The nodeId of current node
-	exitCh        chan chan struct{}        // Used to receive an exit signal
-	exitOnce      sync.Once
-	chainID       *big.Int
+	vh              *handler.VrfHandler
+	eventMux        *event.TypeMux
+	bftResultSub    *event.TypeMuxSubscription
+	basePluginMap   map[int]plugin.BasePlugin // xxPlugin container
+	beginRule       []int                     // Order rules for xxPlugins called in BeginBlocker
+	endRule         []int                     // Order rules for xxPlugins called in EndBlocker
+	validatorMode   string                    // mode: static, inner, ppos
+	NodeId          enode.IDv0                // The nodeId of current node
+	exitCh          chan chan struct{}        // Used to receive an exit signal
+	exitOnce        sync.Once
+	chainID         *big.Int
+	acurrentVersion uint32
 }
 
 var (
@@ -267,6 +270,7 @@ func (bcr *BlockChainReactor) BeginBlocker(header *types.Header, state xcom.Stat
 		return err
 	}
 
+	header.SetActiveVersion(gov.GetCurrentActiveVersion(state))
 	for _, pluginRule := range bcr.beginRule {
 		if plugin, ok := bcr.basePluginMap[pluginRule]; ok {
 			if err := plugin.BeginBlock(blockHash, header, state); nil != err {

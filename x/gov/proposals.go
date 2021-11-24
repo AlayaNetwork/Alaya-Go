@@ -149,8 +149,8 @@ func (tp *TextProposal) Verify(submitBlock uint64, blockHash common.Hash, state 
 	if err := verifyBasic(tp, blockHash, state); err != nil {
 		return err
 	}
-
-	endVotingBlock := xutil.CalEndVotingBlock(submitBlock, xutil.EstimateConsensusRoundsForGov(xcom.TextProposalVote_DurationSeconds()))
+	acVersion := GetCurrentActiveVersion(state)
+	endVotingBlock := xutil.CalEndVotingBlock(submitBlock, xutil.EstimateConsensusRoundsForGov(xcom.TextProposalVote_DurationSeconds(), acVersion), acVersion)
 	if endVotingBlock <= submitBlock {
 		log.Error("the end-voting-block is lower than submit-block. Please check configuration")
 		return common.InternalError
@@ -229,7 +229,9 @@ func (vp *VersionProposal) Verify(submitBlock uint64, blockHash common.Hash, sta
 		return EndVotingRoundsTooSmall
 	}
 
-	if vp.EndVotingRounds > xutil.EstimateConsensusRoundsForGov(xcom.VersionProposalVote_DurationSeconds()) {
+	acVersion := GetCurrentActiveVersion(state)
+
+	if vp.EndVotingRounds > xutil.EstimateConsensusRoundsForGov(xcom.VersionProposalVote_DurationSeconds(), acVersion) {
 		return EndVotingRoundsTooLarge
 	}
 
@@ -237,7 +239,7 @@ func (vp *VersionProposal) Verify(submitBlock uint64, blockHash common.Hash, sta
 		return err
 	}
 
-	endVotingBlock := xutil.CalEndVotingBlock(submitBlock, vp.EndVotingRounds)
+	endVotingBlock := xutil.CalEndVotingBlock(submitBlock, vp.EndVotingRounds, acVersion)
 	if endVotingBlock <= submitBlock {
 		log.Error("the end-voting-block is lower than submit-block. Please check configuration")
 		return common.InternalError
@@ -340,7 +342,7 @@ func (cp *CancelProposal) Verify(submitBlock uint64, blockHash common.Hash, stat
 		return EndVotingRoundsTooSmall
 	}
 
-	endVotingBlock := xutil.CalEndVotingBlock(submitBlock, cp.EndVotingRounds)
+	endVotingBlock := xutil.CalEndVotingBlock(submitBlock, cp.EndVotingRounds, GetCurrentActiveVersion(state))
 	if endVotingBlock <= submitBlock {
 		log.Error("the end-voting-block is lower than submit-block. Please check configuration")
 		return common.InternalError
@@ -474,7 +476,8 @@ func (pp *ParamProposal) Verify(submitBlock uint64, blockHash common.Hash, state
 
 	var voteDuration = xcom.ParamProposalVote_DurationSeconds()
 
-	endVotingBlock := xutil.EstimateEndVotingBlockForParaProposal(submitBlock, voteDuration)
+	acVersion := GetCurrentActiveVersion(state)
+	endVotingBlock := xutil.EstimateEndVotingBlockForParaProposal(submitBlock, voteDuration, acVersion)
 	if endVotingBlock <= submitBlock {
 		log.Error("the end-voting-block is lower than submit-block. Please check configuration")
 		return common.InternalError

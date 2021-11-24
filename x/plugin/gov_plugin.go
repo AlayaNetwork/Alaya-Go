@@ -66,11 +66,11 @@ func (govPlugin *GovPlugin) BeginBlock(blockHash common.Hash, header *types.Head
 	var blockNumber = header.Number.Uint64()
 	//log.Debug("call BeginBlock()", "blockNumber", blockNumber, "blockHash", blockHash)
 
-	if !xutil.IsBeginOfConsensus(blockNumber) {
+	if !xutil.IsBeginOfConsensus(blockNumber, header.GetActiveVersion()) {
 		return nil
 	}
 
-	if xutil.IsBeginOfEpoch(blockNumber) {
+	if xutil.IsBeginOfEpoch(blockNumber, header.GetActiveVersion()) {
 		if err := accuVerifiersAtBeginOfSettlement(blockHash, blockNumber); err != nil {
 			log.Error("accumulates all distinct verifiers for voting proposal failed.", "blockNumber", blockNumber, "err", err)
 			return err
@@ -159,7 +159,7 @@ func (govPlugin *GovPlugin) BeginBlock(blockHash common.Hash, header *types.Head
 				}
 				log.Info("Successfully upgraded the new version 0.16.0", "blockNumber", blockNumber, "blockHash", blockHash, "preActiveProposalID", preActiveVersionProposalID)
 			}
-
+			header.SetActiveVersion(versionProposal.NewVersion)
 			log.Info("version proposal is active", "blockNumber", blockNumber, "proposalID", versionProposal.ProposalID, "newVersion", versionProposal.NewVersion, "newVersionString", xutil.ProgramVersion2Str(versionProposal.NewVersion))
 		}
 	}
@@ -175,9 +175,9 @@ func (govPlugin *GovPlugin) EndBlock(blockHash common.Hash, header *types.Header
 	//param proposal's end voting block is end of Epoch
 	isEndOfEpoch := false
 	isElection := false
-	if xutil.IsElection(blockNumber) {
+	if xutil.IsElection(blockNumber, header.GetActiveVersion()) {
 		isElection = true
-	} else if xutil.IsEndOfEpoch(blockNumber) {
+	} else if xutil.IsEndOfEpoch(blockNumber, header.GetActiveVersion()) {
 		isEndOfEpoch = true
 	} else {
 		return nil
