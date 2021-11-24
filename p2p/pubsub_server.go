@@ -61,6 +61,7 @@ func (pss *PubSubServer) NewConn(peer *Peer, rw MsgReadWriter) chan error {
 	conn.SetStream(stream)
 
 	pss.Host().SetStream(peer.ID(), stream)
+	pss.Host().AddConn(peer.ID(), conn)
 	pss.Host().NotifyAll(conn)
 	return errCh
 }

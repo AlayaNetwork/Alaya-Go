@@ -87,3 +87,7 @@ func (h *Host) ConnManager() connmgr.ConnManager {
 func (h *Host) NotifyAll(conn pubsub.Conn) {
 	h.network.NotifyAll(conn)
 }
+
+func (h *Host) AddConn(p enode.ID, conn pubsub.Conn) {
+	h.network.SetConn(p, conn)
+}
