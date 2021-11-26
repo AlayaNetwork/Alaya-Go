@@ -1351,17 +1351,17 @@ func (cbft *Cbft) commitBlock(commitBlock *types.Block, commitQC *ctypes.QuorumC
 		ChainStateUpdateCB: func() { cbft.bridge.UpdateChainState(qcState, lockState, commitState) },
 	})
 
+	activeVersion := cbft.blockCache.GetActiveVersion(cpy.Header().SealHash())
 	// should grouped according max commit block's state
 	shouldGroup := func() bool {
-		activeVersion := cbft.blockCache.GetActiveVersion(cbft.state.HighestCommitBlock().Header().SealHash())
 		return cbft.validatorPool.NeedGroup() || activeVersion >= params.FORKVERSION_0_17_0
 	}
 
 	// post NewGroupsEvent to join topic according group info
-	if xutil.IsElection(cpy.NumberU64()) {
+	if xutil.IsElection(cpy.NumberU64(), activeVersion) {
 		// TODO: get groupvalidatorslimit and coordinatorlimit from gov
 		if shouldGroup() {
-			cbft.validatorPool.SetupGroup(true, 0, 0)
+			cbft.validatorPool.SetupGroup(true)
 		}
 		cbft.validatorPool.Update(cpy.NumberU64(), cbft.state.Epoch()+1, cbft.eventMux)
 	}

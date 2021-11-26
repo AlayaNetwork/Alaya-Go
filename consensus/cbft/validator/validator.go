@@ -451,16 +451,13 @@ func (vp *ValidatorPool) Update(blockNumber uint64, epoch uint64, eventMux *even
 }
 
 // SetupGroup update validatorpool group info
-func (vp *ValidatorPool) SetupGroup(needGroup bool, groupValidatorsLimit, coordinatorLimit uint32) {
-	if vp.needGroup {
-		return
-	}
+func (vp *ValidatorPool) SetupGroup(needGroup bool) {
 	vp.lock.Lock()
 	defer vp.lock.Unlock()
 
 	vp.needGroup = needGroup
-	vp.groupValidatorsLimit = groupValidatorsLimit
-	vp.coordinatorLimit = coordinatorLimit
+	vp.groupValidatorsLimit = xutil.MaxGroupValidators()
+	vp.coordinatorLimit = xutil.CoordinatorsLimit()
 }
 
 // GetValidatorByNodeID get the validator by node id.

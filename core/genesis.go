@@ -449,6 +449,13 @@ func (g *Genesis) ToBlock(db ethdb.Database, sdb snapshotdb.BaseDB) *types.Block
 			}
 		}
 
+		// 0.17.0
+		if gov.Gte0170Version(genesisVersion) {
+			if err := gov.WriteEcHash0170(statedb); nil != err {
+				panic("Failed Store EcHash0170: " + err.Error())
+			}
+		}
+
 		if g.Config != nil && g.Config.ChainID.Cmp(params.AlayaChainConfig.ChainID) != 0 {
 			if g.Config.AddressHRP != "" {
 				statedb.SetString(vm.StakingContractAddr, rawdb.AddressHRPKey, g.Config.AddressHRP)
