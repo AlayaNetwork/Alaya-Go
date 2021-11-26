@@ -1140,12 +1140,6 @@ func (cbft *Cbft) tryChangeView() {
 		return
 	}
 
-
-	// TODO: get groupvalidatorslimit and coordinatorlimit from gov
-	if shouldGroup() {
-		cbft.validatorPool.SetupGroup(true, 0, 0)
-	}
-
 	validatorLen := cbft.currentValidatorLen()
 	threshold := cbft.threshold(validatorLen)
 

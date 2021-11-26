@@ -447,7 +447,7 @@ func TestValidatorPool(t *testing.T) {
 	nodes := newTestNode()
 	agency := newTestInnerAgency(nodes)
 
-	validatorPool := NewValidatorPool(agency, 0, 0, nodes[0].Node.ID(),false, 0, 0, nil)
+	validatorPool := NewValidatorPool(agency, 0, 0, nodes[0].Node.ID(), false, nil)
 	assert.False(t, validatorPool.ShouldSwitch(0))
 	assert.True(t, validatorPool.ShouldSwitch(40))
 
@@ -533,7 +533,7 @@ func TestValidatorPoolVerify(t *testing.T) {
 	nodes = append(nodes, params.CbftNode{Node: n4, BlsPubKey: *sec4.GetPublicKey()})
 
 	agency := newTestInnerAgency(nodes)
-	vp := NewValidatorPool(agency, 0, 0, nodes[0].Node.ID(),false, 0, 0, nil)
+	vp := NewValidatorPool(agency, 0, 0, nodes[0].Node.ID(), false, nil)
 
 	m := "test sig"
 
@@ -606,7 +606,7 @@ func (m *mockAgency) OnCommit(block *types.Block) error { return nil }
 
 func TestValidatorPoolReset(t *testing.T) {
 	agency := newMockAgency(100)
-	vp := NewValidatorPool(agency, 0, 0, enode.ID{},false, 0, 0, nil)
+	vp := NewValidatorPool(agency, 0, 0, enode.ID{}, false, nil)
 
 	vp.Reset(100, 10, nil)
 	assert.Equal(t, vp.switchPoint, uint64(100))
@@ -621,21 +621,21 @@ func TestValidatorPoolReset(t *testing.T) {
 func TestValidatorGrouped(t *testing.T) {
 	nodes := newTestNodeByNum(100)
 	vs := newValidators(nodes, 0)
-	vs.Grouped(25, 5, nil, 0)
+	vs.Grouped(nil, 0)
 	assert.Equal(t, 4, len(vs.GroupNodes))
 	assert.Equal(t, 25, len(vs.GroupNodes[3].Nodes))
 	assert.Equal(t, uint32(74), vs.GroupNodes[2].Nodes[24].Index)
 	assert.Equal(t, 5, len(vs.GroupNodes[2].Units))
 	assert.Equal(t, uint32(74), vs.GroupNodes[2].Units[4][4])
 
-	vs.Grouped(28, 5, nil, 0)
+	vs.Grouped(nil, 0)
 	assert.Equal(t, 4, len(vs.GroupNodes))
 	assert.Equal(t, 25, len(vs.GroupNodes[0].Nodes))
 	assert.Equal(t, 25, len(vs.GroupNodes[2].Nodes))
 	assert.Equal(t, 25, len(vs.GroupNodes[3].Nodes))
 	assert.Equal(t, uint32(79), vs.GroupNodes[3].Units[0][4])
 
-	vs.Grouped(19, 3, nil, 0)
+	vs.Grouped(nil, 0)
 	assert.Equal(t, 6, len(vs.GroupNodes))
 	assert.Equal(t, 17, len(vs.GroupNodes[0].Nodes))
 	assert.Equal(t, 6, len(vs.GroupNodes[2].Units))
@@ -646,7 +646,7 @@ func TestGetGroupID(t *testing.T) {
 	bls.Init(bls.BLS12_381)
 	nodes := newTestNodeByNum(100)
 	agency := newTestInnerAgency(nodes)
-	vp := NewValidatorPool(agency, 0, 0, nodes[0].Node.ID(),true, 25, 5, nil)
+	vp := NewValidatorPool(agency, 0, 0, nodes[0].Node.ID(), true, nil)
 
 	grpID, _ := vp.GetGroupID(0, nodes[0].Node.ID())
 	assert.Equal(t, 0, grpID)
@@ -656,7 +656,7 @@ func TestGetUintID(t *testing.T) {
 	bls.Init(bls.BLS12_381)
 	nodes := newTestNodeByNum(100)
 	agency := newTestInnerAgency(nodes)
-	vp := NewValidatorPool(agency, 0, 0, nodes[0].Node.ID(),false, 0, 0, nil)
+	vp := NewValidatorPool(agency, 0, 0, nodes[0].Node.ID(), false, nil)
 
 	untID, _ := vp.GetGroupID(0, nodes[0].Node.ID())
 	assert.Equal(t, 0, untID)

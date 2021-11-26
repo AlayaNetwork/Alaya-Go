@@ -324,14 +324,14 @@ type ValidatorPool struct {
 }
 
 // NewValidatorPool new a validator pool.
-func NewValidatorPool(agency consensus.Agency, blockNumber, epoch uint64, nodeID enode.ID, needGroup bool, groupValidatorsLimit, coordinatorLimit uint32, eventMux *event.TypeMux) *ValidatorPool {
+func NewValidatorPool(agency consensus.Agency, blockNumber, epoch uint64, nodeID enode.ID, needGroup bool, eventMux *event.TypeMux) *ValidatorPool {
 	pool := &ValidatorPool{
 		agency:               agency,
 		nodeID:               nodeID,
 		epoch:                epoch,
 		needGroup:            needGroup,
-		groupValidatorsLimit: groupValidatorsLimit,
-		coordinatorLimit:     coordinatorLimit,
+		groupValidatorsLimit: xutil.MaxGroupValidators(),
+		coordinatorLimit:     xutil.CoordinatorsLimit(),
 	}
 	// FIXME: Check `GetValidators` return error
 	if agency.GetLastNumber(blockNumber) == blockNumber {
@@ -354,7 +354,7 @@ func NewValidatorPool(agency consensus.Agency, blockNumber, epoch uint64, nodeID
 		pool.switchPoint = pool.currentValidators.ValidBlockNumber - 1
 	}
 	if needGroup {
-		pool.prevValidators.Grouped(groupValidatorsLimit, coordinatorLimit, eventMux, epoch)
+		pool.prevValidators.Grouped(eventMux, epoch)
 		pool.unitID = pool.currentValidators.UnitID(nodeID)
 	}
 	log.Debug("Update validator", "validators", pool.currentValidators.String(), "switchpoint", pool.switchPoint, "epoch", pool.epoch, "lastNumber", pool.lastNumber)
@@ -378,7 +378,7 @@ func (vp *ValidatorPool) Reset(blockNumber uint64, epoch uint64, eventMux *event
 		vp.switchPoint = vp.currentValidators.ValidBlockNumber - 1
 	}
 	if vp.needGroup {
-		vp.currentValidators.Grouped(vp.groupValidatorsLimit, vp.coordinatorLimit, eventMux, epoch)
+		vp.currentValidators.Grouped(eventMux, epoch)
 		vp.unitID = vp.currentValidators.UnitID(vp.nodeID)
 	}
 	log.Debug("Update validator", "validators", vp.currentValidators.String(), "switchpoint", vp.switchPoint, "epoch", vp.epoch, "lastNumber", vp.lastNumber)
@@ -432,7 +432,7 @@ func (vp *ValidatorPool) Update(blockNumber uint64, epoch uint64, eventMux *even
 	}
 
 	if vp.needGroup {
-		nds.Grouped(vp.groupValidatorsLimit, vp.coordinatorLimit, eventMux, epoch)
+		nds.Grouped(eventMux, epoch)
 		vp.unitID = nds.UnitID(vp.nodeID)
 	}
 
