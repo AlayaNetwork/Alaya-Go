@@ -163,6 +163,7 @@ type EconomicModel struct {
 type EconomicModelExtend struct {
 	Reward      rewardConfigExtend      `json:"reward"`
 	Restricting restrictingConfigExtend `json:"restricting"`
+	Common      commonConfigExtend      `json:"common"`
 }
 
 type rewardConfigExtend struct {
@@ -171,6 +172,12 @@ type rewardConfigExtend struct {
 
 type restrictingConfigExtend struct {
 	MinimumRelease *big.Int `json:"minimumRelease"` //The minimum number of Restricting release in one epoch
+}
+
+type commonConfigExtend struct {
+	// add by 0.17.0
+	MaxGroupValidators  uint32 `json:"caxGroupValidators"`  // max validators count in 1 group
+	CoordinatorsLimit   uint32 `json:"coordinatorLimit"`    // max Coordinators count in 1 group
 }
 
 // New parameters added in version 0.14.0 need to be saved on the chain.
@@ -182,6 +189,20 @@ func EcParams0140() ([]byte, error) {
 	}{
 		TheNumberOfDelegationsReward: ece.Reward.TheNumberOfDelegationsReward,
 		RestrictingMinimumRelease:    ece.Restricting.MinimumRelease,
+	}
+	bytes, err := rlp.EncodeToBytes(params)
+	if err != nil {
+		return nil, err
+	}
+	return bytes, nil
+}
+
+// New parameters added in version 0.17.0 need to be saved on the chain.
+// Calculate the rlp of the new parameter and return it to the upper storage.
+func EcParams0170() ([]byte, error) {
+	params := commonConfigExtend {
+		MaxGroupValidators: ece.Common.MaxGroupValidators,
+		CoordinatorsLimit:  ece.Common.CoordinatorsLimit,
 	}
 	bytes, err := rlp.EncodeToBytes(params)
 	if err != nil {
@@ -296,6 +317,10 @@ func getDefaultEMConfig(netId int8) *EconomicModel {
 			},
 			Restricting: restrictingConfigExtend{
 				MinimumRelease: new(big.Int).Mul(oneAtp, new(big.Int).SetInt64(80)),
+			},
+			Common: commonConfigExtend{
+				MaxGroupValidators: 25,
+				CoordinatorsLimit: 5,
 			},
 		}
 
@@ -880,4 +905,12 @@ func CalcP(totalWeight float64, sqrtWeight float64) float64 {
 
 func CalcPNew(sqrtWeight float64) float64 {
 	return float64(ElectionBase) / sqrtWeight
+}
+
+func MaxGroupValidators() uint32 {
+	return ece.Common.MaxGroupValidators
+}
+
+func CoordinatorsLimit() uint32 {
+	return ece.Common.CoordinatorsLimit
 }
