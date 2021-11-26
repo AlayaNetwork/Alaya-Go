@@ -47,18 +47,17 @@ import (
 )
 
 type BlockChainReactor struct {
-	vh              *handler.VrfHandler
-	eventMux        *event.TypeMux
-	bftResultSub    *event.TypeMuxSubscription
-	basePluginMap   map[int]plugin.BasePlugin // xxPlugin container
-	beginRule       []int                     // Order rules for xxPlugins called in BeginBlocker
-	endRule         []int                     // Order rules for xxPlugins called in EndBlocker
-	validatorMode   string                    // mode: static, inner, ppos
-	NodeId          enode.IDv0                // The nodeId of current node
-	exitCh          chan chan struct{}        // Used to receive an exit signal
-	exitOnce        sync.Once
-	chainID         *big.Int
-	acurrentVersion uint32
+	vh            *handler.VrfHandler
+	eventMux      *event.TypeMux
+	bftResultSub  *event.TypeMuxSubscription
+	basePluginMap map[int]plugin.BasePlugin // xxPlugin container
+	beginRule     []int                     // Order rules for xxPlugins called in BeginBlocker
+	endRule       []int                     // Order rules for xxPlugins called in EndBlocker
+	validatorMode string                    // mode: static, inner, ppos
+	NodeId        enode.IDv0                // The nodeId of current node
+	exitCh        chan chan struct{}        // Used to receive an exit signal
+	exitOnce      sync.Once
+	chainID       *big.Int
 }
 
 var (
