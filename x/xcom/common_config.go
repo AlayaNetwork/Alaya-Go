@@ -23,6 +23,8 @@ import (
 	"math/big"
 	"sync"
 
+	"github.com/AlayaNetwork/Alaya-Go/params"
+
 	"github.com/AlayaNetwork/Alaya-Go/rlp"
 
 	"github.com/AlayaNetwork/Alaya-Go/log"
@@ -438,9 +440,9 @@ func CheckOperatingThreshold(threshold *big.Int) error {
 	return nil
 }
 
-func CheckMaxValidators(num int) error {
-	if num < int(ec.Common.MaxConsensusVals) || num > CeilMaxValidators {
-		return common.InvalidParameter.Wrap(fmt.Sprintf("The MaxValidators must be [%d, %d]", int(ec.Common.MaxConsensusVals), CeilMaxValidators))
+func CheckMaxValidators(num int, version uint32) error {
+	if num < int(MaxConsensusVals(version)) || num > CeilMaxValidators {
+		return common.InvalidParameter.Wrap(fmt.Sprintf("The MaxValidators must be [%d, %d]", int(MaxConsensusVals(version)), CeilMaxValidators))
 	}
 	return nil
 }
@@ -536,7 +538,7 @@ func CheckEconomicModel(version uint32) error {
 	// package perblock duration
 	blockDuration := ec.Common.NodeBlockTimeWindow / ec.Common.PerRoundBlocks
 	// round duration
-	roundDuration := ec.Common.MaxConsensusVals * ec.Common.PerRoundBlocks * blockDuration
+	roundDuration := MaxConsensusVals(version) * ec.Common.PerRoundBlocks * blockDuration
 	// epoch Size, how many consensus round
 	epochSize := epochDuration / roundDuration
 	//real epoch duration
@@ -562,11 +564,11 @@ func CheckEconomicModel(version uint32) error {
 		return errors.New("The issuance period must be integer multiples of the settlement period and multiples must be greater than or equal to 4")
 	}
 
-	if ec.Common.MaxConsensusVals < FloorMaxConsensusVals || ec.Common.MaxConsensusVals > CeilMaxConsensusVals {
+	if MaxConsensusVals(version) < FloorMaxConsensusVals || MaxConsensusVals(version) > CeilMaxConsensusVals {
 		return fmt.Errorf("The consensus validator num must be [%d, %d]", FloorMaxConsensusVals, CeilMaxConsensusVals)
 	}
 
-	if err := CheckMaxValidators(int(ec.Staking.MaxValidators)); nil != err {
+	if err := CheckMaxValidators(int(ec.Staking.MaxValidators), version); nil != err {
 		return err
 	}
 
@@ -663,7 +665,10 @@ func BlocksWillCreate() uint64 {
 	return ec.Common.PerRoundBlocks
 }
 func MaxConsensusVals(version uint32) uint64 {
-
+	if version >= params.FORKVERSION_0_17_0 {
+		panic("This parameter has not been determined")
+		return 0
+	}
 	return ec.Common.MaxConsensusVals
 }
 
@@ -699,8 +704,8 @@ func MaxValidators() uint64 {
 	return ec.Staking.MaxValidators
 }
 
-func ShiftValidatorNum() uint64 {
-	return (ec.Common.MaxConsensusVals - 1) / 3
+func ShiftValidatorNum(maxConsensusVals uint64) uint64 {
+	return (maxConsensusVals - 1) / 3
 }
 
 func HesitateRatio() uint64 {

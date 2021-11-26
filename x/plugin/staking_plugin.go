@@ -164,7 +164,7 @@ func (sk *StakingPlugin) EndBlock(blockHash common.Hash, header *types.Header, s
 		}
 
 		// Election next epoch validators
-		if err := sk.ElectNextVerifierList(blockHash, header, state); nil != err {
+		if err := sk.ElectNextVerifierList(blockHash, header.Number.Uint64(), state); nil != err {
 			log.Error("Failed to call ElectNextVerifierList on stakingPlugin EndBlock",
 				"blockNumber", header.Number.Uint64(), "blockHash", blockHash.Hex(), "err", err)
 			return err
@@ -1169,27 +1169,27 @@ func rufundDelegateFn(refundBalance, aboutRelease, aboutRestrictingPlan *big.Int
 	return refundTmp, releaseTmp, restrictingPlanTmp, nil
 }
 
-func (sk *StakingPlugin) ElectNextVerifierList(blockHash common.Hash, header *types.Header, state xcom.StateDB) error {
+func (sk *StakingPlugin) ElectNextVerifierList(blockHash common.Hash, blockNumber uint64, state xcom.StateDB) error {
 
-	oldIndex, err := sk.getVeriferIndex(blockHash, header.Number.Uint64(), QueryStartNotIrr)
+	oldIndex, err := sk.getVeriferIndex(blockHash, blockNumber, QueryStartNotIrr)
 	if nil != err {
 		log.Error("Failed to ElectNextVerifierList: Not found the VerifierIndex", "blockNumber",
-			header.Number, "blockHash", blockHash.Hex(), "err", err)
+			blockNumber, "blockHash", blockHash.Hex(), "err", err)
 		return err
 	}
 
-	log.Debug("Call ElectNextVerifierList old verifiers Index", "blockNumber", header.Number, "blockHash", blockHash.Hex(), "index", oldIndex)
+	log.Debug("Call ElectNextVerifierList old verifiers Index", "blockNumber", blockNumber, "blockHash", blockHash.Hex(), "index", oldIndex)
 
-	if oldIndex.End != header.Number.Uint64() {
+	if oldIndex.End != blockNumber {
 		log.Error("Failed to ElectNextVerifierList: this blockNumber invalid", "Old Epoch End blockNumber",
-			oldIndex.End, "Current blockNumber", header.Number)
+			oldIndex.End, "Current blockNumber", blockNumber)
 		return staking.ErrBlockNumberDisordered
 	}
 
 	// caculate the new epoch start and end
 	newVerifierArr := &staking.ValidatorArray{
 		Start: oldIndex.End + 1,
-		End:   oldIndex.End + xutil.CalcBlocksEachEpoch(header.GetActiveVersion()),
+		End:   oldIndex.End + xutil.CalcBlocksEachEpoch(gov.GetCurrentActiveVersion(state)),
 	}
 
 	currOriginVersion := gov.GetVersionForStaking(blockHash, state)
@@ -1197,21 +1197,21 @@ func (sk *StakingPlugin) ElectNextVerifierList(blockHash common.Hash, header *ty
 
 	currentVersion := gov.GetCurrentActiveVersion(state)
 	if currentVersion == 0 {
-		log.Error("Failed to ElectNextVerifierList, GetCurrentActiveVersion is failed", "blockNumber", header.Number, "blockHash", blockHash.TerminalString())
+		log.Error("Failed to ElectNextVerifierList, GetCurrentActiveVersion is failed", "blockNumber", blockNumber, "blockHash", blockHash.TerminalString())
 		return errors.New("Failed to get CurrentActiveVersion")
 	}
 
-	maxvalidators, err := gov.GovernMaxValidators(header.Number.Uint64(), blockHash)
+	maxvalidators, err := gov.GovernMaxValidators(blockNumber, blockHash)
 	if nil != err {
 		log.Error("Failed to ElectNextVerifierList: query govern params `maxvalidators` is failed", "blockNumber",
-			header.Number, "blockHash", blockHash.Hex(), "err", err)
+			blockNumber, "blockHash", blockHash.Hex(), "err", err)
 		return err
 	}
 
 	iter := sk.db.IteratorCandidatePowerByBlockHash(blockHash, int(maxvalidators))
 	if err := iter.Error(); nil != err {
 		log.Error("Failed to ElectNextVerifierList: take iter by candidate power is failed", "blockNumber",
-			header.Number, "blockHash", blockHash.Hex(), "err", err)
+			blockNumber, "blockHash", blockHash.Hex(), "err", err)
 		return err
 	}
 	defer iter.Release()
@@ -1223,7 +1223,7 @@ func (sk *StakingPlugin) ElectNextVerifierList(blockHash common.Hash, header *ty
 		addrSuffix := iter.Value()
 		canBase, err := sk.db.GetCanBaseStoreWithSuffix(blockHash, addrSuffix)
 		if nil != err {
-			log.Error("Failed to ElectNextVerifierList: Query CandidateBase info is failed", "blockNumber", header.Number,
+			log.Error("Failed to ElectNextVerifierList: Query CandidateBase info is failed", "blockNumber", blockNumber,
 				"blockHash", blockHash.Hex(), "canAddr", common.BytesToNodeAddress(addrSuffix).Hex(), "err", err)
 			if err == snapshotdb.ErrNotFound {
 				if err := sk.db.Del(blockHash, iter.Key()); err != nil {
@@ -1237,7 +1237,7 @@ func (sk *StakingPlugin) ElectNextVerifierList(blockHash common.Hash, header *ty
 
 		if xutil.CalcVersion(canBase.ProgramVersion) < currVersion {
 			log.Warn("Warn ElectNextVerifierList: the can ProgramVersion is less than currVersion",
-				"blockNumber", header.Number, "blockHash", blockHash.Hex(), "canVersion",
+				"blockNumber", blockNumber, "blockHash", blockHash.Hex(), "canVersion",
 				"nodeId", canBase.NodeId.String(), "canAddr", common.BytesToNodeAddress(addrSuffix).Hex(),
 				canBase.ProgramVersion, "currVersion", currVersion)
 
@@ -1249,7 +1249,7 @@ func (sk *StakingPlugin) ElectNextVerifierList(blockHash common.Hash, header *ty
 
 		canMutable, err := sk.db.GetCanMutableStoreWithSuffix(blockHash, addrSuffix)
 		if nil != err {
-			log.Error("Failed to ElectNextVerifierList: Query CandidateMutable info is failed", "blockNumber", header.Number,
+			log.Error("Failed to ElectNextVerifierList: Query CandidateMutable info is failed", "blockNumber", blockNumber,
 				"blockHash", blockHash.Hex(), "canAddr", common.BytesToNodeAddress(addrSuffix).Hex(), "err", err)
 			return err
 		}
@@ -1272,14 +1272,14 @@ func (sk *StakingPlugin) ElectNextVerifierList(blockHash common.Hash, header *ty
 	}
 
 	newVerifierArr.Arr = queue
-	err = sk.setVerifierListAndIndex(header.Number.Uint64(), blockHash, newVerifierArr)
+	err = sk.setVerifierListAndIndex(blockNumber, blockHash, newVerifierArr)
 	if nil != err {
 		log.Error("Failed to ElectNextVerifierList: Set Next Epoch VerifierList is failed", "blockNumber",
-			header.Number, "blockHash", blockHash.Hex(), "err", err)
+			blockNumber, "blockHash", blockHash.Hex(), "err", err)
 		return err
 	}
 
-	log.Debug("Call ElectNextVerifierList  Next verifiers", "blockNumber", header.Number, "blockHash", blockHash.Hex(),
+	log.Debug("Call ElectNextVerifierList  Next verifiers", "blockNumber", blockNumber, "blockHash", blockHash.Hex(),
 		"list length", len(queue), "list", newVerifierArr)
 
 	return nil
@@ -2025,7 +2025,7 @@ func (sk *StakingPlugin) Election(blockHash common.Hash, header *types.Header, s
 		needRMwithdrewLen, "low version need remove count", needRMLowVersionLen,
 		"total remove count", invalidLen, "remove map size", len(removeCans),
 		"current validators Size", len(curr.Arr), "maxConsensusVals", maxConsensusVals,
-		"ShiftValidatorNum", xcom.ShiftValidatorNum(), "diffQueueLen", len(diffQueue),
+		"ShiftValidatorNum", xcom.ShiftValidatorNum(maxConsensusVals), "diffQueueLen", len(diffQueue),
 		"vrfQueueLen", len(vrfQueue))
 
 	nextQueue, err := shuffle(invalidLen, currqueen, vrfQueue, blockNumber, header.ParentHash)
@@ -2090,7 +2090,7 @@ func shuffleQueue(maxConsensusVals uint64, remainCurrQueue, vrfQueue staking.Val
 	remainLen := len(remainCurrQueue)
 	totalQueue := append(remainCurrQueue, vrfQueue...)
 
-	for remainLen > int(maxConsensusVals-xcom.ShiftValidatorNum()) && len(totalQueue) > int(maxConsensusVals) {
+	for remainLen > int(maxConsensusVals-xcom.ShiftValidatorNum(maxConsensusVals)) && len(totalQueue) > int(maxConsensusVals) {
 		totalQueue = totalQueue[1:]
 		remainLen--
 	}
@@ -2107,7 +2107,7 @@ func shuffleQueue(maxConsensusVals uint64, remainCurrQueue, vrfQueue staking.Val
 	// but random ordering is performed in each group
 	// The first group: the first f nodes
 	// The second group: the last 2f + 1 nodes
-	next, err := randomOrderValidatorQueue(blockNumber, parentHash, next)
+	next, err := randomOrderValidatorQueue(blockNumber, parentHash, next, maxConsensusVals)
 	if nil != err {
 		return nil, err
 	}
@@ -2133,7 +2133,7 @@ func (r randomOrderValidatorList) Swap(i, j int) {
 }
 
 // Randomly sort nodes
-func randomOrderValidatorQueue(blockNumber uint64, parentHash common.Hash, queue staking.ValidatorQueue) (staking.ValidatorQueue, error) {
+func randomOrderValidatorQueue(blockNumber uint64, parentHash common.Hash, queue staking.ValidatorQueue, maxConsensusVals uint64) (staking.ValidatorQueue, error) {
 	preNonces, err := handler.GetVrfHandlerInstance().Load(parentHash)
 	if nil != err {
 		return nil, err
@@ -2146,8 +2146,8 @@ func randomOrderValidatorQueue(blockNumber uint64, parentHash common.Hash, queue
 	if len(preNonces) > len(queue) {
 		preNonces = preNonces[len(preNonces)-len(queue):]
 	}
-
-	if len(queue) <= int(xcom.ShiftValidatorNum()) {
+	shitValudatorNumer := xcom.ShiftValidatorNum(maxConsensusVals)
+	if len(queue) <= int(shitValudatorNumer) {
 		return queue, nil
 	}
 
@@ -2161,8 +2161,8 @@ func randomOrderValidatorQueue(blockNumber uint64, parentHash common.Hash, queue
 		log.Debug("Call randomOrderValidatorQueue xor", "nodeId", v.NodeId.TerminalString(), "nodeAddress", v.NodeAddress.Hex(), "nonce", hexutil.Encode(preNonces[i]), "xorValue", value)
 	}
 
-	frontPart := orderList[:xcom.ShiftValidatorNum()]
-	backPart := orderList[xcom.ShiftValidatorNum():]
+	frontPart := orderList[:shitValudatorNumer]
+	backPart := orderList[shitValudatorNumer:]
 
 	sort.Sort(frontPart)
 	sort.Sort(backPart)
@@ -3014,7 +3014,7 @@ func probabilityElection(maxConsensusVals uint64, validatorList staking.Validato
 	} else if gov.Gte0150Version(currentVersion) {
 		p = xcom.CalcP(totalWeightsFloat, totalSqrtWeightsFloat)
 	} else {
-		p = float64(xcom.ShiftValidatorNum()) * float64(maxConsensusVals) / totalSqrtWeightsFloat
+		p = float64(xcom.ShiftValidatorNum(maxConsensusVals)) * float64(maxConsensusVals) / totalSqrtWeightsFloat
 	}
 
 	shuffleSeed := new(big.Int).SetBytes(preNonces[0]).Int64()

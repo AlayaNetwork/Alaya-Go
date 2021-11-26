@@ -69,24 +69,24 @@ func generateStk(rewardPer uint16, delegateTotal *big.Int, blockNumber uint64) (
 
 	var delegation staking.Delegation
 	delegation.Released = delegateTotal
-	delegation.DelegateEpoch = uint32(xutil.CalculateEpoch(blockNumber))
+	delegation.DelegateEpoch = uint32(xutil.CalculateEpoch(blockNumber, params.GenesisVersion))
 
 	stakingValIndex := make(staking.ValArrIndexQueue, 0)
 	stakingValIndex = append(stakingValIndex, &staking.ValArrIndex{
 		Start: 0,
-		End:   xutil.CalcBlocksEachEpoch(),
+		End:   xutil.CalcBlocksEachEpoch(params.GenesisVersion),
 	})
 	stakingValIndex = append(stakingValIndex, &staking.ValArrIndex{
-		Start: xutil.CalcBlocksEachEpoch(),
-		End:   xutil.CalcBlocksEachEpoch() * 2,
+		Start: xutil.CalcBlocksEachEpoch(params.GenesisVersion),
+		End:   xutil.CalcBlocksEachEpoch(params.GenesisVersion) * 2,
 	})
 	stakingValIndex = append(stakingValIndex, &staking.ValArrIndex{
-		Start: xutil.CalcBlocksEachEpoch() * 2,
-		End:   xutil.CalcBlocksEachEpoch() * 3,
+		Start: xutil.CalcBlocksEachEpoch(params.GenesisVersion) * 2,
+		End:   xutil.CalcBlocksEachEpoch(params.GenesisVersion) * 3,
 	})
 	stakingValIndex = append(stakingValIndex, &staking.ValArrIndex{
-		Start: xutil.CalcBlocksEachEpoch() * 3,
-		End:   xutil.CalcBlocksEachEpoch() * 4,
+		Start: xutil.CalcBlocksEachEpoch(params.GenesisVersion) * 3,
+		End:   xutil.CalcBlocksEachEpoch(params.GenesisVersion) * 4,
 	})
 	validatorQueue := make(staking.ValidatorQueue, 0)
 	validatorQueue = append(validatorQueue, &staking.Validator{
@@ -145,10 +145,10 @@ func TestWithdrawDelegateRewardWithReward(t *testing.T) {
 	contact.Plugin.SetCurrentNodeID(can.NodeId)
 
 	blockReward, stakingReward := big.NewInt(100000), big.NewInt(200000)
-
-	for i := 0; i < int(xutil.CalcBlocksEachEpoch()); i++ {
+	acverion := gov.GetCurrentActiveVersion(chain.StateDB)
+	for i := 0; i < int(xutil.CalcBlocksEachEpoch(acverion)); i++ {
 		if err := chain.AddBlockWithSnapDB(true, func(hash common.Hash, header *types.Header, sdb snapshotdb.DB) error {
-			if xutil.IsBeginOfEpoch(header.Number.Uint64()) {
+			if xutil.IsBeginOfEpoch(header.Number.Uint64(), acverion) {
 				can.CandidateMutable.CleanCurrentEpochDelegateReward()
 				if err := stkDB.SetCanMutableStore(hash, queue[0].NodeAddress, can.CandidateMutable); err != nil {
 					return err
@@ -158,7 +158,7 @@ func TestWithdrawDelegateRewardWithReward(t *testing.T) {
 			if err := contact.Plugin.AllocatePackageBlock(hash, header, blockReward, chain.StateDB); err != nil {
 				return err
 			}
-			if xutil.IsEndOfEpoch(header.Number.Uint64()) {
+			if xutil.IsEndOfEpoch(header.Number.Uint64(), acverion) {
 
 				verifierList, err := contact.Plugin.AllocateStakingReward(header.Number.Uint64(), hash, stakingReward, chain.StateDB)
 				if err != nil {
@@ -168,7 +168,7 @@ func TestWithdrawDelegateRewardWithReward(t *testing.T) {
 					return err
 				}
 
-				if err := stkDB.SetEpochValList(hash, index[xutil.CalculateEpoch(header.Number.Uint64())].Start, index[xutil.CalculateEpoch(header.Number.Uint64())].End, queue); err != nil {
+				if err := stkDB.SetEpochValList(hash, index[xutil.CalculateEpoch(header.Number.Uint64(), acverion)].Start, index[xutil.CalculateEpoch(header.Number.Uint64(), acverion)].End, queue); err != nil {
 					return err
 				}
 
@@ -300,10 +300,11 @@ func TestWithdrawDelegateRewardWithMultiNode(t *testing.T) {
 	})
 
 	stkDB := staking.NewStakingDBWithDB(chain.SnapDB)
-	index, queue, can, delegate := generateStk(1000, big.NewInt(params.ATP*3), xutil.CalcBlocksEachEpoch()*2+10)
+	acVersion := gov.GetCurrentActiveVersion(chain.StateDB)
+	index, queue, can, delegate := generateStk(1000, big.NewInt(params.ATP*3), xutil.CalcBlocksEachEpoch(acVersion)*2+10)
 	_, queue2, can2, delegate2 := generateStk(1000, big.NewInt(params.ATP*3), 10)
 	queue = append(queue, queue2...)
-	_, queue3, can3, delegate3 := generateStk(1000, big.NewInt(params.ATP*3), xutil.CalcBlocksEachEpoch()+10)
+	_, queue3, can3, delegate3 := generateStk(1000, big.NewInt(params.ATP*3), xutil.CalcBlocksEachEpoch(acVersion)+10)
 	queue = append(queue, queue3...)
 	chain.AddBlockWithSnapDB(true, func(hash common.Hash, header *types.Header, sdb snapshotdb.DB) error {
 		if err := stkDB.SetEpochValIndex(hash, index); err != nil {
@@ -358,9 +359,9 @@ func TestWithdrawDelegateRewardWithMultiNode(t *testing.T) {
 		t.Fatal("AddActiveVersion, err", err)
 	}
 
-	for i := 0; i < int(xutil.CalcBlocksEachEpoch()*3); i++ {
+	for i := 0; i < int(xutil.CalcBlocksEachEpoch(acVersion)*3); i++ {
 		if err := chain.AddBlockWithSnapDB(true, func(hash common.Hash, header *types.Header, sdb snapshotdb.DB) error {
-			if xutil.IsBeginOfEpoch(header.Number.Uint64()) {
+			if xutil.IsBeginOfEpoch(header.Number.Uint64(), acVersion) {
 				can.CandidateMutable.CleanCurrentEpochDelegateReward()
 				if err := stkDB.SetCanMutableStore(hash, queue[0].NodeAddress, can.CandidateMutable); err != nil {
 					return err
@@ -376,7 +377,7 @@ func TestWithdrawDelegateRewardWithMultiNode(t *testing.T) {
 			if err := contact.Plugin.AllocatePackageBlock(hash, header, blockReward, chain.StateDB); err != nil {
 				return err
 			}
-			if xutil.IsEndOfEpoch(header.Number.Uint64()) {
+			if xutil.IsEndOfEpoch(header.Number.Uint64(), acVersion) {
 
 				verifierList, err := contact.Plugin.AllocateStakingReward(header.Number.Uint64(), hash, stakingReward, chain.StateDB)
 				if err != nil {
@@ -386,7 +387,7 @@ func TestWithdrawDelegateRewardWithMultiNode(t *testing.T) {
 					return err
 				}
 
-				if err := stkDB.SetEpochValList(hash, index[xutil.CalculateEpoch(header.Number.Uint64())].Start, index[xutil.CalculateEpoch(header.Number.Uint64())].End, queue); err != nil {
+				if err := stkDB.SetEpochValList(hash, index[xutil.CalculateEpoch(header.Number.Uint64(), acVersion)].Start, index[xutil.CalculateEpoch(header.Number.Uint64(), acVersion)].End, queue); err != nil {
 					return err
 				}
 

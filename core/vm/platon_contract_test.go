@@ -511,7 +511,7 @@ func build_staking_data(genesisHash common.Hash) {
 
 	epoch_Arr := &staking.ValidatorArray{
 		Start: 1,
-		End:   uint64(xutil.CalcBlocksEachEpoch()),
+		End:   uint64(xutil.CalcBlocksEachEpoch(params.GenesisVersion)),
 		Arr:   queue,
 	}
 
@@ -523,7 +523,7 @@ func build_staking_data(genesisHash common.Hash) {
 
 	curr_Arr := &staking.ValidatorArray{
 		Start: 1,
-		End:   uint64(xutil.ConsensusSize()),
+		End:   uint64(xcom.ConsensusSize(params.GenesisVersion)),
 		Arr:   queue,
 	}
 
@@ -717,7 +717,7 @@ func build_staking_data_new(chain *mock.Chain) {
 
 	epoch_Arr := &staking.ValidatorArray{
 		Start: 1,
-		End:   uint64(xutil.CalcBlocksEachEpoch()),
+		End:   uint64(xutil.CalcBlocksEachEpoch(params.GenesisVersion)),
 		Arr:   queue,
 	}
 
@@ -729,7 +729,7 @@ func build_staking_data_new(chain *mock.Chain) {
 
 	curr_Arr := &staking.ValidatorArray{
 		Start: 1,
-		End:   uint64(xutil.ConsensusSize()),
+		End:   uint64(xcom.ConsensusSize(params.GenesisVersion)),
 		Arr:   queue,
 	}
 
@@ -872,8 +872,8 @@ func build_staking_data_more(chain *mock.Chain) {
 	epoch_Arr := &staking.ValidatorArray{
 		//Start: ((block-1)/22000)*22000 + 1,
 		//End:   ((block-1)/22000)*22000 + 22000,
-		Start: ((chain.CurrentHeader().Number.Uint64()-1)/uint64(xutil.CalcBlocksEachEpoch()))*uint64(xutil.CalcBlocksEachEpoch()) + 1,
-		End:   ((chain.CurrentHeader().Number.Uint64()-1)/uint64(xutil.CalcBlocksEachEpoch()))*uint64(xutil.CalcBlocksEachEpoch()) + uint64(xutil.CalcBlocksEachEpoch()),
+		Start: ((chain.CurrentHeader().Number.Uint64()-1)/uint64(xutil.CalcBlocksEachEpoch(params.GenesisVersion)))*uint64(xutil.CalcBlocksEachEpoch(params.GenesisVersion)) + 1,
+		End:   ((chain.CurrentHeader().Number.Uint64()-1)/uint64(xutil.CalcBlocksEachEpoch(params.GenesisVersion)))*uint64(xutil.CalcBlocksEachEpoch(params.GenesisVersion)) + uint64(xutil.CalcBlocksEachEpoch(params.GenesisVersion)),
 		Arr:   queue,
 	}
 
@@ -886,8 +886,8 @@ func build_staking_data_more(chain *mock.Chain) {
 	curr_Arr := &staking.ValidatorArray{
 		//Start: ((block-1)/250)*250 + 1,
 		//End:   ((block-1)/250)*250 + 250,
-		Start: ((chain.CurrentHeader().Number.Uint64()-1)/uint64(xutil.ConsensusSize()))*uint64(xutil.ConsensusSize()) + 1,
-		End:   ((chain.CurrentHeader().Number.Uint64()-1)/uint64(xutil.ConsensusSize()))*uint64(xutil.ConsensusSize()) + uint64(xutil.ConsensusSize()),
+		Start: ((chain.CurrentHeader().Number.Uint64()-1)/uint64(xcom.ConsensusSize(params.GenesisVersion)))*uint64(xcom.ConsensusSize(params.GenesisVersion)) + 1,
+		End:   ((chain.CurrentHeader().Number.Uint64()-1)/uint64(xcom.ConsensusSize(params.GenesisVersion)))*uint64(xcom.ConsensusSize(params.GenesisVersion)) + uint64(xcom.ConsensusSize(params.GenesisVersion)),
 		Arr:   queue,
 	}
 

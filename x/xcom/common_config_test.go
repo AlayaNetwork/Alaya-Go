@@ -14,22 +14,26 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
-
 package xcom
 
 import (
-	"github.com/AlayaNetwork/Alaya-Go/common"
-	"github.com/AlayaNetwork/Alaya-Go/rlp"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/params"
+	"github.com/AlayaNetwork/Alaya-Go/rlp"
 )
+
+var currentTestGenesisVersion = params.FORKVERSION_0_16_0
 
 func TestGetDefaultEMConfig(t *testing.T) {
 	t.Run("DefaultAlayaNet", func(t *testing.T) {
 		if getDefaultEMConfig(DefaultAlayaNet) == nil {
 			t.Error("DefaultAlayaNet can't be nil config")
 		}
-		if err := CheckEconomicModel(); nil != err {
+		if err := CheckEconomicModel(currentTestGenesisVersion); nil != err {
 			t.Error(err)
 		}
 	})
@@ -37,7 +41,7 @@ func TestGetDefaultEMConfig(t *testing.T) {
 		if getDefaultEMConfig(DefaultUnitTestNet) == nil {
 			t.Error("DefaultUnitTestNet can't be nil config")
 		}
-		if err := CheckEconomicModel(); nil != err {
+		if err := CheckEconomicModel(currentTestGenesisVersion); nil != err {
 			t.Error(err)
 		}
 	})

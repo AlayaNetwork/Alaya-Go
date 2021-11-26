@@ -287,7 +287,7 @@ func TestStakingContract_editCandidate(t *testing.T) {
 	contract2 := &StakingContract{
 		Plugin:   plugin.StakingInstance(),
 		Contract: newContract(common.Big0, sender),
-		Evm:      newEvm(new(big.Int).SetUint64(xutil.CalcBlocksEachEpoch()*uint64(xcom.RewardPerChangeInterval())*2), blockHash2, state),
+		Evm:      newEvm(new(big.Int).SetUint64(xutil.CalcBlocksEachEpoch(params.GenesisVersion)*uint64(xcom.RewardPerChangeInterval())*2), blockHash2, state),
 	}
 
 	// get CandidateInfo
@@ -450,7 +450,7 @@ func TestStakingContract_editCandidate_updateRewardPer2(t *testing.T) {
 	contract2 := &StakingContract{
 		Plugin:   plugin.StakingInstance(),
 		Contract: newContract(common.Big0, sender),
-		Evm:      newEvm(new(big.Int).SetUint64(xutil.CalcBlocksEachEpoch()*uint64(xcom.RewardPerChangeInterval())*2), blockHash2, state),
+		Evm:      newEvm(new(big.Int).SetUint64(xutil.CalcBlocksEachEpoch(params.GenesisVersion)*uint64(xcom.RewardPerChangeInterval())*2), blockHash2, state),
 	}
 
 	// get CandidateInfo
@@ -535,7 +535,7 @@ func TestStakingContract_editCandidate_updateRewardPer3(t *testing.T) {
 	contract2 := &StakingContract{
 		Plugin:   plugin.StakingInstance(),
 		Contract: newContract(common.Big0, sender),
-		Evm:      newEvm(new(big.Int).SetUint64(xutil.CalcBlocksEachEpoch()*uint64(xcom.RewardPerChangeInterval())*2), blockHash2, state),
+		Evm:      newEvm(new(big.Int).SetUint64(xutil.CalcBlocksEachEpoch(params.GenesisVersion)*uint64(xcom.RewardPerChangeInterval())*2), blockHash2, state),
 	}
 
 	// get CandidateInfo
@@ -620,7 +620,7 @@ func TestStakingContract_editCandidate_continuousUpdateRewardPer(t *testing.T) {
 	contract2 := &StakingContract{
 		Plugin:   plugin.StakingInstance(),
 		Contract: newContract(common.Big0, sender),
-		Evm:      newEvm(new(big.Int).SetUint64(xutil.CalcBlocksEachEpoch()*uint64(xcom.RewardPerChangeInterval())*2), blockHash2, state),
+		Evm:      newEvm(new(big.Int).SetUint64(xutil.CalcBlocksEachEpoch(params.GenesisVersion)*uint64(xcom.RewardPerChangeInterval())*2), blockHash2, state),
 	}
 
 	// get CandidateInfo
@@ -672,7 +672,7 @@ func TestStakingContract_editCandidate_continuousUpdateRewardPer(t *testing.T) {
 	contract2 = &StakingContract{
 		Plugin:   plugin.StakingInstance(),
 		Contract: newContract(common.Big0, sender),
-		Evm:      newEvm(new(big.Int).SetUint64(xutil.CalcBlocksEachEpoch()*uint64(xcom.RewardPerChangeInterval())*4), blockHash2, state),
+		Evm:      newEvm(new(big.Int).SetUint64(xutil.CalcBlocksEachEpoch(params.GenesisVersion)*uint64(xcom.RewardPerChangeInterval())*4), blockHash2, state),
 	}
 
 	// get CandidateInfo
@@ -755,7 +755,7 @@ func TestStakingContract_editCandidate_updateNilRewardPer0140(t *testing.T) {
 	contract2 := &StakingContract{
 		Plugin:   plugin.StakingInstance(),
 		Contract: newContract(common.Big0, sender),
-		Evm:      newEvm(new(big.Int).SetUint64(xutil.CalcBlocksEachEpoch()*uint64(xcom.RewardPerChangeInterval())*4), blockHash2, state),
+		Evm:      newEvm(new(big.Int).SetUint64(xutil.CalcBlocksEachEpoch(params.GenesisVersion)*uint64(xcom.RewardPerChangeInterval())*4), blockHash2, state),
 	}
 
 	// get CandidateInfo
@@ -851,7 +851,7 @@ func TestStakingContract_editCandidate_updateNilRewardPer0140Err(t *testing.T) {
 	contract2 := &StakingContract{
 		Plugin:   plugin.StakingInstance(),
 		Contract: newContract(common.Big0, sender),
-		Evm:      newEvm(new(big.Int).SetUint64(xutil.CalcBlocksEachEpoch()*uint64(xcom.RewardPerChangeInterval())*4), blockHash2, state),
+		Evm:      newEvm(new(big.Int).SetUint64(xutil.CalcBlocksEachEpoch(params.GenesisVersion)*uint64(xcom.RewardPerChangeInterval())*4), blockHash2, state),
 	}
 
 	// get CandidateInfo
@@ -947,7 +947,7 @@ func TestStakingContract_editCandidate_updateNilRewardPer(t *testing.T) {
 	contract2 := &StakingContract{
 		Plugin:   plugin.StakingInstance(),
 		Contract: newContract(common.Big0, sender),
-		Evm:      newEvm(new(big.Int).SetUint64(xutil.CalcBlocksEachEpoch()*uint64(xcom.RewardPerChangeInterval())*4), blockHash2, state),
+		Evm:      newEvm(new(big.Int).SetUint64(xutil.CalcBlocksEachEpoch(params.GenesisVersion)*uint64(xcom.RewardPerChangeInterval())*4), blockHash2, state),
 	}
 
 	// get CandidateInfo
@@ -1592,7 +1592,7 @@ func TestStakingContract_DelegateMerge(t *testing.T) {
 	if _, err := gov.InitGenesisGovernParam(common.ZeroHash, chain.SnapDB, 2048); err != nil {
 		t.Error("error", err)
 	}
-	gov.RegisterGovernParamVerifiers()
+	gov.RegisterGovernParamVerifiers(params.GenesisVersion)
 
 	privateKey, _ := crypto.GenerateKey()
 	stakingAdd := crypto.PubkeyToAddress(privateKey.PublicKey)
