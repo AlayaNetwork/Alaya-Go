@@ -237,19 +237,20 @@ func SetupGenesisBlock(db ethdb.Database, snapshotBaseDB snapshotdb.BaseDB, gene
 
 	// Get the existing EconomicModel configuration.
 	ecCfg := rawdb.ReadEconomicModel(db, stored)
-	eceCfg := rawdb.ReadEconomicModelExtend(db, stored)
 	if nil == ecCfg {
 		log.Warn("Found genesis block without EconomicModel config")
 		ecCfg = xcom.GetEc(xcom.DefaultAlayaNet)
 		rawdb.WriteEconomicModel(db, stored, ecCfg)
 	}
+	xcom.ResetEconomicDefaultConfig(ecCfg)
+
+	eceCfg := rawdb.ReadEconomicModelExtend(db, stored)
 	if nil == eceCfg {
 		log.Warn("Found genesis block without EconomicModelExtend config")
 		xcom.GetEc(xcom.DefaultAlayaNet)
 		eceCfg = xcom.GetEce()
 		rawdb.WriteEconomicModelExtend(db, stored, eceCfg)
 	}
-	xcom.ResetEconomicDefaultConfig(ecCfg)
 	xcom.ResetEconomicExtendConfig(eceCfg)
 
 	//update chain config here

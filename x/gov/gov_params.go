@@ -101,7 +101,7 @@ func initParam(version uint32) []*GovernParam {
 					return fmt.Errorf("Parsed MaxValidators is failed: %v", err)
 				}
 
-				if err := xcom.CheckMaxValidators(num); nil != err {
+				if err := xcom.CheckMaxValidators(num, version); nil != err {
 					return err
 				}
 

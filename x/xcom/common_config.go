@@ -163,7 +163,7 @@ type EconomicModel struct {
 type EconomicModelExtend struct {
 	Reward      rewardConfigExtend      `json:"reward"`
 	Restricting restrictingConfigExtend `json:"restricting"`
-	Common      commonConfigExtend      `json:"common"`
+	Extend0170  EconomicModel0170Extend `json:"extend_0170,omitempty"`
 }
 
 type rewardConfigExtend struct {
@@ -174,10 +174,14 @@ type restrictingConfigExtend struct {
 	MinimumRelease *big.Int `json:"minimumRelease"` //The minimum number of Restricting release in one epoch
 }
 
-type commonConfigExtend struct {
-	// add by 0.17.0
-	MaxGroupValidators  uint32 `json:"caxGroupValidators"`  // max validators count in 1 group
-	CoordinatorsLimit   uint32 `json:"coordinatorLimit"`    // max Coordinators count in 1 group
+type EconomicModel0170Extend struct {
+	Common EconomicModel0170CommonConfig `json:"common"`
+}
+
+type EconomicModel0170CommonConfig struct {
+	MaxGroupValidators uint32 `json:"caxGroupValidators"` // max validators count in 1 group
+	CoordinatorsLimit  uint32 `json:"coordinatorLimit"`   // max Coordinators count in 1 group
+	MaxConsensusVals   uint64 `json:"maxConsensusVals"`   // The consensus validators count
 }
 
 // New parameters added in version 0.14.0 need to be saved on the chain.
@@ -200,9 +204,14 @@ func EcParams0140() ([]byte, error) {
 // New parameters added in version 0.17.0 need to be saved on the chain.
 // Calculate the rlp of the new parameter and return it to the upper storage.
 func EcParams0170() ([]byte, error) {
-	params := commonConfigExtend {
-		MaxGroupValidators: ece.Common.MaxGroupValidators,
-		CoordinatorsLimit:  ece.Common.CoordinatorsLimit,
+	params := struct {
+		MaxGroupValidators uint32 `json:"caxGroupValidators"` // max validators count in 1 group
+		CoordinatorsLimit  uint32 `json:"coordinatorLimit"`   // max Coordinators count in 1 group
+		MaxConsensusVals   uint64 `json:"maxConsensusVals"`   // The consensus validators count
+	}{
+		MaxGroupValidators: ece.Extend0170.Common.MaxGroupValidators,
+		CoordinatorsLimit:  ece.Extend0170.Common.CoordinatorsLimit,
+		MaxConsensusVals:   ece.Extend0170.Common.MaxConsensusVals,
 	}
 	bytes, err := rlp.EncodeToBytes(params)
 	if err != nil {
@@ -318,9 +327,12 @@ func getDefaultEMConfig(netId int8) *EconomicModel {
 			Restricting: restrictingConfigExtend{
 				MinimumRelease: new(big.Int).Mul(oneAtp, new(big.Int).SetInt64(80)),
 			},
-			Common: commonConfigExtend{
-				MaxGroupValidators: 25,
-				CoordinatorsLimit: 5,
+			Extend0170: EconomicModel0170Extend{
+				Common: EconomicModel0170CommonConfig{
+					MaxGroupValidators: 25,
+					CoordinatorsLimit:  5,
+					MaxConsensusVals:   215,
+				},
 			},
 		}
 
@@ -691,8 +703,7 @@ func BlocksWillCreate() uint64 {
 }
 func MaxConsensusVals(version uint32) uint64 {
 	if version >= params.FORKVERSION_0_17_0 {
-		panic("This parameter has not been determined")
-		return 0
+		return ece.Extend0170.Common.MaxConsensusVals
 	}
 	return ec.Common.MaxConsensusVals
 }
@@ -908,9 +919,9 @@ func CalcPNew(sqrtWeight float64) float64 {
 }
 
 func MaxGroupValidators() uint32 {
-	return ece.Common.MaxGroupValidators
+	return ece.Extend0170.Common.MaxGroupValidators
 }
 
 func CoordinatorsLimit() uint32 {
-	return ece.Common.CoordinatorsLimit
+	return ece.Extend0170.Common.CoordinatorsLimit
 }
