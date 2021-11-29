@@ -161,10 +161,10 @@ func (govPlugin *GovPlugin) BeginBlock(blockHash common.Hash, header *types.Head
 			}
 			if versionProposal.NewVersion == params.FORKVERSION_0_17_0 {
 				if err := gov.WriteEcHash0170(state); nil != err {
-					log.Error("save EcHash0140 to stateDB failed.", "blockNumber", blockNumber, "blockHash", blockHash, "preActiveProposalID", preActiveVersionProposalID)
+					log.Error("save EcHash0170 to stateDB failed.", "blockNumber", blockNumber, "blockHash", blockHash, "preActiveProposalID", preActiveVersionProposalID)
 					return err
 				}
-				log.Info("Successfully upgraded the new version 0.14.0", "blockNumber", blockNumber, "blockHash", blockHash, "preActiveProposalID", preActiveVersionProposalID)
+				log.Info("Successfully upgraded the new version 0.17.0", "blockNumber", blockNumber, "blockHash", blockHash, "preActiveProposalID", preActiveVersionProposalID)
 			}
 			header.SetActiveVersion(versionProposal.NewVersion)
 			log.Info("version proposal is active", "blockNumber", blockNumber, "proposalID", versionProposal.ProposalID, "newVersion", versionProposal.NewVersion, "newVersionString", xutil.ProgramVersion2Str(versionProposal.NewVersion))
