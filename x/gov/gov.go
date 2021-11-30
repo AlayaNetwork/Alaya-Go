@@ -460,6 +460,9 @@ func ListProposal(blockHash common.Hash, state xcom.StateDB) ([]Proposal, error)
 			log.Error("find proposal error", "proposalID", proposalID)
 			return nil, err
 		}
+		if versionProposal, ok := proposal.(*VersionProposal); ok {
+			versionProposal.ActiveBlock = versionProposal.GetActiveBlock(GetCurrentActiveVersion(state))
+		}
 		proposals = append(proposals, proposal)
 	}
 	return proposals, nil

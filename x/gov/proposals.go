@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/AlayaNetwork/Alaya-Go/params"
+
 	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
 
 	"github.com/AlayaNetwork/Alaya-Go/common"
@@ -216,7 +218,10 @@ func (vp *VersionProposal) GetNewVersion() uint32 {
 	return vp.NewVersion
 }
 
-func (vp *VersionProposal) GetActiveBlock() uint64 {
+func (vp *VersionProposal) GetActiveBlock(version uint32) uint64 {
+	if vp.NewVersion == params.FORKVERSION_0_17_0 {
+		return xutil.CalculateEpoch(vp.ActiveBlock, version)*xcom.EpochSize(version) + 1
+	}
 	return vp.ActiveBlock
 }
 

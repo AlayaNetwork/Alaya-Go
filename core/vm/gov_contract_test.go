@@ -653,7 +653,7 @@ func TestGovContract_SubmitVersion_Passed(t *testing.T) {
 	}
 
 	//skip empty blocks, this version proposal is pre-active
-	skip_emptyBlock(chain, p.GetActiveBlock()-1)
+	skip_emptyBlock(chain, p.GetActiveBlock(params.GenesisVersion)-1)
 }
 
 func TestGovContract_SubmitVersion_AnotherPreActive(t *testing.T) {
@@ -698,7 +698,7 @@ func TestGovContract_SubmitVersion_AnotherPreActive(t *testing.T) {
 	}
 
 	//skip empty blocks, this version proposal is pre-active
-	skip_emptyBlock(chain, p.GetActiveBlock()-1)
+	skip_emptyBlock(chain, p.GetActiveBlock(params.GenesisVersion)-1)
 	//submit another version proposal
 	runGovContract(false, gc, buildSubmitVersion(nodeIdArr[2], "versionPIPID2", promoteVersion, xutil.EstimateConsensusRoundsForGov(xcom.VersionProposalVote_DurationSeconds(), params.GenesisVersion)), t, gov.PreActiveVersionProposalExist)
 }
@@ -746,7 +746,7 @@ func TestGovContract_SubmitVersion_Passed_Clear(t *testing.T) {
 	}
 
 	//skip empty blocks, this version proposal is pre-active
-	skip_emptyBlock(chain, p.GetActiveBlock()-1)
+	skip_emptyBlock(chain, p.GetActiveBlock(params.GenesisVersion)-1)
 
 	prepair_sndb(chain, common.ZeroHash)
 
@@ -1437,7 +1437,7 @@ func TestGovContract_VersionProposal_Active(t *testing.T) {
 	}
 
 	//skip empty block
-	skip_emptyBlock(chain, p.GetActiveBlock()-1)
+	skip_emptyBlock(chain, p.GetActiveBlock(params.GenesisVersion)-1)
 
 	// build_staking_data_more will build a new block base on chain.SnapDB.Current
 	build_staking_data_more(chain)
@@ -1497,7 +1497,7 @@ func TestGovContract_VersionProposal_Active_GetExtraParam_V0_11_0(t *testing.T) 
 	}
 
 	//skip empty block
-	skip_emptyBlock(chain, p.GetActiveBlock()-1)
+	skip_emptyBlock(chain, p.GetActiveBlock(params.GenesisVersion)-1)
 
 	// build_staking_data_more will build a new block base on chain.SnapDB.Current
 	build_staking_data_more(chain)

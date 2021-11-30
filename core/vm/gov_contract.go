@@ -342,6 +342,8 @@ func (gc *GovContract) getProposal(proposalID common.Hash) ([]byte, error) {
 	blockNumber := gc.Evm.BlockNumber.Uint64()
 	//blockHash := gc.Evm.BlockHash
 	txHash := gc.Evm.StateDB.TxHash()
+	state := gc.Evm.StateDB
+
 	log.Debug("call getProposal of GovContract",
 		"from", from,
 		"txHash", txHash,
@@ -349,6 +351,12 @@ func (gc *GovContract) getProposal(proposalID common.Hash) ([]byte, error) {
 		"proposalID", proposalID)
 
 	proposal, err := gov.GetExistProposal(proposalID, gc.Evm.StateDB)
+	if err == nil {
+		if versionProposal, ok := proposal.(*gov.VersionProposal); ok {
+			versionProposal.ActiveBlock = versionProposal.GetActiveBlock(gov.GetCurrentActiveVersion(state))
+			return gc.callHandler("getProposal", proposal, err)
+		}
+	}
 
 	return gc.callHandler("getProposal", proposal, err)
 }
