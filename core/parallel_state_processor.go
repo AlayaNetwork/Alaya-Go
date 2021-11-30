@@ -107,7 +107,7 @@ func sortReceipts(txs types.Transactions, receipts types.Receipts) types.Receipt
 			cumulativeGasUsed += r.GasUsed
 			r.CumulativeGasUsed = cumulativeGasUsed
 			sortReceipts = append(sortReceipts, r)
-			log.Warn("sortReceipts tx", "hash", tx.Hash(), "to", tx.To(), "data", tx.Data())
+			log.Trace("sortReceipts tx", "hash", tx.Hash(), "to", tx.To(), "data", tx.Data())
 		} else {
 			log.Error("GetReceipts error,the corresponding receipt was not found", "txhash", tx.Hash())
 		}

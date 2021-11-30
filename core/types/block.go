@@ -320,7 +320,7 @@ func NewBlock(header *Header, txs []*Transaction, receipts []*Receipt) *Block {
 				i, receipt.CumulativeGasUsed, receipt.GasUsed, receipt.ContractAddress.Bech32(),
 				receipt.Status, receipt.TxHash.Hex(), receipt.Logs, receipt.Bloom, receipt.PostState)
 		}
-		log.Warn("Commit NewBlock", "number", header.Number.Uint64(), "receiptString", receiptString)
+		log.Trace("Commit NewBlock", "number", header.Number.Uint64(), "receiptString", receiptString)
 	}*/
 
 	if len(receipts) == 0 {

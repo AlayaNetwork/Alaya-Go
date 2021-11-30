@@ -1,7 +1,6 @@
 package core
 
 import (
-	"fmt"
 	"github.com/AlayaNetwork/Alaya-Go/crypto"
 	"github.com/AlayaNetwork/Alaya-Go/internal/debug"
 	"math/big"
@@ -236,7 +235,7 @@ func (exe *Executor) executeContractTransaction(ctx *ParallelContext, idx int) {
 	//receiptString := fmt.Sprintf("cumulative: %v gas: %v contract: %v status: %v tx: %v logs: %v bloom: %x state: %x\n",
 	//	receipt.CumulativeGasUsed, receipt.GasUsed, receipt.ContractAddress.Bech32(),
 	//	receipt.Status, receipt.TxHash.Hex(), receipt.Logs, receipt.Bloom, receipt.PostState)
-	//log.Debug("Execute contract transaction success", "blockNumber", ctx.GetHeader().Number.Uint64(), "txHash", tx.Hash().Hex(), "gasPool", ctx.gp.Gas(), "txGasLimit", tx.Gas(), "gasUsed", receipt.GasUsed, "receiptString", receiptString)
+	//log.Trace("Execute contract transaction success", "blockNumber", ctx.GetHeader().Number.Uint64(), "txHash", tx.Hash().Hex(), "gasPool", ctx.gp.Gas(), "txGasLimit", tx.Gas(), "gasUsed", receipt.GasUsed, "receiptString", receiptString)
 	log.Debug("Execute contract transaction success", "blockNumber", ctx.GetHeader().Number.Uint64(), "txHash", tx.Hash().Hex(), "gasPool", ctx.gp.Gas(), "txGasLimit", tx.Gas(), "gasUsed", receipt.GasUsed)
 }
 
