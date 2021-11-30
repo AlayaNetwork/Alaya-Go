@@ -27,6 +27,8 @@ import (
 	"strconv"
 	"sync"
 
+	"github.com/AlayaNetwork/Alaya-Go/params"
+
 	"github.com/AlayaNetwork/Alaya-Go/crypto"
 
 	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
@@ -2073,7 +2075,7 @@ func (sk *StakingPlugin) Election(blockHash common.Hash, header *types.Header, s
 		}
 	}
 
-	if err := sk.storeRoundValidatorAddrs(blockNumber, blockHash, start, nextQueue, currentActiveVersion); nil != err {
+	if err := sk.storeRoundValidatorAddrs(blockNumber, blockHash, start, nextQueue, currentActiveVersion, state); nil != err {
 		log.Error("Failed to storeRoundValidatorAddrs on Election", "blockNumber", blockNumber,
 			"blockHash", blockHash.TerminalString(), "err", err)
 		return err
@@ -3651,8 +3653,20 @@ func (sk *StakingPlugin) addRecoveryUnStakeItem(blockNumber uint64, blockHash co
 }
 
 // Record the address of the verification node for each consensus round within a certain block range.
-func (sk *StakingPlugin) storeRoundValidatorAddrs(blockNumber uint64, blockHash common.Hash, nextStart uint64, array staking.ValidatorQueue, version uint32) error {
-	nextRound := xutil.CalculateRound(nextStart, version)
+func (sk *StakingPlugin) storeRoundValidatorAddrs(blockNumber uint64, blockHash common.Hash, nextStart uint64, array staking.ValidatorQueue, version uint32, state xcom.StateDB) error {
+	var nextRound uint64
+	if version >= params.FORKVERSION_0_17_0 {
+		acVersion := gov.GetActiveVersion(state, params.FORKVERSION_0_17_0)
+		if acVersion.ActiveBlock != 0 {
+			roundBefore017 := xutil.CalculateRound(acVersion.ActiveBlock-1, params.FORKVERSION_0_16_0)
+			roundAfter017 := xutil.CalculateRound(nextStart-acVersion.ActiveBlock+1, version)
+			nextRound = roundBefore017 + roundAfter017
+		} else {
+			nextRound = xutil.CalculateRound(nextStart, version)
+		}
+	} else {
+		nextRound = xutil.CalculateRound(nextStart, version)
+	}
 	nextEpoch := xutil.CalculateEpoch(nextStart, version)
 
 	evidenceAge, err := gov.GovernMaxEvidenceAge(blockNumber, blockHash)
