@@ -3,6 +3,7 @@ package core
 import (
 	"fmt"
 	"github.com/AlayaNetwork/Alaya-Go/crypto"
+	"github.com/AlayaNetwork/Alaya-Go/internal/debug"
 	"math/big"
 	"runtime"
 	"sync"
@@ -129,7 +130,7 @@ func (exe *Executor) ExecuteTransactions(ctx *ParallelContext) error {
 				}
 				// waiting for current batch done
 				ctx.wg.Wait()
-				ctx.batchMerge(batchNo, parallelTxIdxs, true)
+				ctx.batchMerge(parallelTxIdxs)
 				batchNo++
 			}
 		}
@@ -144,14 +145,13 @@ func (exe *Executor) ExecuteTransactions(ctx *ParallelContext) error {
 		log.Trace("Finalise stateDB cost", "number", ctx.header.Number, "time", time.Since(start))
 	}
 
-	/*
-		// dag print info
-		logVerbosity := debug.GetLogVerbosity()
-		if logVerbosity == log.LvlTrace {
-			inf := ctx.txListInfo()
-			log.Trace("TxList Info", "blockNumber", ctx.header.Number, "txList", inf)
-		}
-	*/
+	// dag print info
+	logVerbosity := debug.GetLogVerbosity()
+	if logVerbosity == log.LvlTrace {
+		inf := ctx.txListInfo()
+		log.Trace("TxList Info", "blockNumber", ctx.header.Number, "txList", inf)
+	}
+
 	return nil
 }
 

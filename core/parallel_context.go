@@ -210,7 +210,7 @@ func (ctx *ParallelContext) buildTransferSuccessResult(idx int, fromStateObject,
 		"txValue", tx.Value().Uint64(), "minerEarnings", minerEarnings.Uint64())
 }
 
-func (ctx *ParallelContext) batchMerge(batchNo int, originIdxList []int, deleteEmptyObjects bool) {
+func (ctx *ParallelContext) batchMerge(originIdxList []int) {
 	resultList := ctx.GetResults()
 	for _, idx := range originIdxList {
 		if resultList[idx] != nil {
