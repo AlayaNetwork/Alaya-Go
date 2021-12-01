@@ -2,6 +2,7 @@ package core
 
 import (
 	"github.com/AlayaNetwork/Alaya-Go/crypto"
+	"github.com/AlayaNetwork/Alaya-Go/internal/debug"
 	"math/big"
 	"runtime"
 	"sync"
@@ -128,7 +129,7 @@ func (exe *Executor) ExecuteTransactions(ctx *ParallelContext) error {
 				}
 				// waiting for current batch done
 				ctx.wg.Wait()
-				ctx.batchMerge(batchNo, parallelTxIdxs, true)
+				ctx.batchMerge(parallelTxIdxs)
 				batchNo++
 			}
 		}
@@ -143,14 +144,13 @@ func (exe *Executor) ExecuteTransactions(ctx *ParallelContext) error {
 		log.Trace("Finalise stateDB cost", "number", ctx.header.Number, "time", time.Since(start))
 	}
 
-	/*
-		// dag print info
-		logVerbosity := debug.GetLogVerbosity()
-		if logVerbosity == log.LvlTrace {
-			inf := ctx.txListInfo()
-			log.Trace("TxList Info", "blockNumber", ctx.header.Number, "txList", inf)
-		}
-	*/
+	// dag print info
+	logVerbosity := debug.GetLogVerbosity()
+	if logVerbosity == log.LvlTrace {
+		inf := ctx.txListInfo()
+		log.Trace("TxList Info", "blockNumber", ctx.header.Number, "txList", inf)
+	}
+
 	return nil
 }
 
@@ -232,6 +232,10 @@ func (exe *Executor) executeContractTransaction(ctx *ParallelContext, idx int) {
 	ctx.AddPackedTx(tx)
 	ctx.GetState().IncreaseTxIdx()
 	ctx.AddReceipt(receipt)
+	//receiptString := fmt.Sprintf("cumulative: %v gas: %v contract: %v status: %v tx: %v logs: %v bloom: %x state: %x\n",
+	//	receipt.CumulativeGasUsed, receipt.GasUsed, receipt.ContractAddress.Bech32(),
+	//	receipt.Status, receipt.TxHash.Hex(), receipt.Logs, receipt.Bloom, receipt.PostState)
+	//log.Trace("Execute contract transaction success", "blockNumber", ctx.GetHeader().Number.Uint64(), "txHash", tx.Hash().Hex(), "gasPool", ctx.gp.Gas(), "txGasLimit", tx.Gas(), "gasUsed", receipt.GasUsed, "receiptString", receiptString)
 	log.Debug("Execute contract transaction success", "blockNumber", ctx.GetHeader().Number.Uint64(), "txHash", tx.Hash().Hex(), "gasPool", ctx.gp.Gas(), "txGasLimit", tx.Gas(), "gasUsed", receipt.GasUsed)
 }
 
