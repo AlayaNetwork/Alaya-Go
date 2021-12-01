@@ -2,7 +2,6 @@ package core
 
 import (
 	"github.com/AlayaNetwork/Alaya-Go/crypto"
-	"github.com/AlayaNetwork/Alaya-Go/internal/debug"
 	"math/big"
 	"runtime"
 	"sync"
@@ -145,11 +144,11 @@ func (exe *Executor) ExecuteTransactions(ctx *ParallelContext) error {
 	}
 
 	// dag print info
-	logVerbosity := debug.GetLogVerbosity()
+/*	logVerbosity := debug.GetLogVerbosity()
 	if logVerbosity == log.LvlTrace {
 		inf := ctx.txListInfo()
 		log.Trace("TxList Info", "blockNumber", ctx.header.Number, "txList", inf)
-	}
+	}*/
 
 	return nil
 }
