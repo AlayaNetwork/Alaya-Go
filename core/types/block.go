@@ -313,16 +313,6 @@ func NewBlock(header *Header, txs []*Transaction, receipts []*Receipt) *Block {
 		copy(b.transactions, txs)
 	}
 
-	/*if header != nil && header.Number != nil && receipts != nil {
-		var receiptString string
-		for i, receipt := range receipts {
-			receiptString += fmt.Sprintf("\t %d: cumulative: %v gas: %v contract: %v status: %v tx: %v logs: %v bloom: %x state: %x\n",
-				i, receipt.CumulativeGasUsed, receipt.GasUsed, receipt.ContractAddress.Bech32(),
-				receipt.Status, receipt.TxHash.Hex(), receipt.Logs, receipt.Bloom, receipt.PostState)
-		}
-		log.Trace("Commit NewBlock", "number", header.Number.Uint64(), "receiptString", receiptString)
-	}*/
-
 	if len(receipts) == 0 {
 		b.header.ReceiptHash = EmptyRootHash
 	} else {
