@@ -719,7 +719,7 @@ func TestSlashingPlugin_ZeroProduceProcess(t *testing.T) {
 		Number: blockNumber,
 		Extra:  make([]byte, 97),
 	}
-	if slashingQueue, err := si.zeroProduceProcess(common.ZeroHash, header, validatorMap, validatorQueue); nil != err {
+	if slashingQueue, err := si.zeroProduceProcess(common.ZeroHash, header, validatorMap, validatorQueue, stateDB); nil != err {
 		t.Fatal(err)
 	} else if len(slashingQueue) > 0 {
 		t.Errorf("zeroProduceProcess amount: have %v, want %v", len(slashingQueue), 0)
@@ -742,10 +742,10 @@ func TestSlashingPlugin_ZeroProduceProcess(t *testing.T) {
 		t.Fatal(err)
 	}
 	copy(header.Extra[len(header.Extra)-common.ExtraSeal:], sign[:])
-	if err := si.setPackAmount(common.ZeroHash, header); nil != err {
+	if err := si.setPackAmount(common.ZeroHash, header, stateDB); nil != err {
 		t.Fatal(err)
 	}
-	if slashingQueue, err := si.zeroProduceProcess(common.ZeroHash, header, validatorMap, validatorQueue); nil != err {
+	if slashingQueue, err := si.zeroProduceProcess(common.ZeroHash, header, validatorMap, validatorQueue, stateDB); nil != err {
 		t.Fatal(err)
 	} else if len(slashingQueue) > 0 {
 		t.Errorf("zeroProduceProcess amount: have %v, want %v", len(slashingQueue), 0)
@@ -759,7 +759,7 @@ func TestSlashingPlugin_ZeroProduceProcess(t *testing.T) {
 	validatorQueue = append(validatorQueue, &staking.Validator{
 		NodeId: nodeIdArr[0],
 	})
-	if slashingQueue, err := si.zeroProduceProcess(common.ZeroHash, header, validatorMap, validatorQueue); nil != err {
+	if slashingQueue, err := si.zeroProduceProcess(common.ZeroHash, header, validatorMap, validatorQueue, stateDB); nil != err {
 		t.Fatal(err)
 	} else if len(slashingQueue) > 0 {
 		t.Errorf("zeroProduceProcess amount: have %v, want %v", len(slashingQueue), 0)
@@ -785,7 +785,7 @@ func TestSlashingPlugin_ZeroProduceProcess(t *testing.T) {
 	validatorQueue = append(validatorQueue, &staking.Validator{
 		NodeId: nodeIdArr[6],
 	})
-	if slashingQueue, err := si.zeroProduceProcess(common.ZeroHash, header, validatorMap, validatorQueue); nil != err {
+	if slashingQueue, err := si.zeroProduceProcess(common.ZeroHash, header, validatorMap, validatorQueue, stateDB); nil != err {
 		t.Fatal(err)
 	} else if len(slashingQueue) != 1 {
 		t.Errorf("zeroProduceProcess amount: have %v, want %v", len(slashingQueue), 1)
@@ -813,7 +813,7 @@ func TestSlashingPlugin_ZeroProduceProcess(t *testing.T) {
 	validatorQueue = append(validatorQueue, &staking.Validator{
 		NodeId: nodeIdArr[5],
 	})
-	if slashingQueue, err := si.zeroProduceProcess(common.ZeroHash, header, validatorMap, validatorQueue); nil != err {
+	if slashingQueue, err := si.zeroProduceProcess(common.ZeroHash, header, validatorMap, validatorQueue, stateDB); nil != err {
 		t.Fatal(err)
 	} else if len(slashingQueue) > 0 {
 		t.Errorf("zeroProduceProcess amount: have %v, want %v", len(slashingQueue), 0)
@@ -833,7 +833,7 @@ func TestSlashingPlugin_ZeroProduceProcess(t *testing.T) {
 	validatorQueue = append(validatorQueue, &staking.Validator{
 		NodeId: nodeIdArr[5],
 	})
-	if slashingQueue, err := si.zeroProduceProcess(common.ZeroHash, header, validatorMap, validatorQueue); nil != err {
+	if slashingQueue, err := si.zeroProduceProcess(common.ZeroHash, header, validatorMap, validatorQueue, stateDB); nil != err {
 		t.Fatal(err)
 	} else if len(slashingQueue) > 0 {
 		t.Errorf("zeroProduceProcess amount: have %v, want %v", len(slashingQueue), 0)

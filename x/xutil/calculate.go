@@ -20,6 +20,8 @@ import (
 	"bytes"
 	"fmt"
 
+	"github.com/AlayaNetwork/Alaya-Go/params"
+
 	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
 
 	"github.com/AlayaNetwork/Alaya-Go/common"
@@ -96,10 +98,26 @@ func CalculateEpoch(blockNumber uint64, version uint32) uint64 {
 	return calculateQuotient(blockNumber, size)
 }
 
+func CalculateRound(blockNumber uint64, version uint32, version0170ActiveBlock uint64) uint64 {
+	if version >= params.FORKVERSION_0_17_0 {
+		// 因为主网0.17.0的共识轮需要连续,所以这里需要根据不同的块高计算
+		if version0170ActiveBlock > 0 {
+			return calculateFork0170Round(blockNumber, version, version0170ActiveBlock)
+		}
+	}
+	return calculateRound(blockNumber, version)
+}
+
 // calculate the Consensus number by blockNumber
-func CalculateRound(blockNumber uint64, version uint32) uint64 {
+func calculateRound(blockNumber uint64, version uint32) uint64 {
 	size := xcom.ConsensusSize(version)
 	return calculateQuotient(blockNumber, size)
+}
+
+func calculateFork0170Round(blockNumber uint64, version uint32, version017ActiveBlock uint64) uint64 {
+	roundBefore017 := calculateRound(version017ActiveBlock-1, params.FORKVERSION_0_16_0)
+	roundAfter017 := calculateRound(blockNumber-version017ActiveBlock+1, version)
+	return roundBefore017 + roundAfter017
 }
 
 func calculateQuotient(blockNumber, size uint64) uint64 {

@@ -3654,19 +3654,7 @@ func (sk *StakingPlugin) addRecoveryUnStakeItem(blockNumber uint64, blockHash co
 
 // Record the address of the verification node for each consensus round within a certain block range.
 func (sk *StakingPlugin) storeRoundValidatorAddrs(blockNumber uint64, blockHash common.Hash, nextStart uint64, array staking.ValidatorQueue, version uint32, state xcom.StateDB) error {
-	var nextRound uint64
-	if version >= params.FORKVERSION_0_17_0 {
-		acVersion := gov.GetActiveVersion(state, params.FORKVERSION_0_17_0)
-		if acVersion.ActiveBlock != 0 {
-			roundBefore017 := xutil.CalculateRound(acVersion.ActiveBlock-1, params.FORKVERSION_0_16_0)
-			roundAfter017 := xutil.CalculateRound(nextStart-acVersion.ActiveBlock+1, version)
-			nextRound = roundBefore017 + roundAfter017
-		} else {
-			nextRound = xutil.CalculateRound(nextStart, version)
-		}
-	} else {
-		nextRound = xutil.CalculateRound(nextStart, version)
-	}
+	nextRound := xutil.CalculateRound(nextStart, version, gov.GetActiveVersion(state, params.FORKVERSION_0_17_0).ActiveBlock)
 	nextEpoch := xutil.CalculateEpoch(nextStart, version)
 
 	evidenceAge, err := gov.GovernMaxEvidenceAge(blockNumber, blockHash)
@@ -3725,8 +3713,8 @@ func (sk *StakingPlugin) storeRoundValidatorAddrs(blockNumber uint64, blockHash 
 	return nil
 }
 
-func (sk *StakingPlugin) checkRoundValidatorAddr(blockHash common.Hash, targetBlockNumber uint64, addr common.NodeAddress, version uint32) (bool, error) {
-	targetRound := xutil.CalculateRound(targetBlockNumber, version)
+func (sk *StakingPlugin) checkRoundValidatorAddr(blockHash common.Hash, targetBlockNumber uint64, addr common.NodeAddress, version uint32, state xcom.StateDB) (bool, error) {
+	targetRound := xutil.CalculateRound(targetBlockNumber, version, gov.GetActiveVersion(state, params.FORKVERSION_0_17_0).ActiveBlock)
 	addrList, err := sk.db.LoadRoundValidatorAddrs(blockHash, staking.GetRoundValAddrArrKey(targetRound))
 	if nil != err {
 		log.Error("Failed to checkRoundValidatorAddr", "blockHash", blockHash.TerminalString(), "targetBlockNumber", targetBlockNumber,

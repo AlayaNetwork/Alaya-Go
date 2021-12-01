@@ -3527,7 +3527,7 @@ func TestStakingPlugin_GetLastNumber(t *testing.T) {
 	*/
 	endNumber := StakingInstance().GetLastNumber(header.Number.Uint64())
 	acVersion := gov.GetCurrentActiveVersion(state)
-	round := xutil.CalculateRound(header.Number.Uint64(), acVersion)
+	round := xutil.CalculateRound(header.Number.Uint64(), acVersion, gov.GetActiveVersion(state, params.FORKVERSION_0_17_0).ActiveBlock)
 	blockNum := round * xcom.ConsensusSize(acVersion)
 	assert.True(t, endNumber == blockNum, fmt.Sprintf("currentNumber: %d, currentRound: %d endNumber: %d, targetNumber: %d", header.Number, round, endNumber, blockNum))
 
