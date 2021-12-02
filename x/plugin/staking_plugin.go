@@ -1789,6 +1789,10 @@ func (sk *StakingPlugin) Election(blockHash common.Hash, header *types.Header, s
 	start := curr.End + 1
 
 	currentActiveVersion := gov.GetCurrentActiveVersion(state)
+	if currentActiveVersion == 0 {
+		log.Error("Failed to Election, GetCurrentActiveVersion is failed", "blockNumber", header.Number.Uint64(), "blockHash", blockHash.TerminalString())
+		return errors.New("Failed to get CurrentActiveVersion")
+	}
 
 	end := curr.End + xcom.ConsensusSize(currentActiveVersion)
 
@@ -1828,12 +1832,6 @@ func (sk *StakingPlugin) Election(blockHash common.Hash, header *types.Header, s
 			status.IsInvalidLowRatio() ||
 			status.IsInvalidLowRatioNotEnough() ||
 			status.IsInvalidDuplicateSign()
-	}
-
-	currentVersion := gov.GetCurrentActiveVersion(state)
-	if currentVersion == 0 {
-		log.Error("Failed to Election, GetCurrentActiveVersion is failed", "blockNumber", header.Number.Uint64(), "blockHash", blockHash.TerminalString())
-		return errors.New("Failed to get CurrentActiveVersion")
 	}
 
 	// 收集当前的  (验证人Id => Power)
@@ -2013,7 +2011,7 @@ func (sk *StakingPlugin) Election(blockHash common.Hash, header *types.Header, s
 	}
 
 	if vrfLen != 0 {
-		if queue, err := vrfElection(maxConsensusVals, diffQueue, vrfLen, header.Nonce.Bytes(), header.ParentHash, blockNumber, currentVersion); nil != err {
+		if queue, err := vrfElection(maxConsensusVals, diffQueue, vrfLen, header.Nonce.Bytes(), header.ParentHash, blockNumber, currentActiveVersion); nil != err {
 			log.Error("Failed to VrfElection on Election",
 				"blockNumber", blockNumber, "blockHash", blockHash.Hex(), "err", err)
 			return err
