@@ -76,7 +76,7 @@ func (v *BlockValidator) ValidateBody(block *types.Block) error {
 // transition, such as amount of used gas, the receipt roots and the state root
 // itself. ValidateState returns a database batch if the validation was a success
 // otherwise nil and an error is returned.
-func (v *BlockValidator) ValidateState(block, parent *types.Block, statedb *state.StateDB, receipts types.Receipts, usedGas uint64) error {
+func (v *BlockValidator) ValidateState(block *types.Block, statedb *state.StateDB, receipts types.Receipts, usedGas uint64) error {
 	header := block.Header()
 	if block.GasUsed() != usedGas {
 		return fmt.Errorf("invalid gas used (remote: %d local: %d)", block.GasUsed(), usedGas)
@@ -120,10 +120,8 @@ func CalcGasLimit(parent *types.Block, gasFloor /*, gasCeil*/ uint64) uint64 {
 		gasFloor = gasCeil
 	}
 
-	// contrib = (parentGasUsed * 3 / 2) / 256
 	contrib := (parent.GasUsed() + parent.GasUsed()/2) / params.GasLimitBoundDivisor
 
-	// decay = parentGasLimit / 256 -1
 	decay := parent.GasLimit()/params.GasLimitBoundDivisor - 1
 
 	/*
@@ -134,9 +132,7 @@ func CalcGasLimit(parent *types.Block, gasFloor /*, gasCeil*/ uint64) uint64 {
 		from parentGasLimit * (2/3) parentGasUsed is.
 	*/
 	limit := parent.GasLimit() - decay + contrib
-	/*if limit < params.MinGasLimit {
-		limit = params.MinGasLimit
-	}*/
+
 	// If we're outside our allowed gas range, we try to hone towards them
 	if limit < gasFloor {
 		limit = parent.GasLimit() + decay

@@ -1,4 +1,4 @@
-// Copyright 2018-2020 The PlatON Network Authors
+// Copyright 2021 The Alaya Network Authors
 // This file is part of the Alaya-Go library.
 //
 // The Alaya-Go library is free software: you can redistribute it and/or modify
@@ -34,7 +34,7 @@ func NewBlock(parent common.Hash, number uint64) *types.Block {
 	header := &types.Header{
 		Number:     big.NewInt(int64(number)),
 		ParentHash: parent,
-		Time:       big.NewInt(time.Now().UnixNano()),
+		Time:       uint64(time.Now().UnixNano()),
 		Extra:      make([]byte, 77),
 		Coinbase:   common.Address{},
 		GasLimit:   10000000000,

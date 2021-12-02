@@ -81,7 +81,7 @@ func newTestProtocolManager(mode downloader.SyncMode, blocks int, generator func
 	//if _, err := blockchain.InsertChain(chain); err != nil {
 	//	panic(err)
 	//}
-	pm, err := NewProtocolManager(gspec.Config, mode, DefaultConfig.NetworkId, evmux, &testTxPool{added: newtx}, engine, chain, db)
+	pm, err := NewProtocolManager(gspec.Config, mode, DefaultConfig.NetworkId, evmux, &testTxPool{added: newtx}, engine, chain, db, 1)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -108,6 +108,34 @@ type testTxPool struct {
 	added  chan<- []*types.Transaction // Notification channel for new transactions
 
 	lock sync.RWMutex // Protects the transaction pool
+}
+
+// Has returns an indicator whether txpool has a transaction
+// cached with the given hash.
+func (p *testTxPool) Has(hash common.Hash) bool {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
+	for _, tx := range p.pool {
+		if tx.Hash() == hash {
+			return true
+		}
+	}
+	return false
+}
+
+// Get retrieves the transaction from local txpool with given
+// tx hash.
+func (p *testTxPool) Get(hash common.Hash) *types.Transaction {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
+	for _, tx := range p.pool {
+		if tx.Hash() == hash {
+			return tx
+		}
+	}
+	return nil
 }
 
 // AddRemotes appends a batch of transactions to the pool, and notifies any
@@ -162,22 +190,14 @@ func newTestPeer(name string, version int, pm *ProtocolManager, shake bool) (*te
 	// Create a message pipe to communicate through
 	app, net := p2p.MsgPipe()
 
-	// Generate a random id and create the peer
+	// Start the peer on a new thread
 	var id discover.NodeID
 	rand.Read(id[:])
-
 	peer := pm.newPeer(version, p2p.NewPeer(id, name, nil), net)
 
 	// Start the peer on a new thread
 	errc := make(chan error, 1)
-	go func() {
-		select {
-		case pm.newPeerCh <- peer:
-			errc <- pm.handle(peer)
-		case <-pm.quitSync:
-			errc <- p2p.DiscQuitting
-		}
-	}()
+	go func() { errc <- pm.runPeer(peer) }()
 	tp := &testPeer{app: app, net: net, peer: peer}
 	// Execute any implicitly requested handshakes and return
 	if shake {

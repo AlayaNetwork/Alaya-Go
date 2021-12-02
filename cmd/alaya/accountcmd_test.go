@@ -73,9 +73,19 @@ Your new account is locked with a password. Please give a password. Do not forge
 !! Unsupported terminal, password will be echoed.
 Passphrase: {{.InputLine "foobar"}}
 Repeat passphrase: {{.InputLine "foobar"}}
+
+Your new key was generated
 `)
 
-	platon.ExpectRegexp(`Address: \{atp1[0-9a-z]{38}\}\n`)
+	platon.ExpectRegexp(`
+Public address of the key:   atp1[0-9a-z]{38}
+Path of the secret key file: .*UTC--.+--[0-9a-f]{40}
+
+- You can share your public address with anyone. Others need it to interact with you.
+- You must NEVER share the secret key with anyone! The key controls access to your funds!
+- You must BACKUP your key file! Without the key, it's impossible to access account funds!
+- You must REMEMBER your password! Without the password, it's impossible to decrypt the key!
+`)
 }
 
 func TestAccountNewBadRepeat(t *testing.T) {
@@ -109,7 +119,7 @@ Repeat passphrase: {{.InputLine "foobar2"}}
 func TestUnlockFlag(t *testing.T) {
 	datadir := tmpDatadirWithKeystore(t)
 	platon := runPlatON(t,
-		"--datadir", datadir, "--ipcdisable", "--alaya", "--nat", "none", "--nodiscover", "--maxpeers", "0", "--port", "0",
+		"--datadir", datadir, "--ipcdisable", "--alaya", "--nat", "none", "--nodiscover", "--maxpeers", "60", "--port", "0",
 		"--unlock", "atp10m66vy6lrlt2qfvnamwgd8rdg8vnfthc5grew9",
 		"js", "testdata/empty.js")
 	platon.Expect(`
@@ -133,7 +143,7 @@ Passphrase: {{.InputLine "foobar"}}
 func TestUnlockFlagWrongPassword(t *testing.T) {
 	datadir := tmpDatadirWithKeystore(t)
 	platon := runPlatON(t,
-		"--datadir", datadir, "--nat", "none", "--nodiscover", "--maxpeers", "0", "--port", "0", "--ipcdisable", "--alaya",
+		"--datadir", datadir, "--nat", "none", "--nodiscover", "--maxpeers", "60", "--port", "0", "--ipcdisable", "--alaya",
 		"--unlock", "atp173ngt84dryedws7kyt9hflq93zpwsey2zecc74")
 	defer platon.ExpectExit()
 	platon.Expect(`
@@ -152,7 +162,7 @@ Fatal: Failed to unlock account atp173ngt84dryedws7kyt9hflq93zpwsey2zecc74 (coul
 func TestUnlockFlagMultiIndex(t *testing.T) {
 	datadir := tmpDatadirWithKeystore(t)
 	platon := runPlatON(t,
-		"--datadir", datadir, "--nat", "none", "--nodiscover", "--maxpeers", "0", "--port", "0", "--ipcdisable", "--alaya",
+		"--datadir", datadir, "--nat", "none", "--nodiscover", "--maxpeers", "60", "--port", "0", "--ipcdisable", "--alaya",
 		"--unlock", "0,2",
 		"js", "testdata/empty.js")
 	platon.Expect(`
@@ -179,7 +189,7 @@ Passphrase: {{.InputLine "foobar"}}
 func TestUnlockFlagPasswordFile(t *testing.T) {
 	datadir := tmpDatadirWithKeystore(t)
 	platon := runPlatON(t,
-		"--datadir", datadir, "--nat", "none", "--nodiscover", "--maxpeers", "0", "--port", "0",
+		"--datadir", datadir, "--nat", "none", "--nodiscover", "--maxpeers", "60", "--port", "0",
 		"--password", "testdata/passwords.txt", "--unlock", "0,2", "--ipcdisable", "--alaya",
 		"js", "testdata/empty.js")
 	platon.ExpectExit()
@@ -199,7 +209,7 @@ func TestUnlockFlagPasswordFile(t *testing.T) {
 func TestUnlockFlagPasswordFileWrongPassword(t *testing.T) {
 	datadir := tmpDatadirWithKeystore(t)
 	platon := runPlatON(t,
-		"--datadir", datadir, "--nat", "none", "--nodiscover", "--maxpeers", "0", "--port", "0", "--ipcdisable", "--alaya",
+		"--datadir", datadir, "--nat", "none", "--nodiscover", "--maxpeers", "60", "--port", "0", "--ipcdisable", "--alaya",
 		"--password", "testdata/wrong-passwords.txt", "--unlock", "0,2")
 	defer platon.ExpectExit()
 	platon.Expect(`
@@ -210,7 +220,7 @@ Fatal: Failed to unlock account 0 (could not decrypt key with given passphrase)
 func TestUnlockFlagAmbiguous(t *testing.T) {
 	store := filepath.Join("..", "..", "accounts", "keystore", "testdata", "dupes")
 	platon := runPlatON(t,
-		"--keystore", store, "--nat", "none", "--nodiscover", "--maxpeers", "0", "--port", "0", "--ipcdisable", "--alaya",
+		"--keystore", store, "--nat", "none", "--nodiscover", "--maxpeers", "60", "--port", "0", "--ipcdisable", "--alaya",
 		"--unlock", "atp173ngt84dryedws7kyt9hflq93zpwsey2zecc74",
 		"js", "testdata/empty.js")
 	defer platon.ExpectExit()
@@ -248,7 +258,7 @@ In order to avoid this warning, you need to remove the following duplicate key f
 func TestUnlockFlagAmbiguousWrongPassword(t *testing.T) {
 	store := filepath.Join("..", "..", "accounts", "keystore", "testdata", "dupes")
 	platon := runPlatON(t,
-		"--keystore", store, "--nat", "none", "--nodiscover", "--maxpeers", "0", "--port", "0", "--ipcdisable", "--alaya",
+		"--keystore", store, "--nat", "none", "--nodiscover", "--maxpeers", "60", "--port", "0", "--ipcdisable", "--alaya",
 		"--unlock", "atp173ngt84dryedws7kyt9hflq93zpwsey2zecc74")
 	defer platon.ExpectExit()
 

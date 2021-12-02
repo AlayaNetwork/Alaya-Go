@@ -24,6 +24,8 @@ import (
 	"math/big"
 	"unsafe"
 
+	json2 "github.com/AlayaNetwork/Alaya-Go/common/json"
+
 	"github.com/AlayaNetwork/Alaya-Go/crypto"
 	"github.com/AlayaNetwork/Alaya-Go/params"
 
@@ -56,7 +58,8 @@ type Receipt struct {
 	Bloom             Bloom  `json:"logsBloom"         gencodec:"required"`
 	Logs              []*Log `json:"logs"              gencodec:"required"`
 
-	// Implementation fields (don't reorder!)
+	// Implementation fields: These fields are added by geth when processing a transaction.
+	// They are stored in the chain database.
 	TxHash          common.Hash    `json:"transactionHash" gencodec:"required"`
 	ContractAddress common.Address `json:"contractAddress"`
 	GasUsed         uint64         `json:"gasUsed" gencodec:"required"`
@@ -66,6 +69,35 @@ type Receipt struct {
 	BlockHash        common.Hash `json:"blockHash,omitempty"`
 	BlockNumber      *big.Int    `json:"blockNumber,omitempty"`
 	TransactionIndex uint        `json:"transactionIndex"`
+}
+
+func (r Receipt) MarshalJSON2() ([]byte, error) {
+	type Receipt struct {
+		PostState         hexutil.Bytes  `json:"root"`
+		Status            hexutil.Uint64 `json:"status"`
+		CumulativeGasUsed hexutil.Uint64 `json:"cumulativeGasUsed" gencodec:"required"`
+		Bloom             Bloom          `json:"logsBloom"         gencodec:"required"`
+		Logs              []*Log         `json:"logs"              gencodec:"required"`
+		TxHash            common.Hash    `json:"transactionHash" gencodec:"required"`
+		ContractAddress   common.Address `json:"contractAddress"`
+		GasUsed           hexutil.Uint64 `json:"gasUsed" gencodec:"required"`
+		BlockHash         common.Hash    `json:"blockHash,omitempty"`
+		BlockNumber       *hexutil.Big   `json:"blockNumber,omitempty"`
+		TransactionIndex  hexutil.Uint   `json:"transactionIndex"`
+	}
+	var enc Receipt
+	enc.PostState = r.PostState
+	enc.Status = hexutil.Uint64(r.Status)
+	enc.CumulativeGasUsed = hexutil.Uint64(r.CumulativeGasUsed)
+	enc.Bloom = r.Bloom
+	enc.Logs = r.Logs
+	enc.TxHash = r.TxHash
+	enc.ContractAddress = r.ContractAddress
+	enc.GasUsed = hexutil.Uint64(r.GasUsed)
+	enc.BlockHash = r.BlockHash
+	enc.BlockNumber = (*hexutil.Big)(r.BlockNumber)
+	enc.TransactionIndex = hexutil.Uint(r.TransactionIndex)
+	return json2.Marshal(&enc)
 }
 
 type receiptMarshaling struct {
@@ -90,16 +122,6 @@ type storedReceiptRLP struct {
 	PostStateOrStatus []byte
 	CumulativeGasUsed uint64
 	Logs              []*LogForStorage
-}
-
-type v3StoredReceiptRLP struct {
-	PostStateOrStatus []byte
-	CumulativeGasUsed uint64
-	Bloom             Bloom
-	TxHash            common.Hash
-	ContractAddress   common.Address
-	Logs              []*LogForStorage
-	GasUsed           uint64
 }
 
 // NewReceipt creates a barebone transaction receipt, copying the init fields.
@@ -197,14 +219,10 @@ func (r *ReceiptForStorage) DecodeRLP(s *rlp.Stream) error {
 	}
 	// Try decoding from the newest format for future proofness, then the older one
 	// for old nodes that just upgraded.
-	if err := decodeStoredReceiptRLP(r, blob); err == nil {
-		return nil
-	}
-	if err := decodeV3StoredReceiptRLP(r, blob); err == nil {
-		return nil
-	} else {
+	if err := decodeStoredReceiptRLP(r, blob); err != nil {
 		return err
 	}
+	return nil
 }
 
 func decodeStoredReceiptRLP(r *ReceiptForStorage, blob []byte) error {
@@ -222,26 +240,6 @@ func decodeStoredReceiptRLP(r *ReceiptForStorage, blob []byte) error {
 	}
 	r.Bloom = CreateBloom(Receipts{(*Receipt)(r)})
 
-	return nil
-}
-
-func decodeV3StoredReceiptRLP(r *ReceiptForStorage, blob []byte) error {
-	var stored v3StoredReceiptRLP
-	if err := rlp.DecodeBytes(blob, &stored); err != nil {
-		return err
-	}
-	if err := (*Receipt)(r).setStatus(stored.PostStateOrStatus); err != nil {
-		return err
-	}
-	r.CumulativeGasUsed = stored.CumulativeGasUsed
-	r.Bloom = stored.Bloom
-	r.TxHash = stored.TxHash
-	r.ContractAddress = stored.ContractAddress
-	r.GasUsed = stored.GasUsed
-	r.Logs = make([]*Log, len(stored.Logs))
-	for i, log := range stored.Logs {
-		r.Logs[i] = (*Log)(log)
-	}
 	return nil
 }
 

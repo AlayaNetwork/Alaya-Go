@@ -1,6 +1,7 @@
 package core
 
 import (
+	"github.com/AlayaNetwork/Alaya-Go/common"
 	"time"
 
 	"github.com/AlayaNetwork/Alaya-Go/consensus"
@@ -36,7 +37,7 @@ func (p *ParallelStateProcessor) Process(block *types.Block, statedb *state.Stat
 
 	if bcr != nil {
 		// BeginBlocker()
-		if err := bcr.BeginBlocker(block.Header(), statedb); nil != err {
+		if err := bcr.BeginBlocker(header, statedb); nil != err {
 			log.Error("Failed to call BeginBlocker on StateProcessor", "blockNumber", block.Number(),
 				"blockHash", block.Hash(), "err", err)
 			return nil, nil, 0, err
@@ -46,7 +47,8 @@ func (p *ParallelStateProcessor) Process(block *types.Block, statedb *state.Stat
 	// Iterate over and process the individual transactions
 	if len(block.Transactions()) > 0 {
 		start := time.Now()
-		ctx := NewParallelContext(statedb, header, block.Hash(), gp, false, GetExecutor().Signer())
+		tempContractCache := make(map[common.Address]struct{})
+		ctx := NewParallelContext(statedb, header, block.Hash(), gp, false, GetExecutor().Signer(), tempContractCache)
 		ctx.SetBlockGasUsedHolder(usedGas)
 		ctx.SetTxList(block.Transactions())
 
@@ -71,14 +73,14 @@ func (p *ParallelStateProcessor) Process(block *types.Block, statedb *state.Stat
 		if err := GetExecutor().ExecuteTransactions(ctx); err != nil {
 			return nil, nil, 0, err
 		}
-		receipts = ctx.GetReceipts()
+		receipts = sortReceipts(block.Transactions(), ctx.GetReceipts())
 		allLogs = ctx.GetLogs()
 		log.Trace("Process parallel execute transactions cost time", "blockNumber", block.Number(), "blockHash", block.Hash(), "time", time.Since(start))
 	}
 
 	if bcr != nil {
 		// EndBlocker()
-		if err := bcr.EndBlocker(block.Header(), statedb); nil != err {
+		if err := bcr.EndBlocker(header, statedb); nil != err {
 			log.Error("Failed to call EndBlocker on StateProcessor", "blockNumber", block.Number(),
 				"blockHash", block.Hash(), "err", err)
 			return nil, nil, 0, err
@@ -90,4 +92,25 @@ func (p *ParallelStateProcessor) Process(block *types.Block, statedb *state.Stat
 	//p.engine.Finalize(p.bc, header, statedb, block.Transactions(), receipts)
 	statedb.IntermediateRoot(true)
 	return receipts, allLogs, *usedGas, nil
+}
+
+func sortReceipts(txs types.Transactions, receipts types.Receipts) types.Receipts {
+	receiptsMap := make(map[common.Hash]*types.Receipt)
+	cumulativeGasUsed := uint64(0)
+	sortReceipts := make([]*types.Receipt, 0, receipts.Len())
+
+	for _, r := range receipts {
+		receiptsMap[r.TxHash] = r
+	}
+	for _, tx := range txs {
+		if r, ok := receiptsMap[tx.Hash()]; ok {
+			cumulativeGasUsed += r.GasUsed
+			r.CumulativeGasUsed = cumulativeGasUsed
+			sortReceipts = append(sortReceipts, r)
+			log.Trace("sortReceipts tx", "hash", tx.Hash(), "to", tx.To(), "data", tx.Data())
+		} else {
+			log.Error("GetReceipts error,the corresponding receipt was not found", "txhash", tx.Hash())
+		}
+	}
+	return sortReceipts
 }

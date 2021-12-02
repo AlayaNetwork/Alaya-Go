@@ -1,4 +1,4 @@
-// Copyright 2018-2020 The PlatON Network Authors
+// Copyright 2021 The Alaya Network Authors
 // This file is part of the Alaya-Go library.
 //
 // The Alaya-Go library is free software: you can redistribute it and/or modify
@@ -14,17 +14,20 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
+
 package xcom
 
 import (
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/rlp"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
 func TestGetDefaultEMConfig(t *testing.T) {
-	t.Run("DefaultTestNet", func(t *testing.T) {
-		if getDefaultEMConfig(DefaultTestNet) == nil {
-			t.Error("DefaultTestNet can't be nil config")
+	t.Run("DefaultAlayaNet", func(t *testing.T) {
+		if getDefaultEMConfig(DefaultAlayaNet) == nil {
+			t.Error("DefaultAlayaNet can't be nil config")
 		}
 		if err := CheckEconomicModel(); nil != err {
 			t.Error(err)
@@ -44,10 +47,21 @@ func TestGetDefaultEMConfig(t *testing.T) {
 }
 
 func TestEcParams0140(t *testing.T) {
-	GetEc(DefaultAlayaNet)
+	eceHash := "0xbd45f1783a2344776066ca1a88937e74dfba777c9c3eb2f6819989c66d2c0462"
+	getDefaultEMConfig(DefaultAlayaNet)
 	if bytes, err := EcParams0140(); nil != err {
 		t.Fatal(err)
 	} else {
 		assert.True(t, bytes != nil)
+		assert.True(t, common.RlpHash(bytes).Hex() == eceHash)
 	}
+}
+
+func TestAlayaNetHash(t *testing.T) {
+	alayaEc := getDefaultEMConfig(DefaultAlayaNet)
+	bytes, err := rlp.EncodeToBytes(alayaEc)
+	if err != nil {
+		t.Error(err)
+	}
+	assert.True(t, common.RlpHash(bytes).Hex() == AlayaNetECHash)
 }

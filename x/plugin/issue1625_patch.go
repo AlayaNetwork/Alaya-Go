@@ -1,4 +1,4 @@
-// Copyright 2018-2020 The PlatON Network Authors
+// Copyright 2021 The Alaya Network Authors
 // This file is part of the Alaya-Go library.
 //
 // The Alaya-Go library is free software: you can redistribute it and/or modify
@@ -13,6 +13,7 @@
 //
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
+
 
 package plugin
 
@@ -74,7 +75,7 @@ func (a *FixIssue1625Plugin) fix(blockHash common.Hash, head *types.Header, stat
 			return fmt.Errorf("the account restrictInfo seems not right")
 		}
 
-		wrongStakingAmount := new(big.Int).Sub(restrictInfo.StakingAmount, actualRestrictingAmount)
+		wrongStakingAmount := new(big.Int).Sub(restrictInfo.AdvanceAmount, actualRestrictingAmount)
 		if wrongStakingAmount.Cmp(common.Big0) > 0 {
 			//If the user uses the wrong amount,Roll back the unused part first
 			//优先回滚没有使用的那部分锁仓余额
@@ -98,7 +99,7 @@ func (a *FixIssue1625Plugin) fix(blockHash common.Hash, head *types.Header, stat
 		} else {
 			//当用户没有使用因为漏洞产生的钱，直接减去漏洞的钱就是正确的余额
 			restrictInfo.CachePlanAmount.Sub(restrictInfo.CachePlanAmount, issue1625Account.amount)
-			if restrictInfo.StakingAmount.Cmp(common.Big0) == 0 &&
+			if restrictInfo.AdvanceAmount.Cmp(common.Big0) == 0 &&
 				len(restrictInfo.ReleaseList) == 0 && restrictInfo.CachePlanAmount.Cmp(common.Big0) == 0 {
 				state.SetState(vm.RestrictingContractAddr, restrictingKey, []byte{})
 				log.Debug("fix issue 1625 finished,set info empty", "account", issue1625Account.addr, "fix amount", issue1625Account.amount)

@@ -64,17 +64,15 @@ type flagGroup struct {
 // AppHelpFlagGroups is the application flags, grouped by functionality.
 var AppHelpFlagGroups = []flagGroup{
 	{
-		Name: "PLATON",
+		Name: "ALAYA",
 		Flags: []cli.Flag{
 			configFileFlag,
 			utils.DataDirFlag,
+			utils.AncientFlag,
 			utils.KeyStoreDirFlag,
 			utils.NoUSBFlag,
 			utils.NetworkIdFlag,
-			utils.MainFlag,
-			utils.TestnetFlag,
 			utils.AlayaNetFlag,
-			utils.AlayaTestNetFlag,
 			utils.SyncModeFlag,
 			//	utils.EthStatsURLFlag,
 			utils.IdentityFlag,
@@ -130,6 +128,7 @@ var AppHelpFlagGroups = []flagGroup{
 		Flags: []cli.Flag{
 			utils.UnlockedAccountFlag,
 			utils.PasswordFileFlag,
+			utils.InsecureUnlockAllowedFlag,
 		},
 	},
 	{
@@ -139,6 +138,7 @@ var AppHelpFlagGroups = []flagGroup{
 			utils.RPCListenAddrFlag,
 			utils.RPCPortFlag,
 			utils.RPCApiFlag,
+			utils.RPCGlobalGasCap,
 			utils.WSEnabledFlag,
 			utils.WSListenAddrFlag,
 			utils.WSPortFlag,

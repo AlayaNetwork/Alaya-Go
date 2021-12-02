@@ -1,4 +1,4 @@
-// Copyright 2018-2020 The PlatON Network Authors
+// Copyright 2021 The Alaya Network Authors
 // This file is part of the Alaya-Go library.
 //
 // The Alaya-Go library is free software: you can redistribute it and/or modify
@@ -692,7 +692,7 @@ func (cbft *Cbft) MissingPrepareVote() (v *protocols.GetPrepareVote, err error) 
 		cbft.log.Debug("MissingPrepareVote", "epoch", cbft.state.Epoch(), "viewNumber", cbft.state.ViewNumber(), "beginIndex", begin, "endIndex", end, "validatorLen", len)
 
 		block := cbft.state.HighestQCBlock()
-		blockTime := common.MillisToTime(block.Time().Int64())
+		blockTime := common.MillisToTime(int64(block.Time()))
 
 		for index := begin; index < end; index++ {
 			size := cbft.state.PrepareVoteLenByIndex(index)

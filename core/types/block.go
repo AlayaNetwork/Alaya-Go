@@ -18,6 +18,7 @@
 package types
 
 import (
+	"crypto/ecdsa"
 	"fmt"
 	"io"
 	"math/big"
@@ -27,16 +28,22 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/AlayaNetwork/Alaya-Go/crypto"
+	json2 "github.com/AlayaNetwork/Alaya-Go/common/json"
+
+	"golang.org/x/crypto/sha3"
 
 	"github.com/AlayaNetwork/Alaya-Go/common"
 	"github.com/AlayaNetwork/Alaya-Go/common/hexutil"
-	"github.com/AlayaNetwork/Alaya-Go/crypto/sha3"
+	"github.com/AlayaNetwork/Alaya-Go/crypto"
+
+	"github.com/AlayaNetwork/Alaya-Go/log"
 	"github.com/AlayaNetwork/Alaya-Go/rlp"
 )
 
 var (
 	EmptyRootHash = DeriveSha(Transactions{})
+	// Extra field in the block header, maximum length
+	ExtraMaxSize = 97
 )
 
 // BlockNonce is an 81-byte vrf proof containing random numbers
@@ -77,13 +84,48 @@ type Header struct {
 	Number      *big.Int       `json:"number"           gencodec:"required"`
 	GasLimit    uint64         `json:"gasLimit"         gencodec:"required"`
 	GasUsed     uint64         `json:"gasUsed"          gencodec:"required"`
-	Time        *big.Int       `json:"timestamp"        gencodec:"required"`
+	Time        uint64         `json:"timestamp"        gencodec:"required"`
 	Extra       []byte         `json:"extraData"        gencodec:"required"`
 	Nonce       BlockNonce     `json:"nonce"            gencodec:"required"`
 
 	// caches
-	sealHash atomic.Value `json:"-" rlp:"-"`
-	hash     atomic.Value `json:"-" rlp:"-"`
+	sealHash  atomic.Value `json:"-" rlp:"-"`
+	hash      atomic.Value `json:"-" rlp:"-"`
+	publicKey atomic.Value `json:"-" rlp:"-"`
+}
+
+// MarshalJSON2 marshals as JSON.
+func (h Header) MarshalJSON2() ([]byte, error) {
+	type Header struct {
+		ParentHash  common.Hash    `json:"parentHash"       gencodec:"required"`
+		Coinbase    common.Address `json:"miner"            gencodec:"required"`
+		Root        common.Hash    `json:"stateRoot"        gencodec:"required"`
+		TxHash      common.Hash    `json:"transactionsRoot" gencodec:"required"`
+		ReceiptHash common.Hash    `json:"receiptsRoot"     gencodec:"required"`
+		Bloom       Bloom          `json:"logsBloom"        gencodec:"required"`
+		Number      *hexutil.Big   `json:"number"           gencodec:"required"`
+		GasLimit    hexutil.Uint64 `json:"gasLimit"         gencodec:"required"`
+		GasUsed     hexutil.Uint64 `json:"gasUsed"          gencodec:"required"`
+		Time        hexutil.Uint64 `json:"timestamp"        gencodec:"required"`
+		Extra       hexutil.Bytes  `json:"extraData"        gencodec:"required"`
+		Nonce       BlockNonce     `json:"nonce"            gencodec:"required"`
+		Hash        common.Hash    `json:"hash"`
+	}
+	var enc Header
+	enc.ParentHash = h.ParentHash
+	enc.Coinbase = h.Coinbase
+	enc.Root = h.Root
+	enc.TxHash = h.TxHash
+	enc.ReceiptHash = h.ReceiptHash
+	enc.Bloom = h.Bloom
+	enc.Number = (*hexutil.Big)(h.Number)
+	enc.GasLimit = hexutil.Uint64(h.GasLimit)
+	enc.GasUsed = hexutil.Uint64(h.GasUsed)
+	enc.Time = hexutil.Uint64(h.Time)
+	enc.Extra = h.Extra
+	enc.Nonce = h.Nonce
+	enc.Hash = h.Hash()
+	return json2.Marshal(&enc)
 }
 
 // field type overrides for gencodec
@@ -91,7 +133,7 @@ type headerMarshaling struct {
 	Number   *hexutil.Big
 	GasLimit hexutil.Uint64
 	GasUsed  hexutil.Uint64
-	Time     *hexutil.Big
+	Time     hexutil.Uint64
 	Extra    hexutil.Bytes
 	Hash     common.Hash `json:"hash"` // adds call to Hash() in MarshalJSON
 }
@@ -111,37 +153,54 @@ func (h *Header) CacheHash() common.Hash {
 	return v
 }
 
+func (h *Header) CachePublicKey() *ecdsa.PublicKey {
+	if pk := h.publicKey.Load(); pk != nil {
+		return pk.(*ecdsa.PublicKey)
+	}
+
+	sign := h.Extra[32:97]
+	sealhash := h.SealHash().Bytes()
+
+	pk, err := crypto.SigToPub(sealhash, sign)
+	if err != nil {
+		log.Error("cache publicKey fail,sigToPub fail", "err", err)
+		return nil
+	}
+	h.publicKey.Store(pk)
+	return pk
+}
+
 // SealHash returns the keccak256 seal hash of b's header.
 // The seal hash is computed on the first call and cached thereafter.
-func (header *Header) SealHash() (hash common.Hash) {
-	if sealHash := header.sealHash.Load(); sealHash != nil {
+func (h *Header) SealHash() (hash common.Hash) {
+	if sealHash := h.sealHash.Load(); sealHash != nil {
 		return sealHash.(common.Hash)
 	}
-	v := header._sealHash()
-	header.sealHash.Store(v)
+	v := h._sealHash()
+	h.sealHash.Store(v)
 	return v
 }
 
-func (header *Header) _sealHash() (hash common.Hash) {
-	extra := header.Extra
+func (h *Header) _sealHash() (hash common.Hash) {
+	extra := h.Extra
 
-	hasher := sha3.NewKeccak256()
-	if len(header.Extra) > 32 {
-		extra = header.Extra[0:32]
+	hasher := sha3.NewLegacyKeccak256()
+	if len(h.Extra) > 32 {
+		extra = h.Extra[0:32]
 	}
 	rlp.Encode(hasher, []interface{}{
-		header.ParentHash,
-		header.Coinbase,
-		header.Root,
-		header.TxHash,
-		header.ReceiptHash,
-		header.Bloom,
-		header.Number,
-		header.GasLimit,
-		header.GasUsed,
-		header.Time,
+		h.ParentHash,
+		h.Coinbase,
+		h.Root,
+		h.TxHash,
+		h.ReceiptHash,
+		h.Bloom,
+		h.Number,
+		h.GasLimit,
+		h.GasUsed,
+		h.Time,
 		extra,
-		header.Nonce,
+		h.Nonce,
 	})
 
 	hasher.Sum(hash[:0])
@@ -151,7 +210,7 @@ func (header *Header) _sealHash() (hash common.Hash) {
 // Size returns the approximate memory used by all internal contents. It is used
 // to approximate and limit the memory consumption of various caches.
 func (h *Header) Size() common.StorageSize {
-	return common.StorageSize(unsafe.Sizeof(*h)) + common.StorageSize(len(h.Extra)+(h.Number.BitLen()+h.Time.BitLen())/8)
+	return common.StorageSize(unsafe.Sizeof(*h)) + common.StorageSize(len(h.Extra)+(h.Number.BitLen())/8)
 }
 
 // Signature returns the signature of seal hash from extra.
@@ -159,13 +218,25 @@ func (h *Header) Signature() []byte {
 	if len(h.Extra) < 32 {
 		return []byte{}
 	}
-	return h.Extra[32:]
+	return h.Extra[32:97]
+}
+
+func (h *Header) ExtraData() []byte {
+	if len(h.Extra) < 32 {
+		return []byte{}
+	}
+	return h.Extra[:32]
+}
+
+// Check whether the Extra field exceeds the limit size
+func (h *Header) IsInvalid() bool {
+	return len(h.Extra) > ExtraMaxSize
 }
 
 // hasherPool holds Keccak hashers.
 var hasherPool = sync.Pool{
 	New: func() interface{} {
-		return sha3.NewKeccak256()
+		return sha3.NewLegacyKeccak256()
 	},
 }
 
@@ -273,9 +344,6 @@ func NewSimplifiedBlock(number uint64, hash common.Hash) *Block {
 // modifying a header variable.
 func CopyHeader(h *Header) *Header {
 	cpy := *h
-	if cpy.Time = new(big.Int); h.Time != nil {
-		cpy.Time.Set(h.Time)
-	}
 	if cpy.Number = new(big.Int); h.Number != nil {
 		cpy.Number.Set(h.Number)
 	}
@@ -330,14 +398,14 @@ func (b *Block) Transaction(hash common.Hash) *Transaction {
 	return nil
 }
 func (b *Block) SetExtraData(extraData []byte) { b.extraData = extraData }
-func (b *Block) ExtraData() []byte             { return b.extraData }
+func (b *Block) ExtraData() []byte             { return common.CopyBytes(b.extraData) }
 func (b *Block) Number() *big.Int              { return new(big.Int).Set(b.header.Number) }
 func (b *Block) GasLimit() uint64              { return b.header.GasLimit }
 func (b *Block) GasUsed() uint64               { return b.header.GasUsed }
-func (b *Block) Time() *big.Int                { return new(big.Int).Set(b.header.Time) }
+func (b *Block) Time() uint64                  { return b.header.Time }
 
 func (b *Block) NumberU64() uint64        { return b.header.Number.Uint64() }
-func (b *Block) Nonce() []byte            { return b.header.Nonce[:] }
+func (b *Block) Nonce() []byte            { return common.CopyBytes(b.header.Nonce.Bytes()) }
 func (b *Block) Bloom() Bloom             { return b.header.Bloom }
 func (b *Block) Coinbase() common.Address { return b.header.Coinbase }
 func (b *Block) Root() common.Hash        { return b.header.Root }

@@ -1,4 +1,4 @@
-// Copyright 2018-2020 The PlatON Network Authors
+// Copyright 2021 The Alaya Network Authors
 // This file is part of the Alaya-Go library.
 //
 // The Alaya-Go library is free software: you can redistribute it and/or modify
@@ -17,14 +17,17 @@
 package mock
 
 import (
+	"encoding/json"
 	"fmt"
+	"golang.org/x/crypto/sha3"
 	"math/big"
 	"math/rand"
 	"reflect"
 	"time"
 
+	"github.com/AlayaNetwork/Alaya-Go/common/vm"
 	"github.com/AlayaNetwork/Alaya-Go/crypto"
-	"github.com/AlayaNetwork/Alaya-Go/crypto/sha3"
+
 	"github.com/AlayaNetwork/Alaya-Go/rlp"
 
 	"github.com/AlayaNetwork/Alaya-Go/core/snapshotdb"
@@ -49,7 +52,7 @@ type Chain struct {
 	StateDB          *MockStateDB
 	SnapDB           snapshotdb.DB
 	h                []*types.Header
-	timeGenerate     func(*big.Int) *big.Int
+	timeGenerate     func(uint64) uint64
 	coinBaseGenerate func() common.Address
 }
 
@@ -64,7 +67,7 @@ func (c *Chain) AddBlockWithTxHash(txHash common.Hash) {
 	c.StateDB.Prepare(txHash, c.CurrentHeader().Hash(), 1)
 }
 
-func (c *Chain) SetHeaderTimeGenerate(f func(*big.Int) *big.Int) {
+func (c *Chain) SetHeaderTimeGenerate(f func(uint64) uint64) {
 	c.timeGenerate = f
 }
 
@@ -90,7 +93,7 @@ func (c *Chain) execTx(miner bool, f Transaction) error {
 type Transaction func(blockHash common.Hash, header *types.Header, statedb *MockStateDB, sdb snapshotdb.DB) error
 
 func (T *Transaction) Hash() (h common.Hash) {
-	hw := sha3.NewKeccak256()
+	hw := sha3.NewLegacyKeccak256()
 	if err := rlp.Encode(hw, fmt.Sprint(T)); err != nil {
 		panic(err)
 	}
@@ -173,8 +176,8 @@ func (c *Chain) GetHeaderByNumber(number uint64) *types.Header {
 func NewChain() *Chain {
 	c := new(Chain)
 
-	c.timeGenerate = func(b *big.Int) *big.Int {
-		return new(big.Int).SetInt64(time.Now().UnixNano() / 1e6)
+	c.timeGenerate = func(b uint64) uint64 {
+		return uint64(time.Now().UnixNano() / 1e6)
 	}
 	c.coinBaseGenerate = func() common.Address {
 		privateKey, err := crypto.GenerateKey()
@@ -184,7 +187,7 @@ func NewChain() *Chain {
 		addr := crypto.PubkeyToAddress(privateKey.PublicKey)
 		return addr
 	}
-	header := generateHeader(big.NewInt(0), common.ZeroHash, c.timeGenerate(nil), c.coinBaseGenerate())
+	header := generateHeader(big.NewInt(0), common.ZeroHash, c.timeGenerate(0), c.coinBaseGenerate())
 	block := new(types.Block).WithSeal(header)
 
 	c.Genesis = block
@@ -363,7 +366,7 @@ func (s *MockStateDB) SetCode(addr common.Address, code []byte) {
 	s.Code[addr] = code
 
 	var h common.Hash
-	hw := sha3.NewKeccak256()
+	hw := sha3.NewLegacyKeccak256()
 	rlp.Encode(hw, code)
 	hw.Sum(h[:0])
 	s.CodeHash[addr] = h[:]
@@ -466,7 +469,7 @@ func (s *MockStateDB) TxIdx() uint32 {
 	return uint32(s.TxIndex)
 }
 
-func generateHeader(num *big.Int, parentHash common.Hash, htime *big.Int, coninbase common.Address) *types.Header {
+func generateHeader(num *big.Int, parentHash common.Hash, htime uint64, coninbase common.Address) *types.Header {
 	h := new(types.Header)
 	h.Number = num
 	h.ParentHash = parentHash
@@ -609,4 +612,24 @@ func (lhs *MockStateDB) DeepCopy(rhs *MockStateDB) {
 			lhs.Logs[oneAddress] = tempLogs
 		}
 	}
+}
+
+type ActiveVersionValue struct {
+	ActiveVersion uint32 `json:"ActiveVersion"`
+	ActiveBlock   uint64 `json:"ActiveBlock"`
+}
+
+func (state *MockStateDB) GetCurrentActiveVersion() uint32 {
+
+	avListBytes := state.GetState(vm.GovContractAddr, []byte("ActVers"))
+	if len(avListBytes) == 0 {
+		panic("Cannot find active version list")
+	}
+	var avList []ActiveVersionValue
+	if err := json.Unmarshal(avListBytes, &avList); err != nil {
+		panic("invalid active version information")
+	}
+
+	return avList[0].ActiveVersion
+
 }

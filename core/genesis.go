@@ -155,7 +155,8 @@ func SetupGenesisBlock(db ethdb.Database, snapshotBaseDB snapshotdb.BaseDB, gene
 
 	if (stored == common.Hash{}) {
 		if genesis == nil {
-			panic("Please specify network")
+			log.Info("Writing default alaya network genesis block")
+			genesis = DefaultAlayaGenesisBlock()
 		} else {
 			log.Info("Writing custom genesis block", "chainID", genesis.Config.ChainID, "addressHRP", genesis.Config.AddressHRP)
 		}
@@ -176,6 +177,32 @@ func SetupGenesisBlock(db ethdb.Database, snapshotBaseDB snapshotdb.BaseDB, gene
 		log.Debug("SetupGenesisBlock Hash", "Hash", block.Hash().Hex())
 		return genesis.Config, block.Hash(), err
 	}
+
+	// We have the genesis block in database(perhaps in ancient database)
+	// but the corresponding state is missing.
+	header := rawdb.ReadHeader(db, stored, 0)
+	if _, err := state.New(header.Root, state.NewDatabaseWithCache(db, 0)); err != nil {
+		if genesis == nil {
+			genesis = DefaultAlayaGenesisBlock()
+		}
+		if err := common.SetAddressHRP(genesis.Config.AddressHRP); err != nil {
+			return nil, common.Hash{}, err
+		}
+
+		// check EconomicModel configuration
+		if err := xcom.CheckEconomicModel(); nil != err {
+			log.Error("Failed to check economic config", "err", err)
+			return nil, common.Hash{}, err
+		}
+		// Ensure the stored genesis matches with the given one.
+		hash := genesis.ToBlock(nil, snapshotBaseDB).Hash()
+		if hash != stored {
+			return genesis.Config, hash, &GenesisMismatchError{stored, hash}
+		}
+		block, err := genesis.Commit(db, snapshotBaseDB)
+		return genesis.Config, block.Hash(), err
+	}
+
 	// Check whether the genesis block is already written.
 	if genesis != nil {
 		hash := genesis.ToBlock(nil, nil).Hash()
@@ -228,7 +255,7 @@ func SetupGenesisBlock(db ethdb.Database, snapshotBaseDB snapshotdb.BaseDB, gene
 	// Special case: don't change the existing config of a non-mainnet chain if no new
 	// config is supplied. These chains would get AllProtocolChanges (and a compat error)
 	// if we just continued here.
-	if genesis == nil && stored != params.MainnetGenesisHash {
+	if genesis == nil && stored != params.AlayanetGenesisHash {
 		return storedcfg, stored, nil
 	}
 
@@ -335,14 +362,10 @@ func (g *Genesis) configOrDefault(ghash common.Hash) *params.ChainConfig {
 	switch {
 	case g != nil:
 		return g.Config
-	case ghash == params.MainnetGenesisHash:
-		return params.MainnetChainConfig
 	case ghash == params.TestnetGenesisHash:
 		return params.TestnetChainConfig
 	case ghash == params.AlayanetGenesisHash:
 		return params.AlayaChainConfig
-	case ghash == params.AlayaTestnetGenesisHash:
-		return params.AlayaTestChainConfig
 	default:
 		return params.AllEthashProtocolChanges
 	}
@@ -442,7 +465,7 @@ func (g *Genesis) ToBlock(db ethdb.Database, sdb snapshotdb.BaseDB) *types.Block
 	head := &types.Header{
 		Number:     new(big.Int).SetUint64(g.Number),
 		Nonce:      types.EncodeNonce(g.Nonce),
-		Time:       new(big.Int).SetUint64(g.Timestamp),
+		Time:       g.Timestamp,
 		ParentHash: g.ParentHash,
 		Extra:      g.ExtraData,
 		GasLimit:   g.GasLimit,
@@ -547,31 +570,6 @@ func DefaultAlayaGenesisBlock() *Genesis {
 			generalAddr:              {Balance: generalBalance},
 		},
 		EconomicModel: xcom.GetEc(xcom.DefaultAlayaNet),
-	}
-	xcom.SetNodeBlockTimeWindow(genesis.Config.Cbft.Period / 1000)
-	xcom.SetPerRoundBlocks(uint64(genesis.Config.Cbft.Amount))
-	return &genesis
-}
-
-// DefaultGenesisBlock returns the PlatON main net genesis block.
-func DefaultAlayaTestGenesisBlock() *Genesis {
-
-	generalAddr := common.MustBech32ToAddress("atx1dl93r6fr022ca5yjqe6cgkg06er9pyqfaxyupd")
-	generalBalance, _ := new(big.Int).SetString("100000000000000000000000000", 10)
-
-	rewardMgrPoolIssue, _ := new(big.Int).SetString("2000000000000000000000000", 10)
-
-	genesis := Genesis{
-		Config:    params.AlayaTestChainConfig,
-		Nonce:     hexutil.MustDecode("0x024c6378c176ef6c717cd37a74c612c9abd615d13873ff6651e3d352b31cb0b2e1"),
-		Timestamp: 1602973620000,
-		ExtraData: hexutil.MustDecode("0xd782070186706c61746f6e86676f312e3131856c696e757800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"),
-		GasLimit:  params.GenesisGasLimit,
-		Alloc: map[common.Address]GenesisAccount{
-			vm.RewardManagerPoolAddr: {Balance: rewardMgrPoolIssue},
-			generalAddr:              {Balance: generalBalance},
-		},
-		EconomicModel: xcom.GetEc(xcom.DefaultAlayaTestNet),
 	}
 	xcom.SetNodeBlockTimeWindow(genesis.Config.Cbft.Period / 1000)
 	xcom.SetPerRoundBlocks(uint64(genesis.Config.Cbft.Amount))

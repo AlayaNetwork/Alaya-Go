@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math"
 	"os"
 	"sort"
 	"strconv"
@@ -41,6 +42,10 @@ type AnalystEntity struct {
 // output,Calculated pressure test result,file type:xlsx
 // t,Average statistical time
 func (txg *TxGenAPI) CalRes(configPaths []string, output string, t int) error {
+	return AnalyzeStressTest(configPaths, output, t)
+}
+
+func AnalyzeStressTest(configPaths []string, output string, t int) error {
 	x := make(BlockInfos, 0)
 	sendTotal := uint64(0)
 	for _, path := range configPaths {
@@ -61,17 +66,14 @@ func (txg *TxGenAPI) CalRes(configPaths []string, output string, t int) error {
 	}
 	sort.Sort(x)
 	endTime := common.MillisToTime(x[0].ProduceTime).Add(time.Second * time.Duration(t))
-	txConut := 0
+	txConut, total := 0, 0
 	latency, ttf := int64(0), int64(0)
 	analysts := make([][4]int64, 0)
-	total := 0
 
 	for _, info := range x {
 		total += info.TxLength
-		for common.MillisToTime(info.ProduceTime).After(endTime) {
-			latRes := time.Duration(0).Milliseconds()
-			tpsRes := int64(0)
-			ttfRes := time.Duration(0).Milliseconds()
+		if common.MillisToTime(info.ProduceTime).After(endTime) {
+			latRes, ttfRes, tpsRes := time.Duration(0).Milliseconds(), time.Duration(0).Milliseconds(), int64(0)
 			if txConut > 0 {
 				latRes = time.Duration(int64(float64(latency) / float64(txConut))).Milliseconds()
 				tpsRes = int64(txConut) / int64(t)
@@ -98,6 +100,18 @@ func (txg *TxGenAPI) CalRes(configPaths []string, output string, t int) error {
 		return err
 	}
 
+	sumTx := int64(0)
+	for _, analyst := range analysts {
+		sumTx += analyst[2]
+	}
+
+	avg := sumTx / int64(len(analysts))
+	powTx := float64(0)
+	for _, analyst := range analysts {
+		powTx += math.Pow(float64(analyst[2]-avg), 2)
+	}
+	std := math.Sqrt(powTx / float64(len(analysts)))
+
 	// add title
 	row := sheet.AddRow()
 	cell_1 := row.AddCell()
@@ -112,6 +126,8 @@ func (txg *TxGenAPI) CalRes(configPaths []string, output string, t int) error {
 	cell_6.Value = "totalReceive"
 	cell_7 := row.AddCell()
 	cell_7.Value = "totalSend"
+	cell_8 := row.AddCell()
+	cell_8.Value = "standardDeviation"
 
 	//add data
 	for i, d := range analysts {
@@ -121,14 +137,16 @@ func (txg *TxGenAPI) CalRes(configPaths []string, output string, t int) error {
 		latencyCell := row.AddCell()
 		latencyCell.Value = strconv.FormatInt(d[1], 10)
 		tpsCell := row.AddCell()
-		tpsCell.Value = strconv.FormatInt(d[2], 10)
+		tpsCell.SetInt64(d[2])
 		ttfCell := row.AddCell()
-		ttfCell.Value = strconv.FormatInt(d[3], 10)
+		ttfCell.SetInt64(d[3])
 		if i == 0 {
 			totalReceive := row.AddCell()
 			totalReceive.Value = strconv.FormatInt(int64(total), 10)
 			totalSend := row.AddCell()
 			totalSend.Value = strconv.FormatInt(int64(sendTotal), 10)
+			stdTps := row.AddCell()
+			stdTps.Value = strconv.FormatFloat(std, 'f', 2, 64)
 		}
 	}
 	err = xlsxFile.Save(output)
@@ -228,7 +246,7 @@ func AnalystProduceTimeAndView(beginNumber uint64, endNumber uint64, backend *Et
 	beginHeader := beginBlock.Header()
 	endHeader := endBlock.Header()
 
-	preTimestamp := beginHeader.Time.Uint64()
+	preTimestamp := beginHeader.Time
 	topArray := make([][]uint64, 0, 250)
 
 	viewCountMap[beginQC.ViewNumber] = 1
@@ -239,9 +257,9 @@ func AnalystProduceTimeAndView(beginNumber uint64, endNumber uint64, backend *Et
 	for i := beginNumber + 1; i <= endNumber; i++ {
 		block, _ := backend.BlockByNumber(ctx, rpc.BlockNumber(int64(i)))
 		header := block.Header()
-		diff := header.Time.Uint64() - preTimestamp
+		diff := header.Time - preTimestamp
 		topArray = append(topArray, []uint64{diff, uint64(len(block.Transactions()))})
-		preTimestamp = header.Time.Uint64()
+		preTimestamp = header.Time
 		txCount = txCount + uint64(len(block.Transactions()))
 
 		_, qc, err := ctypes.DecodeExtra(block.ExtraData())
@@ -256,10 +274,10 @@ func AnalystProduceTimeAndView(beginNumber uint64, endNumber uint64, backend *Et
 
 	}
 
-	diffTimestamp := endHeader.Time.Uint64() - beginHeader.Time.Uint64()
+	diffTimestamp := endHeader.Time - beginHeader.Time
 	diffNumber := endHeader.Number.Uint64() - beginHeader.Number.Uint64() + 1
 
-	tps := (txCount * 1000) / (endHeader.Time.Uint64() - beginHeader.Time.Uint64())
+	tps := (txCount * 1000) / (endHeader.Time - beginHeader.Time)
 
 	// missing view
 	for i := DefaultViewNumber; i <= endQC.ViewNumber; i++ {

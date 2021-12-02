@@ -132,11 +132,14 @@ var (
 	validTxMeter       = metrics.NewRegisteredMeter("txpool/valid", nil)
 	invalidTxMeter     = metrics.NewRegisteredMeter("txpool/invalid", nil)
 	underpricedTxMeter = metrics.NewRegisteredMeter("txpool/underpriced", nil)
+	overflowedTxMeter  = metrics.NewRegisteredMeter("txpool/overflowed", nil)
 
 	pendingGauge = metrics.NewRegisteredGauge("txpool/pending", nil)
 	queuedGauge  = metrics.NewRegisteredGauge("txpool/queued", nil)
 	localGauge   = metrics.NewRegisteredGauge("txpool/local", nil)
 	slotsGauge   = metrics.NewRegisteredGauge("txpool/slots", nil)
+
+	reheapTimer = metrics.NewRegisteredTimer("txpool/reheap", nil)
 )
 
 // TxStatus is the current status of a transaction as seen by the pool.
@@ -272,7 +275,6 @@ type TxPool struct {
 	gasPrice *big.Int
 	txFeed   event.Feed
 	scope    event.SubscriptionScope
-	// modified by PlatON
 
 	signer types.Signer
 	mu     sync.RWMutex
@@ -452,7 +454,6 @@ func (pool *TxPool) loop() {
 	}
 }
 
-// added by PlatON
 func (pool *TxPool) Reset(newBlock *types.Block) {
 	startTime := time.Now()
 	if pool == nil {
@@ -464,7 +465,7 @@ func (pool *TxPool) Reset(newBlock *types.Block) {
 
 	if newBlock != nil {
 		//	pool.mu.Lock()
-		pool.requestReset(pool.resetHead.Header(), newBlock.Header())
+		<-pool.requestReset(pool.resetHead.Header(), newBlock.Header())
 		pool.resetHead = newBlock
 
 		//	pool.mu.Unlock()
@@ -500,12 +501,12 @@ func (pool *TxPool) ForkedReset(newHeader *types.Header, rollback []*types.Block
 	// Inject any transactions discarded due to reorgs
 	t := time.Now()
 	SenderCacher.recover(pool.signer, reinject)
-	pool.addTxsLocked(reinject, false)
+	_, promoteAddrs := pool.addTxsLocked(reinject, false)
 	log.Debug("Reinjecting stale transactions done", "count", len(reinject), "elapsed", time.Since(t))
 
 	// Check the queue and move transactions over to the pending if possible
 	// or remove those that have become invalid
-	pool.promoteExecutables(nil)
+	pool.promoteExecutables(promoteAddrs.flatten())
 
 	// validate the pool of pending transactions, this will remove
 	// any transactions that have been included in the block or
@@ -765,7 +766,12 @@ func (pool *TxPool) add(tx *types.Transaction, local bool) (replaced bool, err e
 			return false, ErrUnderpriced
 		}
 		// New transaction is better than our worse ones, make room for it
-		drop := pool.priced.Discard(pool.all.Slots()-int(pool.config.GlobalSlots+pool.config.GlobalQueue)+numSlots(tx), pool.locals)
+		drop, success := pool.priced.Discard(pool.all.Slots()-int(pool.config.GlobalSlots+pool.config.GlobalQueue)+numSlots(tx), pool.locals)
+		// Special case, we still can't make the room for the new remote one.
+		if !local && !success {
+			log.Trace("Discarding overflown transaction", "hash", hash)
+			overflowedTxMeter.Mark(1)
+		}
 		for _, tx := range drop {
 			if log.GetWasmLogLevel() == log.LvlTrace {
 				log.Trace("Discarding freshly underpriced transaction", "hash", tx.Hash(), "price", tx.GasPrice())
@@ -927,6 +933,17 @@ func (pool *TxPool) AddLocal(tx *types.Transaction) error {
 	return errs[0]
 }
 
+// Get returns a transaction if it is contained in the pool and nil otherwise.
+func (pool *TxPool) Get(hash common.Hash) *types.Transaction {
+	return pool.all.Get(hash)
+}
+
+// Has returns an indicator whether txpool has a transaction cached with the
+// given hash.
+func (pool *TxPool) Has(hash common.Hash) bool {
+	return pool.all.Get(hash) != nil
+}
+
 // AddRemotes enqueues a batch of transactions into the pool if they are valid. If the
 // senders are not among the locally tracked ones, full pricing constraints will apply.
 //
@@ -1021,6 +1038,7 @@ func (pool *TxPool) addTxs(txs []*types.Transaction, local, sync bool) []error {
 			nilSlot++
 		}
 		errs[nilSlot] = err
+		nilSlot++
 	}
 
 	if request {
@@ -1071,11 +1089,6 @@ func (pool *TxPool) Status(hashes []common.Hash) []TxStatus {
 		pool.mu.RUnlock()
 	}
 	return status
-}
-
-// Get returns a transaction if it is contained in the pool and nil otherwise.
-func (pool *TxPool) Get(hash common.Hash) *types.Transaction {
-	return pool.all.Get(hash)
 }
 
 // removeTx removes a single transaction from the queue, moving all subsequent
@@ -1672,6 +1685,8 @@ func (pool *TxPool) demoteUnexecutables() {
 				pool.enqueueTx(hash, tx)
 			}
 			pendingGauge.Dec(int64(len(gapped)))
+			// This might happen in a reorg, so log it to the metering
+			blockReorgInvalidatedTx.Mark(int64(len(gapped)))
 		}
 		// Delete the entire pending entry if it became empty.
 		if list.Empty() {

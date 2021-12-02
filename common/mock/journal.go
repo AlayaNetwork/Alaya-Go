@@ -1,4 +1,4 @@
-// Copyright 2018-2020 The PlatON Network Authors
+// Copyright 2021 The Alaya Network Authors
 // This file is part of the Alaya-Go library.
 //
 // The Alaya-Go library is free software: you can redistribute it and/or modify
@@ -17,9 +17,10 @@
 package mock
 
 import (
+	"golang.org/x/crypto/sha3"
 	"math/big"
 
-	"github.com/AlayaNetwork/Alaya-Go/crypto/sha3"
+
 	"github.com/AlayaNetwork/Alaya-Go/rlp"
 
 	"github.com/AlayaNetwork/Alaya-Go/common"
@@ -132,7 +133,7 @@ func (ch codeChange) revert(s *MockStateDB) {
 		s.Code[*ch.account] = ch.prevcode
 
 		var h common.Hash
-		hw := sha3.NewKeccak256()
+		hw := sha3.NewLegacyKeccak256()
 		rlp.Encode(hw, ch.prevcode)
 		hw.Sum(h[:0])
 		s.CodeHash[*ch.account] = h[:]

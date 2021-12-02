@@ -1,4 +1,4 @@
-// Copyright 2018-2020 The PlatON Network Authors
+// Copyright 2021 The Alaya Network Authors
 // This file is part of the Alaya-Go library.
 //
 // The Alaya-Go library is free software: you can redistribute it and/or modify
@@ -38,7 +38,7 @@ func buildRestrictingPlanData() ([]byte, error) {
 	for index := 0; index < len(plans); index++ {
 		epoch = uint64(index + 1)
 		plan.Epoch = uint64(epoch)
-		plan.Amount = big.NewInt(1E18)
+		plan.Amount = big.NewInt(1e18)
 		plans[index] = plan
 	}
 
@@ -60,7 +60,7 @@ func buildErrorRestrictingPlanData() ([]byte, error) {
 	var plans = make([]restricting.RestrictingPlan, 1)
 
 	plan.Epoch = uint64(0)
-	plan.Amount = big.NewInt(1E18)
+	plan.Amount = big.NewInt(1e18)
 	plans[0] = plan
 
 	var params [][]byte

@@ -1,4 +1,4 @@
-// Copyright 2018-2020 The PlatON Network Authors
+// Copyright 2021 The Alaya Network Authors
 // This file is part of the Alaya-Go library.
 //
 // The Alaya-Go library is free software: you can redistribute it and/or modify
@@ -19,9 +19,10 @@ package node
 import (
 	"crypto/ecdsa"
 	"encoding/hex"
+	"golang.org/x/crypto/sha3"
 	"sync"
 
-	"github.com/AlayaNetwork/Alaya-Go/crypto/sha3"
+
 	"github.com/AlayaNetwork/Alaya-Go/rlp"
 
 	"github.com/AlayaNetwork/Alaya-Go/common"
@@ -87,7 +88,7 @@ func (chandler *CryptoHandler) IsSignedByNodeID(data interface{}, sig []byte, no
 }
 
 func RlpHash(x interface{}) (h common.Hash) {
-	hw := sha3.NewKeccak256()
+	hw := sha3.NewLegacyKeccak256()
 	rlp.Encode(hw, x)
 	hw.Sum(h[:0])
 	return h

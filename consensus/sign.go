@@ -1,4 +1,4 @@
-// Copyright 2018-2020 The PlatON Network Authors
+// Copyright 2021 The Alaya Network Authors
 // This file is part of the Alaya-Go library.
 //
 // The Alaya-Go library is free software: you can redistribute it and/or modify
@@ -18,11 +18,12 @@ package consensus
 
 import (
 	"errors"
+	"golang.org/x/crypto/sha3"
 
 	"github.com/AlayaNetwork/Alaya-Go/common"
 	"github.com/AlayaNetwork/Alaya-Go/core/types"
 	"github.com/AlayaNetwork/Alaya-Go/crypto"
-	"github.com/AlayaNetwork/Alaya-Go/crypto/sha3"
+
 	"github.com/AlayaNetwork/Alaya-Go/rlp"
 	lru "github.com/hashicorp/golang-lru"
 )
@@ -43,7 +44,7 @@ var (
 // panics. This is done to avoid accidentally using both forms (signature present
 // or not), which could be abused to produce different hashes for the same header.
 func SigHash(header *types.Header) (hash common.Hash) {
-	hasher := sha3.NewKeccak256()
+	hasher := sha3.NewLegacyKeccak256()
 
 	rlp.Encode(hasher, []interface{}{
 		header.ParentHash,
@@ -56,7 +57,7 @@ func SigHash(header *types.Header) (hash common.Hash) {
 		header.GasLimit,
 		header.GasUsed,
 		header.Time,
-		header.Extra[:len(header.Extra)-65], // Yes, this will panic if extra is too short
+		header.ExtraData(),
 		header.Nonce,
 	})
 	hasher.Sum(hash[:0])
@@ -74,7 +75,7 @@ func Ecrecover(header *types.Header, sigcache *lru.ARCCache) (common.Address, er
 	if len(header.Extra) < ExtraSeal {
 		return common.Address{}, ErrMissingSignature
 	}
-	signature := header.Extra[len(header.Extra)-ExtraSeal:]
+	signature := header.Signature()
 
 	// Recover the public key and the Ethereum address
 	pubkey, err := crypto.Ecrecover(SigHash(header).Bytes(), signature)

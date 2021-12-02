@@ -1,4 +1,4 @@
-// Copyright 2018-2020 The PlatON Network Authors
+// Copyright 2021 The Alaya Network Authors
 // This file is part of the Alaya-Go library.
 //
 // The Alaya-Go library is free software: you can redistribute it and/or modify
@@ -18,12 +18,14 @@ package plugin
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
-	"github.com/AlayaNetwork/Alaya-Go/x/gov"
 	"math"
 	"math/big"
 	"sort"
 	"sync"
+
+	"github.com/AlayaNetwork/Alaya-Go/x/gov"
 
 	"github.com/AlayaNetwork/Alaya-Go/common/hexutil"
 
@@ -428,11 +430,9 @@ func (rmp *RewardMgrPlugin) getBlockMinderAddress(blockHash common.Hash, head *t
 	if blockHash == common.ZeroHash {
 		return rmp.nodeID, rmp.nodeADD, nil
 	}
-	sign := head.Extra[32:97]
-	sealhash := head.SealHash().Bytes()
-	pk, err := crypto.SigToPub(sealhash, sign)
-	if err != nil {
-		return discover.ZeroNodeID, common.ZeroNodeAddr, err
+	pk := head.CachePublicKey()
+	if pk == nil {
+		return discover.ZeroNodeID, common.ZeroNodeAddr, errors.New("failed to get the public key of the block producer")
 	}
 	return discover.PubkeyID(pk), crypto.PubkeyToNodeAddress(*pk), nil
 }
@@ -671,7 +671,7 @@ func (rmp *RewardMgrPlugin) runIncreaseIssuance(blockHash common.Hash, head *typ
 		if nil != err {
 			return err
 		}
-		log.Info("Call CalcEpochReward, increaseIssuance successful", "currBlockNumber", head.Number, "currBlockHash", blockHash, "currBlockTime", head.Time.Int64(),
+		log.Info("Call CalcEpochReward, increaseIssuance successful", "currBlockNumber", head.Number, "currBlockHash", blockHash, "currBlockTime", head.Time,
 			"yearNumber", yearNumber, "incIssuanceTime", incIssuanceTime, "yearEndBalance", GetYearEndBalance(state, yearNumber), "remainingReward", remainReward)
 	}
 	return nil
@@ -695,7 +695,7 @@ func (rmp *RewardMgrPlugin) CalcEpochReward(blockHash common.Hash, head *types.H
 	}
 	if yearStartTime == 0 {
 		yearStartBlockNumber = head.Number.Uint64()
-		yearStartTime = head.Time.Int64()
+		yearStartTime = int64(head.Time)
 		incIssuanceTime = yearStartTime + int64(xcom.AdditionalCycleTime()*uint64(minutes))
 		if err := xcom.StorageIncIssuanceTime(blockHash, rmp.db, incIssuanceTime); nil != err {
 			log.Error("storage incIssuanceTime fail", "currentBlockNumber", head.Number, "currentBlockHash", blockHash.TerminalString(), "err", err)
@@ -706,7 +706,7 @@ func (rmp *RewardMgrPlugin) CalcEpochReward(blockHash common.Hash, head *types.H
 			return nil, nil, err
 		}
 		remainReward = GetYearEndBalance(state, 0)
-		log.Info("Call CalcEpochReward, First calculation", "currBlockNumber", head.Number, "currBlockHash", blockHash, "currBlockTime", head.Time.Int64(),
+		log.Info("Call CalcEpochReward, First calculation", "currBlockNumber", head.Number, "currBlockHash", blockHash, "currBlockTime", head.Time,
 			"yearStartBlockNumber", yearStartBlockNumber, "yearStartTime", yearStartTime, "incIssuanceTime", incIssuanceTime, "remainReward", remainReward)
 	}
 	yearNumber, err := LoadChainYearNumber(blockHash, rmp.db)
@@ -735,12 +735,12 @@ func (rmp *RewardMgrPlugin) CalcEpochReward(blockHash common.Hash, head *types.H
 			} else {
 				yearStartBlockNumber += epochBlocks
 			}
-			yearStartTime = snapshotdb.GetDBBlockChain().GetHeaderByNumber(yearStartBlockNumber).Time.Int64()
+			yearStartTime = int64(snapshotdb.GetDBBlockChain().GetHeaderByNumber(yearStartBlockNumber).Time)
 			if err := StorageYearStartTime(blockHash, rmp.db, yearStartBlockNumber, yearStartTime); nil != err {
 				log.Error("Storage year start time and block height failed", "currentBlockNumber", head.Number, "currentBlockHash", blockHash.TerminalString(), "err", err)
 				return nil, nil, err
 			}
-			log.Debug("Call CalcEpochReward, Adjust the sampling range of the block time", "currBlockNumber", head.Number, "currBlockHash", blockHash, "currBlockTime", head.Time.Int64(),
+			log.Debug("Call CalcEpochReward, Adjust the sampling range of the block time", "currBlockNumber", head.Number, "currBlockHash", blockHash, "currBlockTime", head.Time,
 				"epochBlocks", epochBlocks, "yearNumber", yearNumber, "yearStartBlockNumber", yearStartBlockNumber, "yearStartTime", yearStartTime)
 		}
 	}
@@ -750,11 +750,11 @@ func (rmp *RewardMgrPlugin) CalcEpochReward(blockHash common.Hash, head *types.H
 	avgPackTime := xcom.Interval() * uint64(millisecond)
 	if head.Number.Uint64() > yearStartBlockNumber {
 		diffNumber := head.Number.Uint64() - yearStartBlockNumber
-		diffTime := head.Time.Int64() - yearStartTime
+		diffTime := int64(head.Time) - yearStartTime
 
 		avgPackTime = uint64(diffTime) / diffNumber
 		log.Debug("Call CalcEpochReward, Calculate the average block production time in the previous year", "currBlockNumber", head.Number, "currBlockHash", blockHash,
-			"currBlockTime", head.Time.Int64(), "yearStartBlockNumber", yearStartBlockNumber, "yearStartTime", yearStartTime, "diffNumber", diffNumber, "diffTime", diffTime,
+			"currBlockTime", head.Time, "yearStartBlockNumber", yearStartBlockNumber, "yearStartTime", yearStartTime, "diffNumber", diffNumber, "diffTime", diffTime,
 			"avgPackTime", avgPackTime)
 	}
 	if err := xcom.StorageAvgPackTime(blockHash, rmp.db, avgPackTime); nil != err {
@@ -767,13 +767,13 @@ func (rmp *RewardMgrPlugin) CalcEpochReward(blockHash common.Hash, head *types.H
 	// the increase issue time will be postponed for one settlement cycle,
 	// and the remaining rewards will all be issued in the next settlement cycle
 	remainEpoch := 1
-	if head.Time.Int64() >= incIssuanceTime {
+	if int64(head.Time) >= incIssuanceTime {
 		epochTotalReward.Add(epochTotalReward, remainReward)
 		remainReward = new(big.Int)
 		log.Info("Call CalcEpochReward, The current time has exceeded the expected additional issue time", "currBlockNumber", head.Number, "currBlockHash", blockHash,
-			"currBlockTime", head.Time.Int64(), "incIssuanceTime", incIssuanceTime, "epochTotalReward", epochTotalReward)
+			"currBlockTime", head.Time, "incIssuanceTime", incIssuanceTime, "epochTotalReward", epochTotalReward)
 	} else {
-		remainTime := incIssuanceTime - head.Time.Int64()
+		remainTime := incIssuanceTime - int64(head.Time)
 
 		remainBlocks := math.Ceil(float64(remainTime) / float64(avgPackTime))
 		if remainBlocks > float64(epochBlocks) {
@@ -783,7 +783,7 @@ func (rmp *RewardMgrPlugin) CalcEpochReward(blockHash common.Hash, head *types.H
 		// Subtract the total reward for the next cycle to calculate the remaining rewards to be issued
 		remainReward = remainReward.Sub(remainReward, epochTotalReward)
 		log.Debug("Call CalcEpochReward, Calculation of rewards for the next settlement cycle", "currBlockNumber", head.Number, "currBlockHash", blockHash,
-			"currBlockTime", head.Time.Int64(), "incIssuanceTime", incIssuanceTime, "remainTime", remainTime, "remainBlocks", remainBlocks, "epochBlocks", epochBlocks,
+			"currBlockTime", head.Time, "incIssuanceTime", incIssuanceTime, "remainTime", remainTime, "remainBlocks", remainBlocks, "epochBlocks", epochBlocks,
 			"remainEpoch", remainEpoch, "remainReward", remainReward, "epochTotalReward", epochTotalReward)
 	}
 	// If the last settlement cycle is left, record the increaseIssuance block height
@@ -795,7 +795,7 @@ func (rmp *RewardMgrPlugin) CalcEpochReward(blockHash common.Hash, head *types.H
 		log.Info("Call CalcEpochReward, IncIssuanceNumber stored successfully", "currBlockNumber", head.Number, "currBlockHash", blockHash,
 			"epochBlocks", epochBlocks, "incIssuanceNumber", incIssuanceNumber)
 	}
-	// Get the total block reward and pledge reward for each settlement cycle
+	// Get the total block reward and staking reward for each settlement cycle
 	epochTotalNewBlockReward := percentageCalculation(epochTotalReward, xcom.NewBlockRewardRate())
 	epochTotalStakingReward := new(big.Int).Sub(epochTotalReward, epochTotalNewBlockReward)
 	if err := StorageRemainingReward(blockHash, rmp.db, remainReward); nil != err {
@@ -811,7 +811,7 @@ func (rmp *RewardMgrPlugin) CalcEpochReward(blockHash common.Hash, head *types.H
 		log.Error("Failed to execute CalcEpochReward function", "currentBlockNumber", head.Number, "currentBlockHash", blockHash.TerminalString(), "err", err)
 		return nil, nil, err
 	}
-	log.Debug("Call CalcEpochReward, Cycle reward", "currBlockNumber", head.Number, "currBlockHash", blockHash, "currBlockTime", head.Time.Int64(),
+	log.Debug("Call CalcEpochReward, Cycle reward", "currBlockNumber", head.Number, "currBlockHash", blockHash, "currBlockTime", head.Time,
 		"epochTotalReward", epochTotalReward, "newBlockRewardRate", xcom.NewBlockRewardRate(), "epochTotalNewBlockReward", epochTotalNewBlockReward,
 		"epochTotalStakingReward", epochTotalStakingReward, "epochBlocks", epochBlocks, "newBlockReward", newBlockReward)
 	return newBlockReward, epochTotalStakingReward, nil

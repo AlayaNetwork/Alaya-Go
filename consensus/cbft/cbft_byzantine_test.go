@@ -1,4 +1,4 @@
-// Copyright 2018-2020 The PlatON Network Authors
+// Copyright 2021 The Alaya Network Authors
 // This file is part of the Alaya-Go library.
 //
 // The Alaya-Go library is free software: you can redistribute it and/or modify
@@ -18,13 +18,14 @@ package cbft
 
 import (
 	"fmt"
-	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
 	"io/ioutil"
 	"math/big"
 	"os"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
 
 	"github.com/AlayaNetwork/Alaya-Go/consensus"
 
@@ -46,8 +47,9 @@ import (
 
 	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/protocols"
 
-	ctypes "github.com/AlayaNetwork/Alaya-Go/consensus/cbft/types"
 	"github.com/stretchr/testify/assert"
+
+	ctypes "github.com/AlayaNetwork/Alaya-Go/consensus/cbft/types"
 )
 
 const (
@@ -152,7 +154,7 @@ func NewBadBlock(parent common.Hash, number uint64, node *TestCBFT) *types.Block
 	header := &types.Header{
 		Number:      big.NewInt(int64(number)),
 		ParentHash:  parent,
-		Time:        big.NewInt(time.Now().UnixNano() / 1e6),
+		Time:        uint64(time.Now().UnixNano() / 1e6),
 		Extra:       make([]byte, 97),
 		ReceiptHash: common.BytesToHash(hexutil.MustDecode("0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b422")),
 		Root:        common.BytesToHash(hexutil.MustDecode("0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")),

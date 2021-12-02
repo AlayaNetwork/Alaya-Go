@@ -1,4 +1,4 @@
-// Copyright 2018-2020 The PlatON Network Authors
+// Copyright 2021 The Alaya Network Authors
 // This file is part of the Alaya-Go library.
 //
 // The Alaya-Go library is free software: you can redistribute it and/or modify
@@ -85,7 +85,7 @@ func (cbft *Cbft) OnPrepareBlock(id string, msg *protocols.PrepareBlock) error {
 			} else {
 				block, qc = cbft.blockTree.FindBlockAndQC(msg.Block.ParentHash(), msg.Block.NumberU64()-1)
 			}
-			cbft.log.Info("Receive new view's block, change view", "newEpoch", msg.Epoch, "newView", msg.ViewNumber)
+			cbft.log.Debug("Receive new view's block, change view", "newEpoch", msg.Epoch, "newView", msg.ViewNumber)
 			cbft.changeView(msg.Epoch, msg.ViewNumber, block, qc, msg.ViewChangeQC)
 		}
 	}
@@ -97,7 +97,7 @@ func (cbft *Cbft) OnPrepareBlock(id string, msg *protocols.PrepareBlock) error {
 	}
 	// The new block is notified by the PrepareBlockHash to the nodes in the network.
 	cbft.state.AddPrepareBlock(msg)
-	cbft.log.Info("Receive new prepareBlock", "msgHash", msg.MsgHash(), "prepare", msg.String())
+	cbft.log.Debug("Receive new prepareBlock", "msgHash", msg.MsgHash(), "prepare", msg.String())
 	cbft.findExecutableBlock()
 	return nil
 }
@@ -137,7 +137,7 @@ func (cbft *Cbft) OnPrepareVote(id string, msg *protocols.PrepareVote) error {
 	}
 
 	cbft.state.AddPrepareVote(uint32(node.Index), msg)
-	cbft.log.Info("Receive new prepareVote", "msgHash", msg.MsgHash(), "vote", msg.String(), "votes", cbft.state.PrepareVoteLenByIndex(msg.BlockIndex))
+	cbft.log.Debug("Receive new prepareVote", "msgHash", msg.MsgHash(), "vote", msg.String(), "votes", cbft.state.PrepareVoteLenByIndex(msg.BlockIndex))
 
 	cbft.insertPrepareQC(msg.ParentQC)
 	cbft.findQCBlock()
@@ -166,7 +166,7 @@ func (cbft *Cbft) OnViewChange(id string, msg *protocols.ViewChange) error {
 	}
 
 	cbft.state.AddViewChange(uint32(node.Index), msg)
-	cbft.log.Info("Receive new viewChange", "msgHash", msg.MsgHash(), "viewChange", msg.String(), "total", cbft.state.ViewChangeLen())
+	cbft.log.Debug("Receive new viewChange", "msgHash", msg.MsgHash(), "viewChange", msg.String(), "total", cbft.state.ViewChangeLen())
 	// It is possible to achieve viewchangeQC every time you add viewchange
 	cbft.tryChangeView()
 	return nil
@@ -501,7 +501,7 @@ func (cbft *Cbft) findQCBlock() {
 			cbft.insertQCBlock(block, qc)
 			cbft.network.Broadcast(&protocols.BlockQuorumCert{BlockQC: qc})
 			// metrics
-			blockQCCollectedGauage.Update(block.Time().Int64())
+			blockQCCollectedGauage.Update(int64(block.Time()))
 			cbft.trySendPrepareVote()
 		}
 	}
@@ -751,7 +751,7 @@ func (cbft *Cbft) changeView(epoch, viewNumber uint64, block *types.Block, qc *c
 	// metrics.
 	viewNumberGauage.Update(int64(viewNumber))
 	epochNumberGauage.Update(int64(epoch))
-	viewChangedTimer.UpdateSince(time.Unix(block.Time().Int64(), 0))
+	viewChangedTimer.UpdateSince(time.Unix(int64(block.Time()), 0))
 
 	// write confirmed viewChange info to wal
 	if !cbft.isLoading() {

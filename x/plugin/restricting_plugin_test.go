@@ -1,4 +1,4 @@
-// Copyright 2018-2020 The PlatON Network Authors
+// Copyright 2021 The Alaya Network Authors
 // This file is part of the Alaya-Go library.
 //
 // The Alaya-Go library is free software: you can redistribute it and/or modify
@@ -13,6 +13,7 @@
 //
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
+
 
 package plugin
 
@@ -153,11 +154,6 @@ func TestRestrictingPlugin_AddRestrictingRecord(t *testing.T) {
 				expect: restricting.ErrBalanceNotEnough,
 				des:    "amount not enough",
 			},
-			{
-				input:  notEnough,
-				expect: restricting.ErrLockedAmountTooLess,
-				des:    "amount too small",
-			},
 		}
 		for _, value := range x {
 			if err := plugin.AddRestrictingRecord(sender, addrArr[0], 20, common.ZeroHash, value.input, mockDB, RestrictingTxHash); err != value.expect {
@@ -211,12 +207,12 @@ func TestRestrictingPlugin_AddRestrictingRecord(t *testing.T) {
 		plugin.storeAccount2ReleaseAccount(mockDB, 2, 2, account2)
 		var info, info2 restricting.RestrictingInfo
 		info.NeedRelease = big.NewInt(0)
-		info.StakingAmount = big.NewInt(1e18)
+		info.AdvanceAmount = big.NewInt(1e18)
 		info.CachePlanAmount = big.NewInt(1e18 + 2e18)
 		info.ReleaseList = []uint64{1, 2}
 		plugin.storeRestrictingInfo(mockDB, restricting.GetRestrictingKey(to), info)
 		info2.NeedRelease = big.NewInt(0)
-		info2.StakingAmount = big.NewInt(1e18)
+		info2.AdvanceAmount = big.NewInt(1e18)
 		info2.CachePlanAmount = big.NewInt(1e18)
 		plugin.storeRestrictingInfo(mockDB, restricting.GetRestrictingKey(account2), info2)
 		mockDB.AddBalance(vm.RestrictingContractAddr, big.NewInt(2e18))
@@ -246,7 +242,7 @@ func TestRestrictingPlugin_AddRestrictingRecord(t *testing.T) {
 			t.Error()
 		}
 		assert.Equal(t, big.NewInt(3e18+2e17+2e18), info2.CachePlanAmount)
-		assert.Equal(t, big.NewInt(1e18), info2.StakingAmount)
+		assert.Equal(t, big.NewInt(1e18), info2.AdvanceAmount)
 		assert.Equal(t, big.NewInt(0), info2.NeedRelease)
 		assert.Equal(t, 3, len(info2.ReleaseList))
 
@@ -272,7 +268,7 @@ func NewTestRestrictingPlugin() *TestRestrictingPlugin {
 	return tp
 }
 
-//the plan is PledgeLockFunds,then release, then ReturnLockFunds,the info will delete
+//the plan is AdvanceLockedFunds,then release, then ReturnLockFunds,the info will delete
 func TestRestrictingPlugin_Compose3(t *testing.T) {
 	plugin := NewTestRestrictingPlugin()
 	plans := make([]restricting.RestrictingPlan, 0)
@@ -280,7 +276,7 @@ func TestRestrictingPlugin_Compose3(t *testing.T) {
 	if err := plugin.AddRestrictingRecord(plugin.from, plugin.to, xutil.CalcBlocksEachEpoch()-10, common.ZeroHash, plans, plugin.mockDB, RestrictingTxHash); err != nil {
 		t.Error(err)
 	}
-	if err := plugin.PledgeLockFunds(plugin.to, big.NewInt(1e18), plugin.mockDB); err != nil {
+	if err := plugin.AdvanceLockedFunds(plugin.to, big.NewInt(1e18), plugin.mockDB); err != nil {
 		t.Error()
 	}
 	if err := plugin.releaseRestricting(1, plugin.mockDB); err != nil {
@@ -312,7 +308,7 @@ func TestRestrictingPlugin_Compose2(t *testing.T) {
 	if err := plugin.AddRestrictingRecord(from, to, xutil.CalcBlocksEachEpoch()-10, common.ZeroHash, plans, mockDB, RestrictingTxHash); err != nil {
 		t.Error(err)
 	}
-	if err := plugin.PledgeLockFunds(to, big.NewInt(2e18), mockDB); err != nil {
+	if err := plugin.AdvanceLockedFunds(to, big.NewInt(2e18), mockDB); err != nil {
 		t.Error(err)
 	}
 	if err := plugin.releaseRestricting(1, mockDB); err != nil {
@@ -330,7 +326,7 @@ func TestRestrictingPlugin_Compose2(t *testing.T) {
 		}
 		assert.Equal(t, info.CachePlanAmount, CachePlanAmount)
 		assert.Equal(t, info.ReleaseList, ReleaseList)
-		assert.Equal(t, info.StakingAmount, StakingAmount)
+		assert.Equal(t, info.AdvanceAmount, StakingAmount)
 		assert.Equal(t, info.NeedRelease, NeedRelease)
 	}
 
@@ -355,7 +351,7 @@ func TestRestrictingPlugin_Compose(t *testing.T) {
 		}
 		assert.Equal(t, info.CachePlanAmount, CachePlanAmount)
 		assert.Equal(t, info.ReleaseList, ReleaseList)
-		assert.Equal(t, info.StakingAmount, StakingAmount)
+		assert.Equal(t, info.AdvanceAmount, StakingAmount)
 		assert.Equal(t, info.NeedRelease, NeedRelease)
 	}
 	mockDB.AddBalance(from, big.NewInt(9e18))
@@ -371,7 +367,7 @@ func TestRestrictingPlugin_Compose(t *testing.T) {
 	assert.Equal(t, mockDB.GetBalance(vm.RestrictingContractAddr), big.NewInt(2e18))
 	infoAssertF(big.NewInt(2e18), []uint64{1}, big.NewInt(0), big.NewInt(0))
 
-	if err := plugin.PledgeLockFunds(to, big.NewInt(2e18), mockDB); err != nil {
+	if err := plugin.AdvanceLockedFunds(to, big.NewInt(2e18), mockDB); err != nil {
 		t.Error(err)
 	}
 	assert.Equal(t, mockDB.GetBalance(to), big.NewInt(0))
@@ -474,7 +470,7 @@ func TestRestrictingInstance(t *testing.T) {
 		t.Error(err)
 	}
 	//	SetLatestEpoch(mockDB, 1)
-	if err := plugin.PledgeLockFunds(to, big.NewInt(5e18), mockDB); err != nil {
+	if err := plugin.AdvanceLockedFunds(to, big.NewInt(5e18), mockDB); err != nil {
 		t.Error(err)
 	}
 	if err := plugin.releaseRestricting(2, mockDB); err != nil {
@@ -506,7 +502,7 @@ func TestRestrictingInstance(t *testing.T) {
 	assert.Equal(t, true, mockDB.GetBalance(vm.StakingContractAddr).Cmp(big.NewInt(0)) == 0)
 }
 
-func TestNewRestrictingPlugin_MixPledgeLockFunds(t *testing.T) {
+func TestNewRestrictingPlugin_MixAdvanceLockedFunds(t *testing.T) {
 	sdb := snapshotdb.Instance()
 	defer sdb.Clear()
 	key := gov.KeyParamValue(gov.ModuleRestricting, gov.KeyRestrictingMinimumAmount)
@@ -531,7 +527,7 @@ func TestNewRestrictingPlugin_MixPledgeLockFunds(t *testing.T) {
 	}
 	mockDB.AddBalance(to, big.NewInt(2e18))
 
-	res, free, err := plugin.MixPledgeLockFunds(to, new(big.Int).Mul(big.NewInt(1e18), big.NewInt(10)), mockDB)
+	res, free, err := plugin.MixAdvanceLockedFunds(to, new(big.Int).Mul(big.NewInt(1e18), big.NewInt(10)), mockDB)
 	if err != nil {
 		t.Error(err)
 	}
@@ -547,7 +543,7 @@ func TestNewRestrictingPlugin_MixPledgeLockFunds(t *testing.T) {
 		t.Errorf("to balance von cost wrong")
 	}
 
-	if _, _, err := plugin.MixPledgeLockFunds(to, new(big.Int).Mul(big.NewInt(1e18), big.NewInt(10)), mockDB); err == nil {
+	if _, _, err := plugin.MixAdvanceLockedFunds(to, new(big.Int).Mul(big.NewInt(1e18), big.NewInt(10)), mockDB); err == nil {
 		t.Error("should not success")
 	}
 
@@ -573,7 +569,7 @@ func TestRestrictingInstanceWithSlashing(t *testing.T) {
 	}
 	//	SetLatestEpoch(mockDB, 1)
 
-	if err := plugin.PledgeLockFunds(to, big.NewInt(5e18), mockDB); err != nil {
+	if err := plugin.AdvanceLockedFunds(to, big.NewInt(5e18), mockDB); err != nil {
 		t.Error(err)
 	}
 
@@ -682,7 +678,7 @@ func TestRestrictingReturnLockFunds(t *testing.T) {
 	}
 
 	if err := chain.AddBlockWithSnapDB(true, nil, func(hash common.Hash, header *types.Header, sdb snapshotdb.DB) error {
-		if err := plugin.PledgeLockFunds(to, big.NewInt(6e18), chain.StateDB); err != nil {
+		if err := plugin.AdvanceLockedFunds(to, big.NewInt(6e18), chain.StateDB); err != nil {
 			return err
 		}
 		return nil
@@ -727,12 +723,12 @@ func TestRestrictingReturnLockFunds(t *testing.T) {
 	if info.CachePlanAmount.Cmp(big.NewInt(3e18)) != 0 {
 		t.Error("CachePlanAmount  cal error")
 	}
-	if info.StakingAmount.Cmp(common.Big0) != 0 {
-		t.Error("StakingAmount  cal error")
+	if info.AdvanceAmount.Cmp(common.Big0) != 0 {
+		t.Error("AdvanceAmount  cal error")
 	}
 }
 
-func TestRestrictingForkPledgeLockFunds(t *testing.T) {
+func TestRestrictingForkAdvanceLockedFunds(t *testing.T) {
 	chain := mock.NewChain()
 	defer chain.SnapDB.Clear()
 
@@ -771,7 +767,7 @@ func TestRestrictingForkPledgeLockFunds(t *testing.T) {
 	}
 
 	if err := chain.AddBlockWithSnapDB(true, nil, func(hash common.Hash, header *types.Header, sdb snapshotdb.DB) error {
-		if err := plugin.PledgeLockFunds(to, big.NewInt(6e18), chain.StateDB); err != nil {
+		if err := plugin.AdvanceLockedFunds(to, big.NewInt(6e18), chain.StateDB); err != nil {
 			return err
 		}
 		return nil
@@ -812,7 +808,7 @@ func TestRestrictingForkPledgeLockFunds(t *testing.T) {
 		if err := gov.AddActiveVersion(uint32(0<<16|14<<8|0), header.Number.Uint64(), chain.StateDB); err != nil {
 			t.Error(err)
 		}
-		if err := plugin.PledgeLockFunds(to, big.NewInt(9e18), chain.StateDB); err != nil {
+		if err := plugin.AdvanceLockedFunds(to, big.NewInt(9e18), chain.StateDB); err != nil {
 			return err
 		}
 		return nil
@@ -858,7 +854,7 @@ func TestRestrictingSlashingRelease(t *testing.T) {
 	}
 
 	if err := chain.AddBlockWithSnapDB(true, nil, func(hash common.Hash, header *types.Header, sdb snapshotdb.DB) error {
-		if err := plugin.PledgeLockFunds(to, big.NewInt(6e18), chain.StateDB); err != nil {
+		if err := plugin.AdvanceLockedFunds(to, big.NewInt(6e18), chain.StateDB); err != nil {
 			return err
 		}
 		return nil

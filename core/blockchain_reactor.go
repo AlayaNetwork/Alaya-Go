@@ -1,4 +1,4 @@
-// Copyright 2018-2020 The PlatON Network Authors
+// Copyright 2021 The Alaya Network Authors
 // This file is part of the Alaya-Go library.
 //
 // The Alaya-Go library is free software: you can redistribute it and/or modify
@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"crypto/ecdsa"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"math/big"
 	"sync"
@@ -30,7 +31,6 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/core/snapshotdb"
 	"github.com/AlayaNetwork/Alaya-Go/core/state"
 	"github.com/AlayaNetwork/Alaya-Go/core/vm"
-	"github.com/AlayaNetwork/Alaya-Go/crypto"
 	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
 	"github.com/AlayaNetwork/Alaya-Go/x/handler"
 	"github.com/AlayaNetwork/Alaya-Go/x/staking"
@@ -248,11 +248,9 @@ func (bcr *BlockChainReactor) BeginBlocker(header *types.Header, state xcom.Stat
 	} else {
 		blockHash = header.CacheHash()
 		// Verify vrf proof
-		sign := header.Extra[32:97]
-		sealHash := header.SealHash().Bytes()
-		pk, err := crypto.SigToPub(sealHash, sign)
-		if nil != err {
-			return err
+		pk := header.CachePublicKey()
+		if pk == nil {
+			return errors.New("failed to get the public key of the block producer")
 		}
 		if err := bcr.vh.VerifyVrf(pk, header.Number, header.ParentHash, blockHash, header.Nonce.Bytes()); nil != err {
 			return err

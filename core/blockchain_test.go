@@ -17,8 +17,6 @@
 package core
 
 import (
-	"encoding/json"
-	"fmt"
 	"math/big"
 	"testing"
 
@@ -68,13 +66,6 @@ func newCanonical(engine consensus.Engine, n int, full bool) (ethdb.Database, *B
 	return db, blockchain, err
 }
 
-func printChain(bc *BlockChain) {
-	for i := bc.CurrentBlock().Number().Uint64(); i > 0; i-- {
-		b := bc.GetBlockByNumber(uint64(i))
-		fmt.Printf("\t%x \n", b.Hash())
-	}
-}
-
 // testBlockChainImport tries to process a chain of blocks, writing them into
 // the database if successful.
 func testBlockChainImport(chain types.Blocks, blockchain *BlockChain) error {
@@ -104,10 +95,10 @@ func testBlockChainImport(chain types.Blocks, blockchain *BlockChain) error {
 		//	blockchain.reportBlock(block, receipts, err)
 		//	return err
 		//}
-		blockchain.mu.Lock()
+		blockchain.chainmu.Lock()
 		rawdb.WriteBlock(blockchain.db, block)
 		//statedb.Commit(false)
-		blockchain.mu.Unlock()
+		blockchain.chainmu.Unlock()
 	}
 	return nil
 }
@@ -121,20 +112,11 @@ func testHeaderChainImport(chain []*types.Header, blockchain *BlockChain) error 
 			return err
 		}
 		// Manually insert the header into the database, but don't reorganise (allows subsequent testing)
-		blockchain.mu.Lock()
+		blockchain.chainmu.Lock()
 		rawdb.WriteHeader(blockchain.db, header)
-		blockchain.mu.Unlock()
+		blockchain.chainmu.Unlock()
 	}
 	return nil
-}
-
-func insertChain(done chan bool, blockchain *BlockChain, chain types.Blocks, t *testing.T) {
-	_, err := blockchain.InsertChain(chain)
-	if err != nil {
-		fmt.Println(err)
-		t.FailNow()
-	}
-	done <- true
 }
 
 func TestLastBlock(t *testing.T) {
@@ -267,9 +249,6 @@ func testReorg(t *testing.T, first, second []int64, td int64, full bool) {
 	// Check that the chain is valid number and link wise
 	if full {
 		prev := blockchain.engine.CurrentBlock()
-
-		b, _ := json.Marshal(prev)
-		fmt.Println("current block", string(b))
 
 		for block := blockchain.engine.GetBlockByHash(prev.ParentHash()); block != nil; prev, block = block, blockchain.engine.GetBlockByHash(block.ParentHash()) {
 

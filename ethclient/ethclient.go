@@ -62,6 +62,15 @@ func (ec *Client) Close() {
 }
 
 // Blockchain Access
+// ChainId retrieves the current chain ID for transaction replay protection.
+func (ec *Client) ChainID(ctx context.Context) (*big.Int, error) {
+	var result hexutil.Big
+	err := ec.c.CallContext(ctx, &result, "platon_chainId")
+	if err != nil {
+		return nil, err
+	}
+	return (*big.Int)(&result), err
+}
 
 // BlockByHash returns the given full block.
 //
@@ -212,12 +221,13 @@ func (ec *Client) TransactionCount(ctx context.Context, blockHash common.Hash) (
 func (ec *Client) TransactionInBlock(ctx context.Context, blockHash common.Hash, index uint) (*types.Transaction, error) {
 	var json *rpcTransaction
 	err := ec.c.CallContext(ctx, &json, "platon_getTransactionByBlockHashAndIndex", blockHash, hexutil.Uint64(index))
-	if err == nil {
-		if json == nil {
-			return nil, platon.NotFound
-		} else if _, r, _ := json.tx.RawSignatureValues(); r == nil {
-			return nil, fmt.Errorf("server returned transaction without signature")
-		}
+	if err != nil {
+		return nil, err
+	}
+	if json == nil {
+		return nil, platon.NotFound
+	} else if _, r, _ := json.tx.RawSignatureValues(); r == nil {
+		return nil, fmt.Errorf("server returned transaction without signature")
 	}
 	if json.From != nil && json.BlockHash != nil {
 		setSenderFromServer(json.tx, *json.From, *json.BlockHash)

@@ -1,4 +1,4 @@
-// Copyright 2018-2020 The PlatON Network Authors
+// Copyright 2021 The Alaya Network Authors
 // This file is part of the Alaya-Go library.
 //
 // The Alaya-Go library is free software: you can redistribute it and/or modify
@@ -648,7 +648,8 @@ func (vp *ValidatorPool) VerifyAggSigByBA(epoch uint64, vSet *utils.BitArray, ms
 	vp.lock.RUnlock()
 
 	var pub bls.PublicKey
-	pub.Deserialize(nodeList[0].BlsPubKey.Serialize())
+	pub = *nodeList[0].BlsPubKey
+	//pub.Deserialize(nodeList[0].BlsPubKey.Serialize())
 	for i := 1; i < len(nodeList); i++ {
 		pub.Add(nodeList[i].BlsPubKey)
 	}

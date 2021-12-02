@@ -19,6 +19,7 @@ package p2p
 import (
 	"crypto/ecdsa"
 	"errors"
+	"golang.org/x/crypto/sha3"
 	"net"
 	"reflect"
 	"testing"
@@ -27,7 +28,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/AlayaNetwork/Alaya-Go/crypto"
-	"github.com/AlayaNetwork/Alaya-Go/crypto/sha3"
+
 	"github.com/AlayaNetwork/Alaya-Go/log"
 	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
 )
@@ -48,8 +49,8 @@ func newTestTransport(id discover.NodeID, fd net.Conn) transport {
 	wrapped.rw = newRLPXFrameRW(fd, secrets{
 		MAC:        zero16,
 		AES:        zero16,
-		IngressMAC: sha3.NewKeccak256(),
-		EgressMAC:  sha3.NewKeccak256(),
+		IngressMAC: sha3.NewLegacyKeccak256(),
+		EgressMAC:  sha3.NewLegacyKeccak256(),
 	})
 	return &testTransport{id: id, rlpx: wrapped}
 }
@@ -130,7 +131,7 @@ func TestServerDial(t *testing.T) {
 		t.Fatalf("could not setup listener: %v", err)
 	}
 	defer listener.Close()
-	accepted := make(chan net.Conn)
+	accepted := make(chan net.Conn, 1)
 	go func() {
 		conn, err := listener.Accept()
 		if err != nil {
@@ -418,6 +419,7 @@ func TestServerAtCap(t *testing.T) {
 
 	// Try inserting a consensus connection.
 	consensusID := randomID()
+	srv.consensus = true
 	srv.AddConsensusPeer(&discover.Node{ID: consensusID})
 	c = newconn(consensusID)
 	if err := srv.checkpoint(c, srv.posthandshake); err != nil {
@@ -425,6 +427,13 @@ func TestServerAtCap(t *testing.T) {
 	}
 	if !c.is(consensusDialedConn) {
 		t.Error("Server did not set consensus flag")
+	}
+
+	// An InboundConn connection was broken in the previous step, and an InboundConn connection is added
+	time.Sleep(time.Second) // Waiting remove peer
+	c = newconn(randomID())
+	if err := srv.checkpoint(c, srv.addpeer); err != nil {
+		t.Fatalf("could not add conn: %v", err)
 	}
 
 	// Remove from consensus set and try again
@@ -442,6 +451,13 @@ func TestServerAtCap(t *testing.T) {
 	}
 	if !c.is(consensusDialedConn) {
 		t.Error("Server did not set consensus flag")
+	}
+
+	// An InboundConn connection was broken in the previous step, and an InboundConn connection is added
+	time.Sleep(time.Second) // Waiting remove peer
+	c = newconn(randomID())
+	if err := srv.checkpoint(c, srv.addpeer); err != nil {
+		t.Fatalf("could not add conn: %v", err)
 	}
 
 	// Removing non-consensus connection
