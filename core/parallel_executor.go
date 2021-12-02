@@ -2,13 +2,11 @@ package core
 
 import (
 	"github.com/AlayaNetwork/Alaya-Go/crypto"
-	"github.com/AlayaNetwork/Alaya-Go/internal/debug"
 	"math/big"
 	"runtime"
 	"sync"
 	"time"
 
-	//lru "github.com/hashicorp/golang-lru"
 	"github.com/panjf2000/ants/v2"
 
 	"github.com/AlayaNetwork/Alaya-Go/core/state"
@@ -35,7 +33,6 @@ type Executor struct {
 	signer       types.Signer
 
 	workerPool *ants.PoolWithFunc
-	//contractCache     *lru.Cache
 	txpool *TxPool
 }
 
@@ -61,8 +58,6 @@ func NewExecutor(chainConfig *params.ChainConfig, chainContext ChainContext, vmC
 		executor.chainContext = chainContext
 		executor.signer = types.NewEIP155Signer(chainConfig.ChainID)
 		executor.vmCfg = vmCfg
-		//csc, _ := lru.New(contractCacheSize)
-		//executor.contractCache = csc
 		executor.txpool = txpool
 	})
 }
@@ -145,11 +140,11 @@ func (exe *Executor) ExecuteTransactions(ctx *ParallelContext) error {
 	}
 
 	// dag print info
-	logVerbosity := debug.GetLogVerbosity()
+/*	logVerbosity := debug.GetLogVerbosity()
 	if logVerbosity == log.LvlTrace {
 		inf := ctx.txListInfo()
 		log.Trace("TxList Info", "blockNumber", ctx.header.Number, "txList", inf)
-	}
+	}*/
 
 	return nil
 }
@@ -232,10 +227,6 @@ func (exe *Executor) executeContractTransaction(ctx *ParallelContext, idx int) {
 	ctx.AddPackedTx(tx)
 	ctx.GetState().IncreaseTxIdx()
 	ctx.AddReceipt(receipt)
-	//receiptString := fmt.Sprintf("cumulative: %v gas: %v contract: %v status: %v tx: %v logs: %v bloom: %x state: %x\n",
-	//	receipt.CumulativeGasUsed, receipt.GasUsed, receipt.ContractAddress.Bech32(),
-	//	receipt.Status, receipt.TxHash.Hex(), receipt.Logs, receipt.Bloom, receipt.PostState)
-	//log.Trace("Execute contract transaction success", "blockNumber", ctx.GetHeader().Number.Uint64(), "txHash", tx.Hash().Hex(), "gasPool", ctx.gp.Gas(), "txGasLimit", tx.Gas(), "gasUsed", receipt.GasUsed, "receiptString", receiptString)
 	log.Debug("Execute contract transaction success", "blockNumber", ctx.GetHeader().Number.Uint64(), "txHash", tx.Hash().Hex(), "gasPool", ctx.gp.Gas(), "txGasLimit", tx.Gas(), "gasUsed", receipt.GasUsed)
 }
 
@@ -249,29 +240,6 @@ func (exe *Executor) isContract(tx *types.Transaction, state *state.StateDB, ctx
 	if _, ok := ctx.tempContractCache[*address]; ok {
 		return true
 	}
-	//if cached, ok := exe.contractCache.Get(*address); ok {
-	//	return cached.(bool)
-	//}
 	isContract := vm.IsPrecompiledContract(*address) || state.GetCodeSize(*address) > 0
-	//if isContract {
-	//	exe.contractCache.Add(*address, true)
-	//}
-	//exe.contractCache.Add(*address, isContract)
 	return isContract
 }
-
-/*// load tx fromAddress from txpool by txHash
-func (exe *Executor) cacheTxFromAddress(txs []*types.Transaction, signer types.Signer) {
-	hit := 0
-	for _, tx := range txs {
-		txpool_tx := exe.txpool.all.Get(tx.Hash())
-		if txpool_tx != nil {
-			fromAddress := txpool_tx.FromAddr(signer)
-			if fromAddress != (common.Address{}) {
-				tx.CacheFromAddr(signer, fromAddress)
-				hit++
-			}
-		}
-	}
-	log.Debug("Parallel execute cacheTxFromAddress", "hit", hit, "total", len(txs))
-}*/
