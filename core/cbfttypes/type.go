@@ -22,13 +22,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/AlayaNetwork/Alaya-Go/event"
-	"github.com/AlayaNetwork/Alaya-Go/log"
 	"math"
 	"sort"
 
 	"github.com/AlayaNetwork/Alaya-Go/common/hexutil"
+	"github.com/AlayaNetwork/Alaya-Go/event"
+	"github.com/AlayaNetwork/Alaya-Go/log"
 	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
+	"github.com/AlayaNetwork/Alaya-Go/x/xcom"
 
 	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/protocols"
 
@@ -315,7 +316,8 @@ func (vs *Validators) UnitID(nodeID enode.ID) uint32 {
 	return unitID
 }
 
-func (gvs *GroupValidators) GroupedUnits(coordinatorLimit uint32) {
+func (gvs *GroupValidators) GroupedUnits() {
+	coordinatorLimit := xcom.CoordinatorsLimit()
 	unit := make([]uint32, 0, coordinatorLimit)
 	for i, n := range gvs.Nodes {
 		unit = append(unit, n.Index)
@@ -330,15 +332,15 @@ func (gvs *GroupValidators) GroupedUnits(coordinatorLimit uint32) {
 // groupValidatorsLimit is a factor to determine how many groups are grouped
 // eg: [validatorCount,groupValidatorsLimit]=
 // [50,25] = 25,25;[43,25] = 22,21; [101,25] = 21,20,20,20,20
-func (vs *Validators) Grouped(groupValidatorsLimit uint32, coordinatorLimit uint32, eventMux *event.TypeMux, epoch uint64) error {
+func (vs *Validators) Grouped(eventMux *event.TypeMux, epoch uint64) error {
 	// sort nodes by index
 	if len(vs.SortedNodes) == 0 {
 		vs.Sort()
 	}
 
 	validatorCount := uint32(vs.SortedNodes.Len())
-	groupNum := validatorCount / groupValidatorsLimit
-	mod := validatorCount % groupValidatorsLimit
+	groupNum := validatorCount / xcom.MaxGroupValidators()
+	mod := validatorCount % xcom.CoordinatorsLimit()
 	if mod > 0 {
 		groupNum = groupNum + 1
 	}
@@ -367,7 +369,7 @@ func (vs *Validators) Grouped(groupValidatorsLimit uint32, coordinatorLimit uint
 
 	// fill group unit
 	for i, gvs := range vs.GroupNodes {
-		gvs.GroupedUnits(coordinatorLimit)
+		gvs.GroupedUnits()
 		topic := ConsensusGroupTopicName(epoch, uint32(i))
 		eventMux.Post(NewGroupsEvent{Topic: topic, Validators: gvs})
 	}
