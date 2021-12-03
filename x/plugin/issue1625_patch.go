@@ -22,6 +22,8 @@ import (
 	"math/big"
 	"sort"
 
+	"github.com/AlayaNetwork/Alaya-Go/x/gov"
+
 	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
 
 	"github.com/AlayaNetwork/Alaya-Go/params"
@@ -167,7 +169,7 @@ func (a *FixIssue1625Plugin) rollBackDel(hash common.Hash, blockNumber *big.Int,
 		dels = append(dels, delInfo)
 	}
 	sort.Sort(dels)
-	epoch := xutil.CalculateEpoch(blockNumber.Uint64())
+	epoch := xutil.CalculateEpoch(blockNumber.Uint64(), gov.GetCurrentActiveVersion(state))
 	stakingdb := staking.NewStakingDBWithDB(a.sdb)
 	for i := 0; i < len(dels); i++ {
 		if err := dels[i].handleDelegate(hash, blockNumber, epoch, account, amount, state, stakingdb); err != nil {
@@ -219,7 +221,7 @@ func (a *FixIssue1625Plugin) rollBackStaking(hash common.Hash, blockNumber *big.
 			stakings = append(stakings, newIssue1625AccountStakingInfo(&candidate, canAddr))
 		}
 	}
-	epoch := xutil.CalculateEpoch(blockNumber.Uint64())
+	epoch := xutil.CalculateEpoch(blockNumber.Uint64(), gov.GetCurrentActiveVersion(state))
 
 	sort.Sort(stakings)
 	for i := 0; i < len(stakings); i++ {
@@ -383,7 +385,7 @@ func (a *issue1625AccountStakingInfo) withdrewStaking(hash common.Hash, epoch ui
 
 	if a.candidate.Released.Cmp(common.Big0) > 0 || a.candidate.RestrictingPlan.Cmp(common.Big0) > 0 {
 		//如果质押处于生效期，需要锁定
-		if err := stk.addErrorAccountUnStakeItem(blockNumber.Uint64(), hash, a.candidate.NodeId, a.canAddr, a.candidate.StakingBlockNum); nil != err {
+		if err := stk.addErrorAccountUnStakeItem(blockNumber.Uint64(), hash, a.candidate.NodeId, a.canAddr, a.candidate.StakingBlockNum, gov.GetCurrentActiveVersion(state)); nil != err {
 			return err
 		}
 		// sub the account staking Reference Count
@@ -503,7 +505,7 @@ func (a *issue1625AccountDelInfo) handleDelegate(hash common.Hash, blockNumber *
 		log.Debug("fix issue 1625 for delegate ,can begin info", "account", delAddr, "candidate", a.nodeID.String(), "share", a.candidate.Shares, "candidate.del", a.candidate.DelegateTotal, "candidate.delhes", a.candidate.DelegateTotalHes, "canValid", a.candidate.IsValid())
 	}
 	//先计算委托收益
-	delegateRewardPerList, err := RewardMgrInstance().GetDelegateRewardPerList(hash, a.nodeID, a.stakingBlock, uint64(a.del.DelegateEpoch), xutil.CalculateEpoch(blockNumber.Uint64())-1)
+	delegateRewardPerList, err := RewardMgrInstance().GetDelegateRewardPerList(hash, a.nodeID, a.stakingBlock, uint64(a.del.DelegateEpoch), xutil.CalculateEpoch(blockNumber.Uint64(), gov.GetCurrentActiveVersion(state))-1)
 	if snapshotdb.NonDbNotFoundErr(err) {
 		return err
 	}

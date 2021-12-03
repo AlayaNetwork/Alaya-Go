@@ -20,6 +20,8 @@ import (
 	"bytes"
 	"fmt"
 
+	"github.com/AlayaNetwork/Alaya-Go/params"
+
 	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
 
 	"github.com/AlayaNetwork/Alaya-Go/common"
@@ -64,44 +66,19 @@ func ProgramVersion2Str(programVersion uint32) string {
 	return fmt.Sprintf("%d.%d.%d", major, minor, patch)
 }
 
-// ConsensusSize returns how many blocks per consensus round.
-func ConsensusSize() uint64 {
-	return xcom.ConsensusSize()
-}
-
-// EpochSize returns how many consensus rounds per epoch.
-func EpochSize() uint64 {
-	return xcom.EpochSize()
-}
-
-func MaxGroupValidators() uint32 {
-	return xcom.MaxGroupValidators()
-}
-
-func CoordinatorsLimit() uint32 {
-	return xcom.CoordinatorsLimit()
-}
-
-// EpochsPerYear returns how many epochs per year
-func EpochsPerYear() uint64 {
-	epochBlocks := CalcBlocksEachEpoch()
-	i := xcom.Interval()
-	return xcom.AdditionalCycleTime() * 60 / (i * epochBlocks)
-}
-
 // CalcBlocksEachEpoch return how many blocks per epoch
-func CalcBlocksEachEpoch() uint64 {
-	return ConsensusSize() * EpochSize()
+func CalcBlocksEachEpoch(version uint32) uint64 {
+	return xcom.ConsensusSize(version) * xcom.EpochSize(version)
 }
 
-func EstimateConsensusRoundsForGov(seconds uint64) uint64 {
+func EstimateConsensusRoundsForGov(seconds uint64, version uint32) uint64 {
 	//v0.7.5, hard code 1 second for block interval for estimating.
 	blockInterval := uint64(1)
-	return seconds / (blockInterval * ConsensusSize())
+	return seconds / (blockInterval * xcom.ConsensusSize(version))
 }
 
-func EstimateEndVotingBlockForParaProposal(blockNumber uint64, seconds uint64) uint64 {
-	consensusSize := ConsensusSize()
+func EstimateEndVotingBlockForParaProposal(blockNumber uint64, seconds uint64, version uint32) uint64 {
+	consensusSize := xcom.ConsensusSize(version)
 	epochMaxDuration := xcom.MaxEpochMinutes() //minutes
 	//estimate how many consensus rounds in a epoch.
 	consensusRoundsEachEpoch := epochMaxDuration * 60 / (xcom.Interval() * consensusSize)
@@ -115,50 +92,49 @@ func EstimateEndVotingBlockForParaProposal(blockNumber uint64, seconds uint64) u
 	return blockNumber + blocksEachEpoch - blockNumber%blocksEachEpoch + epochRounds*blocksEachEpoch
 }
 
-// calculate returns how many blocks per year.
-func CalcBlocksEachYear() uint64 {
-	return EpochsPerYear() * CalcBlocksEachEpoch()
+// calculate the Epoch number by blockNumber
+func CalculateEpoch(blockNumber uint64, version uint32) uint64 {
+	size := CalcBlocksEachEpoch(version)
+	return calculateQuotient(blockNumber, size)
 }
 
-// calculate the Epoch number by blockNumber
-func CalculateEpoch(blockNumber uint64) uint64 {
-	size := CalcBlocksEachEpoch()
-
-	var epoch uint64
-	div := blockNumber / size
-	mod := blockNumber % size
-
-	switch {
-	// first epoch
-	case div == 0:
-		epoch = 1
-	case div > 0 && mod == 0:
-		epoch = div
-	case div > 0 && mod > 0:
-		epoch = div + 1
+func CalculateRound(blockNumber uint64, version uint32, version0170ActiveBlock uint64) uint64 {
+	if version >= params.FORKVERSION_0_17_0 {
+		// 因为主网0.17.0的共识轮需要连续,所以这里需要根据不同的块高计算
+		if version0170ActiveBlock > 0 {
+			return calculateFork0170Round(blockNumber, version, version0170ActiveBlock)
+		}
 	}
-
-	return epoch
+	return calculateRound(blockNumber, version)
 }
 
 // calculate the Consensus number by blockNumber
-func CalculateRound(blockNumber uint64) uint64 {
-	size := ConsensusSize()
+func calculateRound(blockNumber uint64, version uint32) uint64 {
+	size := xcom.ConsensusSize(version)
+	return calculateQuotient(blockNumber, size)
+}
 
-	var round uint64
+func calculateFork0170Round(blockNumber uint64, version uint32, version017ActiveBlock uint64) uint64 {
+	roundBefore017 := calculateRound(version017ActiveBlock-1, params.FORKVERSION_0_16_0)
+	roundAfter017 := calculateRound(blockNumber-version017ActiveBlock+1, version)
+	return roundBefore017 + roundAfter017
+}
+
+func calculateQuotient(blockNumber, size uint64) uint64 {
+	var res uint64
 	div := blockNumber / size
 	mod := blockNumber % size
 	switch {
 	// first consensus round
 	case div == 0:
-		round = 1
+		res = 1
 	case div > 0 && mod == 0:
-		round = div
+		res = div
 	case div > 0 && mod > 0:
-		round = div + 1
+		res = div + 1
 	}
 
-	return round
+	return res
 }
 
 func InNodeIDList(nodeID enode.IDv0, nodeIDList []enode.IDv0) bool {
@@ -180,41 +156,46 @@ func InHashList(hash common.Hash, hashList []common.Hash) bool {
 }
 
 // end-voting-block = the end block of a consensus period - electionDistance, end-voting-block must be a Consensus Election block
-func CalEndVotingBlock(blockNumber uint64, endVotingRounds uint64) uint64 {
+func CalEndVotingBlock(blockNumber uint64, endVotingRounds uint64, version uint32) uint64 {
 	electionDistance := xcom.ElectionDistance()
-	consensusSize := ConsensusSize()
+	consensusSize := xcom.ConsensusSize(version)
 	return blockNumber + consensusSize - blockNumber%consensusSize + endVotingRounds*consensusSize - electionDistance
 }
 
 // active-block = the begin of a consensus period, so, it is possible that active-block also is the begin of a epoch.
 func CalActiveBlock(endVotingBlock uint64) uint64 {
-	//return endVotingBlock + xcom.ElectionDistance() + (xcom.VersionProposalActive_ConsensusRounds()-1)*ConsensusSize() + 1
 	return endVotingBlock + xcom.ElectionDistance() + 1
 }
 
 // IsBeginOfEpoch returns true if current block is the first block of a Epoch
-func IsBeginOfEpoch(blockNumber uint64) bool {
-	size := CalcBlocksEachEpoch()
+func IsBeginOfEpoch(blockNumber uint64, version uint32) bool {
+	return isEpochBeginOrEnd(blockNumber, true, version)
+}
+
+func IsEndOfEpoch(blockNumber uint64, version uint32) bool {
+	return isEpochBeginOrEnd(blockNumber, false, version)
+}
+
+func isEpochBeginOrEnd(blockNumber uint64, checkBegin bool, version uint32) bool {
+	size := CalcBlocksEachEpoch(version)
 	mod := blockNumber % size
-	return mod == 1
+	if checkBegin {
+		return mod == 1
+	} else {
+		//check end
+		return mod == 0
+	}
 }
 
 // IsBeginOfConsensus returns true if current block is the first block of a Consensus Cycle
-func IsBeginOfConsensus(blockNumber uint64) bool {
-	size := ConsensusSize()
+func IsBeginOfConsensus(blockNumber uint64, version uint32) bool {
+	size := xcom.ConsensusSize(version)
 	mod := blockNumber % size
 	return mod == 1
 }
 
-func IsEndOfEpoch(blockNumber uint64) bool {
-	size := CalcBlocksEachEpoch()
-	mod := blockNumber % size
-	return mod == 0
-}
-
-// TODO update this function according group consensus @clearly
-func IsElection(blockNumber uint64) bool {
+func IsElection(blockNumber uint64, version uint32) bool {
 	tmp := blockNumber + xcom.ElectionDistance()
-	mod := tmp % ConsensusSize()
+	mod := tmp % xcom.ConsensusSize(version)
 	return mod == 0
 }

@@ -56,6 +56,8 @@ func init() {
 	bls.Init(bls.BLS12_381)
 }
 
+var currentTestGenesisVersion = params.FORKVERSION_0_16_0
+
 var (
 	nodeIdArr = []enode.IDv0{
 		enode.MustHexIDv0("5a942bc607d970259e203f5110887d6105cc787f7433c16ce28390fb39f1e67897b0fb445710cc836b89ed7f951c57a1f26a0940ca308d630448b5bd391a8aa6"),
@@ -439,8 +441,8 @@ func build_staking_data_more(block uint64) {
 	epoch_Arr := &staking.ValidatorArray{
 		//Start: ((block-1)/22000)*22000 + 1,
 		//End:   ((block-1)/22000)*22000 + 22000,
-		Start: ((block-1)/uint64(xutil.CalcBlocksEachEpoch()))*uint64(xutil.CalcBlocksEachEpoch()) + 1,
-		End:   ((block-1)/uint64(xutil.CalcBlocksEachEpoch()))*uint64(xutil.CalcBlocksEachEpoch()) + uint64(xutil.CalcBlocksEachEpoch()),
+		Start: ((block-1)/uint64(xutil.CalcBlocksEachEpoch(currentTestGenesisVersion)))*uint64(xutil.CalcBlocksEachEpoch(currentTestGenesisVersion)) + 1,
+		End:   ((block-1)/uint64(xutil.CalcBlocksEachEpoch(currentTestGenesisVersion)))*uint64(xutil.CalcBlocksEachEpoch(currentTestGenesisVersion)) + uint64(xutil.CalcBlocksEachEpoch(currentTestGenesisVersion)),
 		Arr:   queue,
 	}
 
@@ -453,8 +455,8 @@ func build_staking_data_more(block uint64) {
 	curr_Arr := &staking.ValidatorArray{
 		//Start: ((block-1)/250)*250 + 1,
 		//End:   ((block-1)/250)*250 + 250,
-		Start: ((block-1)/uint64(xutil.ConsensusSize()))*uint64(xutil.ConsensusSize()) + 1,
-		End:   ((block-1)/uint64(xutil.ConsensusSize()))*uint64(xutil.ConsensusSize()) + uint64(xutil.ConsensusSize()),
+		Start: ((block-1)/uint64(xcom.ConsensusSize(currentTestGenesisVersion)))*uint64(xcom.ConsensusSize(currentTestGenesisVersion)) + 1,
+		End:   ((block-1)/uint64(xcom.ConsensusSize(currentTestGenesisVersion)))*uint64(xcom.ConsensusSize(currentTestGenesisVersion)) + uint64(xcom.ConsensusSize(currentTestGenesisVersion)),
 		Arr:   queue,
 	}
 
@@ -603,7 +605,7 @@ func build_staking_data(genesisHash common.Hash) {
 
 	epoch_Arr := &staking.ValidatorArray{
 		Start: 1,
-		End:   uint64(xutil.CalcBlocksEachEpoch()),
+		End:   uint64(xutil.CalcBlocksEachEpoch(currentTestGenesisVersion)),
 		Arr:   queue,
 	}
 
@@ -615,7 +617,7 @@ func build_staking_data(genesisHash common.Hash) {
 
 	curr_Arr := &staking.ValidatorArray{
 		Start: 1,
-		End:   uint64(xutil.ConsensusSize()),
+		End:   uint64(xcom.ConsensusSize(currentTestGenesisVersion)),
 		Arr:   queue,
 	}
 

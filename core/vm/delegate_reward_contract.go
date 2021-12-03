@@ -119,7 +119,7 @@ func (rc *DelegateRewardContract) withdrawDelegateReward() ([]byte, error) {
 		return nil, ErrOutOfGas
 	}
 
-	currentEpoch := xutil.CalculateEpoch(blockNum.Uint64())
+	currentEpoch := xutil.CalculateEpoch(blockNum.Uint64(), gov.GetCurrentActiveVersion(state))
 	unCalEpoch := 0
 	delegationInfoWithRewardPerList := make([]*plugin.DelegationInfoWithRewardPerList, 0)
 	for _, stakingNode := range list {

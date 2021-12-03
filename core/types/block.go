@@ -89,9 +89,10 @@ type Header struct {
 	Nonce       BlockNonce     `json:"nonce"            gencodec:"required"`
 
 	// caches
-	sealHash  atomic.Value `json:"-" rlp:"-"`
-	hash      atomic.Value `json:"-" rlp:"-"`
-	publicKey atomic.Value `json:"-" rlp:"-"`
+	sealHash      atomic.Value `json:"-" rlp:"-"`
+	hash          atomic.Value `json:"-" rlp:"-"`
+	publicKey     atomic.Value `json:"-" rlp:"-"`
+	activeVersion uint32       `json:"-" rlp:"-"`
 }
 
 // MarshalJSON2 marshals as JSON.
@@ -207,6 +208,14 @@ func (h *Header) _sealHash() (hash common.Hash) {
 	return hash
 }
 
+func (h *Header) SetActiveVersion(version uint32) {
+	h.activeVersion = version
+}
+
+func (h *Header) GetActiveVersion() uint32 {
+	return h.activeVersion
+}
+
 // Size returns the approximate memory used by all internal contents. It is used
 // to approximate and limit the memory consumption of various caches.
 func (h *Header) Size() common.StorageSize {
@@ -256,7 +265,7 @@ type Body struct {
 	ExtraData    []byte
 }
 
-// Block represents an entire block in the Ethereum blockchain.
+// Block represents an entire block in the Alaya blockchain.
 type Block struct {
 	header       *Header
 	transactions Transactions
@@ -351,6 +360,9 @@ func CopyHeader(h *Header) *Header {
 		cpy.Extra = make([]byte, len(h.Extra))
 		copy(cpy.Extra, h.Extra)
 	}
+	if h.activeVersion != 0 {
+		cpy.activeVersion = h.activeVersion
+	}
 	return &cpy
 }
 
@@ -415,6 +427,8 @@ func (b *Block) ReceiptHash() common.Hash { return b.header.ReceiptHash }
 func (b *Block) Extra() []byte            { return common.CopyBytes(b.header.Extra) }
 
 func (b *Block) Header() *Header { return CopyHeader(b.header) }
+
+func (b *Block) ActiveVersion() uint32 { return b.header.activeVersion }
 
 // Body returns the non-header content of the block.
 func (b *Block) Body() *Body { return &Body{b.transactions, b.extraData} }

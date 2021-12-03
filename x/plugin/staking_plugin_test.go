@@ -250,7 +250,7 @@ func buildPrepareData(genesis *types.Block, t *testing.T) (*types.Header, error)
 	*/
 	verifierIndex := &staking.ValArrIndex{
 		Start: 1,
-		End:   xutil.CalcBlocksEachEpoch(),
+		End:   xutil.CalcBlocksEachEpoch(currentTestGenesisVersion),
 	}
 
 	epochIndexArr := make(staking.ValArrIndexQueue, 0)
@@ -285,7 +285,7 @@ func buildPrepareData(genesis *types.Block, t *testing.T) (*types.Header, error)
 	*/
 	curr_indexInfo := &staking.ValArrIndex{
 		Start: 1,
-		End:   xutil.ConsensusSize(),
+		End:   xcom.ConsensusSize(currentTestGenesisVersion),
 	}
 	roundIndexArr := make(staking.ValArrIndexQueue, 0)
 	roundIndexArr = append(roundIndexArr, curr_indexInfo)
@@ -301,8 +301,8 @@ func buildPrepareData(genesis *types.Block, t *testing.T) (*types.Header, error)
 		return nil, err
 	}
 
-	PrintObject("Test round", validatorQueue[:xcom.MaxConsensusVals()])
-	roundArr, err := rlp.EncodeToBytes(validatorQueue[:xcom.MaxConsensusVals()])
+	PrintObject("Test round", validatorQueue[:xcom.MaxConsensusVals(currentTestGenesisVersion)])
+	roundArr, err := rlp.EncodeToBytes(validatorQueue[:xcom.MaxConsensusVals(currentTestGenesisVersion)])
 	if nil != err {
 		t.Errorf("Failed to rlp encodeing genesis validators. error:%s", err.Error())
 		return nil, err
@@ -327,7 +327,7 @@ func buildPrepareData(genesis *types.Block, t *testing.T) (*types.Header, error)
 	}
 	nodeId := enode.PublicKeyToIDv0(&privateKey.PublicKey)
 	currentHash := crypto.Keccak256Hash([]byte(nodeId.String()))
-	newNumber := big.NewInt(int64(xutil.ConsensusSize() - xcom.ElectionDistance())) // 50
+	newNumber := big.NewInt(int64(xcom.ConsensusSize(currentTestGenesisVersion) - xcom.ElectionDistance())) // 50
 	preNum1 := new(big.Int).Sub(newNumber, big.NewInt(1))
 	if err := sndb.SetCurrent(currentHash, *preNum1, *preNum1); nil != err {
 		panic(fmt.Errorf("Failed to SetCurrent by snapshotdb. error:%s", err.Error()))
@@ -622,7 +622,7 @@ func TestStakingPlugin_EndBlock(t *testing.T) {
 	*/
 	verifierIndex := &staking.ValArrIndex{
 		Start: 1,
-		End:   xutil.CalcBlocksEachEpoch(),
+		End:   xutil.CalcBlocksEachEpoch(currentTestGenesisVersion),
 	}
 
 	epochIndexArr := make(staking.ValArrIndexQueue, 0)
@@ -657,7 +657,7 @@ func TestStakingPlugin_EndBlock(t *testing.T) {
 	*/
 	curr_indexInfo := &staking.ValArrIndex{
 		Start: 1,
-		End:   xutil.ConsensusSize(),
+		End:   xcom.ConsensusSize(currentTestGenesisVersion),
 	}
 	roundIndexArr := make(staking.ValArrIndexQueue, 0)
 	roundIndexArr = append(roundIndexArr, curr_indexInfo)
@@ -672,8 +672,8 @@ func TestStakingPlugin_EndBlock(t *testing.T) {
 		return
 	}
 
-	PrintObject("Test round", validatorQueue[:xcom.MaxConsensusVals()])
-	roundArr, err := rlp.EncodeToBytes(validatorQueue[:xcom.MaxConsensusVals()])
+	PrintObject("Test round", validatorQueue[:xcom.MaxConsensusVals(currentTestGenesisVersion)])
+	roundArr, err := rlp.EncodeToBytes(validatorQueue[:xcom.MaxConsensusVals(currentTestGenesisVersion)])
 	if !assert.Nil(t, err, fmt.Sprintf("Failed to rlp encodeing genesis validators. error: %v", err)) {
 		return
 	}
@@ -690,7 +690,7 @@ func TestStakingPlugin_EndBlock(t *testing.T) {
 	}
 
 	// SetCurrent to snapshotDB
-	currentNumber = big.NewInt(int64(xutil.ConsensusSize() - xcom.ElectionDistance())) // 50
+	currentNumber = big.NewInt(int64(xcom.ConsensusSize(currentTestGenesisVersion) - xcom.ElectionDistance())) // 50
 	preNum1 := new(big.Int).Sub(currentNumber, big.NewInt(1))
 	if err := sndb.SetCurrent(currentHash, *preNum1, *preNum1); nil != err {
 		t.Errorf("Failed to SetCurrent by snapshotdb. error:%s", err.Error())
@@ -701,7 +701,7 @@ func TestStakingPlugin_EndBlock(t *testing.T) {
 	EndBlock to Election()
 	*/
 	// new block
-	currentNumber = big.NewInt(int64(xutil.ConsensusSize() - xcom.ElectionDistance())) // 50
+	currentNumber = big.NewInt(int64(xcom.ConsensusSize(currentTestGenesisVersion) - xcom.ElectionDistance())) // 50
 
 	nonce := crypto.Keccak256([]byte(time.Now().Add(time.Duration(1)).String()))[:]
 	header := &types.Header{
@@ -750,7 +750,7 @@ func TestStakingPlugin_EndBlock(t *testing.T) {
 	Elect Epoch validator list  == ElectionNextList()
 	*/
 	// new block
-	currentNumber = big.NewInt(int64(xutil.ConsensusSize() * xutil.EpochSize())) // 600
+	currentNumber = big.NewInt(int64(xcom.ConsensusSize(currentTestGenesisVersion) * xcom.EpochSize(currentTestGenesisVersion))) // 600
 
 	preNum := new(big.Int).Sub(currentNumber, big.NewInt(1)) // 599
 
@@ -939,7 +939,7 @@ func TestStakingPlugin_Confirmed(t *testing.T) {
 	*/
 	verifierIndex := &staking.ValArrIndex{
 		Start: 1,
-		End:   xutil.CalcBlocksEachEpoch(),
+		End:   xutil.CalcBlocksEachEpoch(currentTestGenesisVersion),
 	}
 
 	epochIndexArr := make(staking.ValArrIndexQueue, 0)
@@ -973,7 +973,7 @@ func TestStakingPlugin_Confirmed(t *testing.T) {
 	*/
 	curr_indexInfo := &staking.ValArrIndex{
 		Start: 1,
-		End:   xutil.ConsensusSize(),
+		End:   xcom.ConsensusSize(currentTestGenesisVersion),
 	}
 	roundIndexArr := make(staking.ValArrIndexQueue, 0)
 	roundIndexArr = append(roundIndexArr, curr_indexInfo)
@@ -989,8 +989,8 @@ func TestStakingPlugin_Confirmed(t *testing.T) {
 		return
 	}
 
-	PrintObject("Test round", validatorQueue[:xcom.MaxConsensusVals()])
-	roundArr, err := rlp.EncodeToBytes(validatorQueue[:xcom.MaxConsensusVals()])
+	PrintObject("Test round", validatorQueue[:xcom.MaxConsensusVals(currentTestGenesisVersion)])
+	roundArr, err := rlp.EncodeToBytes(validatorQueue[:xcom.MaxConsensusVals(currentTestGenesisVersion)])
 	if !assert.Nil(t, err, fmt.Sprintf("Failed to rlp encodeing genesis validators. error: %v", err)) {
 		return
 	}
@@ -1007,7 +1007,7 @@ func TestStakingPlugin_Confirmed(t *testing.T) {
 	}
 
 	// SetCurrent to snapshotDB
-	currentNumber = big.NewInt(int64(xutil.ConsensusSize() - xcom.ElectionDistance())) // 50
+	currentNumber = big.NewInt(int64(xcom.ConsensusSize(currentTestGenesisVersion) - xcom.ElectionDistance())) // 50
 	preNum1 := new(big.Int).Sub(currentNumber, big.NewInt(1))
 	if err := sndb.SetCurrent(currentHash, *preNum1, *preNum1); nil != err {
 		t.Errorf("Failed to SetCurrent by snapshotdb. error:%s", err.Error())
@@ -1018,7 +1018,7 @@ func TestStakingPlugin_Confirmed(t *testing.T) {
 	EndBlock to Election()
 	*/
 	// new block
-	currentNumber = big.NewInt(int64(xutil.ConsensusSize() - xcom.ElectionDistance())) // 50
+	currentNumber = big.NewInt(int64(xcom.ConsensusSize(currentTestGenesisVersion) - xcom.ElectionDistance())) // 50
 
 	nonce := crypto.Keccak256([]byte(time.Now().Add(time.Duration(1)).String()))[:]
 	header := &types.Header{
@@ -1222,7 +1222,7 @@ func TestStakingPlugin_GetCandidateList(t *testing.T) {
 	Start GetCandidateList
 	*/
 
-	queue, err := StakingInstance().GetCandidateList(blockHash, blockNumber.Uint64())
+	queue, err := StakingInstance().GetCandidateList(blockHash, blockNumber.Uint64(), state)
 	assert.Nil(t, err, fmt.Sprintf("Failed to GetCandidateList: %v", err))
 	assert.Equal(t, count, len(queue))
 	queueByte, _ := json.Marshal(queue)
@@ -1481,7 +1481,9 @@ func TestStakingPlugin_HandleUnCandidateItem(t *testing.T) {
 	// Add UNStakingItems
 	//stakingDB := staking.NewStakingDB()
 
-	epoch := xutil.CalculateEpoch(blockNumber.Uint64())
+	currentVersion := gov.GetCurrentActiveVersion(state)
+
+	epoch := xutil.CalculateEpoch(blockNumber.Uint64(), currentVersion)
 	canAddr, _ := xutil.NodeId2Addr(nodeIdArr[index])
 
 	if err := StakingInstance().addUnStakeItem(state, blockNumber.Uint64(), blockHash, epoch, nodeIdArr[index], canAddr, blockNumber.Uint64()); nil != err {
@@ -1531,11 +1533,11 @@ func TestStakingPlugin_HandleUnCandidateItem(t *testing.T) {
 		t.Fatal(err)
 	}
 	canAddr, _ = xutil.NodeId2Addr(nodeIdArr[index])
-	if err := StakingInstance().addRecoveryUnStakeItem(blockNumber2.Uint64(), blockHash2, nodeIdArr[index], canAddr, blockNumber2.Uint64()); nil != err {
+	if err := StakingInstance().addRecoveryUnStakeItem(blockNumber2.Uint64(), blockHash2, nodeIdArr[index], canAddr, blockNumber2.Uint64(), currentVersion); nil != err {
 		t.Error("Failed to AddUnStakeItemStore:", err)
 		return
 	}
-	epoch = xutil.CalculateEpoch(blockNumber2.Uint64())
+	epoch = xutil.CalculateEpoch(blockNumber2.Uint64(), currentVersion)
 	err = StakingInstance().HandleUnCandidateItem(state, blockNumber2.Uint64(), blockHash2, epoch+xcom.ZeroProduceFreezeDuration())
 	assert.Nil(t, err)
 
@@ -1560,12 +1562,12 @@ func TestStakingPlugin_HandleUnCandidateItem(t *testing.T) {
 	assert.Nil(t, StakingInstance().EditCandidate(blockHash2, blockNumber2, canAddr, recoveryCan2))
 
 	// Handle the lock period of low block rate, and increase the double sign freeze operation
-	if err := StakingInstance().addRecoveryUnStakeItem(blockNumber2.Uint64(), blockHash2, nodeIdArr[index], canAddr, blockNumber2.Uint64()); nil != err {
+	if err := StakingInstance().addRecoveryUnStakeItem(blockNumber2.Uint64(), blockHash2, nodeIdArr[index], canAddr, blockNumber2.Uint64(), gov.GetCurrentActiveVersion(state)); nil != err {
 		t.Error("Failed to AddUnStakeItemStore:", err)
 		return
 	}
-	newBlockNumber := new(big.Int).SetUint64(xutil.CalcBlocksEachEpoch()*xcom.ZeroProduceFreezeDuration() + blockNumber2.Uint64())
-	epoch = xutil.CalculateEpoch(newBlockNumber.Uint64())
+	newBlockNumber := new(big.Int).SetUint64(xutil.CalcBlocksEachEpoch(currentVersion)*xcom.ZeroProduceFreezeDuration() + blockNumber2.Uint64())
+	epoch = xutil.CalculateEpoch(newBlockNumber.Uint64(), currentVersion)
 	err = StakingInstance().HandleUnCandidateItem(state, newBlockNumber.Uint64(), blockHash2, epoch)
 	assert.Nil(t, err)
 
@@ -1577,7 +1579,7 @@ func TestStakingPlugin_HandleUnCandidateItem(t *testing.T) {
 	assert.False(t, recoveryCan2.IsInvalidLowRatio())
 
 	// Handle double-signature freeze and release staking, delete nodes
-	newBlockNumber.Add(newBlockNumber, new(big.Int).SetUint64(xutil.CalcBlocksEachEpoch()*xcom.UnStakeFreezeDuration()))
+	newBlockNumber.Add(newBlockNumber, new(big.Int).SetUint64(xutil.CalcBlocksEachEpoch(currentVersion)*xcom.UnStakeFreezeDuration()))
 	err = StakingInstance().HandleUnCandidateItem(state, newBlockNumber.Uint64(), blockHash2, xcom.UnStakeFreezeDuration()+epoch)
 	assert.Nil(t, err)
 	recoveryCan2, err = getCandidate(blockHash2, index)
@@ -1667,7 +1669,7 @@ func TestStakingPlugin_Delegate(t *testing.T) {
 
 	canAddr, _ := xutil.NodeId2Addr(can.NodeId)
 
-	curBlockNumber := new(big.Int).SetUint64(xutil.CalcBlocksEachEpoch() * 3)
+	curBlockNumber := new(big.Int).SetUint64(xutil.CalcBlocksEachEpoch(gov.GetCurrentActiveVersion(state)) * 3)
 	if err := sndb.NewBlock(curBlockNumber, blockHash2, blockHash3); nil != err {
 		t.Error("newBlock 3 err", err)
 		return
@@ -1778,7 +1780,7 @@ func TestStakingPlugin_WithdrewDelegation(t *testing.T) {
 	assert.True(t, new(big.Int).Sub(delegateTotalHes, amount).Cmp(can.DelegateTotalHes) == 0)
 	assert.True(t, new(big.Int).Sub(delegateTotalHes, amount).Cmp(del.ReleasedHes) == 0)
 
-	curBlockNumber := new(big.Int).SetUint64(xutil.CalcBlocksEachEpoch() * 3)
+	curBlockNumber := new(big.Int).SetUint64(xutil.CalcBlocksEachEpoch(gov.GetCurrentActiveVersion(state)) * 3)
 	if err := sndb.NewBlock(curBlockNumber, blockHash2, blockHash3); nil != err {
 		t.Error("newBlock 3 err", err)
 		return
@@ -2160,7 +2162,8 @@ func TestStakingPlugin_ElectNextVerifierList(t *testing.T) {
 
 	// build genesis VerifierList
 	start := uint64(1)
-	end := xutil.EpochSize() * xutil.ConsensusSize()
+
+	end := xcom.EpochSize(gov.GetCurrentActiveVersion(state)) * xcom.ConsensusSize(gov.GetCurrentActiveVersion(state))
 
 	new_verifierArr := &staking.ValidatorArray{
 		Start: start,
@@ -2225,7 +2228,7 @@ func TestStakingPlugin_ElectNextVerifierList(t *testing.T) {
 	/*
 		Start ElectNextVerifierList
 	*/
-	targetNum := xutil.EpochSize() * xutil.ConsensusSize()
+	targetNum := xcom.EpochSize(gov.GetCurrentActiveVersion(state)) * xcom.ConsensusSize(gov.GetCurrentActiveVersion(state))
 
 	targetNumInt := big.NewInt(int64(targetNum))
 
@@ -2348,7 +2351,7 @@ func TestStakingPlugin_Election(t *testing.T) {
 	// build genesis VerifierList
 
 	start := uint64(1)
-	end := xutil.EpochSize() * xutil.ConsensusSize()
+	end := xcom.EpochSize(gov.GetCurrentActiveVersion(state)) * xcom.ConsensusSize(gov.GetCurrentActiveVersion(state))
 
 	new_verifierArr := &staking.ValidatorArray{
 		Start: start,
@@ -2406,10 +2409,10 @@ func TestStakingPlugin_Election(t *testing.T) {
 	// build gensis current validatorList
 	new_validatorArr := &staking.ValidatorArray{
 		Start: start,
-		End:   xutil.ConsensusSize(),
+		End:   xcom.ConsensusSize(gov.GetCurrentActiveVersion(state)),
 	}
 
-	new_validatorArr.Arr = queue[:int(xcom.MaxConsensusVals())]
+	new_validatorArr.Arr = queue[:int(xcom.MaxConsensusVals(gov.GetCurrentActiveVersion(state)))]
 
 	err = setRoundValList(blockHash, new_validatorArr)
 	if nil != err {
@@ -2441,7 +2444,7 @@ func TestStakingPlugin_Election(t *testing.T) {
 
 	header := &types.Header{
 		ParentHash: blockHash,
-		Number:     big.NewInt(int64(xutil.ConsensusSize() - xcom.ElectionDistance())),
+		Number:     big.NewInt(int64(xcom.ConsensusSize(gov.GetCurrentActiveVersion(state)) - xcom.ElectionDistance())),
 		Nonce:      types.EncodeNonce(currNonce),
 	}
 
@@ -2563,7 +2566,7 @@ func TestStakingPlugin_SlashCandidates(t *testing.T) {
 	// build genesis VerifierList
 
 	start := uint64(1)
-	end := xutil.EpochSize() * xutil.ConsensusSize()
+	end := xcom.EpochSize(gov.GetCurrentActiveVersion(state)) * xcom.ConsensusSize(gov.GetCurrentActiveVersion(state))
 
 	new_verifierArr := &staking.ValidatorArray{
 		Start: start,
@@ -3021,13 +3024,13 @@ func TestStakingPlugin_ProposalPassedNotify(t *testing.T) {
 
 	epoch_Arr := &staking.ValidatorArray{
 		Start: 1,
-		End:   xutil.CalcBlocksEachEpoch(),
+		End:   xutil.CalcBlocksEachEpoch(gov.GetCurrentActiveVersion(state)),
 		Arr:   validatorQueue,
 	}
 
 	curr_Arr := &staking.ValidatorArray{
 		Start: 1,
-		End:   xutil.ConsensusSize(),
+		End:   xcom.ConsensusSize(gov.GetCurrentActiveVersion(state)),
 		Arr:   validatorQueue,
 	}
 
@@ -3130,13 +3133,13 @@ func TestStakingPlugin_GetCandidateONRound(t *testing.T) {
 	/**
 	Start GetCandidateONRound
 	*/
-	canNotIrrQueue, err := StakingInstance().GetCandidateONRound(header.Hash(), header.Number.Uint64(), CurrentRound, QueryStartNotIrr)
+	canNotIrrQueue, err := StakingInstance().GetCandidateONRound(header.Hash(), header.Number.Uint64(), CurrentRound, QueryStartNotIrr, state)
 
 	assert.Nil(t, err, fmt.Sprintf("Failed to GetCandidateONRound by QueryStartNotIrr, err: %v", err))
 	assert.True(t, 0 != len(canNotIrrQueue))
 	t.Log("GetCandidateONRound by QueryStartNotIrr:", canNotIrrQueue)
 
-	canQueue, err := StakingInstance().GetCandidateONRound(header.Hash(), header.Number.Uint64(), CurrentRound, QueryStartIrr)
+	canQueue, err := StakingInstance().GetCandidateONRound(header.Hash(), header.Number.Uint64(), CurrentRound, QueryStartIrr, state)
 
 	assert.Nil(t, err, fmt.Sprintf("Failed to GetCandidateONRound by QueryStartIrr, err: %v", err))
 
@@ -3169,13 +3172,13 @@ func TestStakingPlugin_GetValidatorList(t *testing.T) {
 	/**
 	Start  GetValidatorList
 	*/
-	validatorNotIrrExQueue, err := StakingInstance().GetValidatorList(header.Hash(), header.Number.Uint64(), CurrentRound, QueryStartNotIrr)
+	validatorNotIrrExQueue, err := StakingInstance().GetValidatorList(header.Hash(), header.Number.Uint64(), CurrentRound, QueryStartNotIrr, gov.GetCurrentActiveVersion(state))
 
 	assert.Nil(t, err, fmt.Sprintf("Failed to GetValidatorList by QueryStartNotIrr, err: %v", err))
 	assert.True(t, 0 != len(validatorNotIrrExQueue))
 	t.Log("GetValidatorList by QueryStartNotIrr:", validatorNotIrrExQueue)
 
-	validatorExQueue, err := StakingInstance().GetValidatorList(header.Hash(), header.Number.Uint64(), CurrentRound, QueryStartIrr)
+	validatorExQueue, err := StakingInstance().GetValidatorList(header.Hash(), header.Number.Uint64(), CurrentRound, QueryStartIrr, gov.GetCurrentActiveVersion(state))
 	if nil != err {
 		t.Errorf("Failed to GetValidatorList by QueryStartIrr, err: %v", err)
 		return
@@ -3523,9 +3526,9 @@ func TestStakingPlugin_GetLastNumber(t *testing.T) {
 	Start  GetLastNumber
 	*/
 	endNumber := StakingInstance().GetLastNumber(header.Number.Uint64())
-
-	round := xutil.CalculateRound(header.Number.Uint64())
-	blockNum := round * xutil.ConsensusSize()
+	acVersion := gov.GetCurrentActiveVersion(state)
+	round := xutil.CalculateRound(header.Number.Uint64(), acVersion, gov.GetActiveVersion(state, params.FORKVERSION_0_17_0).ActiveBlock)
+	blockNum := round * xcom.ConsensusSize(acVersion)
 	assert.True(t, endNumber == blockNum, fmt.Sprintf("currentNumber: %d, currentRound: %d endNumber: %d, targetNumber: %d", header.Number, round, endNumber, blockNum))
 
 }
@@ -3633,8 +3636,8 @@ func TestStakingPlugin_ProbabilityElection(t *testing.T) {
 		preNonces = append(preNonces, crypto.Keccak256(common.Int64ToBytes(time.Now().UnixNano() + int64(i)))[:])
 		time.Sleep(time.Microsecond * 10)
 	}
-
-	result, err := probabilityElection(vqList, int(xcom.ShiftValidatorNum()), currentNonce, preNonces, 1, params.GenesisVersion)
+	maxConsensusVals := xcom.MaxConsensusVals(params.GenesisVersion)
+	result, err := probabilityElection(maxConsensusVals, vqList, int(xcom.ShiftValidatorNum(maxConsensusVals)), currentNonce, preNonces, 1, params.GenesisVersion)
 	assert.Nil(t, err, fmt.Sprintf("Failed to probabilityElection, err: %v", err))
 	assert.True(t, nil != result, "the result is nil")
 
@@ -3701,11 +3704,13 @@ func TestStakingPlugin_ProbabilityElectionDifferentWeights(t *testing.T) {
 	}
 
 	stakeThreshold := 10000
+	acVersion := gov.GetCurrentActiveVersion(stateDb)
+	maxConsensusVals := xcom.MaxConsensusVals(acVersion)
 	for i := 0; i < 3; i++ {
 		vqList, preNonceList, _ := buildCandidate(stakeThreshold)
 		stakeThreshold *= 10
 		t.Run(fmt.Sprintf("Election_%d", i+1), func(t *testing.T) {
-			result, err := probabilityElection(vqList, int(xcom.ShiftValidatorNum()), currentNonce, preNonceList, 1, gov.GetCurrentActiveVersion(stateDb))
+			result, err := probabilityElection(maxConsensusVals, vqList, int(xcom.ShiftValidatorNum(maxConsensusVals)), currentNonce, preNonceList, 1, acVersion)
 			assert.Nil(t, err, fmt.Sprintf("Failed to probabilityElection, err: %v", err))
 			assert.True(t, nil != result, "the result is nil")
 		})
@@ -3728,7 +3733,8 @@ func TestStakingPlugin_RandomOrderValidatorQueue(t *testing.T) {
 	if err := slash.db.NewBlock(new(big.Int).SetUint64(1), blockHash, common.ZeroHash); nil != err {
 		t.Fatal(err)
 	}
-	for i := 0; i < int(xcom.MaxConsensusVals()); i++ {
+	maxConsensusVals := xcom.MaxConsensusVals(2048)
+	for i := 0; i < int(maxConsensusVals); i++ {
 		vrfData, err := vrf.Prove(privateKey, data)
 		if nil != err {
 			t.Fatal(err)
@@ -3752,7 +3758,7 @@ func TestStakingPlugin_RandomOrderValidatorQueue(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	resultQueue, err := randomOrderValidatorQueue(1, common.ZeroHash, vqList)
+	resultQueue, err := randomOrderValidatorQueue(1, common.ZeroHash, vqList, maxConsensusVals)
 	if nil != err {
 		t.Fatal(err)
 	}
