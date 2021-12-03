@@ -71,6 +71,7 @@ type BlockCache interface {
 
 	// CurrentActiveVersion return current gov version
 	GetActiveVersion(sealhash common.Hash) uint32
+
 }
 
 // Engine is an algorithm agnostic consensus engine.
