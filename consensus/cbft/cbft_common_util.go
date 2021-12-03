@@ -134,8 +134,6 @@ func CreateCBFT(pk *ecdsa.PrivateKey, sk *bls.SecretKey, period uint64, amount u
 		Period:       period,
 		Amount:       amount,
 		InitialNodes: []params.CbftNode{},
-		GroupValidatorsLimit: 25,
-		CoordinatorLimit: 5,
 	}
 
 	pnode := enode.NewV4(&pk.PublicKey, nil, 0, 0)

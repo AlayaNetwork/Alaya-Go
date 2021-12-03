@@ -22,9 +22,10 @@ import (
 	"crypto/elliptic"
 	"encoding/json"
 	"fmt"
-	"github.com/AlayaNetwork/Alaya-Go/x/xutil"
 	"strings"
 	"sync/atomic"
+
+	"github.com/AlayaNetwork/Alaya-Go/x/xutil"
 
 	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
 
@@ -276,16 +277,15 @@ func (cbft *Cbft) Start(chain consensus.ChainReader, blockCache consensus.BlockC
 		cbft.config.Option.NodeID = cbft.config.Option.Node.IDv0()
 		cbft.config.Option.NodePriKey = cbft.nodeServiceContext.NodePriKey()
 	}
+
 	needGroup := blockCache.GetActiveVersion(block.Header().SealHash()) >= params.FORKVERSION_0_17_0
-	groupValidatorsLimit := cbft.config.Sys.GroupValidatorsLimit
-	coordinatorLimit := cbft.config.Sys.CoordinatorLimit
 	if isGenesis() {
-		cbft.validatorPool = validator.NewValidatorPool(agency, block.NumberU64(), cstate.DefaultEpoch, cbft.config.Option.Node.ID(), needGroup, groupValidatorsLimit, coordinatorLimit, cbft.eventMux)
+    cbft.validatorPool = validator.NewValidatorPool(agency, block.NumberU64(), cstate.DefaultEpoch, cbft.config.Option.Node.ID(), needGroup, cbft.eventMux)
 		// init RGMsg broadcast manager
 		cbft.RGBroadcastManager = NewRGBroadcastManager(cbft)
 		cbft.changeView(cstate.DefaultEpoch, cstate.DefaultViewNumber, block, qc, nil)
 	} else {
-		cbft.validatorPool = validator.NewValidatorPool(agency, block.NumberU64(), qc.Epoch, cbft.config.Option.Node.ID(), needGroup, groupValidatorsLimit, coordinatorLimit, cbft.eventMux)
+    cbft.validatorPool = validator.NewValidatorPool(agency, block.NumberU64(), qc.Epoch, cbft.config.Option.Node.ID(), needGroup, cbft.eventMux)
 		// init RGMsg broadcast manager
 		cbft.RGBroadcastManager = NewRGBroadcastManager(cbft)
 		cbft.changeView(qc.Epoch, qc.ViewNumber, block, qc, nil)
@@ -1364,7 +1364,7 @@ func (cbft *Cbft) commitBlock(commitBlock *types.Block, commitQC *ctypes.QuorumC
 		if shouldGroup() {
 			cbft.validatorPool.SetupGroup(true)
 		}
-		cbft.validatorPool.Update(cpy.NumberU64(), cbft.state.Epoch()+1, cbft.eventMux)
+		cbft.validatorPool.Update(cpy.NumberU64(), cbft.state.Epoch()+1, true, cbft.eventMux)
 	}
 }
 
