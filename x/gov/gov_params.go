@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
-
 package gov
 
 import (
@@ -38,15 +37,15 @@ var (
 
 var governParam []*GovernParam
 
-func queryInitParam() []*GovernParam {
+func queryInitParam(version uint32) []*GovernParam {
 	initGovParam.Do(func() {
 		log.Info("Init Govern parameters ...")
-		governParam = initParam()
+		governParam = initParam(version)
 	})
 	return governParam
 }
 
-func initParam() []*GovernParam {
+func initParam(version uint32) []*GovernParam {
 	return []*GovernParam{
 
 		/**
@@ -93,7 +92,7 @@ func initParam() []*GovernParam {
 
 		{
 			ParamItem: &ParamItem{ModuleStaking, KeyMaxValidators,
-				fmt.Sprintf("maximum amount of validator, range: [%d, %d]", xcom.MaxConsensusVals(), xcom.CeilMaxValidators)},
+				fmt.Sprintf("maximum amount of validator, range: [%d, %d]", xcom.MaxConsensusVals(version), xcom.CeilMaxValidators)},
 			ParamValue: &ParamValue{"", strconv.Itoa(int(xcom.MaxValidators())), 0},
 			ParamVerifier: func(blockNumber uint64, blockHash common.Hash, value string) error {
 
@@ -102,7 +101,7 @@ func initParam() []*GovernParam {
 					return fmt.Errorf("Parsed MaxValidators is failed: %v", err)
 				}
 
-				if err := xcom.CheckMaxValidators(num); nil != err {
+				if err := xcom.CheckMaxValidators(num, version); nil != err {
 					return err
 				}
 
@@ -248,7 +247,7 @@ func initParam() []*GovernParam {
 		{
 
 			ParamItem: &ParamItem{ModuleSlashing, KeyZeroProduceCumulativeTime,
-				fmt.Sprintf("Time range for recording the number of behaviors of zero production blocks, range: [ZeroProduceNumberThreshold, %d]", int(xcom.EpochSize()))},
+				fmt.Sprintf("Time range for recording the number of behaviors of zero production blocks, range: [ZeroProduceNumberThreshold, %d]", int(xcom.EpochSize(version)))},
 			ParamValue: &ParamValue{"", strconv.Itoa(int(xcom.ZeroProduceCumulativeTime())), 0},
 			ParamVerifier: func(blockNumber uint64, blockHash common.Hash, value string) error {
 
@@ -261,7 +260,7 @@ func initParam() []*GovernParam {
 				if nil != err {
 					return err
 				}
-				if err := xcom.CheckZeroProduceCumulativeTime(uint16(roundNumber), numberThreshold); nil != err {
+				if err := xcom.CheckZeroProduceCumulativeTime(uint16(roundNumber), numberThreshold, version); nil != err {
 					return err
 				}
 				return nil
@@ -400,7 +399,7 @@ var ParamVerifierMap = make(map[string]ParamVerifier)
 func InitGenesisGovernParam(prevHash common.Hash, snapDB snapshotdb.BaseDB, genesisVersion uint32) (common.Hash, error) {
 	var paramItemList []*ParamItem
 
-	initParamList := queryInitParam()
+	initParamList := queryInitParam(genesisVersion)
 
 	if genesisVersion >= params.FORKVERSION_0_14_0 {
 		initParamList = append(initParamList, init0140VersionParam()...)
@@ -438,8 +437,8 @@ func InitGenesisGovernParam(prevHash common.Hash, snapDB snapshotdb.BaseDB, gene
 	return lastHash, nil
 }
 
-func RegisterGovernParamVerifiers() {
-	for _, param := range queryInitParam() {
+func RegisterGovernParamVerifiers(version uint32) {
+	for _, param := range queryInitParam(version) {
 		RegGovernParamVerifier(param.ParamItem.Module, param.ParamItem.Name, param.ParamVerifier)
 	}
 	if uint32(params.VersionMajor<<16|params.VersionMinor<<8|params.VersionPatch) >= params.FORKVERSION_0_14_0 {

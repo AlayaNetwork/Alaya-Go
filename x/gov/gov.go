@@ -142,6 +142,21 @@ func GetVersionForStaking(blockHash common.Hash, state xcom.StateDB) uint32 {
 	}
 }
 
+func GetActiveVersion(state xcom.StateDB, version uint32) ActiveVersionValue {
+	avList, err := ListActiveVersion(state)
+	if err != nil {
+		log.Error("Cannot find active version list", "err", err)
+		return ActiveVersionValue{}
+	}
+
+	for _, av := range avList {
+		if av.ActiveVersion == version {
+			return av
+		}
+	}
+	return ActiveVersionValue{}
+}
+
 // Get current active version record
 func GetCurrentActiveVersion(state xcom.StateDB) uint32 {
 	avList, err := ListActiveVersion(state)
@@ -459,6 +474,9 @@ func ListProposal(blockHash common.Hash, state xcom.StateDB) ([]Proposal, error)
 		if err != nil {
 			log.Error("find proposal error", "proposalID", proposalID)
 			return nil, err
+		}
+		if versionProposal, ok := proposal.(*VersionProposal); ok {
+			versionProposal.ActiveBlock = versionProposal.GetActiveBlock(GetCurrentActiveVersion(state))
 		}
 		proposals = append(proposals, proposal)
 	}

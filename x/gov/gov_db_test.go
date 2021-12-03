@@ -1057,7 +1057,7 @@ func TestSet0140Param(t *testing.T) {
 
 	var paramItemList []*ParamItem
 
-	initParamList := queryInitParam()
+	initParamList := queryInitParam(params.GenesisVersion)
 
 	var err error
 	for _, param := range initParamList {

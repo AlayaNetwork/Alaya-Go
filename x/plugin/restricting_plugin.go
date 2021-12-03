@@ -74,8 +74,8 @@ func (rp *RestrictingPlugin) BeginBlock(blockHash common.Hash, head *types.Heade
 
 // EndBlock invoke releaseRestricting
 func (rp *RestrictingPlugin) EndBlock(blockHash common.Hash, head *types.Header, state xcom.StateDB) error {
-	if xutil.IsEndOfEpoch(head.Number.Uint64()) {
-		expect := xutil.CalculateEpoch(head.Number.Uint64())
+	if xutil.IsEndOfEpoch(head.Number.Uint64(), head.GetActiveVersion()) {
+		expect := xutil.CalculateEpoch(head.Number.Uint64(), head.GetActiveVersion())
 		rp.log.Info("begin to release restricting plan", "currentHash", blockHash, "currBlock", head.Number, "expectBlock", head.Number, "expectEpoch", expect)
 		if err := rp.releaseRestricting(expect, state); err != nil {
 			return err
@@ -95,7 +95,7 @@ func (rp *RestrictingPlugin) Confirmed(nodeId enode.IDv0, block *types.Block) er
 
 func (rp *RestrictingPlugin) mergeAmount(state xcom.StateDB, blockNum uint64, blockHash common.Hash, plans []restricting.RestrictingPlan) (*big.Int, map[uint64]*big.Int, error) {
 	// latest is the epoch of a settlement block closest to current block
-	latestEpoch := xutil.CalculateEpoch(blockNum)
+	latestEpoch := xutil.CalculateEpoch(blockNum, gov.GetCurrentActiveVersion(state))
 
 	totalAmount := new(big.Int)
 
@@ -706,10 +706,11 @@ func (rp *RestrictingPlugin) getRestrictingInfoToReturn(account common.Address, 
 		result restricting.Result
 	)
 	totalLeft := new(big.Int)
+	acVersion := gov.GetCurrentActiveVersion(state)
 	for i := 0; i < len(info.ReleaseList); i++ {
 		epoch := info.ReleaseList[i]
 		_, bAmount := rp.getReleaseAmount(state, epoch, account)
-		plan.Height = GetBlockNumberByEpoch(epoch)
+		plan.Height = GetBlockNumberByEpoch(epoch, acVersion)
 		plan.Amount = (*hexutil.Big)(bAmount)
 		totalLeft.Add(totalLeft, bAmount)
 		plans = append(plans, plan)
@@ -737,6 +738,6 @@ func (rp *RestrictingPlugin) GetRestrictingInfo(account common.Address, state xc
 	return rp.getRestrictingInfoToReturn(account, state)
 }
 
-func GetBlockNumberByEpoch(epoch uint64) uint64 {
-	return epoch * xutil.CalcBlocksEachEpoch()
+func GetBlockNumberByEpoch(epoch uint64, version uint32) uint64 {
+	return epoch * xutil.CalcBlocksEachEpoch(version)
 }
