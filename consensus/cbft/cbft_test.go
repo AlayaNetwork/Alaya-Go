@@ -80,7 +80,7 @@ func TestBls(t *testing.T) {
 	agency := validator.NewStaticAgency(nodes)
 
 	cbft := &Cbft{
-		validatorPool: validator.NewValidatorPool(agency, 0, 0, nodes[0].Node.ID(),false, 0, 0),
+		validatorPool: validator.NewValidatorPool(agency, 0, 0, nodes[0].Node.ID(), false, 0, 0, nil),
 		config: ctypes.Config{
 			Option: &ctypes.OptionsConfig{
 				BlsPriKey: owner,
@@ -105,7 +105,7 @@ func TestPrepareBlockBls(t *testing.T) {
 	agency := validator.NewStaticAgency([]params.CbftNode{node})
 
 	cbft := &Cbft{
-		validatorPool: validator.NewValidatorPool(agency, 0, 0, node.Node.ID(),false, 0, 0),
+		validatorPool: validator.NewValidatorPool(agency, 0, 0, node.Node.ID(), false, 0, 0, nil),
 		config: ctypes.Config{
 			Option: &ctypes.OptionsConfig{
 				BlsPriKey: owner,
@@ -174,7 +174,7 @@ func TestAgg(t *testing.T) {
 
 	for i := 0; i < num; i++ {
 		cnode[i] = &Cbft{
-			validatorPool: validator.NewValidatorPool(agency, 0, 0, nodes[0].Node.ID(),false, 0, 0),
+			validatorPool: validator.NewValidatorPool(agency, 0, 0, nodes[0].Node.ID(), false, 0, 0, nil),
 			config: ctypes.Config{
 				Option: &ctypes.OptionsConfig{
 					BlsPriKey: sk[i],

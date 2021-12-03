@@ -14,19 +14,23 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
-
 package cbft
 
 import (
 	"fmt"
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	ctypes "github.com/AlayaNetwork/Alaya-Go/consensus/cbft/types"
+	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/utils"
 	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/validator"
 	"io/ioutil"
+	"math/big"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/wal"
 
+	"encoding/json"
 	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/protocols"
 	"github.com/AlayaNetwork/Alaya-Go/core/types"
 	"github.com/stretchr/testify/assert"
@@ -387,4 +391,91 @@ func TestViewChangeBySwitchPoint(t *testing.T) {
 	nodes[1].engine.insertQCBlock(qcBlock, qcQC)
 	assert.Equal(t, uint64(2), nodes[1].engine.state.Epoch())
 	assert.Equal(t, uint64(0), nodes[1].engine.state.ViewNumber())
+}
+
+func unmarshalBitArray(bitArrayStr string) *utils.BitArray {
+	var ba *utils.BitArray
+	json.Unmarshal([]byte(bitArrayStr), &ba)
+	return ba
+}
+
+func TestMergeViewChange(t *testing.T) {
+	pk, sk, cbftnodes := GenerateCbftNode(4)
+	nodes := make([]*TestCBFT, 0)
+	for i := 0; i < 4; i++ {
+		node := MockNode(pk[i], sk[i], cbftnodes, 10000, 10)
+		assert.Nil(t, node.Start())
+		nodes = append(nodes, node)
+	}
+
+	testCases := []struct {
+		epoch           uint64
+		ViewNumber      uint64
+		blockNumber     uint64
+		ValidatorSetStr string
+	}{
+		{1, 0, 1, `"x___________"`},
+		{1, 0, 2, `"xxxx________"`},
+		{1, 0, 3, `"xx__________"`},
+	}
+
+	viewChangeQC := &ctypes.ViewChangeQC{QCs: make([]*ctypes.ViewChangeQuorumCert, 0)}
+	for _, c := range testCases {
+		viewChangeQC.QCs = append(viewChangeQC.QCs, &ctypes.ViewChangeQuorumCert{
+			Epoch:        c.epoch,
+			ViewNumber:   c.ViewNumber,
+			BlockHash:    common.BigToHash(big.NewInt(int64(c.blockNumber))),
+			BlockNumber:  c.blockNumber,
+			Signature:    ctypes.Signature{},
+			ValidatorSet: unmarshalBitArray(c.ValidatorSetStr),
+		})
+	}
+
+	// ViewChange already exists
+	vc := &protocols.ViewChange{
+		Epoch:          testCases[0].epoch,
+		ViewNumber:     testCases[0].ViewNumber,
+		BlockHash:      common.BigToHash(big.NewInt(int64(testCases[0].blockNumber))),
+		BlockNumber:    testCases[0].blockNumber,
+		ValidatorIndex: 0,
+	}
+	nodes[0].engine.MergeViewChange(viewChangeQC, vc)
+	assert.Equal(t, 3, len(viewChangeQC.QCs))
+	for _, qc := range viewChangeQC.QCs {
+		if qc.BlockHash == vc.BlockHash {
+			assert.Equal(t, 1, qc.ValidatorSet.HasLength())
+		}
+	}
+	// blockhash exists but ValidatorIndex not exists
+	vc = &protocols.ViewChange{
+		Epoch:          testCases[1].epoch,
+		ViewNumber:     testCases[1].ViewNumber,
+		BlockHash:      common.BigToHash(big.NewInt(int64(testCases[1].blockNumber))),
+		BlockNumber:    testCases[1].blockNumber,
+		ValidatorIndex: 5,
+	}
+	nodes[0].engine.MergeViewChange(viewChangeQC, vc)
+	assert.Equal(t, 3, len(viewChangeQC.QCs))
+	for _, qc := range viewChangeQC.QCs {
+		if qc.BlockHash == vc.BlockHash {
+			assert.Equal(t, 5, qc.ValidatorSet.HasLength())
+		}
+	}
+	// blockhash not exists
+	blockNumber := uint64(4)
+	vc = &protocols.ViewChange{
+		Epoch:          testCases[0].epoch,
+		ViewNumber:     testCases[0].ViewNumber,
+		BlockHash:      common.BigToHash(big.NewInt(int64(blockNumber))),
+		BlockNumber:    blockNumber,
+		ValidatorIndex: 1,
+		PrepareQC:      &ctypes.QuorumCert{Epoch: testCases[0].epoch, ViewNumber: testCases[0].ViewNumber},
+	}
+	nodes[0].engine.MergeViewChange(viewChangeQC, vc)
+	assert.Equal(t, 4, len(viewChangeQC.QCs))
+	for _, qc := range viewChangeQC.QCs {
+		if qc.BlockHash == vc.BlockHash {
+			assert.Equal(t, 1, qc.ValidatorSet.HasLength())
+		}
+	}
 }

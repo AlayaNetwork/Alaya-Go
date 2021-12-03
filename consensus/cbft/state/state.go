@@ -1152,7 +1152,7 @@ func (grg *QuorumCerts) addRGQuorumCerts(groupID uint32, rgqc *ctypes.QuorumCert
 				}
 			}
 		}
-		if len(ps) < maxSelectedRGLimit {
+		if len(ps) < maxSelectedRGLimit || rgqc.HigherSign(findMaxQuorumCert(ps)) {
 			ps = append(ps, rgqc)
 			grg.GroupQuorumCerts[groupID] = ps
 			//grg.GroupQuorumCerts[groupID] = append(grg.GroupQuorumCerts[groupID], rgqc)
@@ -1251,7 +1251,7 @@ func (srg *selectedRGBlockQuorumCerts) MergePrepareVote(blockIndex, groupID uint
 	}
 
 	for _, qc := range rgqcs {
-		if !qc.ValidatorSet.GetIndex(vote.NodeIndex()) {
+		if !qc.HasSign(vote.NodeIndex()) {
 			qc.AddSign(vote.Signature, vote.NodeIndex())
 		}
 	}
@@ -1417,6 +1417,19 @@ func newViewChangeQuorumCerts() *ViewChangeQuorumCerts {
 	}
 }
 
+func findMaxViewChangeQuorumCert(qcs []*ctypes.ViewChangeQuorumCert) *ctypes.ViewChangeQuorumCert {
+	if len(qcs) > 0 {
+		m := qcs[0]
+		for i := 1; i < len(qcs); i++ {
+			if qcs[i].HigherSign(m) {
+				m = qcs[i]
+			}
+		}
+		return m
+	}
+	return nil
+}
+
 func (grg *ViewChangeQuorumCerts) addRGViewChangeQuorumCert(hash common.Hash, rgqc *ctypes.ViewChangeQuorumCert) {
 	if ps, ok := grg.QuorumCerts[hash]; ok {
 		if len(ps) > 0 {
@@ -1431,7 +1444,7 @@ func (grg *ViewChangeQuorumCerts) addRGViewChangeQuorumCert(hash common.Hash, rg
 				}
 			}
 		}
-		if len(ps) < maxSelectedRGLimit {
+		if len(ps) < maxSelectedRGLimit || rgqc.HigherSign(findMaxViewChangeQuorumCert(ps)) {
 			ps = append(ps, rgqc)
 			grg.QuorumCerts[hash] = ps
 			//grg.QuorumCerts[hash] = append(grg.QuorumCerts[hash], rgqc)
@@ -1484,7 +1497,7 @@ func (srg *selectedRGViewChangeQuorumCerts) MergeViewChange(groupID uint32, vc *
 
 	if qcs, ok := rgqcs[vc.BHash()]; ok {
 		for _, qc := range qcs {
-			if !qc.ValidatorSet.GetIndex(vc.NodeIndex()) {
+			if !qc.HasSign(vc.NodeIndex()) {
 				qc.AddSign(vc.Signature, vc.NodeIndex())
 			}
 		}
@@ -1544,19 +1557,6 @@ func (srg *selectedRGViewChangeQuorumCerts) RGViewChangeQuorumCertsLen(groupID u
 
 // Returns the QuorumCert with the most signatures in specified group
 func (srg *selectedRGViewChangeQuorumCerts) FindMaxGroupRGViewChangeQuorumCert(groupID uint32) (*ctypes.ViewChangeQC, *ctypes.PrepareQCs) {
-	findMaxQuorumCert := func(qcs []*ctypes.ViewChangeQuorumCert) *ctypes.ViewChangeQuorumCert {
-		if len(qcs) > 0 {
-			m := qcs[0]
-			for i := 1; i < len(qcs); i++ {
-				if qcs[i].HigherSign(m) {
-					m = qcs[i]
-				}
-			}
-			return m
-		}
-		return nil
-	}
-
 	rgqcs := srg.findRGQuorumCerts(groupID)
 	if len(rgqcs) <= 0 {
 		return nil, nil
@@ -1565,7 +1565,7 @@ func (srg *selectedRGViewChangeQuorumCerts) FindMaxGroupRGViewChangeQuorumCert(g
 	viewChangeQC := &ctypes.ViewChangeQC{QCs: make([]*ctypes.ViewChangeQuorumCert, 0)}
 	prepareQCs := &ctypes.PrepareQCs{QCs: make([]*ctypes.QuorumCert, 0)}
 	for hash, qcs := range rgqcs {
-		max := findMaxQuorumCert(qcs)
+		max := findMaxViewChangeQuorumCert(qcs)
 		viewChangeQC.QCs = append(viewChangeQC.QCs, max)
 		if srg.PrepareQCs != nil && srg.PrepareQCs[hash] != nil {
 			prepareQCs.QCs = append(prepareQCs.QCs, srg.PrepareQCs[hash])
