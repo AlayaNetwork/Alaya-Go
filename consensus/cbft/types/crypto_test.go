@@ -19,12 +19,10 @@ package types
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/utils"
+	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
-
-	"github.com/stretchr/testify/assert"
-
-	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/utils"
 
 	"github.com/AlayaNetwork/Alaya-Go/common"
 	"github.com/AlayaNetwork/Alaya-Go/crypto/bls"
@@ -144,7 +142,7 @@ func TestValidatorSet(t *testing.T) {
 	}
 	assert.Equal(t, 45, viewChangeQC.Len())
 	assert.Equal(t, uint32(15), viewChangeQC.ValidatorSet().Size())
-	assert.Equal(t, 11, viewChangeQC.ValidatorSet().HasLength())
+	assert.Equal(t, 11, viewChangeQC.HasLength())
 }
 
 func TestQuorumCertAddSign(t *testing.T) {

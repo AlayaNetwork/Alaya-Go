@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/AlayaNetwork/Alaya-Go/x/xutil"
+	"github.com/AlayaNetwork/Alaya-Go/x/xcom"
 
 	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
 
@@ -331,8 +331,8 @@ func NewValidatorPool(agency consensus.Agency, blockNumber, epoch uint64, nodeID
 		nodeID:               nodeID,
 		epoch:                epoch,
 		grouped:              needGroup,
-		groupValidatorsLimit: xutil.MaxGroupValidators(),
-		coordinatorLimit:     xutil.CoordinatorsLimit(),
+		groupValidatorsLimit: xcom.MaxGroupValidators(),
+		coordinatorLimit:     xcom.CoordinatorsLimit(),
 	}
 	// FIXME: Check `GetValidators` return error
 	if agency.GetLastNumber(blockNumber) == blockNumber {
@@ -415,11 +415,10 @@ func (vp *ValidatorPool) MockSwitchPoint(number uint64) {
 }
 
 // Update switch validators.
-func (vp *ValidatorPool) Update(blockNumber uint64, epoch uint64, eventMux *event.TypeMux) error {
+func (vp *ValidatorPool) Update(blockNumber uint64, epoch uint64, isElection bool, eventMux *event.TypeMux) error {
 	vp.lock.Lock()
 	defer vp.lock.Unlock()
 
-	isElection := xutil.IsElection(blockNumber)
 	// Election block update nextValidators
 	if blockNumber <= vp.switchPoint && !isElection {
 		log.Debug("Already update validator before", "blockNumber", blockNumber, "switchPoint", vp.switchPoint)
@@ -457,8 +456,8 @@ func (vp *ValidatorPool) SetupGroup(needGroup bool) {
 	defer vp.lock.Unlock()
 
 	vp.grouped = needGroup
-	vp.groupValidatorsLimit = xutil.MaxGroupValidators()
-	vp.coordinatorLimit = xutil.CoordinatorsLimit()
+	vp.groupValidatorsLimit = xcom.MaxGroupValidators()
+	vp.coordinatorLimit = xcom.CoordinatorsLimit()
 }
 
 // GetValidatorByNodeID get the validator by node id.
@@ -799,6 +798,6 @@ func (vp *ValidatorPool) GetGroupByValidatorID(epoch uint64, nodeID enode.ID) (u
 }
 
 // 返回指定epoch下节点的分组信息，key=groupID，value=分组节点index集合
-func (vp *ValidatorPool) GetGroupByValidator(epoch uint64) map[uint32][]uint32 {
+func (vp *ValidatorPool) GetGroupIndexes(epoch uint64) map[uint32][]uint32 {
 	return nil
 }

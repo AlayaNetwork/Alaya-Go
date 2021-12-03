@@ -365,16 +365,17 @@ func (vc *ViewChange) SetSign(sign []byte) {
 }
 
 type ViewChanges struct {
-	VCs         []*ViewChange
-	messageHash atomic.Value `rlp:"-"`
+	VCs                     []*ViewChange
+	RGViewChangeQuorumCerts []*RGViewChangeQuorumCert
+	messageHash             atomic.Value `rlp:"-"`
 }
 
 func (v ViewChanges) String() string {
 	if len(v.VCs) != 0 {
 		epoch, viewNumber := v.VCs[0].Epoch, v.VCs[0].ViewNumber
-		return fmt.Sprintf("{Epoch:%d,ViewNumber:%d,Len:%d}", epoch, viewNumber, len(v.VCs))
+		return fmt.Sprintf("{Epoch:%d,ViewNumber:%d,VCsLen:%d,,RGLen:%d}", epoch, viewNumber, len(v.VCs), len(v.RGViewChangeQuorumCerts))
 	}
-	return fmt.Sprintf("{Len:%d}", len(v.VCs))
+	return ""
 }
 
 func (v ViewChanges) MsgHash() common.Hash {
@@ -536,12 +537,12 @@ type GetPrepareVote struct {
 	Epoch       uint64
 	ViewNumber  uint64
 	BlockIndex  uint32
-	UnKnownSet  *utils.BitArray
+	UnKnownSet  *ctypes.UnKnownGroups
 	messageHash atomic.Value `json:"-" rlp:"-"`
 }
 
 func (s *GetPrepareVote) String() string {
-	return fmt.Sprintf("{Epoch:%d,ViewNumber:%d,BlockIndex:%d,UnKnownSet:%s}", s.Epoch, s.ViewNumber, s.BlockIndex, s.UnKnownSet.String())
+	return fmt.Sprintf("{Epoch:%d,ViewNumber:%d,BlockIndex:%d,UnKnownSetLen:%d}", s.Epoch, s.ViewNumber, s.BlockIndex, s.UnKnownSet.UnKnownSize())
 }
 
 func (s *GetPrepareVote) MsgHash() common.Hash {
@@ -560,15 +561,16 @@ func (s *GetPrepareVote) BHash() common.Hash {
 
 // Message used to respond to the number of block votes.
 type PrepareVotes struct {
-	Epoch       uint64
-	ViewNumber  uint64
-	BlockIndex  uint32
-	Votes       []*PrepareVote // Block voting set.
-	messageHash atomic.Value   `json:"-" rlp:"-"`
+	Epoch              uint64
+	ViewNumber         uint64
+	BlockIndex         uint32
+	Votes              []*PrepareVote // Block voting set.
+	RGBlockQuorumCerts []*RGBlockQuorumCert
+	messageHash        atomic.Value `json:"-" rlp:"-"`
 }
 
 func (s *PrepareVotes) String() string {
-	return fmt.Sprintf("{Epoch:%d,ViewNumber:%d,BlockIndex:%d}", s.Epoch, s.ViewNumber, s.BlockIndex)
+	return fmt.Sprintf("{Epoch:%d,ViewNumber:%d,BlockIndex:%d,VotesLen:%d,RGLen:%d}", s.Epoch, s.ViewNumber, s.BlockIndex, len(s.Votes), len(s.RGBlockQuorumCerts))
 }
 
 func (s *PrepareVotes) MsgHash() common.Hash {
@@ -745,14 +747,14 @@ func (s *LatestStatus) BHash() common.Hash {
 
 // Used to actively request to get viewChange.
 type GetViewChange struct {
-	Epoch          uint64          `json:"epoch"`
-	ViewNumber     uint64          `json:"viewNumber"`
-	ViewChangeBits *utils.BitArray `json:"nodeIndexes"`
-	messageHash    atomic.Value    `rlp:"-"`
+	Epoch       uint64                `json:"epoch"`
+	ViewNumber  uint64                `json:"viewNumber"`
+	UnKnownSet  *ctypes.UnKnownGroups `json:"unKnownSet"`
+	messageHash atomic.Value          `rlp:"-"`
 }
 
 func (s *GetViewChange) String() string {
-	return fmt.Sprintf("{Epoch:%d,ViewNumber:%d,NodeIndexesLen:%s}", s.Epoch, s.ViewNumber, s.ViewChangeBits.String())
+	return fmt.Sprintf("{Epoch:%d,ViewNumber:%d,UnKnownSetLen:%d}", s.Epoch, s.ViewNumber, s.UnKnownSet.UnKnownSize())
 }
 
 func (s *GetViewChange) MsgHash() common.Hash {

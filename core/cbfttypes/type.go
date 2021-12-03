@@ -22,14 +22,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/AlayaNetwork/Alaya-Go/event"
-	"github.com/AlayaNetwork/Alaya-Go/log"
-	"github.com/AlayaNetwork/Alaya-Go/x/xutil"
 	"math"
 	"sort"
 
 	"github.com/AlayaNetwork/Alaya-Go/common/hexutil"
+	"github.com/AlayaNetwork/Alaya-Go/event"
+	"github.com/AlayaNetwork/Alaya-Go/log"
 	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
+	"github.com/AlayaNetwork/Alaya-Go/x/xcom"
 
 	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/protocols"
 
@@ -317,7 +317,7 @@ func (vs *Validators) UnitID(nodeID enode.ID) uint32 {
 }
 
 func (gvs *GroupValidators) GroupedUnits() {
-	coordinatorLimit := xutil.CoordinatorsLimit()
+	coordinatorLimit := xcom.CoordinatorsLimit()
 	unit := make([]uint32, 0, coordinatorLimit)
 	for i, n := range gvs.Nodes {
 		unit = append(unit, n.Index)
@@ -339,8 +339,8 @@ func (vs *Validators) Grouped(eventMux *event.TypeMux, epoch uint64) error {
 	}
 
 	validatorCount := uint32(vs.SortedNodes.Len())
-	groupNum := validatorCount / xutil.MaxGroupValidators()
-	mod := validatorCount % xutil.CoordinatorsLimit()
+	groupNum := validatorCount / xcom.MaxGroupValidators()
+	mod := validatorCount % xcom.CoordinatorsLimit()
 	if mod > 0 {
 		groupNum = groupNum + 1
 	}

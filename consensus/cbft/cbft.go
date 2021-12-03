@@ -22,9 +22,10 @@ import (
 	"crypto/elliptic"
 	"encoding/json"
 	"fmt"
-	"github.com/AlayaNetwork/Alaya-Go/x/xutil"
 	"strings"
 	"sync/atomic"
+
+	"github.com/AlayaNetwork/Alaya-Go/x/xutil"
 
 	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
 
@@ -786,7 +787,7 @@ func (cbft *Cbft) OnSeal(block *types.Block, results chan<- *types.Block, stop <
 		cbft.log.Warn("Can not got the validator, seal fail", "epoch", cbft.state.Epoch(), "nodeID", cbft.Node().ID())
 		return
 	}
-	numValidators := cbft.validatorPool.Len(cbft.state.Epoch())
+	numValidators := cbft.currentValidatorLen()
 	currentProposer := cbft.state.ViewNumber() % uint64(numValidators)
 	if currentProposer != uint64(me.Index) {
 		cbft.log.Warn("You are not the current proposer", "index", me.Index, "currentProposer", currentProposer)
@@ -1180,7 +1181,7 @@ func (cbft *Cbft) OnShouldSeal(result chan error) {
 		return
 	}
 
-	numValidators := cbft.validatorPool.Len(cbft.state.Epoch())
+	numValidators := cbft.currentValidatorLen()
 	currentProposer := cbft.state.ViewNumber() % uint64(numValidators)
 	validator, err := cbft.isCurrentValidator()
 	if err != nil {
@@ -1362,7 +1363,7 @@ func (cbft *Cbft) commitBlock(commitBlock *types.Block, commitQC *ctypes.QuorumC
 		if shouldGroup() {
 			cbft.validatorPool.SetupGroup(true)
 		}
-		cbft.validatorPool.Update(cpy.NumberU64(), cbft.state.Epoch()+1, cbft.eventMux)
+		cbft.validatorPool.Update(cpy.NumberU64(), cbft.state.Epoch()+1, true, cbft.eventMux)
 	}
 }
 
@@ -1429,8 +1430,8 @@ func (cbft *Cbft) isCurrentValidator() (*cbfttypes.ValidateNode, error) {
 }
 
 func (cbft *Cbft) currentProposer() *cbfttypes.ValidateNode {
-	length := cbft.validatorPool.Len(cbft.state.Epoch())
-	currentProposer := cbft.state.ViewNumber() % uint64(length)
+	validatorLen := cbft.currentValidatorLen()
+	currentProposer := cbft.state.ViewNumber() % uint64(validatorLen)
 	validator, _ := cbft.validatorPool.GetValidatorByIndex(cbft.state.Epoch(), uint32(currentProposer))
 	return validator
 }
@@ -1708,7 +1709,7 @@ func (cbft *Cbft) generatePrepareQC(votes map[uint32]*protocols.PrepareVote) *ct
 	}
 
 	// Validator set prepareQC is the same as highestQC
-	total := cbft.validatorPool.Len(cbft.state.Epoch())
+	total := cbft.currentValidatorLen()
 	vSet := utils.NewBitArray(uint32(total))
 	vSet.SetIndex(vote.NodeIndex(), true)
 
@@ -1756,7 +1757,7 @@ func (cbft *Cbft) combinePrepareQC(qcs []*ctypes.QuorumCert) *ctypes.QuorumCert 
 	initqc := qcs[0]
 
 	// Validator set prepareQC is the same as highestQC
-	total := cbft.validatorPool.Len(cbft.state.Epoch())
+	total := cbft.currentValidatorLen()
 	vSet := utils.NewBitArray(uint32(total))
 	vSet = vSet.Or(initqc.ValidatorSet)
 
@@ -1804,7 +1805,7 @@ func (cbft *Cbft) generateViewChangeQC(viewChanges map[uint32]*protocols.ViewCha
 		ba     *utils.BitArray
 	}
 
-	total := uint32(cbft.validatorPool.Len(cbft.state.Epoch()))
+	total := uint32(cbft.currentValidatorLen())
 
 	qcs := make(map[common.Hash]*ViewChangeQC)
 
@@ -1856,7 +1857,7 @@ func (cbft *Cbft) combineViewChangeQC(viewChangeQCs []*ctypes.ViewChangeQC) *cty
 		aggSig *bls.Sign
 	}
 
-	total := uint32(cbft.validatorPool.Len(cbft.state.Epoch()))
+	total := uint32(cbft.currentValidatorLen())
 
 	qcs := make(map[common.Hash]*ViewChangeQC)
 
@@ -1943,6 +1944,10 @@ func (cbft *Cbft) verifyQuorumCert(qc *ctypes.QuorumCert) error {
 	if err := cbft.validatorPool.EnableVerifyEpoch(qc.Epoch); err != nil {
 		return err
 	}
+	validatorLen := cbft.validatorPool.Len(qc.Epoch)
+	if qc.ValidatorSet.Size() != uint32(validatorLen) {
+		return fmt.Errorf("verify QuorumCert failed,mismatched validator size,validatorSet:%d,validatorLen:%d", qc.ValidatorSet.Size(), validatorLen)
+	}
 
 	var cb []byte
 	var err error
@@ -1965,9 +1970,9 @@ func (cbft *Cbft) validateViewChangeQC(viewChangeQC *ctypes.ViewChangeQC, valida
 		return fmt.Errorf("viewchangeQC has small number of signature, total:%d, threshold:%d", signsTotal, threshold)
 	}
 	// check for duplicate signers
-	anoherTotal := viewChangeQC.ValidatorSet().HasLength()
-	if signsTotal != anoherTotal {
-		return fmt.Errorf("viewchangeQC has duplicate signers, signsTotal:%d, anoherTotal:%d", signsTotal, anoherTotal)
+	aTotal := viewChangeQC.HasLength()
+	if signsTotal != aTotal {
+		return fmt.Errorf("viewchangeQC has duplicate signers, signsTotal:%d, aTotal:%d", signsTotal, aTotal)
 	}
 
 	var err error
@@ -1975,6 +1980,11 @@ func (cbft *Cbft) validateViewChangeQC(viewChangeQC *ctypes.ViewChangeQC, valida
 	viewNumber := uint64(0)
 	existHash := make(map[common.Hash]interface{})
 	for i, vc := range viewChangeQC.QCs {
+		// check if ValidatorSet size is equal to validatorLimit
+		validatorLen := cbft.validatorPool.Len(vc.Epoch)
+		if vc.ValidatorSet.Size() != uint32(validatorLen) {
+			return fmt.Errorf("verify viewchangeQC failed,mismatched validator size,validatorSet:%d,validatorLen:%d", vc.ValidatorSet.Size(), validatorLimit)
+		}
 		// Check if it is the same view
 		if i == 0 {
 			epoch = vc.Epoch
@@ -2037,7 +2047,7 @@ func (cbft *Cbft) verifyGroupViewChangeQC(groupID uint32, viewChangeQC *ctypes.V
 	// check parameter validity
 	validatorLimit := cbft.groupLen(vcEpoch, groupID)
 	if err := cbft.validateViewChangeQC(viewChangeQC, validatorLimit); err != nil {
-		return err
+		return authFailedError{err}
 	}
 
 	return cbft.verifyViewChangeQuorumCerts(viewChangeQC)
