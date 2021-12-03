@@ -371,6 +371,19 @@ func getDefaultEMConfig(netId int8) *EconomicModel {
 			Restricting: restrictingConfigExtend{
 				MinimumRelease: new(big.Int).SetInt64(1),
 			},
+			Extend0170: EconomicModel0170Extend{
+				Common: EconomicModel0170CommonConfig{
+					MaxGroupValidators: 25,
+					CoordinatorsLimit:  5,
+					MaxConsensusVals:   25,
+				},
+				Staking: EconomicModel0170StakingConfig{
+					MaxValidators: 101,
+				},
+				Slashing: EconomicModel0170SlashingConfig{
+					ZeroProduceCumulativeTime: 30,
+				},
+			},
 		}
 	case DefaultUnitTestNet:
 		ec = &EconomicModel{
@@ -429,6 +442,19 @@ func getDefaultEMConfig(netId int8) *EconomicModel {
 			},
 			Restricting: restrictingConfigExtend{
 				MinimumRelease: new(big.Int).SetInt64(1),
+			},
+			Extend0170: EconomicModel0170Extend{
+				Common: EconomicModel0170CommonConfig{
+					MaxGroupValidators: 25,
+					CoordinatorsLimit:  5,
+					MaxConsensusVals:   4,
+				},
+				Staking: EconomicModel0170StakingConfig{
+					MaxValidators: 25,
+				},
+				Slashing: EconomicModel0170SlashingConfig{
+					ZeroProduceCumulativeTime: 3,
+				},
 			},
 		}
 	default:
