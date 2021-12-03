@@ -164,8 +164,16 @@ func (govPlugin *GovPlugin) BeginBlock(blockHash common.Hash, header *types.Head
 					log.Error("save EcHash0170 to stateDB failed.", "blockNumber", blockNumber, "blockHash", blockHash, "preActiveProposalID", preActiveVersionProposalID)
 					return err
 				}
+
+				if err := gov.UpdateGovernParamValue(gov.ModuleSlashing, gov.KeyZeroProduceCumulativeTime, fmt.Sprint(xcom.ZeroProduceCumulativeTime0170()), blockNumber, blockHash); err != nil {
+					return err
+				}
+				if err := gov.UpdateGovernParamValue(gov.ModuleStaking, gov.KeyMaxValidators, fmt.Sprint(xcom.MaxValidators0170()), blockNumber, blockHash); err != nil {
+					return err
+				}
 				log.Info("Successfully upgraded the new version 0.17.0", "blockNumber", blockNumber, "blockHash", blockHash, "preActiveProposalID", preActiveVersionProposalID)
 			}
+
 			header.SetActiveVersion(versionProposal.NewVersion)
 			log.Info("version proposal is active", "blockNumber", blockNumber, "proposalID", versionProposal.ProposalID, "newVersion", versionProposal.NewVersion, "newVersionString", xutil.ProgramVersion2Str(versionProposal.NewVersion))
 		}
