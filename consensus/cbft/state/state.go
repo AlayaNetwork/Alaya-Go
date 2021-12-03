@@ -840,6 +840,10 @@ func (vs *ViewState) RGBlockQuorumCertsIndexes(blockIndex, groupID uint32) []uin
 	return vs.viewRGBlockQuorumCerts.RGBlockQuorumCertsIndexes(blockIndex, groupID)
 }
 
+func (vs *ViewState) FindMaxGroupRGBlockQuorumCert(blockIndex, groupID uint32) *protocols.RGBlockQuorumCert {
+	return vs.viewRGBlockQuorumCerts.FindMaxGroupRGBlockQuorumCert(blockIndex, groupID)
+}
+
 // selectedRGBlockQuorumCerts
 func (vs *ViewState) AddSelectRGQuorumCerts(blockIndex, groupID uint32, rgqc *ctypes.QuorumCert, parentQC *ctypes.QuorumCert) {
 	vs.selectedRGBlockQuorumCerts.AddRGQuorumCerts(blockIndex, groupID, rgqc, parentQC)
@@ -878,6 +882,10 @@ func (vs *ViewState) RGViewChangeQuorumCertsLen(groupID uint32) int {
 
 func (vs *ViewState) RGViewChangeQuorumCertsIndexes(groupID uint32) []uint32 {
 	return vs.viewRGViewChangeQuorumCerts.RGViewChangeQuorumCertsIndexes(groupID)
+}
+
+func (vs *ViewState) FindMaxRGViewChangeQuorumCert(groupID uint32) *protocols.RGViewChangeQuorumCert {
+	return vs.viewRGViewChangeQuorumCerts.FindMaxRGViewChangeQuorumCert(groupID)
 }
 
 // selectedRGViewChangeQuorumCerts
@@ -1065,6 +1073,23 @@ func (grg *groupRGBlockQuorumCerts) findRGBlockQuorumCerts(groupID uint32, valid
 func (brg *viewRGBlockQuorumCerts) FindRGBlockQuorumCerts(blockIndex, groupID, validatorIndex uint32) *protocols.RGBlockQuorumCert {
 	if ps, ok := brg.BlockRGBlockQuorumCerts[blockIndex]; ok {
 		return ps.findRGBlockQuorumCerts(groupID, validatorIndex)
+	}
+	return nil
+}
+
+func (brg *viewRGBlockQuorumCerts) FindMaxGroupRGBlockQuorumCert(blockIndex, groupID uint32) *protocols.RGBlockQuorumCert {
+	if ps, ok := brg.BlockRGBlockQuorumCerts[blockIndex]; ok {
+		if gs, ok := ps.GroupRGBlockQuorumCerts[groupID]; ok {
+			var max *protocols.RGBlockQuorumCert
+			for _, rg := range gs.ValidatorRGBlockQuorumCerts {
+				if max == nil {
+					max = rg
+				} else if rg.BlockQC.HigherSign(max.BlockQC) {
+					max = rg
+				}
+			}
+			return max
+		}
 	}
 	return nil
 }
@@ -1339,6 +1364,21 @@ func (brg *viewRGViewChangeQuorumCerts) RGViewChangeQuorumCertsIndexes(groupID u
 			indexes = append(indexes, i)
 		}
 		return indexes
+	}
+	return nil
+}
+
+func (brg *viewRGViewChangeQuorumCerts) FindMaxRGViewChangeQuorumCert(groupID uint32) *protocols.RGViewChangeQuorumCert {
+	if ps, ok := brg.GroupRGViewChangeQuorumCerts[groupID]; ok {
+		var max *protocols.RGViewChangeQuorumCert
+		for _, rg := range ps.ValidatorRGViewChangeQuorumCerts {
+			if max == nil {
+				max = rg
+			} else if rg.ViewChangeQC.HigherSign(max.ViewChangeQC) {
+				max = rg
+			}
+		}
+		return max
 	}
 	return nil
 }
