@@ -188,7 +188,7 @@ func setup(t *testing.T) *mock.Chain {
 		t.Error("InitGenesisGovernParam, error", err)
 	}
 
-	RegisterGovernParamVerifiers()
+	RegisterGovernParamVerifiers(params.GenesisVersion)
 
 	if err := AddActiveVersion(params.GenesisVersion, 0, chain.StateDB); err != nil {
 		t.Error("AddActiveVersion, err", err)
