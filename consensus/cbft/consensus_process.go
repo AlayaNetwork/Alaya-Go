@@ -290,8 +290,7 @@ func (cbft *Cbft) AllowRGQuorumCert(msg ctypes.ConsensusMsg) error {
 	case *protocols.RGViewChangeQuorumCert:
 		groupID = rg.GroupID
 		//signsTotal = rg.ViewChangeQC.Len()
-		validatorSet = rg.ViewChangeQC.ValidatorSet()
-		signsTotal = validatorSet.HasLength()
+		signsTotal = rg.ViewChangeQC.HasLength()
 	}
 
 	if !cbft.enoughSigns(epoch, groupID, signsTotal) {
@@ -741,7 +740,7 @@ func (cbft *Cbft) trySendRGBlockQuorumCert() {
 		threshold := cbft.groupThreshold(cbft.state.Epoch(), groupID)
 		groupVotes := cbft.groupPrepareVotes(cbft.state.Epoch(), blockIndex, groupID)
 		if len(groupVotes) >= threshold {
-			// generatePrepareQC by votes
+			// generatePrepareQC by group votes
 			rgqc := cbft.generatePrepareQC(groupVotes)
 			// get parentQC
 			var parentQC *ctypes.QuorumCert
@@ -794,7 +793,7 @@ func (cbft *Cbft) trySendRGViewChangeQuorumCert() {
 		threshold := cbft.groupThreshold(cbft.state.Epoch(), groupID)
 		groupViewChanges := cbft.groupViewChanges(cbft.state.Epoch(), groupID)
 		if len(groupViewChanges) >= threshold {
-			// generatePrepareQC by votes
+			// generatePrepareQC by group votes
 			rgqc := cbft.generateViewChangeQC(groupViewChanges)
 			// get parentQC
 			prepareQCs := make(map[common.Hash]*ctypes.QuorumCert)
@@ -903,16 +902,15 @@ func (cbft *Cbft) mergeSelectedViewChangeQuorumCerts(node *cbfttypes.ValidateNod
 		cbft.log.Error("Failed to find the group info of the node", "epoch", vc.EpochNum(), "nodeID", node.NodeID.TerminalString(), "error", err)
 		return
 	}
-	validatorLen := cbft.validatorPool.Len(cbft.state.Epoch())
+	validatorLen := cbft.currentValidatorLen()
 	cbft.state.MergeViewChanges(groupID, []*protocols.ViewChange{vc}, validatorLen)
 }
 
 func (cbft *Cbft) richRGViewChangeQuorumCert(rgb *protocols.RGViewChangeQuorumCert) {
 	mergeVcs := cbft.groupViewChanges(rgb.EpochNum(), rgb.GroupID)
 	if len(mergeVcs) > 0 {
-		total := cbft.validatorPool.Len(cbft.state.Epoch())
 		for _, vc := range mergeVcs {
-			rgb.ViewChangeQC.MergeViewChange(vc, uint32(total))
+			cbft.MergeViewChange(rgb.ViewChangeQC, vc)
 			if !rgb.ViewChangeQC.ExistViewChange(vc.Epoch, vc.ViewNumber, vc.BlockHash) {
 				if vc.PrepareQC != nil {
 					rgb.PrepareQCs.AppendQuorumCert(vc.PrepareQC)
@@ -945,6 +943,36 @@ func (cbft *Cbft) richRGViewChangeQuorumCert(rgb *protocols.RGViewChangeQuorumCe
 			//		}
 			//	}
 			//}
+		}
+	}
+}
+
+func (cbft *Cbft) MergeViewChange(qcs *ctypes.ViewChangeQC, vc *protocols.ViewChange) {
+	validatorLen := cbft.currentValidatorLen()
+
+	if !qcs.ExistViewChange(vc.Epoch, vc.ViewNumber, vc.BlockHash) {
+		qc := &ctypes.ViewChangeQuorumCert{
+			Epoch:        vc.Epoch,
+			ViewNumber:   vc.ViewNumber,
+			BlockHash:    vc.BlockHash,
+			BlockNumber:  vc.BlockNumber,
+			ValidatorSet: utils.NewBitArray(uint32(validatorLen)),
+		}
+		if vc.PrepareQC != nil {
+			qc.BlockEpoch = vc.PrepareQC.Epoch
+			qc.BlockViewNumber = vc.PrepareQC.ViewNumber
+			//rgb.PrepareQCs.AppendQuorumCert(vc.PrepareQC)
+		}
+		qc.ValidatorSet.SetIndex(vc.ValidatorIndex, true)
+		qc.Signature.SetBytes(vc.Signature.Bytes())
+
+		qcs.AppendQuorumCert(qc)
+	} else {
+		for _, qc := range qcs.QCs {
+			if qc.BlockHash == vc.BlockHash && !qc.HasSign(vc.NodeIndex()) {
+				qc.AddSign(vc.Signature, vc.NodeIndex())
+				break
+			}
 		}
 	}
 }
@@ -1003,7 +1031,7 @@ func (cbft *Cbft) findQCBlock() {
 			qc = cbft.generatePrepareQC(cbft.state.AllPrepareVoteByIndex(next))
 			cbft.log.Debug("Enough prepareVote have been received, generate prepareQC", "qc", qc.String())
 		}
-		return size >= threshold
+		return qc.Len() >= threshold
 	}
 
 	enoughRGQuorumCerts := func() bool {
@@ -1011,14 +1039,14 @@ func (cbft *Cbft) findQCBlock() {
 		size := 0
 		if len(rgqcs) > 0 {
 			for _, qc := range rgqcs {
-				size += qc.ValidatorSet.HasLength()
+				size += qc.Len()
 			}
 		}
 		if size >= threshold {
 			qc = cbft.combinePrepareQC(rgqcs)
 			cbft.log.Debug("Enough RGBlockQuorumCerts have been received, combine prepareQC", "qc", qc.String())
 		}
-		return size >= threshold
+		return qc.Len() >= threshold
 	}
 
 	enoughCombine := func() bool {
@@ -1029,13 +1057,16 @@ func (cbft *Cbft) findQCBlock() {
 			allVotes := cbft.state.AllPrepareVoteByIndex(next)
 
 			for index, v := range allVotes {
+				if qc.Len() >= threshold {
+					break // The merge can be stopped when the threshold is reached
+				}
 				if !qc.HasSign(index) {
 					qc.AddSign(v.Signature, v.BlockIndex)
 				}
 			}
 			cbft.log.Debug("Enough RGBlockQuorumCerts and prepareVote have been received, combine prepareQC", "qc", qc.String())
 		}
-		return len(knownIndexes) >= threshold
+		return qc.Len() >= threshold
 	}
 
 	alreadyQC := func() bool {
@@ -1140,15 +1171,7 @@ func (cbft *Cbft) tryChangeView() {
 		return
 	}
 
-
-	// TODO: get groupvalidatorslimit and coordinatorlimit from gov
-	if shouldGroup() {
-		cbft.validatorPool.SetupGroup(true, 0, 0)
-	}
-
-	validatorLen := cbft.currentValidatorLen()
-	threshold := cbft.threshold(validatorLen)
-
+	threshold := cbft.threshold(cbft.currentValidatorLen())
 	var viewChangeQC *ctypes.ViewChangeQC
 
 	enoughViewChanges := func() bool {
@@ -1157,22 +1180,22 @@ func (cbft *Cbft) tryChangeView() {
 			viewChangeQC = cbft.generateViewChangeQC(cbft.state.AllViewChange())
 			cbft.log.Info("Receive enough viewchange, generate viewChangeQC", "view", cbft.state.ViewString(), "viewChangeQC", viewChangeQC.String())
 		}
-		return size >= threshold
+		return viewChangeQC.HasLength() >= threshold
 	}
 
 	enoughRGQuorumCerts := func() bool {
 		viewChangeQCs := cbft.state.FindMaxRGViewChangeQuorumCerts()
 		size := 0
 		if len(viewChangeQCs) > 0 {
-			for _, qc := range viewChangeQCs {
-				size += qc.ValidatorSet().HasLength()
+			for _, qcs := range viewChangeQCs {
+				size += qcs.HasLength()
 			}
 		}
 		if size >= threshold {
 			viewChangeQC = cbft.combineViewChangeQC(viewChangeQCs)
 			cbft.log.Debug("Enough RGViewChangeQuorumCerts have been received, combine ViewChangeQC", "qc", qc.String())
 		}
-		return size >= threshold
+		return viewChangeQC.HasLength() >= threshold
 	}
 
 	enoughCombine := func() bool {
@@ -1183,13 +1206,16 @@ func (cbft *Cbft) tryChangeView() {
 			allViewChanges := cbft.state.AllViewChange()
 
 			for index, v := range allViewChanges {
+				if viewChangeQC.HasLength() >= threshold {
+					break // The merge can be stopped when the threshold is reached
+				}
 				if !viewChangeQC.HasSign(index) {
-					viewChangeQC.MergeViewChange(v, uint32(validatorLen))
+					cbft.MergeViewChange(viewChangeQC, v)
 				}
 			}
 			cbft.log.Debug("Enough RGViewChangeQuorumCerts and viewchange have been received, combine ViewChangeQC", "qc", qc.String())
 		}
-		return len(knownIndexes) >= threshold
+		return viewChangeQC.HasLength() >= threshold
 	}
 
 	alreadyQC := func() bool {
@@ -1271,7 +1297,7 @@ func (cbft *Cbft) generateViewChangeQuorumCert(v *protocols.ViewChange) (*ctypes
 	if err != nil {
 		return nil, errors.Wrap(err, "local node is not validator")
 	}
-	total := uint32(cbft.validatorPool.Len(cbft.state.Epoch()))
+	total := uint32(cbft.currentValidatorLen())
 	var aggSig bls.Sign
 	if err := aggSig.Deserialize(v.Sign()); err != nil {
 		return nil, err
