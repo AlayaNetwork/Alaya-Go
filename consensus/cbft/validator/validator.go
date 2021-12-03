@@ -20,8 +20,9 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/AlayaNetwork/Alaya-Go/x/xutil"
 	"sync"
+
+	"github.com/AlayaNetwork/Alaya-Go/x/xutil"
 
 	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
 
@@ -311,8 +312,8 @@ type ValidatorPool struct {
 	// Uint ID of the group where the current node is located
 	unitID uint32
 
-	// needGroup indicates if validators need grouped
-	needGroup bool
+	// grouped indicates if validators need grouped
+	grouped bool
 	// max validators in per group
 	groupValidatorsLimit uint32
 	// coordinator limit
@@ -329,7 +330,7 @@ func NewValidatorPool(agency consensus.Agency, blockNumber, epoch uint64, nodeID
 		agency:               agency,
 		nodeID:               nodeID,
 		epoch:                epoch,
-		needGroup:            needGroup,
+		grouped:              needGroup,
 		groupValidatorsLimit: xutil.MaxGroupValidators(),
 		coordinatorLimit:     xutil.CoordinatorsLimit(),
 	}
@@ -377,7 +378,7 @@ func (vp *ValidatorPool) Reset(blockNumber uint64, epoch uint64, eventMux *event
 	if vp.currentValidators.ValidBlockNumber > 0 {
 		vp.switchPoint = vp.currentValidators.ValidBlockNumber - 1
 	}
-	if vp.needGroup {
+	if vp.grouped {
 		vp.currentValidators.Grouped(eventMux, epoch)
 		vp.unitID = vp.currentValidators.UnitID(vp.nodeID)
 	}
@@ -431,12 +432,12 @@ func (vp *ValidatorPool) Update(blockNumber uint64, epoch uint64, eventMux *even
 		return err
 	}
 
-	if vp.needGroup {
+	if vp.grouped {
 		nds.Grouped(eventMux, epoch)
 		vp.unitID = nds.UnitID(vp.nodeID)
 	}
 
-	if isElection && vp.needGroup {
+	if isElection && vp.grouped {
 		vp.nextValidators = nds
 		log.Info("Update nextValidators", "validators", nds.String(), "switchpoint", vp.switchPoint, "epoch", vp.epoch, "lastNumber", vp.lastNumber)
 	} else {
@@ -455,7 +456,7 @@ func (vp *ValidatorPool) SetupGroup(needGroup bool) {
 	vp.lock.Lock()
 	defer vp.lock.Unlock()
 
-	vp.needGroup = needGroup
+	vp.grouped = needGroup
 	vp.groupValidatorsLimit = xutil.MaxGroupValidators()
 	vp.coordinatorLimit = xutil.CoordinatorsLimit()
 }
@@ -689,7 +690,7 @@ func (vp *ValidatorPool) NeedGroup() bool {
 	vp.lock.RLock()
 	defer vp.lock.RUnlock()
 
-	return vp.needGroup
+	return vp.grouped
 }
 
 // GetGroupID return GroupID according epoch & NodeID
