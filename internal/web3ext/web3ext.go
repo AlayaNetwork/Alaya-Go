@@ -356,6 +356,11 @@ web3._extend({
 			name: 'disableDBGC',
 			call: 'debug_disableDBGC',
 		}),
+		new web3._extend.Method({
+			name: 'getPrepareQC',
+			call: 'debug_getPrepareQC',
+			params: 1
+		}),
 	],
 	properties: []
 });
@@ -412,11 +417,6 @@ web3._extend({
 			},
 			params: 2,
 			inputFormatter: [web3._extend.formatters.inputBlockNumberFormatter, web3._extend.utils.toHex]
-		}),
-		new web3._extend.Method({
-			name: 'getPrepareQC',
-			call: 'platon_getPrepareQC',
-			params: 1
 		}),
 	],
 	properties: [
