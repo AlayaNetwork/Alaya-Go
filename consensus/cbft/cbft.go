@@ -262,9 +262,6 @@ func (cbft *Cbft) Start(chain consensus.ChainReader, blockCache consensus.BlockC
 	cbft.state.SetHighestLockBlock(block)
 	cbft.state.SetHighestCommitBlock(block)
 
-	// init RGMsg broadcast manager
-	cbft.RGBroadcastManager = NewRGBroadcastManager(cbft)
-
 	// init handler and router to process message.
 	// cbft -> handler -> router.
 	cbft.network = network.NewEngineManger(cbft) // init engineManager as handler.
@@ -283,10 +280,14 @@ func (cbft *Cbft) Start(chain consensus.ChainReader, blockCache consensus.BlockC
 
 	needGroup := blockCache.GetActiveVersion(block.Header().SealHash()) >= params.FORKVERSION_0_17_0
 	if isGenesis() {
-		cbft.validatorPool = validator.NewValidatorPool(agency, block.NumberU64(), cstate.DefaultEpoch, cbft.config.Option.Node.ID(), needGroup, cbft.eventMux)
+    cbft.validatorPool = validator.NewValidatorPool(agency, block.NumberU64(), cstate.DefaultEpoch, cbft.config.Option.Node.ID(), needGroup, cbft.eventMux)
+		// init RGMsg broadcast manager
+		cbft.RGBroadcastManager = NewRGBroadcastManager(cbft)
 		cbft.changeView(cstate.DefaultEpoch, cstate.DefaultViewNumber, block, qc, nil)
 	} else {
-		cbft.validatorPool = validator.NewValidatorPool(agency, block.NumberU64(), qc.Epoch, cbft.config.Option.Node.ID(), needGroup, cbft.eventMux)
+    cbft.validatorPool = validator.NewValidatorPool(agency, block.NumberU64(), qc.Epoch, cbft.config.Option.Node.ID(), needGroup, cbft.eventMux)
+		// init RGMsg broadcast manager
+		cbft.RGBroadcastManager = NewRGBroadcastManager(cbft)
 		cbft.changeView(qc.Epoch, qc.ViewNumber, block, qc, nil)
 	}
 

@@ -92,8 +92,8 @@ func (q QuorumCert) CannibalizeBytes() ([]byte, error) {
 	return crypto.Keccak256(buf), nil
 }
 
-func (q QuorumCert) Len() int {
-	if q.ValidatorSet == nil {
+func (q *QuorumCert) Len() int {
+	if q == nil || q.ValidatorSet == nil {
 		return 0
 	}
 
@@ -148,7 +148,7 @@ func (q *QuorumCert) HigherSign(c *QuorumCert) bool {
 	if !q.EqualState(c) {
 		return false
 	}
-	return q.ValidatorSet.HasLength() >= c.ValidatorSet.HasLength()
+	return q.ValidatorSet.HasLength() > c.ValidatorSet.HasLength()
 }
 
 func (q *QuorumCert) HasSign(signIndex uint32) bool {
@@ -285,7 +285,7 @@ func (q *ViewChangeQuorumCert) HigherSign(c *ViewChangeQuorumCert) bool {
 	if !q.EqualState(c) {
 		return false
 	}
-	return q.ValidatorSet.HasLength() >= c.ValidatorSet.HasLength()
+	return q.ValidatorSet.HasLength() > c.ValidatorSet.HasLength()
 }
 
 func (q *ViewChangeQuorumCert) HasSign(signIndex uint32) bool {
@@ -341,6 +341,9 @@ func (v *ViewChangeQC) Len() int {
 }
 
 func (v *ViewChangeQC) HasLength() int {
+	if v == nil {
+		return 0
+	}
 	return v.ValidatorSet().HasLength()
 }
 

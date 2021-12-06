@@ -889,7 +889,7 @@ func (cbft *Cbft) richRGBlockQuorumCert(rgb *protocols.RGBlockQuorumCert) {
 	mergeVotes := cbft.groupPrepareVotes(rgb.EpochNum(), rgb.BlockIndx(), rgb.GroupID)
 	if len(mergeVotes) > 0 {
 		for _, v := range mergeVotes {
-			if !rgb.BlockQC.ValidatorSet.GetIndex(v.NodeIndex()) {
+			if !rgb.BlockQC.HasSign(v.NodeIndex()) {
 				rgb.BlockQC.AddSign(v.Signature, v.NodeIndex())
 			}
 		}
@@ -917,33 +917,6 @@ func (cbft *Cbft) richRGViewChangeQuorumCert(rgb *protocols.RGViewChangeQuorumCe
 					rgb.PrepareQCs.AppendQuorumCert(vc.PrepareQC)
 				}
 			}
-
-			//if !rgb.ViewChangeQC.ExistViewChange(vc.Epoch, vc.ViewNumber, vc.BlockHash) {
-			//	qc := &ctypes.ViewChangeQuorumCert{
-			//		Epoch:        vc.Epoch,
-			//		ViewNumber:   vc.ViewNumber,
-			//		BlockHash:    vc.BlockHash,
-			//		BlockNumber:  vc.BlockNumber,
-			//		ValidatorSet: utils.NewBitArray(uint32(total)),
-			//	}
-			//	if vc.PrepareQC != nil {
-			//		qc.BlockEpoch = vc.PrepareQC.Epoch
-			//		qc.BlockViewNumber = vc.PrepareQC.ViewNumber
-			//		rgb.PrepareQCs.AppendQuorumCert(vc.PrepareQC)
-			//	}
-			//	qc.ValidatorSet.SetIndex(vc.ValidatorIndex, true)
-			//	qc.Signature.SetBytes(vc.Signature.Bytes())
-			//
-			//	rgb.ViewChangeQC.AppendQuorumCert(qc)
-			//	rgb.ViewChangeQC.QCs = append(rgb.ViewChangeQC.QCs, qc)
-			//} else {
-			//	for _, qc := range rgb.ViewChangeQC.QCs {
-			//		if qc.BlockHash == vc.BlockHash && !qc.ValidatorSet.GetIndex(vc.NodeIndex()) {
-			//			qc.AddSign(vc.Signature, vc.NodeIndex())
-			//			break
-			//		}
-			//	}
-			//}
 		}
 	}
 }
