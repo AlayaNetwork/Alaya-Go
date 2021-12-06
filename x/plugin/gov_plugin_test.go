@@ -61,7 +61,7 @@ var (
 	stateDB xcom.StateDB
 	chainID = big.NewInt(100)
 
-//	stk            *StakingPlugin
+	//	stk            *StakingPlugin
 )
 
 func setup(t *testing.T) func() {
@@ -530,7 +530,7 @@ func TestGovPlugin_SubmitVersion_NewVersionError(t *testing.T) {
 		ProposalType:    gov.Version,
 		PIPID:           "versionPIPID",
 		SubmitBlock:     1,
-		EndVotingRounds: xutil.EstimateConsensusRoundsForGov(xcom.VersionProposalVote_DurationSeconds(), currentTestGenesisVersion),
+		EndVotingRounds: xutil.EstimateConsensusRoundsForGov(xcom.VersionProposalVote_DurationSeconds(), version),
 		Proposer:        nodeIdArr[0],
 		NewVersion:      newVersionErr, //error, less than activeVersion
 	}
