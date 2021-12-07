@@ -68,7 +68,7 @@ func (s *Stream) SetProtocol(p pubsub.ProtocolID) {
 func (s *Stream) Read(data interface{}) error {
 	msg, err := s.rw.ReadMsg()
 	if err != nil {
-		log.Debug("Failed to read PubSub message", "err", err)
+		log.Error("Failed to read PubSub message", "err", err)
 		return err
 	}
 

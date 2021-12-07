@@ -1,18 +1,19 @@
 package pubsub
 
 import (
+	crand "crypto/rand"
 	"encoding/binary"
 	"fmt"
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
+	"github.com/AlayaNetwork/Alaya-Go/p2p/pubsub/message"
 	"testing"
-
-	pb "github.com/libp2p/go-libp2p-pubsub/pb"
 )
 
 func TestMessageCache(t *testing.T) {
 	mcache := NewMessageCache(3, 5)
 	msgID := DefaultMsgIdFn
 
-	msgs := make([]*pb.Message, 60)
+	msgs := make([]*message.Message, 60)
 	for i := range msgs {
 		msgs[i] = makeTestMessage(i)
 	}
@@ -153,15 +154,17 @@ func TestMessageCache(t *testing.T) {
 
 }
 
-func makeTestMessage(n int) *pb.Message {
+func makeTestMessage(n int) *message.Message {
 	seqno := make([]byte, 8)
 	binary.BigEndian.PutUint64(seqno, uint64(n))
 	data := []byte(fmt.Sprintf("%d", n))
 	topic := "test"
-	return &pb.Message{
+	var from enode.ID
+	crand.Read(from[:])
+	return &message.Message{
 		Data:  data,
 		Topic: &topic,
-		From:  []byte("test"),
+		From:  from,
 		Seqno: seqno,
 	}
 }

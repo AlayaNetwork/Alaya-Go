@@ -1,11 +1,10 @@
 package pubsub
 
 import (
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
 	"math"
 	"testing"
 	"time"
-
-	"github.com/libp2p/go-libp2p-core/peer"
 )
 
 func TestPeerScoreThresholdsValidation(t *testing.T) {
@@ -146,7 +145,7 @@ func TestTopicScoreParamsValidation(t *testing.T) {
 }
 
 func TestPeerScoreParamsValidation(t *testing.T) {
-	appScore := func(peer.ID) float64 { return 0 }
+	appScore := func(enode.ID) float64 { return 0 }
 
 	if (&PeerScoreParams{TopicScoreCap: -1, AppSpecificScore: appScore, DecayInterval: time.Second, DecayToZero: 0.01}).validate() == nil {
 		t.Fatal("expected validation error")

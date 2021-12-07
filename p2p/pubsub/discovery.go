@@ -32,19 +32,9 @@ type discoverOptions struct {
 }
 
 func defaultDiscoverOptions() *discoverOptions {
-	/*rngSrc := rand.NewSource(rand.Int63())
-	minBackoff, maxBackoff := time.Second*10, time.Hour
-	cacheSize := 100
-	dialTimeout := time.Minute * 2
-	discoverOpts := &discoverOptions{
-		connFactory: func(host host.Host) (*discimpl.BackoffConnector, error) {
-			backoff := discimpl.NewExponentialBackoff(minBackoff, maxBackoff, discimpl.FullJitter, time.Second, 5.0, 0, rand.New(rngSrc))
-			return discimpl.NewBackoffConnector(host, cacheSize, dialTimeout, backoff)
-		},
-	}
+	discoverOpts := &discoverOptions{}
 
-	return discoverOpts*/
-	return nil
+	return discoverOpts
 }
 
 // discover represents the discovery pipeline.

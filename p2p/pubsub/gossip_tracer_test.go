@@ -1,12 +1,11 @@
 package pubsub
 
 import (
+	crand "crypto/rand"
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
+	"github.com/AlayaNetwork/Alaya-Go/p2p/pubsub/message"
 	"testing"
 	"time"
-
-	pb "github.com/libp2p/go-libp2p-pubsub/pb"
-
-	"github.com/libp2p/go-libp2p-core/peer"
 )
 
 func TestBrokenPromises(t *testing.T) {
@@ -14,14 +13,17 @@ func TestBrokenPromises(t *testing.T) {
 	gt := newGossipTracer()
 	gt.followUpTime = 100 * time.Millisecond
 
-	peerA := peer.ID("A")
-	peerB := peer.ID("B")
-	peerC := peer.ID("C")
+	var peerA enode.ID
+	crand.Read(peerA[:])
+	var peerB enode.ID
+	crand.Read(peerB[:])
+	var peerC enode.ID
+	crand.Read(peerC[:])
 
 	var mids []string
 	for i := 0; i < 100; i++ {
 		m := makeTestMessage(i)
-		m.From = []byte(peerA)
+		m.From = peerA
 		mid := DefaultMsgIdFn(m)
 		mids = append(mids, mid)
 	}
@@ -68,14 +70,16 @@ func TestNoBrokenPromises(t *testing.T) {
 
 	gt := newGossipTracer()
 
-	peerA := peer.ID("A")
-	peerB := peer.ID("B")
+	var peerA enode.ID
+	crand.Read(peerA[:])
+	var peerB enode.ID
+	crand.Read(peerB[:])
 
-	var msgs []*pb.Message
+	var msgs []*message.Message
 	var mids []string
 	for i := 0; i < 100; i++ {
 		m := makeTestMessage(i)
-		m.From = []byte(peerA)
+		m.From = peerA
 		msgs = append(msgs, m)
 		mid := DefaultMsgIdFn(m)
 		mids = append(mids, mid)

@@ -2,17 +2,21 @@ package pubsub
 
 import (
 	"context"
+	crand "crypto/rand"
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enr"
 	"testing"
 	"time"
-
-	"github.com/libp2p/go-libp2p-core/peer"
 )
 
 func TestPeerGater(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	peerA := peer.ID("A")
+	var peerAId enode.ID
+	crand.Read(peerAId[:])
+	peerA := enode.SignNull(new(enr.Record), peerAId)
+
 	peerAip := "1.2.3.4"
 
 	params := NewPeerGaterParams(.1, .9, .999)
@@ -22,9 +26,9 @@ func TestPeerGater(t *testing.T) {
 	}
 
 	pg := newPeerGater(ctx, nil, params)
-	pg.getIP = func(p peer.ID) string {
+	pg.getIP = func(p enode.ID) string {
 		switch p {
-		case peerA:
+		case peerAId:
 			return peerAip
 		default:
 			return "<wtf>"
@@ -98,9 +102,9 @@ func TestPeerGater(t *testing.T) {
 		t.Fatal("expected AcceptAll")
 	}
 
-	pg.RemovePeer(peerA)
+	pg.RemovePeer(peerAId)
 	pg.Lock()
-	_, ok := pg.peerStats[peerA]
+	_, ok := pg.peerStats[peerAId]
 	pg.Unlock()
 	if ok {
 		t.Fatal("still have a stat record for peerA")

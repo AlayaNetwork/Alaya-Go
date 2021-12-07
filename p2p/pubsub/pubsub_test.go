@@ -6,6 +6,7 @@ import (
 	crand "crypto/rand"
 	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
 	"github.com/AlayaNetwork/Alaya-Go/p2p/enr"
+	"github.com/AlayaNetwork/Alaya-Go/rlp"
 	"github.com/libp2p/go-libp2p-core/connmgr"
 	"math/rand"
 	"sync"
@@ -13,8 +14,83 @@ import (
 	"time"
 )
 
+type TestStream struct {
+	conn  Conn
+	read  chan []byte
+	write chan []byte
+}
+
+func (s *TestStream) Protocol() ProtocolID {
+	return GossipSubID_v11
+}
+
+// Conn returns the connection this stream is part of.
+func (s *TestStream) Conn() Conn {
+	return s.conn
+}
+
+func (s *TestStream) Read(data interface{}) error {
+	outData := <-s.read
+	return rlp.DecodeBytes(outData, data)
+}
+
+func (s *TestStream) Write(data interface{}) error {
+	enVal, err := rlp.EncodeToBytes(data)
+	if err != nil {
+		return err
+	}
+	s.write <- enVal
+	return nil
+}
+
+func (s *TestStream) Close(err error) {
+}
+
+type TestConn struct {
+	remote *enode.Node
+	stat   Stat
+
+	streams struct {
+		sync.Mutex
+		m map[Stream]struct{}
+	}
+}
+
+func (c *TestConn) ID() string {
+	return c.remote.ID().String()
+}
+
+func (c *TestConn) GetStreams() []Stream {
+	c.streams.Lock()
+	defer c.streams.Unlock()
+	streams := make([]Stream, 0, len(c.streams.m))
+	for s := range c.streams.m {
+		streams = append(streams, s)
+	}
+	return streams
+}
+
+func (c *TestConn) Stat() Stat {
+	return c.stat
+}
+
+func (c *TestConn) RemotePeer() *enode.Node {
+	return c.remote
+}
+
+func (c *TestConn) Close() error {
+	c.streams.Lock()
+	defer c.streams.Unlock()
+	for s := range c.streams.m {
+		s.Close(nil)
+	}
+	c.streams.m = nil
+	return nil
+}
+
 type TestNetwork struct {
 	sync.RWMutex
+	m map[Notifiee]struct{}
 
 	conns struct {
 		sync.RWMutex
@@ -23,19 +99,75 @@ type TestNetwork struct {
 }
 
 func (n *TestNetwork) ConnsToPeer(p enode.ID) []Conn {
-	return nil
+	n.conns.Lock()
+	defer n.conns.Unlock()
+	return n.conns.m[p]
 }
 
 func (n *TestNetwork) Connectedness(enode.ID) Connectedness {
 	return NotConnected
 }
 
-func (n *TestNetwork) Notify(Notifiee) {
+func (n *TestNetwork) Notify(nf Notifiee) {
+	n.Lock()
+	n.m[nf] = struct{}{}
+	n.Unlock()
+}
 
+// notifyAll sends a signal to all Notifiees
+func (n *TestNetwork) NotifyAll(conn Conn) {
+	var wg sync.WaitGroup
+
+	n.RLock()
+	wg.Add(len(n.m))
+	for f := range n.m {
+		go func(f Notifiee) {
+			defer wg.Done()
+			f.Connected(n, conn)
+		}(f)
+	}
+
+	wg.Wait()
+	n.RUnlock()
 }
 
 func (n *TestNetwork) Peers() []enode.ID {
+	n.conns.Lock()
+	defer n.conns.Unlock()
+	var peers []enode.ID
+	for pid := range n.conns.m {
+		peers = append(peers, pid)
+	}
+	return peers
+}
+
+func (n *TestNetwork) Close() error {
+	n.conns.Lock()
+	defer n.conns.Unlock()
+	for _, c := range n.conns.m {
+		if err := c[0].Close(); err != nil {
+			return err
+		}
+	}
 	return nil
+}
+
+func (n *TestNetwork) SetConn(p enode.ID, conn Conn) {
+	n.conns.RLock()
+	defer n.conns.RUnlock()
+	conns := make([]Conn, 0, 1)
+	conns = append(conns, conn)
+	n.conns.m[p] = conns
+}
+
+func (n *TestNetwork) Conns() []Conn {
+	n.conns.RLock()
+	defer n.conns.RUnlock()
+	var connList []Conn
+	for _, cs := range n.conns.m {
+		connList = append(connList, cs...)
+	}
+	return connList
 }
 
 type TestHost struct {
@@ -48,7 +180,9 @@ type TestHost struct {
 func NewTestHost() *TestHost {
 	var p enode.ID
 	crand.Read(p[:])
-	netw := &TestNetwork{}
+	netw := &TestNetwork{
+		m: make(map[Notifiee]struct{}),
+	}
 	netw.conns.m = make(map[enode.ID][]Conn)
 	h := &TestHost{
 		network:     netw,
@@ -80,6 +214,12 @@ func (h *TestHost) SetStreamHandler(pid ProtocolID, handler StreamHandler) {
 func (h *TestHost) SetStreamHandlerMatch(ProtocolID, func(string) bool, StreamHandler) {
 }
 
+func (h *TestHost) StreamHandler(pid ProtocolID) StreamHandler {
+	h.handlerLock.Lock()
+	defer h.handlerLock.Unlock()
+	return h.handlers[pid]
+}
+
 func (h *TestHost) RemoveStreamHandler(pid ProtocolID) {
 	h.handlerLock.Lock()
 	defer h.handlerLock.Unlock()
@@ -87,15 +227,38 @@ func (h *TestHost) RemoveStreamHandler(pid ProtocolID) {
 }
 
 func (h *TestHost) NewStream(ctx context.Context, p enode.ID, pids ...ProtocolID) (Stream, error) {
-	return nil, nil
+	return h.newStream(p, make(chan []byte), make(chan []byte))
+}
+
+func (h *TestHost) newStream(p enode.ID, read chan []byte, write chan []byte) (Stream, error) {
+	if conns := h.network.ConnsToPeer(p); len(conns) > 0 {
+		if streams := conns[0].GetStreams(); len(streams) > 0 {
+			return streams[0], nil
+		}
+	}
+	conn := &TestConn{
+		remote: enode.SignNull(new(enr.Record), p),
+		stat:   Stat{},
+	}
+	conn.streams.m = make(map[Stream]struct{})
+
+	stream := &TestStream{
+		conn:  conn,
+		read:  read,
+		write: write,
+	}
+	conn.streams.m[stream] = struct{}{}
+
+	h.network.SetConn(p, conn)
+	return stream, nil
 }
 
 func (h *TestHost) Close() error {
-	return nil
+	return h.network.Close()
 }
 
 func (h *TestHost) ConnManager() connmgr.ConnManager {
-	return nil
+	return &connmgr.NullConnMgr{}
 }
 
 func checkMessageRouting(t *testing.T, topic string, pubs []*PubSub, subs []*Subscription) {
@@ -125,9 +288,20 @@ func getNetHosts(t *testing.T, ctx context.Context, n int) []Host {
 }
 
 func connect(t *testing.T, a, b Host) {
-	err := b.Connect(context.Background(), a.ID().ID())
-	if err != nil {
+	hostA := a.(*TestHost)
+	hostB := b.(*TestHost)
+	chan1 := make(chan []byte, 100)
+	chan2 := make(chan []byte, 100)
+	if stream, err := hostA.newStream(b.ID().ID(), chan2, chan1); err != nil {
 		t.Fatal(err)
+	} else {
+		hostA.network.NotifyAll(stream.Conn())
+	}
+
+	if stream, err := hostB.newStream(a.ID().ID(), chan1, chan2); err != nil {
+		t.Fatal(err)
+	} else {
+		hostB.network.NotifyAll(stream.Conn())
 	}
 }
 
@@ -167,22 +341,6 @@ func connectAll(t *testing.T, hosts []Host) {
 	}
 }
 
-func getPubsub(ctx context.Context, h Host, opts ...Option) *PubSub {
-	ps, err := NewGossipSub(ctx, h, opts...)
-	if err != nil {
-		panic(err)
-	}
-	return ps
-}
-
-func getPubsubs(ctx context.Context, hs []Host, opts ...Option) []*PubSub {
-	var psubs []*PubSub
-	for _, h := range hs {
-		psubs = append(psubs, getPubsub(ctx, h, opts...))
-	}
-	return psubs
-}
-
 func assertReceive(t *testing.T, ch *Subscription, exp []byte) {
 	select {
 	case msg := <-ch.ch:
@@ -218,7 +376,7 @@ func assertPeerLists(t *testing.T, hosts []Host, ps *PubSub, has ...int) {
 	}
 }
 
-// See https://github.com/libp2p/go-libp2p-pubsub/issues/426
+//See https://github.com/libp2p/go-libp2p-pubsub/issues/426
 func TestPubSubRemovesBlacklistedPeer(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -226,8 +384,8 @@ func TestPubSubRemovesBlacklistedPeer(t *testing.T) {
 
 	bl := NewMapBlacklist()
 
-	psubs0 := getPubsub(ctx, hosts[0])
-	psubs1 := getPubsub(ctx, hosts[1], WithBlacklist(bl))
+	psubs0 := getGossipsub(ctx, hosts[0])
+	psubs1 := getGossipsub(ctx, hosts[1], WithBlacklist(bl))
 	connect(t, hosts[0], hosts[1])
 
 	// Bad peer is blacklisted after it has connected.

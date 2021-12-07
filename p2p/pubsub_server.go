@@ -57,7 +57,7 @@ func (pss *PubSubServer) NewConn(peer *Peer, rw MsgReadWriter) chan error {
 	// Wait for the connection to exit
 	errCh := make(chan error)
 
-	stream := NewStream(conn, rw, errCh, "")
+	stream := NewStream(conn, rw, errCh, pubsub.GossipSubID_v11)
 	conn.SetStream(stream)
 
 	pss.Host().SetStream(peer.ID(), stream)

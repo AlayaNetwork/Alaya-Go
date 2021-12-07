@@ -4,11 +4,10 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
 	"sync"
 	"testing"
 	"time"
-
-	"github.com/libp2p/go-libp2p-core/peer"
 )
 
 func TestRegisterUnregisterValidator(t *testing.T) {
@@ -16,9 +15,9 @@ func TestRegisterUnregisterValidator(t *testing.T) {
 	defer cancel()
 
 	hosts := getNetHosts(t, ctx, 1)
-	psubs := getPubsubs(ctx, hosts)
+	psubs := getGossipsubs(ctx, hosts)
 
-	err := psubs[0].RegisterTopicValidator("foo", func(context.Context, peer.ID, *Message) bool {
+	err := psubs[0].RegisterTopicValidator("foo", func(context.Context, enode.ID, *Message) bool {
 		return true
 	})
 	if err != nil {
@@ -41,10 +40,10 @@ func TestRegisterValidatorEx(t *testing.T) {
 	defer cancel()
 
 	hosts := getNetHosts(t, ctx, 3)
-	psubs := getPubsubs(ctx, hosts)
+	psubs := getGossipsubs(ctx, hosts)
 
 	err := psubs[0].RegisterTopicValidator("test",
-		Validator(func(context.Context, peer.ID, *Message) bool {
+		Validator(func(context.Context, enode.ID, *Message) bool {
 			return true
 		}))
 	if err != nil {
@@ -52,7 +51,7 @@ func TestRegisterValidatorEx(t *testing.T) {
 	}
 
 	err = psubs[1].RegisterTopicValidator("test",
-		ValidatorEx(func(context.Context, peer.ID, *Message) ValidationResult {
+		ValidatorEx(func(context.Context, enode.ID, *Message) ValidationResult {
 			return ValidationAccept
 		}))
 	if err != nil {
@@ -70,12 +69,12 @@ func TestValidate(t *testing.T) {
 	defer cancel()
 
 	hosts := getNetHosts(t, ctx, 2)
-	psubs := getPubsubs(ctx, hosts)
+	psubs := getGossipsubs(ctx, hosts)
 
 	connect(t, hosts[0], hosts[1])
 	topic := "foobar"
 
-	err := psubs[1].RegisterTopicValidator(topic, func(ctx context.Context, from peer.ID, msg *Message) bool {
+	err := psubs[1].RegisterTopicValidator(topic, func(ctx context.Context, from enode.ID, msg *Message) bool {
 		return !bytes.Contains(msg.Data, []byte("illegal"))
 	})
 	if err != nil {
@@ -124,11 +123,11 @@ func TestValidate2(t *testing.T) {
 	defer cancel()
 
 	hosts := getNetHosts(t, ctx, 1)
-	psubs := getPubsubs(ctx, hosts)
+	psubs := getGossipsubs(ctx, hosts)
 
 	topic := "foobar"
 
-	err := psubs[0].RegisterTopicValidator(topic, func(ctx context.Context, from peer.ID, msg *Message) bool {
+	err := psubs[0].RegisterTopicValidator(topic, func(ctx context.Context, from enode.ID, msg *Message) bool {
 		return !bytes.Contains(msg.Data, []byte("illegal"))
 	})
 	if err != nil {
@@ -202,7 +201,7 @@ func TestValidateOverload(t *testing.T) {
 	for _, tc := range tcs {
 
 		hosts := getNetHosts(t, ctx, 2)
-		psubs := getPubsubs(ctx, hosts)
+		psubs := getGossipsubs(ctx, hosts)
 
 		connect(t, hosts[0], hosts[1])
 		topic := "foobar"
@@ -210,7 +209,7 @@ func TestValidateOverload(t *testing.T) {
 		block := make(chan struct{})
 
 		err := psubs[1].RegisterTopicValidator(topic,
-			func(ctx context.Context, from peer.ID, msg *Message) bool {
+			func(ctx context.Context, from enode.ID, msg *Message) bool {
 				<-block
 				return true
 			},
@@ -273,7 +272,7 @@ func TestValidateAssortedOptions(t *testing.T) {
 	defer cancel()
 
 	hosts := getNetHosts(t, ctx, 10)
-	psubs := getPubsubs(ctx, hosts,
+	psubs := getGossipsubs(ctx, hosts,
 		WithValidateQueueSize(10),
 		WithValidateThrottle(10),
 		WithValidateWorkers(10))
@@ -282,7 +281,7 @@ func TestValidateAssortedOptions(t *testing.T) {
 
 	for _, psub := range psubs {
 		err := psub.RegisterTopicValidator("test1",
-			func(context.Context, peer.ID, *Message) bool {
+			func(context.Context, enode.ID, *Message) bool {
 				return true
 			},
 			WithValidatorTimeout(100*time.Millisecond))
@@ -291,7 +290,7 @@ func TestValidateAssortedOptions(t *testing.T) {
 		}
 
 		err = psub.RegisterTopicValidator("test2",
-			func(context.Context, peer.ID, *Message) bool {
+			func(context.Context, enode.ID, *Message) bool {
 				return true
 			},
 			WithValidatorInline(true))

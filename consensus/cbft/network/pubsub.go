@@ -70,11 +70,12 @@ type PubSub struct {
 
 // Protocol.Run()
 func (ps *PubSub) handler(peer *p2p.Peer, rw p2p.MsgReadWriter) error {
-
 	errCh := ps.pss.NewConn(peer, rw)
+	defer ps.pss.Host().DisConn(peer.ID())
 
 	handlerErr := <-errCh
 	log.Info("pubsub's handler ends", "err", handlerErr)
+
 	return handlerErr
 }
 

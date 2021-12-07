@@ -59,6 +59,12 @@ func (n *Network) SetConn(p enode.ID, conn pubsub.Conn) {
 	n.conns.m[p] = conns
 }
 
+func (n *Network) RemoveConn(p enode.ID) {
+	n.conns.RLock()
+	defer n.conns.RUnlock()
+	delete(n.conns.m, p)
+}
+
 func (n *Network) ConnsToPeer(p enode.ID) []pubsub.Conn {
 	n.conns.RLock()
 	defer n.conns.RUnlock()
@@ -77,6 +83,16 @@ func (n *Network) Connectedness(id enode.ID) pubsub.Connectedness {
 		}
 	}
 	return pubsub.NotConnected
+}
+
+func (n *Network) Conns() []pubsub.Conn {
+	n.conns.RLock()
+	defer n.conns.RUnlock()
+	connList := make([]pubsub.Conn, 0, len(n.conns.m))
+	for _, cs := range n.conns.m {
+		connList = append(connList, cs...)
+	}
+	return connList
 }
 
 func (n *Network) Notify(f pubsub.Notifiee) {
@@ -114,6 +130,10 @@ func (n *Network) Peers() []enode.ID {
 		eids = append(eids, p.ID())
 	}
 	return eids
+}
+
+func (n *Network) Close() error {
+	return nil
 }
 
 type Conn struct {
@@ -170,4 +190,8 @@ func (c *Conn) Stat() pubsub.Stat {
 
 func (c *Conn) RemotePeer() *enode.Node {
 	return c.remote
+}
+
+func (c *Conn) Close() error {
+	return nil
 }

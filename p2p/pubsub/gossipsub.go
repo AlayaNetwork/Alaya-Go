@@ -331,7 +331,6 @@ func WithPeerExchange(doPX bool) Option {
 		direct := make(map[enode.ID]struct{})
 		for _, pi := range pis {
 			direct[pi.ID()] = struct{}{}
-			ps.host.Peerstore().AddAddrs(pi.ID(), PermanentAddrTTL)
 		}
 
 		gs.direct = direct
@@ -998,8 +997,9 @@ func (gs *GossipSubRouter) Publish(msg *Message) {
 	}
 
 	out := rpcWithMessages(msg.Message)
+
 	for pid := range tosend {
-		if pid == from.ID() || pid == enode.ID(msg.GetFrom()) {
+		if pid == from.ID() || pid == msg.GetFrom() {
 			continue
 		}
 
@@ -1190,12 +1190,12 @@ func fragmentRPC(rpc *RPC, limit int) ([]*RPC, error) {
 		if s > limit {
 			return nil, fmt.Errorf("message with len=%d exceeds limit %d", s, limit)
 		}
-		out := outRPC(s, false)
+		out := outRPC(s, true)
 		out.Publish = append(out.Publish, msg)
 	}
 
 	for _, sub := range rpc.GetSubscriptions() {
-		out := outRPC(sub.Size(), false)
+		out := outRPC(sub.Size(), true)
 		out.Subscriptions = append(out.Subscriptions, sub)
 	}
 
