@@ -24,6 +24,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/AlayaNetwork/Alaya-Go/event"
+
 	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
 
 	"github.com/AlayaNetwork/Alaya-Go/core/rawdb"
@@ -80,7 +82,7 @@ func TestBls(t *testing.T) {
 	agency := validator.NewStaticAgency(nodes)
 
 	cbft := &Cbft{
-		validatorPool: validator.NewValidatorPool(agency, 0, 0, nodes[0].Node.ID(), false),
+		validatorPool: validator.NewValidatorPool(agency, 0, 0, nodes[0].Node.ID(), false, new(event.TypeMux)),
 		config: ctypes.Config{
 			Option: &ctypes.OptionsConfig{
 				BlsPriKey: owner,
@@ -105,7 +107,7 @@ func TestPrepareBlockBls(t *testing.T) {
 	agency := validator.NewStaticAgency([]params.CbftNode{node})
 
 	cbft := &Cbft{
-		validatorPool: validator.NewValidatorPool(agency, 0, 0, node.Node.ID(), false),
+		validatorPool: validator.NewValidatorPool(agency, 0, 0, node.Node.ID(), false, new(event.TypeMux)),
 		config: ctypes.Config{
 			Option: &ctypes.OptionsConfig{
 				BlsPriKey: owner,
@@ -174,7 +176,7 @@ func TestAgg(t *testing.T) {
 
 	for i := 0; i < num; i++ {
 		cnode[i] = &Cbft{
-			validatorPool: validator.NewValidatorPool(agency, 0, 0, nodes[0].Node.ID(), false),
+			validatorPool: validator.NewValidatorPool(agency, 0, 0, nodes[0].Node.ID(), false, new(event.TypeMux)),
 			config: ctypes.Config{
 				Option: &ctypes.OptionsConfig{
 					BlsPriKey: sk[i],
