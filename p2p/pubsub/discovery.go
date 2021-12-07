@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/prometheus/common/log"
+	"github.com/AlayaNetwork/Alaya-Go/log"
 
 	"github.com/libp2p/go-libp2p-core/discovery"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -180,7 +180,7 @@ func (d *discover) Advertise(topic string) {
 	go func() {
 		next, err := d.discovery.Advertise(advertisingCtx, topic)
 		if err != nil {
-			log.Warnf("bootstrap: error providing rendezvous for %s: %s", topic, err.Error())
+			log.Warn("bootstrap: error providing rendezvous for %s: %s", "topic", topic, "err", err)
 			if next == 0 {
 				next = discoveryAdvertiseRetryInterval
 			}
@@ -194,7 +194,7 @@ func (d *discover) Advertise(topic string) {
 			case <-t.C:
 				next, err = d.discovery.Advertise(advertisingCtx, topic)
 				if err != nil {
-					log.Warnf("bootstrap: error providing rendezvous for %s: %s", topic, err.Error())
+					log.Warn("bootstrap: error providing rendezvous for %s: %s", "topic", topic, "err", err)
 					if next == 0 {
 						next = discoveryAdvertiseRetryInterval
 					}

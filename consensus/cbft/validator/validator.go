@@ -22,6 +22,8 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/AlayaNetwork/Alaya-Go/x/xcom"
+
 	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
 
 	"github.com/AlayaNetwork/Alaya-Go/core/state"
@@ -310,8 +312,8 @@ type ValidatorPool struct {
 	// Uint ID of the group where the current node is located
 	unitID uint32
 
-	// needGroup indicates if validators need grouped
-	needGroup bool
+	// grouped indicates if validators need grouped
+	grouped bool
 	// max validators in per group
 	groupValidatorsLimit uint32
 	// coordinator limit
@@ -323,14 +325,14 @@ type ValidatorPool struct {
 }
 
 // NewValidatorPool new a validator pool.
-func NewValidatorPool(agency consensus.Agency, blockNumber, epoch uint64, nodeID enode.ID, needGroup bool, groupValidatorsLimit, coordinatorLimit uint32, eventMux *event.TypeMux) *ValidatorPool {
+func NewValidatorPool(agency consensus.Agency, blockNumber, epoch uint64, nodeID enode.ID, needGroup bool, eventMux *event.TypeMux) *ValidatorPool {
 	pool := &ValidatorPool{
 		agency:               agency,
 		nodeID:               nodeID,
 		epoch:                epoch,
-		needGroup:            needGroup,
-		groupValidatorsLimit: groupValidatorsLimit,
-		coordinatorLimit:     coordinatorLimit,
+		grouped:              needGroup,
+		groupValidatorsLimit: xcom.MaxGroupValidators(),
+		coordinatorLimit:     xcom.CoordinatorsLimit(),
 	}
 	// FIXME: Check `GetValidators` return error
 	if agency.GetLastNumber(blockNumber) == blockNumber {
@@ -353,7 +355,7 @@ func NewValidatorPool(agency consensus.Agency, blockNumber, epoch uint64, nodeID
 		pool.switchPoint = pool.currentValidators.ValidBlockNumber - 1
 	}
 	if needGroup {
-		pool.prevValidators.Grouped(groupValidatorsLimit, coordinatorLimit, eventMux, epoch)
+		pool.prevValidators.Grouped(eventMux, epoch)
 		pool.unitID = pool.currentValidators.UnitID(nodeID)
 	}
 	log.Debug("Update validator", "validators", pool.currentValidators.String(), "switchpoint", pool.switchPoint, "epoch", pool.epoch, "lastNumber", pool.lastNumber)
@@ -376,8 +378,8 @@ func (vp *ValidatorPool) Reset(blockNumber uint64, epoch uint64, eventMux *event
 	if vp.currentValidators.ValidBlockNumber > 0 {
 		vp.switchPoint = vp.currentValidators.ValidBlockNumber - 1
 	}
-	if vp.needGroup {
-		vp.currentValidators.Grouped(vp.groupValidatorsLimit, vp.coordinatorLimit, eventMux, epoch)
+	if vp.grouped {
+		vp.currentValidators.Grouped(eventMux, epoch)
 		vp.unitID = vp.currentValidators.UnitID(vp.nodeID)
 	}
 	log.Debug("Update validator", "validators", vp.currentValidators.String(), "switchpoint", vp.switchPoint, "epoch", vp.epoch, "lastNumber", vp.lastNumber)
@@ -413,12 +415,12 @@ func (vp *ValidatorPool) MockSwitchPoint(number uint64) {
 }
 
 // Update switch validators.
-func (vp *ValidatorPool) Update(blockNumber uint64, epoch uint64, eventMux *event.TypeMux) error {
+func (vp *ValidatorPool) Update(blockNumber uint64, epoch uint64, isElection bool, eventMux *event.TypeMux) error {
 	vp.lock.Lock()
 	defer vp.lock.Unlock()
 
-	// Only updated once
-	if blockNumber <= vp.switchPoint {
+	// Election block update nextValidators
+	if blockNumber <= vp.switchPoint && !isElection {
 		log.Debug("Already update validator before", "blockNumber", blockNumber, "switchPoint", vp.switchPoint)
 		return errors.New("already updated before")
 	}
@@ -428,27 +430,34 @@ func (vp *ValidatorPool) Update(blockNumber uint64, epoch uint64, eventMux *even
 		log.Error("Get validator error", "blockNumber", blockNumber, "err", err)
 		return err
 	}
-	if vp.needGroup {
-		nds.Grouped(vp.groupValidatorsLimit, vp.coordinatorLimit, eventMux, epoch)
+
+	if vp.grouped {
+		nds.Grouped(eventMux, epoch)
 		vp.unitID = nds.UnitID(vp.nodeID)
 	}
-	vp.prevValidators = vp.currentValidators
-	vp.currentValidators = nds
-	vp.switchPoint = nds.ValidBlockNumber - 1
-	vp.lastNumber = vp.agency.GetLastNumber(NextRound(blockNumber))
-	vp.epoch = epoch
-	log.Info("Update validator", "validators", nds.String(), "switchpoint", vp.switchPoint, "epoch", vp.epoch, "lastNumber", vp.lastNumber)
+
+	if isElection && vp.grouped {
+		vp.nextValidators = nds
+		log.Info("Update nextValidators", "validators", nds.String(), "switchpoint", vp.switchPoint, "epoch", vp.epoch, "lastNumber", vp.lastNumber)
+	} else {
+		vp.prevValidators = vp.currentValidators
+		vp.currentValidators = nds
+		vp.switchPoint = nds.ValidBlockNumber - 1
+		vp.lastNumber = vp.agency.GetLastNumber(NextRound(blockNumber))
+		vp.epoch = epoch
+		log.Info("Update validator", "validators", nds.String(), "switchpoint", vp.switchPoint, "epoch", vp.epoch, "lastNumber", vp.lastNumber)
+	}
 	return nil
 }
 
 // SetupGroup update validatorpool group info
-func (vp *ValidatorPool) SetupGroup(needGroup bool, groupValidatorsLimit, coordinatorLimit uint32) {
+func (vp *ValidatorPool) SetupGroup(needGroup bool) {
 	vp.lock.Lock()
 	defer vp.lock.Unlock()
 
-	vp.needGroup = needGroup
-	vp.groupValidatorsLimit = groupValidatorsLimit
-	vp.coordinatorLimit = coordinatorLimit
+	vp.grouped = needGroup
+	vp.groupValidatorsLimit = xcom.MaxGroupValidators()
+	vp.coordinatorLimit = xcom.CoordinatorsLimit()
 }
 
 // GetValidatorByNodeID get the validator by node id.
@@ -680,7 +689,7 @@ func (vp *ValidatorPool) NeedGroup() bool {
 	vp.lock.RLock()
 	defer vp.lock.RUnlock()
 
-	return vp.needGroup
+	return vp.grouped
 }
 
 // GetGroupID return GroupID according epoch & NodeID
@@ -786,4 +795,25 @@ func (vp *ValidatorPool) GetGroupByValidatorID(epoch uint64, nodeID enode.ID) (u
 	}
 	unitID := validators.UnitID(nodeID)
 	return groupID, unitID, nil
+}
+
+// 返回指定epoch下节点的分组信息，key=groupID，value=分组节点index集合
+func (vp *ValidatorPool) GetGroupIndexes(epoch uint64) map[uint32][]uint32 {
+	vp.lock.RLock()
+	defer vp.lock.RUnlock()
+
+	validators := vp.currentValidators
+	if vp.epochToBlockNumber(epoch) <= vp.switchPoint {
+		validators = vp.prevValidators
+	}
+	groupIdxs := make(map[uint32][]uint32, len(validators.GroupNodes))
+	var err error
+	for i, _ := range validators.GroupNodes {
+		gid := uint32(i)
+		groupIdxs[gid], err = validators.GetValidatorIndexes(gid)
+		if nil != err {
+			log.Error("GetValidatorIndexes failed!", "err", err)
+		}
+	}
+	return groupIdxs
 }

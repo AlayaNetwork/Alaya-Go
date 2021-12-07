@@ -18,14 +18,13 @@ package types
 
 import (
 	"fmt"
-	"reflect"
-
 	"github.com/AlayaNetwork/Alaya-Go/common"
 	"github.com/AlayaNetwork/Alaya-Go/common/hexutil"
 	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/utils"
 	"github.com/AlayaNetwork/Alaya-Go/crypto"
 	"github.com/AlayaNetwork/Alaya-Go/crypto/bls"
 	"github.com/AlayaNetwork/Alaya-Go/rlp"
+	"reflect"
 )
 
 const (
@@ -93,8 +92,8 @@ func (q QuorumCert) CannibalizeBytes() ([]byte, error) {
 	return crypto.Keccak256(buf), nil
 }
 
-func (q QuorumCert) Len() int {
-	if q.ValidatorSet == nil {
+func (q *QuorumCert) Len() int {
+	if q == nil || q.ValidatorSet == nil {
 		return 0
 	}
 
@@ -149,7 +148,14 @@ func (q *QuorumCert) HigherSign(c *QuorumCert) bool {
 	if !q.EqualState(c) {
 		return false
 	}
-	return q.ValidatorSet.HasLength() >= c.ValidatorSet.HasLength()
+	return q.ValidatorSet.HasLength() > c.ValidatorSet.HasLength()
+}
+
+func (q *QuorumCert) HasSign(signIndex uint32) bool {
+	if q == nil || q.ValidatorSet == nil {
+		return false
+	}
+	return q.ValidatorSet.GetIndex(signIndex)
 }
 
 func (q *QuorumCert) EqualState(c *QuorumCert) bool {
@@ -279,7 +285,14 @@ func (q *ViewChangeQuorumCert) HigherSign(c *ViewChangeQuorumCert) bool {
 	if !q.EqualState(c) {
 		return false
 	}
-	return q.ValidatorSet.HasLength() >= c.ValidatorSet.HasLength()
+	return q.ValidatorSet.HasLength() > c.ValidatorSet.HasLength()
+}
+
+func (q *ViewChangeQuorumCert) HasSign(signIndex uint32) bool {
+	if q == nil || q.ValidatorSet == nil {
+		return false
+	}
+	return q.ValidatorSet.GetIndex(signIndex)
 }
 
 func (q *ViewChangeQuorumCert) EqualState(c *ViewChangeQuorumCert) bool {
@@ -319,7 +332,7 @@ func (v ViewChangeQC) MaxBlock() (uint64, uint64, uint64, uint64, common.Hash, u
 	return maxQC.Epoch, maxQC.ViewNumber, maxQC.BlockEpoch, maxQC.BlockViewNumber, maxQC.BlockHash, maxQC.BlockNumber
 }
 
-func (v ViewChangeQC) Len() int {
+func (v *ViewChangeQC) Len() int {
 	length := 0
 	for _, qc := range v.QCs {
 		length += qc.Len()
@@ -327,7 +340,14 @@ func (v ViewChangeQC) Len() int {
 	return length
 }
 
-func (v ViewChangeQC) ValidatorSet() *utils.BitArray {
+func (v *ViewChangeQC) HasLength() int {
+	if v == nil {
+		return 0
+	}
+	return v.ValidatorSet().HasLength()
+}
+
+func (v *ViewChangeQC) ValidatorSet() *utils.BitArray {
 	if len(v.QCs) > 0 {
 		vSet := v.QCs[0].ValidatorSet
 		for i := 1; i < len(v.QCs); i++ {
@@ -336,6 +356,21 @@ func (v ViewChangeQC) ValidatorSet() *utils.BitArray {
 		return vSet
 	}
 	return nil
+}
+
+func (v *ViewChangeQC) HasSign(signIndex uint32) bool {
+	if len(v.QCs) > 0 {
+		for _, qc := range v.QCs {
+			if qc.HasSign(signIndex) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (v *ViewChangeQC) HigherSign(c *ViewChangeQC) bool {
+	return v.HasLength() > c.HasLength()
 }
 
 func (v ViewChangeQC) String() string {
@@ -385,4 +420,29 @@ func (p *PrepareQCs) FlattenMap() map[common.Hash]*QuorumCert {
 
 func (p *PrepareQCs) AppendQuorumCert(qc *QuorumCert) {
 	p.QCs = append(p.QCs, qc)
+}
+
+type UnKnownGroups struct {
+	UnKnown []*UnKnownGroup `json:"unKnown"`
+}
+
+type UnKnownGroup struct {
+	GroupID    uint32 `json:"groupID"`
+	UnKnownSet *utils.BitArray
+}
+
+func (unKnowns *UnKnownGroups) UnKnownSize() int {
+	if unKnowns == nil || len(unKnowns.UnKnown) <= 0 {
+		return 0
+	}
+
+	var unKnownSets *utils.BitArray
+	for _, un := range unKnowns.UnKnown {
+		if unKnownSets == nil {
+			unKnownSets = un.UnKnownSet
+		} else {
+			unKnownSets = unKnownSets.Or(un.UnKnownSet)
+		}
+	}
+	return unKnownSets.HasLength()
 }

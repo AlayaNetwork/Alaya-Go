@@ -349,26 +349,58 @@ func (cbft *Cbft) OnGetPrepareVote(id string, msg *protocols.GetPrepareVote) err
 			return nil
 		}
 
-		prepareVoteMap := cbft.state.AllPrepareVoteByIndex(msg.BlockIndex)
-		// Defining an array for receiving PrepareVote.
-		votes := make([]*protocols.PrepareVote, 0, len(prepareVoteMap))
-		if prepareVoteMap != nil {
-			threshold := cbft.threshold(cbft.currentValidatorLen())
-			remain := threshold - (cbft.currentValidatorLen() - int(msg.UnKnownSet.Size()))
-			for k, v := range prepareVoteMap {
-				if msg.UnKnownSet.GetIndex(k) {
-					votes = append(votes, v)
-				}
+		if len(msg.UnKnownSet.UnKnown) > 0 {
+			validatorLen := cbft.currentValidatorLen()
+			threshold := cbft.threshold(validatorLen)
+			remain := threshold - (validatorLen - msg.UnKnownSet.UnKnownSize())
 
+			// Defining an array for receiving PrepareVote.
+			votes := make([]*protocols.PrepareVote, 0)
+			RGBlockQuorumCerts := make([]*protocols.RGBlockQuorumCert, 0)
+
+			prepareVoteMap := cbft.state.AllPrepareVoteByIndex(msg.BlockIndex)
+
+			for _, un := range msg.UnKnownSet.UnKnown {
+				if un.UnKnownSet.Size() != uint32(validatorLen) {
+					cbft.log.Error("Invalid request params,UnKnownSet is not a specified length", "peer", id, "groupID", un.GroupID, "unKnownSet", un.UnKnownSet.String(), "validatorLen", validatorLen)
+					break // Do not continue processing the request
+				}
 				// Limit response votes
-				if remain > 0 && len(votes) >= remain {
+				if remain <= 0 {
 					break
 				}
+				groupThreshold := cbft.groupThreshold(cbft.state.Epoch(), un.GroupID)
+				// the other party has not reached a group consensus, and directly returns the group aggregation signature (if it exists locally)
+				var rgqc *protocols.RGBlockQuorumCert
+				if un.UnKnownSet.HasLength() < groupThreshold {
+					rgqc = cbft.state.FindMaxGroupRGBlockQuorumCert(msg.BlockIndex, un.GroupID)
+					if rgqc != nil {
+						RGBlockQuorumCerts = append(RGBlockQuorumCerts, rgqc)
+						matched := rgqc.BlockQC.ValidatorSet.And(un.UnKnownSet).HasLength()
+						remain -= matched
+					}
+				}
+				if len(prepareVoteMap) > 0 {
+					for i := uint32(0); i < un.UnKnownSet.Size(); i++ {
+						if rgqc != nil && rgqc.BlockQC.HasSign(i) {
+							continue
+						}
+						if v, ok := prepareVoteMap[i]; ok {
+							votes = append(votes, v)
+							remain--
+						}
+						// Limit response votes
+						if remain <= 0 {
+							break
+						}
+					}
+				}
 			}
-		}
-		if len(votes) > 0 {
-			cbft.network.Send(id, &protocols.PrepareVotes{Epoch: msg.Epoch, ViewNumber: msg.ViewNumber, BlockIndex: msg.BlockIndex, Votes: votes})
-			cbft.log.Debug("Send PrepareVotes", "peer", id, "epoch", msg.Epoch, "viewNumber", msg.ViewNumber, "blockIndex", msg.BlockIndex)
+
+			if len(votes) > 0 || len(RGBlockQuorumCerts) > 0 {
+				cbft.network.Send(id, &protocols.PrepareVotes{Epoch: msg.Epoch, ViewNumber: msg.ViewNumber, BlockIndex: msg.BlockIndex, Votes: votes, RGBlockQuorumCerts: RGBlockQuorumCerts})
+				cbft.log.Debug("Send PrepareVotes", "peer", id, "blockIndex", msg.BlockIndex, "votes length", len(votes), "RGBlockQuorumCerts length", len(RGBlockQuorumCerts))
+			}
 		}
 	}
 	return nil
@@ -377,9 +409,32 @@ func (cbft *Cbft) OnGetPrepareVote(id string, msg *protocols.GetPrepareVote) err
 // OnPrepareVotes handling response from GetPrepareVote response.
 func (cbft *Cbft) OnPrepareVotes(id string, msg *protocols.PrepareVotes) error {
 	cbft.log.Debug("Received message on OnPrepareVotes", "from", id, "msgHash", msg.MsgHash(), "message", msg.String())
+	alreadyQC := func(hash common.Hash, number uint64) bool {
+		if _, qc := cbft.blockTree.FindBlockAndQC(hash, number); qc != nil {
+			return true
+		}
+		return false
+	}
+
+	for _, rgqc := range msg.RGBlockQuorumCerts {
+		if alreadyQC(rgqc.BHash(), rgqc.BlockNum()) {
+			return nil
+		}
+		if !cbft.network.ContainsHistoryMessageHash(rgqc.MsgHash()) {
+			if err := cbft.OnRGBlockQuorumCert(id, rgqc); err != nil {
+				if e, ok := err.(HandleError); ok && e.AuthFailed() {
+					cbft.log.Error("OnRGBlockQuorumCert failed", "peer", id, "err", err)
+				}
+				return err
+			}
+		}
+	}
+
 	for _, vote := range msg.Votes {
-		_, qc := cbft.blockTree.FindBlockAndQC(vote.BlockHash, vote.BlockNumber)
-		if qc == nil && !cbft.network.ContainsHistoryMessageHash(vote.MsgHash()) {
+		if alreadyQC(vote.BlockHash, vote.BlockNumber) {
+			return nil
+		}
+		if !cbft.network.ContainsHistoryMessageHash(vote.MsgHash()) {
 			if err := cbft.OnPrepareVote(id, vote); err != nil {
 				if e, ok := err.(HandleError); ok && e.AuthFailed() {
 					cbft.log.Error("OnPrepareVotes failed", "peer", id, "err", err)
@@ -526,18 +581,56 @@ func (cbft *Cbft) OnGetViewChange(id string, msg *protocols.GetViewChange) error
 		return msg.Epoch == localEpoch && msg.ViewNumber+1 < localViewNumber
 	}
 
-	if isLocalView() {
-		viewChanges := cbft.state.AllViewChange()
+	if isLocalView() && len(msg.UnKnownSet.UnKnown) > 0 {
+		validatorLen := cbft.currentValidatorLen()
+		threshold := cbft.threshold(validatorLen)
+		remain := threshold - (validatorLen - msg.UnKnownSet.UnKnownSize())
 
-		vcs := &protocols.ViewChanges{}
-		for k, v := range viewChanges {
-			if msg.ViewChangeBits.GetIndex(k) {
-				vcs.VCs = append(vcs.VCs, v)
+		viewChanges := make([]*protocols.ViewChange, 0)
+		RGViewChangeQuorumCerts := make([]*protocols.RGViewChangeQuorumCert, 0)
+
+		viewChangeMap := cbft.state.AllViewChange()
+
+		for _, un := range msg.UnKnownSet.UnKnown {
+			if un.UnKnownSet.Size() != uint32(validatorLen) {
+				cbft.log.Error("Invalid request params,UnKnownSet is not a specified length", "peer", id, "groupID", un.GroupID, "unKnownSet", un.UnKnownSet.String(), "validatorLen", validatorLen)
+				break // Do not continue processing the request
+			}
+			// Limit response votes
+			if remain <= 0 {
+				break
+			}
+			groupThreshold := cbft.groupThreshold(cbft.state.Epoch(), un.GroupID)
+			// the other party has not reached a group consensus, and directly returns the group aggregation signature (if it exists locally)
+			var rgqc *protocols.RGViewChangeQuorumCert
+			if un.UnKnownSet.HasLength() < groupThreshold {
+				rgqc = cbft.state.FindMaxRGViewChangeQuorumCert(un.GroupID)
+				if rgqc != nil {
+					RGViewChangeQuorumCerts = append(RGViewChangeQuorumCerts, rgqc)
+					matched := rgqc.ViewChangeQC.ValidatorSet().And(un.UnKnownSet).HasLength()
+					remain -= matched
+				}
+			}
+			if len(viewChangeMap) > 0 {
+				for i := uint32(0); i < un.UnKnownSet.Size(); i++ {
+					if rgqc != nil && rgqc.ViewChangeQC.HasSign(i) {
+						continue
+					}
+					if v, ok := viewChangeMap[i]; ok {
+						viewChanges = append(viewChanges, v)
+						remain--
+					}
+					// Limit response votes
+					if remain <= 0 {
+						break
+					}
+				}
 			}
 		}
-		cbft.log.Debug("Send ViewChanges", "peer", id, "len", len(vcs.VCs))
-		if len(vcs.VCs) != 0 {
-			cbft.network.Send(id, vcs)
+
+		if len(viewChanges) > 0 || len(RGViewChangeQuorumCerts) > 0 {
+			cbft.network.Send(id, &protocols.ViewChanges{VCs: viewChanges, RGViewChangeQuorumCerts: RGViewChangeQuorumCerts})
+			cbft.log.Debug("Send ViewChanges", "peer", id, "blockIndex", "viewChanges length", len(viewChanges), "RGViewChangeQuorumCerts length", len(RGViewChangeQuorumCerts))
 		}
 		return nil
 	}
@@ -620,9 +713,9 @@ func (cbft *Cbft) trySyncViewChangeQuorumCert(id string, msg *protocols.ViewChan
 			cbft.log.Debug("Receive future viewChange quorumCert, sync viewChangeQC with fast mode", "localView", cbft.state.ViewString(), "futureView", highestViewChangeQC.String())
 			// request viewChangeQC for the current view
 			cbft.network.Send(id, &protocols.GetViewChange{
-				Epoch:          cbft.state.Epoch(),
-				ViewNumber:     cbft.state.ViewNumber(),
-				ViewChangeBits: utils.NewBitArray(uint32(cbft.currentValidatorLen())),
+				Epoch:      cbft.state.Epoch(),
+				ViewNumber: cbft.state.ViewNumber(),
+				UnKnownSet: &ctypes.UnKnownGroups{UnKnown: make([]*ctypes.UnKnownGroup, 0)},
 			})
 		}
 	}
@@ -631,6 +724,18 @@ func (cbft *Cbft) trySyncViewChangeQuorumCert(id string, msg *protocols.ViewChan
 // OnViewChanges handles the message type of ViewChangesMsg.
 func (cbft *Cbft) OnViewChanges(id string, msg *protocols.ViewChanges) error {
 	cbft.log.Debug("Received message on OnViewChanges", "from", id, "msgHash", msg.MsgHash(), "message", msg.String())
+
+	for _, rgqc := range msg.RGViewChangeQuorumCerts {
+		if !cbft.network.ContainsHistoryMessageHash(rgqc.MsgHash()) {
+			if err := cbft.OnRGViewChangeQuorumCert(id, rgqc); err != nil {
+				if e, ok := err.(HandleError); ok && e.AuthFailed() {
+					cbft.log.Error("OnRGViewChangeQuorumCert failed", "peer", id, "err", err)
+				}
+				return err
+			}
+		}
+	}
+
 	for _, v := range msg.VCs {
 		if !cbft.network.ContainsHistoryMessageHash(v.MsgHash()) {
 			if err := cbft.OnViewChange(id, v); err != nil {
@@ -653,30 +758,128 @@ func (cbft *Cbft) MissingViewChangeNodes() (v *protocols.GetViewChange, err erro
 
 	cbft.asyncCallCh <- func() {
 		defer func() { result <- struct{}{} }()
-		allViewChange := cbft.state.AllViewChange()
 
-		length := cbft.currentValidatorLen()
-		vbits := utils.NewBitArray(uint32(length))
-
-		// enough qc or did not reach deadline
-		if len(allViewChange) >= cbft.threshold(length) || !cbft.state.IsDeadline() {
+		if !cbft.state.IsDeadline() {
 			v, err = nil, fmt.Errorf("no need sync viewchange")
 			return
 		}
-		for i := uint32(0); i < vbits.Size(); i++ {
-			if _, ok := allViewChange[i]; !ok {
-				vbits.SetIndex(i, true)
+
+		threshold := cbft.threshold(cbft.currentValidatorLen())
+		size := len(cbft.KnownViewChangeIndexes())
+		cbft.log.Debug("The length of viewChange", "size", size, "threshold", threshold)
+
+		if size < threshold {
+			unKnownGroups := cbft.MissGroupViewChanges()
+			if len(unKnownGroups.UnKnown) > 0 {
+				v, err = &protocols.GetViewChange{
+					Epoch:      cbft.state.Epoch(),
+					ViewNumber: cbft.state.ViewNumber(),
+					UnKnownSet: unKnownGroups,
+				}, nil
 			}
 		}
-
-		v, err = &protocols.GetViewChange{
-			Epoch:          cbft.state.Epoch(),
-			ViewNumber:     cbft.state.ViewNumber(),
-			ViewChangeBits: vbits,
-		}, nil
+		if v == nil {
+			err = fmt.Errorf("not need sync prepare vote")
+		}
 	}
 	<-result
 	return
+}
+
+func (cbft *Cbft) KnownVoteIndexes(blockIndex uint32) []uint32 {
+	groupNodes := cbft.validatorPool.GetGroupIndexes(cbft.state.Epoch())
+	allVotes := cbft.state.AllPrepareVoteByIndex(blockIndex)
+	known := make([]uint32, 0)
+	for groupID, indexes := range groupNodes {
+		qc, _ := cbft.state.FindMaxGroupRGQuorumCert(blockIndex, groupID)
+		for _, index := range indexes {
+			if _, ok := allVotes[index]; ok {
+				known = append(known, index)
+			} else if qc != nil && qc.HasSign(index) {
+				known = append(known, index)
+			}
+		}
+	}
+	return known
+}
+
+func (cbft *Cbft) KnownViewChangeIndexes() []uint32 {
+	groupNodes := cbft.validatorPool.GetGroupIndexes(cbft.state.Epoch())
+	allViewChanges := cbft.state.AllViewChange()
+	known := make([]uint32, 0)
+	for groupID, indexes := range groupNodes {
+		qc, _ := cbft.state.FindMaxGroupRGViewChangeQuorumCert(groupID)
+		for _, index := range indexes {
+			if _, ok := allViewChanges[index]; ok {
+				known = append(known, index)
+			} else if qc != nil && qc.HasSign(index) {
+				known = append(known, index)
+			}
+		}
+	}
+	return known
+}
+
+func (cbft *Cbft) MissGroupVotes(blockIndex uint32) *ctypes.UnKnownGroups {
+	groupNodes := cbft.validatorPool.GetGroupIndexes(cbft.state.Epoch())
+	allVotes := cbft.state.AllPrepareVoteByIndex(blockIndex)
+
+	validatorLen := cbft.currentValidatorLen()
+	unKnowns := &ctypes.UnKnownGroups{UnKnown: make([]*ctypes.UnKnownGroup, 0)}
+
+	for groupID, indexes := range groupNodes {
+		qc, _ := cbft.state.FindMaxGroupRGQuorumCert(blockIndex, groupID)
+		groupLen := cbft.groupLen(cbft.state.Epoch(), groupID)
+		if qc == nil || qc.Len() < groupLen {
+			unKnownSet := utils.NewBitArray(uint32(validatorLen))
+			for _, index := range indexes {
+				if _, ok := allVotes[index]; !ok && !qc.HasSign(index) {
+					if vote := cbft.csPool.GetPrepareVote(cbft.state.Epoch(), cbft.state.ViewNumber(), blockIndex, index); vote != nil {
+						go cbft.ReceiveMessage(ctypes.NewInnerMsgInfo(vote.Msg, vote.PeerID))
+						continue
+					}
+					unKnownSet.SetIndex(index, true)
+				}
+			}
+			if unKnownSet.HasLength() > 0 {
+				unKnownGroup := &ctypes.UnKnownGroup{
+					GroupID:    groupID,
+					UnKnownSet: unKnownSet,
+				}
+				unKnowns.UnKnown = append(unKnowns.UnKnown, unKnownGroup)
+			}
+		}
+	}
+	return unKnowns
+}
+
+func (cbft *Cbft) MissGroupViewChanges() *ctypes.UnKnownGroups {
+	groupNodes := cbft.validatorPool.GetGroupIndexes(cbft.state.Epoch())
+	allViewChange := cbft.state.AllViewChange()
+
+	validatorLen := cbft.currentValidatorLen()
+	unKnowns := &ctypes.UnKnownGroups{UnKnown: make([]*ctypes.UnKnownGroup, 0)}
+
+	for groupID, indexes := range groupNodes {
+		qc, _ := cbft.state.FindMaxGroupRGViewChangeQuorumCert(groupID)
+		groupLen := cbft.groupLen(cbft.state.Epoch(), groupID)
+		if qc == nil || qc.Len() < groupLen {
+			unKnownSet := utils.NewBitArray(uint32(validatorLen))
+			for _, index := range indexes {
+				if _, ok := allViewChange[index]; !ok && !qc.HasSign(index) {
+					unKnownSet.SetIndex(index, true)
+				}
+			}
+			if unKnownSet.HasLength() > 0 {
+				unKnownGroup := &ctypes.UnKnownGroup{
+					GroupID:    groupID,
+					UnKnownSet: unKnownSet,
+				}
+				unKnowns.UnKnown = append(unKnowns.UnKnown, unKnownGroup)
+			}
+		}
+	}
+	return unKnowns
 }
 
 // MissingPrepareVote returns missing vote.
@@ -688,37 +891,31 @@ func (cbft *Cbft) MissingPrepareVote() (v *protocols.GetPrepareVote, err error) 
 
 		begin := cbft.state.MaxQCIndex() + 1
 		end := cbft.state.NextViewBlockIndex()
-		len := cbft.currentValidatorLen()
-		cbft.log.Debug("MissingPrepareVote", "epoch", cbft.state.Epoch(), "viewNumber", cbft.state.ViewNumber(), "beginIndex", begin, "endIndex", end, "validatorLen", len)
+		threshold := cbft.threshold(cbft.currentValidatorLen())
 
 		block := cbft.state.HighestQCBlock()
 		blockTime := common.MillisToTime(int64(block.Time()))
 
 		for index := begin; index < end; index++ {
-			size := cbft.state.PrepareVoteLenByIndex(index)
-			cbft.log.Debug("The length of prepare vote", "index", index, "size", size)
-
-			// We need sync prepare votes when a long time not arrived QC.
-			if size < cbft.threshold(len) && time.Since(blockTime) >= syncPrepareVotesInterval { // need sync prepare votes
-				knownVotes := cbft.state.AllPrepareVoteByIndex(index)
-				unKnownSet := utils.NewBitArray(uint32(len))
-				for i := uint32(0); i < unKnownSet.Size(); i++ {
-					if vote := cbft.csPool.GetPrepareVote(cbft.state.Epoch(), cbft.state.ViewNumber(), index, i); vote != nil {
-						go cbft.ReceiveMessage(ctypes.NewInnerMsgInfo(vote.Msg, vote.PeerID))
-						continue
-					}
-					if _, ok := knownVotes[i]; !ok {
-						unKnownSet.SetIndex(i, true)
-					}
-				}
-
-				v, err = &protocols.GetPrepareVote{
-					Epoch:      cbft.state.Epoch(),
-					ViewNumber: cbft.state.ViewNumber(),
-					BlockIndex: index,
-					UnKnownSet: unKnownSet,
-				}, nil
+			if time.Since(blockTime) < syncPrepareVotesInterval {
+				err = fmt.Errorf("not need sync prepare vote")
 				break
+			}
+
+			size := len(cbft.KnownVoteIndexes(index))
+			// We need sync prepare votes when a long time not arrived QC.
+			if size < threshold { // need sync prepare votes
+				cbft.log.Debug("MissingPrepareVote", "blockIndex", index, "size", size, "threshold", threshold)
+				unKnownGroups := cbft.MissGroupVotes(index)
+				if len(unKnownGroups.UnKnown) > 0 {
+					v, err = &protocols.GetPrepareVote{
+						Epoch:      cbft.state.Epoch(),
+						ViewNumber: cbft.state.ViewNumber(),
+						BlockIndex: index,
+						UnKnownSet: unKnownGroups,
+					}, nil
+					break
+				}
 			}
 		}
 		if v == nil {

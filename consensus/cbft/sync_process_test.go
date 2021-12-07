@@ -18,6 +18,7 @@ package cbft
 
 import (
 	"fmt"
+	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/utils"
 	"strings"
 	"testing"
 	"time"
@@ -33,7 +34,6 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/network"
 	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/protocols"
 	types2 "github.com/AlayaNetwork/Alaya-Go/consensus/cbft/types"
-	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/utils"
 	"github.com/AlayaNetwork/Alaya-Go/core/types"
 )
 

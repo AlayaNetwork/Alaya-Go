@@ -267,7 +267,7 @@ func (stkc *StakingContract) createStaking(typ uint16, benefitAddress common.Add
 		RestrictingPlanHes:   new(big.Int).SetInt64(0),
 		RewardPer:            rewardPer,
 		NextRewardPer:        rewardPer,
-		RewardPerChangeEpoch: uint32(xutil.CalculateEpoch(blockNumber.Uint64())),
+		RewardPerChangeEpoch: uint32(xutil.CalculateEpoch(blockNumber.Uint64(), gov.GetCurrentActiveVersion(state))),
 		DelegateRewardTotal:  new(big.Int).SetInt64(0),
 	}
 
@@ -393,7 +393,7 @@ func (stkc *StakingContract) editCandidate(benefitAddress *common.Address, nodeI
 		}
 	}
 
-	currentEpoch := uint32(xutil.CalculateEpoch(blockNumber.Uint64()))
+	currentEpoch := uint32(xutil.CalculateEpoch(blockNumber.Uint64(), gov.GetCurrentActiveVersion(state)))
 
 	if gov.Gte0140VersionState(state) {
 		if nodeName != nil {
@@ -710,7 +710,7 @@ func (stkc *StakingContract) delegate(typ uint16, nodeId enode.IDv0, amount *big
 	}
 	var delegateRewardPerList []*reward.DelegateRewardPer
 	if del.DelegateEpoch > 0 {
-		delegateRewardPerList, err = plugin.RewardMgrInstance().GetDelegateRewardPerList(blockHash, canBase.NodeId, canBase.StakingBlockNum, uint64(del.DelegateEpoch), xutil.CalculateEpoch(blockNumber.Uint64())-1)
+		delegateRewardPerList, err = plugin.RewardMgrInstance().GetDelegateRewardPerList(blockHash, canBase.NodeId, canBase.StakingBlockNum, uint64(del.DelegateEpoch), xutil.CalculateEpoch(blockNumber.Uint64(), gov.GetCurrentActiveVersion(state))-1)
 		if snapshotdb.NonDbNotFoundErr(err) {
 			log.Error("Failed to delegate by GetDelegateRewardPerList", "txHash", txHash, "blockNumber", blockNumber, "err", err)
 			return nil, err
@@ -800,7 +800,7 @@ func (stkc *StakingContract) withdrewDelegation(stakingBlockNum uint64, nodeId e
 		}
 	}
 
-	delegateRewardPerList, err := plugin.RewardMgrInstance().GetDelegateRewardPerList(blockHash, nodeId, stakingBlockNum, uint64(del.DelegateEpoch), xutil.CalculateEpoch(blockNumber.Uint64())-1)
+	delegateRewardPerList, err := plugin.RewardMgrInstance().GetDelegateRewardPerList(blockHash, nodeId, stakingBlockNum, uint64(del.DelegateEpoch), xutil.CalculateEpoch(blockNumber.Uint64(), gov.GetCurrentActiveVersion(state))-1)
 	if snapshotdb.NonDbNotFoundErr(err) {
 		log.Error("Failed to delegate by GetDelegateRewardPerList", "txHash", txHash, "blockNumber", blockNumber, "err", err)
 		return nil, err
@@ -879,8 +879,9 @@ func (stkc *StakingContract) getValidatorList() ([]byte, error) {
 
 	blockNumber := stkc.Evm.BlockNumber
 	blockHash := stkc.Evm.BlockHash
+	state := stkc.Evm.StateDB
 
-	arr, err := stkc.Plugin.GetValidatorList(blockHash, blockNumber.Uint64(), plugin.CurrentRound, plugin.QueryStartNotIrr)
+	arr, err := stkc.Plugin.GetValidatorList(blockHash, blockNumber.Uint64(), plugin.CurrentRound, plugin.QueryStartNotIrr, gov.GetCurrentActiveVersion(state))
 	if snapshotdb.NonDbNotFoundErr(err) {
 
 		return callResultHandler(stkc.Evm, "getValidatorList",
@@ -900,8 +901,9 @@ func (stkc *StakingContract) getCandidateList() ([]byte, error) {
 
 	blockNumber := stkc.Evm.BlockNumber
 	blockHash := stkc.Evm.BlockHash
+	state := stkc.Evm.StateDB
 
-	arr, err := stkc.Plugin.GetCandidateList(blockHash, blockNumber.Uint64())
+	arr, err := stkc.Plugin.GetCandidateList(blockHash, blockNumber.Uint64(), state)
 	if snapshotdb.NonDbNotFoundErr(err) {
 		return callResultHandler(stkc.Evm, "getCandidateList",
 			arr, staking.ErrGetCandidateList.Wrap(err.Error())), nil
@@ -939,8 +941,9 @@ func (stkc *StakingContract) getDelegateInfo(stakingBlockNum uint64, delAddr com
 
 	blockNumber := stkc.Evm.BlockNumber
 	blockHash := stkc.Evm.BlockHash
+	state := stkc.Evm.StateDB
 
-	del, err := stkc.Plugin.GetDelegateExCompactInfo(blockHash, blockNumber.Uint64(), delAddr, nodeId, stakingBlockNum)
+	del, err := stkc.Plugin.GetDelegateExCompactInfo(blockHash, blockNumber.Uint64(), delAddr, nodeId, stakingBlockNum, state)
 	if snapshotdb.NonDbNotFoundErr(err) {
 		return callResultHandler(stkc.Evm, fmt.Sprintf("getDelegateInfo, delAddr: %s, nodeId: %s, stakingBlockNumber: %d",
 			delAddr, nodeId, stakingBlockNum),
@@ -961,13 +964,14 @@ func (stkc *StakingContract) getDelegateInfo(stakingBlockNum uint64, delAddr com
 func (stkc *StakingContract) getCandidateInfo(nodeId enode.IDv0) ([]byte, error) {
 	blockNumber := stkc.Evm.BlockNumber
 	blockHash := stkc.Evm.BlockHash
+	state := stkc.Evm.StateDB
 
 	canAddr, err := xutil.NodeId2Addr(nodeId)
 	if nil != err {
 		return callResultHandler(stkc.Evm, fmt.Sprintf("getCandidateInfo, nodeId: %s",
 			nodeId), nil, staking.ErrQueryCandidateInfo.Wrap(err.Error())), nil
 	}
-	can, err := stkc.Plugin.GetCandidateCompactInfo(blockHash, blockNumber.Uint64(), canAddr)
+	can, err := stkc.Plugin.GetCandidateCompactInfo(blockHash, blockNumber.Uint64(), canAddr, state)
 	if snapshotdb.NonDbNotFoundErr(err) {
 		return callResultHandler(stkc.Evm, fmt.Sprintf("getCandidateInfo, nodeId: %s",
 			nodeId), can, staking.ErrQueryCandidateInfo.Wrap(err.Error())), nil

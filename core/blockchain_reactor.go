@@ -25,6 +25,8 @@ import (
 	"math/big"
 	"sync"
 
+	"github.com/AlayaNetwork/Alaya-Go/x/gov"
+
 	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
 
 	"github.com/AlayaNetwork/Alaya-Go/common"
@@ -81,7 +83,7 @@ func (bcr *BlockChainReactor) Start(mode string) {
 	if mode == common.PPOS_VALIDATOR_MODE {
 		// Subscribe events for confirmed blocks
 		bcr.bftResultSub = bcr.eventMux.Subscribe(cbfttypes.CbftResult{})
-		// start the loop rutine
+		// start the loop routine
 		go bcr.loop()
 	}
 }
@@ -267,6 +269,7 @@ func (bcr *BlockChainReactor) BeginBlocker(header *types.Header, state xcom.Stat
 		return err
 	}
 
+	header.SetActiveVersion(gov.GetCurrentActiveVersion(state))
 	for _, pluginRule := range bcr.beginRule {
 		if plugin, ok := bcr.basePluginMap[pluginRule]; ok {
 			if err := plugin.BeginBlock(blockHash, header, state); nil != err {

@@ -165,7 +165,7 @@ func SetupGenesisBlock(db ethdb.Database, snapshotBaseDB snapshotdb.BaseDB, gene
 		}
 
 		// check EconomicModel configuration
-		if err := xcom.CheckEconomicModel(); nil != err {
+		if err := xcom.CheckEconomicModel(genesis.Config.GenesisVersion); nil != err {
 			log.Error("Failed to check economic config", "err", err)
 			return nil, common.Hash{}, err
 		}
@@ -190,7 +190,7 @@ func SetupGenesisBlock(db ethdb.Database, snapshotBaseDB snapshotdb.BaseDB, gene
 		}
 
 		// check EconomicModel configuration
-		if err := xcom.CheckEconomicModel(); nil != err {
+		if err := xcom.CheckEconomicModel(genesis.Config.GenesisVersion); nil != err {
 			log.Error("Failed to check economic config", "err", err)
 			return nil, common.Hash{}, err
 		}
@@ -237,20 +237,23 @@ func SetupGenesisBlock(db ethdb.Database, snapshotBaseDB snapshotdb.BaseDB, gene
 
 	// Get the existing EconomicModel configuration.
 	ecCfg := rawdb.ReadEconomicModel(db, stored)
-	eceCfg := rawdb.ReadEconomicModelExtend(db, stored)
 	if nil == ecCfg {
 		log.Warn("Found genesis block without EconomicModel config")
 		ecCfg = xcom.GetEc(xcom.DefaultAlayaNet)
 		rawdb.WriteEconomicModel(db, stored, ecCfg)
 	}
+	xcom.ResetEconomicDefaultConfig(ecCfg)
+
+	eceCfg := rawdb.ReadEconomicModelExtend(db, stored)
 	if nil == eceCfg {
 		log.Warn("Found genesis block without EconomicModelExtend config")
 		xcom.GetEc(xcom.DefaultAlayaNet)
 		eceCfg = xcom.GetEce()
 		rawdb.WriteEconomicModelExtend(db, stored, eceCfg)
 	}
-	xcom.ResetEconomicDefaultConfig(ecCfg)
 	xcom.ResetEconomicExtendConfig(eceCfg)
+
+	//update chain config here
 
 	// Special case: don't change the existing config of a non-mainnet chain if no new
 	// config is supplied. These chains would get AllProtocolChanges (and a compat error)
@@ -352,7 +355,7 @@ func (g *Genesis) InitGenesisAndSetEconomicConfig(path string) error {
 	xcom.SetPerRoundBlocks(uint64(g.Config.Cbft.Amount))
 
 	// check EconomicModel configuration
-	if err := xcom.CheckEconomicModel(); nil != err {
+	if err := xcom.CheckEconomicModel(g.Config.GenesisVersion); nil != err {
 		return fmt.Errorf("Failed CheckEconomicModel configuration: %v", err)
 	}
 	return nil
@@ -446,6 +449,13 @@ func (g *Genesis) ToBlock(db ethdb.Database, sdb snapshotdb.BaseDB) *types.Block
 		if gov.Gte0140Version(genesisVersion) {
 			if err := gov.WriteEcHash0140(statedb); nil != err {
 				panic("Failed Store EcHash0140: " + err.Error())
+			}
+		}
+
+		// 0.17.0
+		if gov.Gte0170Version(genesisVersion) {
+			if err := gov.WriteEcHash0170(statedb); nil != err {
+				panic("Failed Store EcHash0170: " + err.Error())
 			}
 		}
 

@@ -14,22 +14,26 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
-
 package xcom
 
 import (
-	"github.com/AlayaNetwork/Alaya-Go/common"
-	"github.com/AlayaNetwork/Alaya-Go/rlp"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+
+	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/params"
+	"github.com/AlayaNetwork/Alaya-Go/rlp"
 )
+
+var currentTestGenesisVersion = params.FORKVERSION_0_16_0
 
 func TestGetDefaultEMConfig(t *testing.T) {
 	t.Run("DefaultAlayaNet", func(t *testing.T) {
 		if getDefaultEMConfig(DefaultAlayaNet) == nil {
 			t.Error("DefaultAlayaNet can't be nil config")
 		}
-		if err := CheckEconomicModel(); nil != err {
+		if err := CheckEconomicModel(currentTestGenesisVersion); nil != err {
 			t.Error(err)
 		}
 	})
@@ -37,7 +41,7 @@ func TestGetDefaultEMConfig(t *testing.T) {
 		if getDefaultEMConfig(DefaultUnitTestNet) == nil {
 			t.Error("DefaultUnitTestNet can't be nil config")
 		}
-		if err := CheckEconomicModel(); nil != err {
+		if err := CheckEconomicModel(currentTestGenesisVersion); nil != err {
 			t.Error(err)
 		}
 	})
@@ -50,6 +54,19 @@ func TestEcParams0140(t *testing.T) {
 	eceHash := "0xbd45f1783a2344776066ca1a88937e74dfba777c9c3eb2f6819989c66d2c0462"
 	getDefaultEMConfig(DefaultAlayaNet)
 	if bytes, err := EcParams0140(); nil != err {
+		t.Fatal(err)
+	} else {
+		assert.True(t, bytes != nil)
+		assert.True(t, common.RlpHash(bytes).Hex() == eceHash)
+	}
+}
+
+// todo: 这个测试用例需要等版本稳定后再放开
+func TestEcParams0170(t *testing.T) {
+	t.SkipNow()
+	eceHash := "0x0000000000000000000000000000000000000000000000000000000000000000"
+	getDefaultEMConfig(DefaultAlayaNet)
+	if bytes, err := EcParams0170(); nil != err {
 		t.Fatal(err)
 	} else {
 		assert.True(t, bytes != nil)

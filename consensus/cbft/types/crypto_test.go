@@ -18,11 +18,11 @@ package types
 
 import (
 	"encoding/json"
-	"testing"
-
-	"github.com/stretchr/testify/assert"
-
+	"fmt"
 	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/utils"
+	"github.com/stretchr/testify/assert"
+	"testing"
+	"time"
 
 	"github.com/AlayaNetwork/Alaya-Go/common"
 	"github.com/AlayaNetwork/Alaya-Go/crypto/bls"
@@ -108,7 +108,7 @@ func Test_ViewChangeQC_MaxBlock(t *testing.T) {
 	assert.Equal(t, uint64(0), epoch)
 }
 
-func TestValidatorSet(t *testing.T) {
+func TestViewChangeQC_ValidatorSet(t *testing.T) {
 	testCases := []struct {
 		ValidatorSetStr string
 	}{
@@ -142,10 +142,182 @@ func TestValidatorSet(t *testing.T) {
 	}
 	assert.Equal(t, 45, viewChangeQC.Len())
 	assert.Equal(t, uint32(15), viewChangeQC.ValidatorSet().Size())
-	assert.Equal(t, 11, viewChangeQC.ValidatorSet().HasLength())
+	assert.Equal(t, 11, viewChangeQC.HasLength())
 }
 
-func TestQuorumCertAddSign(t *testing.T) {
+func TestViewChangeQC_HasSign(t *testing.T) {
+	b1 := utils.NewBitArray(1000)
+	b1.SetIndex(uint32(100), true)
+	b1.SetIndex(uint32(666), true)
+	b1.SetIndex(uint32(888), true)
+	b1.SetIndex(uint32(999), true)
+
+	b2 := utils.NewBitArray(1000)
+	b2.SetIndex(uint32(0), true)
+	b2.SetIndex(uint32(100), true)
+	b2.SetIndex(uint32(222), true)
+	b2.SetIndex(uint32(333), true)
+
+	b3 := utils.NewBitArray(1000)
+	b3.SetIndex(uint32(666), false)
+	b3.SetIndex(uint32(777), true)
+
+	testCases := []*utils.BitArray{
+		b1, b2, b3,
+	}
+
+	viewChangeQC := &ViewChangeQC{QCs: make([]*ViewChangeQuorumCert, 0)}
+	for _, c := range testCases {
+		qc := &ViewChangeQuorumCert{
+			ValidatorSet: c,
+		}
+		viewChangeQC.QCs = append(viewChangeQC.QCs, qc)
+	}
+	assert.True(t, true, viewChangeQC.HasSign(uint32(0)))
+	assert.True(t, true, viewChangeQC.HasSign(uint32(666)))
+	assert.False(t, false, viewChangeQC.HasSign(uint32(555)))
+}
+
+func TestViewChangeQC_HigherSign(t *testing.T) {
+	b1 := utils.NewBitArray(1000)
+	b1.SetIndex(uint32(100), true)
+	b1.SetIndex(uint32(666), true)
+	b1.SetIndex(uint32(888), true)
+	b1.SetIndex(uint32(999), true)
+
+	b2 := utils.NewBitArray(1000)
+	b2.SetIndex(uint32(0), true)
+	b2.SetIndex(uint32(100), true)
+	b2.SetIndex(uint32(222), true)
+	b2.SetIndex(uint32(333), true)
+
+	b3 := utils.NewBitArray(1000)
+	b3.SetIndex(uint32(666), false)
+	b3.SetIndex(uint32(777), true)
+
+	testCases := []*utils.BitArray{
+		b1, b2, b3,
+	}
+
+	viewChangeQC1 := &ViewChangeQC{QCs: make([]*ViewChangeQuorumCert, 0)}
+	viewChangeQC2 := &ViewChangeQC{QCs: make([]*ViewChangeQuorumCert, 0)}
+	for i, c := range testCases {
+		qc := &ViewChangeQuorumCert{
+			ValidatorSet: c,
+		}
+		if i <= len(testCases)-2 {
+			viewChangeQC1.QCs = append(viewChangeQC1.QCs, qc)
+			viewChangeQC2.QCs = append(viewChangeQC2.QCs, qc)
+		}
+		if i == len(testCases)-1 {
+			viewChangeQC1.QCs = append(viewChangeQC1.QCs, qc)
+		}
+	}
+	assert.Equal(t, 8, viewChangeQC1.HasLength())
+	assert.Equal(t, 7, viewChangeQC2.HasLength())
+	assert.True(t, true, viewChangeQC1.HigherSign(viewChangeQC2))
+}
+
+func TestViewChangeQuorumCert_AddSign(t *testing.T) {
+	bls.Init(int(bls.BLS12_381))
+	message := "test merge sign"
+	var k int = 500
+	msk := make([]bls.SecretKey, k)
+	mpk := make([]bls.PublicKey, k)
+	msig := make([]bls.Sign, k)
+	for i := 0; i < k; i++ {
+		msk[i].SetByCSPRNG()
+		mpk[i] = *msk[i].GetPublicKey()
+		msig[i] = *msk[i].Sign(message)
+	}
+
+	verifyViewChangeQuorumCert := func(qc *ViewChangeQuorumCert) bool {
+		var pub bls.PublicKey
+		for i := uint32(0); i < qc.ValidatorSet.Size(); i++ {
+			if qc.ValidatorSet.GetIndex(i) {
+				pub.Add(&mpk[i])
+			}
+		}
+		var sig bls.Sign
+		if err := sig.Deserialize(qc.Signature.Bytes()); err != nil {
+			return false
+		}
+
+		if sig.Verify(&pub, message) {
+			return true
+		}
+		return false
+	}
+
+	var sig bls.Sign
+	vSet := utils.NewBitArray(uint32(k))
+	for i := 0; i < len(msig)-2; i++ {
+		sig.Add(&msig[i])
+		vSet.SetIndex(uint32(i), true)
+	}
+
+	qc := &ViewChangeQuorumCert{
+		ValidatorSet: vSet,
+	}
+	qc.Signature.SetBytes(sig.Serialize())
+	//fmt.Println("qc Signature", qc.Signature.String())
+	assert.Equal(t, true, verifyViewChangeQuorumCert(qc))
+
+	// add sign and verify sign
+	for i := len(msig) - 2; i < len(msig); i++ {
+		var s Signature
+		s.SetBytes(msig[i].Serialize())
+		qc.AddSign(s, uint32(i))
+		//fmt.Println("qc Signature", qc.Signature.String())
+		assert.Equal(t, true, verifyViewChangeQuorumCert(qc))
+	}
+
+	// The public key does not match and cannot be verified
+	var s Signature
+	s.SetBytes(msig[0].Serialize())
+	qc.AddSign(s, uint32(0))
+	assert.Equal(t, false, verifyViewChangeQuorumCert(qc))
+}
+
+func TestQuorumCert_HasSign(t *testing.T) {
+	b1 := utils.NewBitArray(1000)
+	b1.SetIndex(uint32(100), true)
+	b1.SetIndex(uint32(666), true)
+	b1.SetIndex(uint32(888), true)
+	b1.SetIndex(uint32(999), true)
+
+	b2 := utils.NewBitArray(1000)
+	b2.SetIndex(uint32(0), true)
+	b2.SetIndex(uint32(100), true)
+	b2.SetIndex(uint32(222), true)
+	b2.SetIndex(uint32(333), true)
+
+	qc1 := &QuorumCert{
+		ValidatorSet: b1,
+	}
+
+	qc2 := &QuorumCert{
+		ValidatorSet: b1.Or(b2),
+	}
+	assert.Equal(t, 4, qc1.Len())
+	assert.Equal(t, 7, qc2.Len())
+	assert.True(t, true, qc1.HigherSign(qc2))
+}
+
+func TestQuorumCert_HigherSign(t *testing.T) {
+	b1 := utils.NewBitArray(1000)
+	b1.SetIndex(uint32(100), true)
+	b1.SetIndex(uint32(666), true)
+	b1.SetIndex(uint32(888), true)
+	b1.SetIndex(uint32(999), true)
+	qc := &QuorumCert{
+		ValidatorSet: b1,
+	}
+	assert.True(t, true, qc.HasSign(uint32(666)))
+	assert.False(t, false, qc.HasSign(uint32(777)))
+}
+
+func TestQuorumCert_AddSign(t *testing.T) {
 	bls.Init(int(bls.BLS12_381))
 	message := "test merge sign"
 	var k int = 500
@@ -204,4 +376,62 @@ func TestQuorumCertAddSign(t *testing.T) {
 	s.SetBytes(msig[0].Serialize())
 	qc.AddSign(s, uint32(0))
 	assert.Equal(t, false, verifyQuorumCert(qc))
+}
+
+func TestAddSign(t *testing.T) {
+	bls.Init(int(bls.BLS12_381))
+	message := "test merge sign"
+	var k int = 100000
+	msk := make([]bls.SecretKey, k)
+	mpk := make([]bls.PublicKey, k)
+	msig := make([]bls.Sign, k)
+	msignature := make([]Signature, k)
+	for i := 0; i < 1; i++ {
+		msk[i].SetByCSPRNG()
+		mpk[i] = *msk[i].GetPublicKey()
+		msig[i] = *msk[i].Sign(message)
+		msignature[i].SetBytes(msig[i].Serialize())
+	}
+
+	qc := &QuorumCert{
+		Signature:    Signature{},
+		ValidatorSet: utils.NewBitArray(uint32(300)),
+	}
+	qc.Signature.SetBytes(msig[0].Serialize())
+	qc.ValidatorSet.SetIndex(0, true)
+
+	start := common.Millis(time.Now())
+	fmt.Println("test", "start", start)
+	for i := 1; i < k; i++ {
+		qc.AddSign(qc.Signature, uint32(i%300))
+	}
+	end := common.Millis(time.Now())
+	fmt.Println("test", "end", end, "v", qc.ValidatorSet.HasLength())
+}
+
+func TestUnKnownGroups_UnKnownSize(t *testing.T) {
+	testCases := []struct {
+		groupID         uint32
+		ValidatorSetStr string
+	}{
+		{1, `"xx__________"`},
+		{2, `"______xxxxxx"`},
+		{3, `"xx__x___xx__"`},
+	}
+
+	bitArray := func(bitArrayStr string) *utils.BitArray {
+		var ba *utils.BitArray
+		json.Unmarshal([]byte(bitArrayStr), &ba)
+		return ba
+
+	}
+
+	unKnownGroups := &UnKnownGroups{UnKnown: make([]*UnKnownGroup, 0)}
+	for _, c := range testCases {
+		unKnownGroups.UnKnown = append(unKnownGroups.UnKnown, &UnKnownGroup{
+			GroupID:    c.groupID,
+			UnKnownSet: bitArray(c.ValidatorSetStr),
+		})
+	}
+	assert.Equal(t, 9, unKnownGroups.UnKnownSize())
 }

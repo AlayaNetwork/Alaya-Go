@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
-
 package xcom
 
 import (
@@ -23,6 +22,8 @@ import (
 	"fmt"
 	"math/big"
 	"sync"
+
+	"github.com/AlayaNetwork/Alaya-Go/params"
 
 	"github.com/AlayaNetwork/Alaya-Go/rlp"
 
@@ -48,7 +49,7 @@ const (
 	Hundred                   = 100
 	TenThousand               = 10000
 	CeilBlocksReward          = 50000
-	CeilMaxValidators         = 201
+	CeilMaxValidators         = 500
 	FloorMaxConsensusVals     = 4
 	CeilMaxConsensusVals      = 25
 	PositiveInfinity          = "+∞"
@@ -63,7 +64,7 @@ const (
 	IncreaseIssuanceRatioLowerLimit   = 0
 
 	// When electing consensus nodes, it is used to calculate the P value of the binomial distribution
-	ElectionBase = 25	// New expectations
+	ElectionBase = 25 // New expectations
 
 	ElectionBaseL1 = 3000
 	ElectionBaseL2 = 6000
@@ -162,6 +163,7 @@ type EconomicModel struct {
 type EconomicModelExtend struct {
 	Reward      rewardConfigExtend      `json:"reward"`
 	Restricting restrictingConfigExtend `json:"restricting"`
+	Extend0170  EconomicModel0170Extend `json:"extend_0170,omitempty"`
 }
 
 type rewardConfigExtend struct {
@@ -296,6 +298,19 @@ func getDefaultEMConfig(netId int8) *EconomicModel {
 			Restricting: restrictingConfigExtend{
 				MinimumRelease: new(big.Int).Mul(oneAtp, new(big.Int).SetInt64(80)),
 			},
+			Extend0170: EconomicModel0170Extend{
+				Common: EconomicModel0170CommonConfig{
+					MaxGroupValidators: 25,
+					CoordinatorsLimit:  5,
+					MaxConsensusVals:   215,
+				},
+				Staking: EconomicModel0170StakingConfig{
+					MaxValidators: 215,
+				},
+				Slashing: EconomicModel0170SlashingConfig{
+					ZeroProduceCumulativeTime: 4,
+				},
+			},
 		}
 
 	case DefaultTestNet:
@@ -356,6 +371,19 @@ func getDefaultEMConfig(netId int8) *EconomicModel {
 			Restricting: restrictingConfigExtend{
 				MinimumRelease: new(big.Int).SetInt64(1),
 			},
+			Extend0170: EconomicModel0170Extend{
+				Common: EconomicModel0170CommonConfig{
+					MaxGroupValidators: 25,
+					CoordinatorsLimit:  5,
+					MaxConsensusVals:   25,
+				},
+				Staking: EconomicModel0170StakingConfig{
+					MaxValidators: 101,
+				},
+				Slashing: EconomicModel0170SlashingConfig{
+					ZeroProduceCumulativeTime: 30,
+				},
+			},
 		}
 	case DefaultUnitTestNet:
 		ec = &EconomicModel{
@@ -415,6 +443,19 @@ func getDefaultEMConfig(netId int8) *EconomicModel {
 			Restricting: restrictingConfigExtend{
 				MinimumRelease: new(big.Int).SetInt64(1),
 			},
+			Extend0170: EconomicModel0170Extend{
+				Common: EconomicModel0170CommonConfig{
+					MaxGroupValidators: 25,
+					CoordinatorsLimit:  5,
+					MaxConsensusVals:   4,
+				},
+				Staking: EconomicModel0170StakingConfig{
+					MaxValidators: 25,
+				},
+				Slashing: EconomicModel0170SlashingConfig{
+					ZeroProduceCumulativeTime: 3,
+				},
+			},
 		}
 	default:
 		log.Error("not support chainID", "netId", netId)
@@ -439,9 +480,9 @@ func CheckOperatingThreshold(threshold *big.Int) error {
 	return nil
 }
 
-func CheckMaxValidators(num int) error {
-	if num < int(ec.Common.MaxConsensusVals) || num > CeilMaxValidators {
-		return common.InvalidParameter.Wrap(fmt.Sprintf("The MaxValidators must be [%d, %d]", int(ec.Common.MaxConsensusVals), CeilMaxValidators))
+func CheckMaxValidators(num int, version uint32) error {
+	if num < int(MaxConsensusVals(version)) || num > CeilMaxValidators {
+		return common.InvalidParameter.Wrap(fmt.Sprintf("The MaxValidators must be [%d, %d]", int(MaxConsensusVals(version)), CeilMaxValidators))
 	}
 	return nil
 }
@@ -485,9 +526,9 @@ func CheckSlashBlocksReward(rewards int) error {
 	return nil
 }
 
-func CheckZeroProduceCumulativeTime(zeroProduceCumulativeTime uint16, zeroProduceNumberThreshold uint16) error {
-	if zeroProduceCumulativeTime < zeroProduceNumberThreshold || zeroProduceCumulativeTime > uint16(EpochSize()) {
-		return common.InvalidParameter.Wrap(fmt.Sprintf("The ZeroProduceCumulativeTime must be [%d, %d]", zeroProduceNumberThreshold, uint16(EpochSize())))
+func CheckZeroProduceCumulativeTime(zeroProduceCumulativeTime uint16, zeroProduceNumberThreshold uint16, version uint32) error {
+	if zeroProduceCumulativeTime < zeroProduceNumberThreshold || zeroProduceCumulativeTime > uint16(EpochSize(version)) {
+		return common.InvalidParameter.Wrap(fmt.Sprintf("The ZeroProduceCumulativeTime must be [%d, %d]", zeroProduceNumberThreshold, uint16(EpochSize(version))))
 	}
 	return nil
 }
@@ -527,7 +568,7 @@ func CheckZeroProduceFreezeDuration(zeroProduceFreezeDuration uint64, unStakeFre
 	return nil
 }
 
-func CheckEconomicModel() error {
+func CheckEconomicModel(version uint32) error {
 	if nil == ec {
 		return errors.New("EconomicModel config is nil")
 	}
@@ -537,7 +578,7 @@ func CheckEconomicModel() error {
 	// package perblock duration
 	blockDuration := ec.Common.NodeBlockTimeWindow / ec.Common.PerRoundBlocks
 	// round duration
-	roundDuration := ec.Common.MaxConsensusVals * ec.Common.PerRoundBlocks * blockDuration
+	roundDuration := MaxConsensusVals(version) * ec.Common.PerRoundBlocks * blockDuration
 	// epoch Size, how many consensus round
 	epochSize := epochDuration / roundDuration
 	//real epoch duration
@@ -563,11 +604,11 @@ func CheckEconomicModel() error {
 		return errors.New("The issuance period must be integer multiples of the settlement period and multiples must be greater than or equal to 4")
 	}
 
-	if ec.Common.MaxConsensusVals < FloorMaxConsensusVals || ec.Common.MaxConsensusVals > CeilMaxConsensusVals {
+	if MaxConsensusVals(version) < FloorMaxConsensusVals || MaxConsensusVals(version) > CeilMaxConsensusVals {
 		return fmt.Errorf("The consensus validator num must be [%d, %d]", FloorMaxConsensusVals, CeilMaxConsensusVals)
 	}
 
-	if err := CheckMaxValidators(int(ec.Staking.MaxValidators)); nil != err {
+	if err := CheckMaxValidators(int(ec.Staking.MaxValidators), version); nil != err {
 		return err
 	}
 
@@ -607,7 +648,7 @@ func CheckEconomicModel() error {
 		return err
 	}
 
-	if uint16(EpochSize()) > maxZeroProduceCumulativeTime {
+	if uint16(EpochSize(version)) > maxZeroProduceCumulativeTime {
 		return fmt.Errorf("the number of consensus rounds in a settlement cycle cannot be greater than maxZeroProduceCumulativeTime(%d)", maxZeroProduceCumulativeTime)
 	}
 
@@ -615,7 +656,7 @@ func CheckEconomicModel() error {
 		return err
 	}
 
-	if err := CheckZeroProduceCumulativeTime(ec.Slashing.ZeroProduceCumulativeTime, ec.Slashing.ZeroProduceNumberThreshold); nil != err {
+	if err := CheckZeroProduceCumulativeTime(ec.Slashing.ZeroProduceCumulativeTime, ec.Slashing.ZeroProduceNumberThreshold, version); nil != err {
 		return err
 	}
 
@@ -663,7 +704,10 @@ func Interval() uint64 {
 func BlocksWillCreate() uint64 {
 	return ec.Common.PerRoundBlocks
 }
-func MaxConsensusVals() uint64 {
+func MaxConsensusVals(version uint32) uint64 {
+	if version >= params.FORKVERSION_0_17_0 {
+		return ece.Extend0170.Common.MaxConsensusVals
+	}
 	return ec.Common.MaxConsensusVals
 }
 
@@ -671,12 +715,12 @@ func AdditionalCycleTime() uint64 {
 	return ec.Common.AdditionalCycleTime
 }
 
-func ConsensusSize() uint64 {
-	return BlocksWillCreate() * MaxConsensusVals()
+func ConsensusSize(version uint32) uint64 {
+	return BlocksWillCreate() * MaxConsensusVals(version)
 }
 
-func EpochSize() uint64 {
-	consensusSize := ConsensusSize()
+func EpochSize(version uint32) uint64 {
+	consensusSize := ConsensusSize(version)
 	em := MaxEpochMinutes()
 	i := Interval()
 
@@ -699,8 +743,8 @@ func MaxValidators() uint64 {
 	return ec.Staking.MaxValidators
 }
 
-func ShiftValidatorNum() uint64 {
-	return (ec.Common.MaxConsensusVals - 1) / 3
+func ShiftValidatorNum(maxConsensusVals uint64) uint64 {
+	return (maxConsensusVals - 1) / 3
 }
 
 func HesitateRatio() uint64 {
@@ -875,4 +919,12 @@ func CalcP(totalWeight float64, sqrtWeight float64) float64 {
 
 func CalcPNew(sqrtWeight float64) float64 {
 	return float64(ElectionBase) / sqrtWeight
+}
+
+func MaxGroupValidators() uint32 {
+	return ece.Extend0170.Common.MaxGroupValidators
+}
+
+func CoordinatorsLimit() uint32 {
+	return ece.Extend0170.Common.CoordinatorsLimit
 }

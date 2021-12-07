@@ -106,6 +106,16 @@ func Gte0170VersionState(state xcom.StateDB) bool {
 func Gte0170Version(version uint32) bool {
 	return version >= params.FORKVERSION_0_17_0
 }
+
+func WriteEcHash0170(state xcom.StateDB) error {
+	if data, err := xcom.EcParams0170(); nil != err {
+		return err
+	} else {
+		SetEcParametersHash(state, data)
+	}
+	return nil
+}
+
 func WriteEcHash0140(state xcom.StateDB) error {
 	if data, err := xcom.EcParams0140(); nil != err {
 		return err
@@ -130,6 +140,21 @@ func GetVersionForStaking(blockHash common.Hash, state xcom.StateDB) uint32 {
 	} else {
 		return GetCurrentActiveVersion(state)
 	}
+}
+
+func GetActiveVersion(state xcom.StateDB, version uint32) ActiveVersionValue {
+	avList, err := ListActiveVersion(state)
+	if err != nil {
+		log.Error("Cannot find active version list", "err", err)
+		return ActiveVersionValue{}
+	}
+
+	for _, av := range avList {
+		if av.ActiveVersion == version {
+			return av
+		}
+	}
+	return ActiveVersionValue{}
 }
 
 // Get current active version record
@@ -449,6 +474,9 @@ func ListProposal(blockHash common.Hash, state xcom.StateDB) ([]Proposal, error)
 		if err != nil {
 			log.Error("find proposal error", "proposalID", proposalID)
 			return nil, err
+		}
+		if versionProposal, ok := proposal.(*VersionProposal); ok {
+			versionProposal.ActiveBlock = versionProposal.GetActiveBlock(GetCurrentActiveVersion(state))
 		}
 		proposals = append(proposals, proposal)
 	}

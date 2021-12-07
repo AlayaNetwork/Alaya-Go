@@ -61,7 +61,7 @@ var (
 	stateDB xcom.StateDB
 	chainID = big.NewInt(100)
 
-//	stk            *StakingPlugin
+	//	stk            *StakingPlugin
 )
 
 func setup(t *testing.T) func() {
@@ -140,7 +140,7 @@ func submitVersion(t *testing.T, pid common.Hash) {
 		ProposalType:    gov.Version,
 		PIPID:           "versionIPID",
 		SubmitBlock:     1,
-		EndVotingRounds: xutil.EstimateConsensusRoundsForGov(xcom.VersionProposalVote_DurationSeconds()),
+		EndVotingRounds: xutil.EstimateConsensusRoundsForGov(xcom.VersionProposalVote_DurationSeconds(), currentTestGenesisVersion),
 		Proposer:        nodeIdArr[0],
 		NewVersion:      promoteVersion,
 	}
@@ -172,7 +172,7 @@ func submitCancel(t *testing.T, pid, tobeCanceled common.Hash) {
 		ProposalType:    gov.Cancel,
 		PIPID:           "CancelPIPID",
 		SubmitBlock:     1,
-		EndVotingRounds: xutil.EstimateConsensusRoundsForGov(xcom.VersionProposalVote_DurationSeconds()) - 1,
+		EndVotingRounds: xutil.EstimateConsensusRoundsForGov(xcom.VersionProposalVote_DurationSeconds(), currentTestGenesisVersion) - 1,
 		Proposer:        nodeIdArr[0],
 		TobeCanceled:    tobeCanceled,
 	}
@@ -417,7 +417,7 @@ func TestGovPlugin_SubmitVersion(t *testing.T) {
 func TestGovPlugin_SubmitVersion_PIPID_empty(t *testing.T) {
 	defer setup(t)()
 
-	vp := buildVersionProposal(txHashArr[0], "", xutil.EstimateConsensusRoundsForGov(xcom.VersionProposalVote_DurationSeconds()), uint32(1<<16|2<<8|0))
+	vp := buildVersionProposal(txHashArr[0], "", xutil.EstimateConsensusRoundsForGov(xcom.VersionProposalVote_DurationSeconds(), currentTestGenesisVersion), uint32(1<<16|2<<8|0))
 	err := gov.Submit(sender, vp, lastBlockHash, lastBlockNumber, stk, stateDB, chainID)
 	if err != nil {
 		if err == gov.PIPIDEmpty {
@@ -433,7 +433,7 @@ func TestGovPlugin_SubmitVersion_PIPID_duplicated(t *testing.T) {
 
 	t.Log("CurrentActiveVersion", "version", gov.GetCurrentActiveVersion(stateDB))
 
-	vp := buildVersionProposal(txHashArr[0], "pipID", xutil.EstimateConsensusRoundsForGov(xcom.VersionProposalVote_DurationSeconds()), uint32(1<<16|2<<8|0))
+	vp := buildVersionProposal(txHashArr[0], "pipID", xutil.EstimateConsensusRoundsForGov(xcom.VersionProposalVote_DurationSeconds(), currentTestGenesisVersion), uint32(1<<16|2<<8|0))
 
 	err := gov.Submit(sender, vp, lastBlockHash, lastBlockNumber, stk, stateDB, chainID)
 	if err != nil {
@@ -448,7 +448,7 @@ func TestGovPlugin_SubmitVersion_PIPID_duplicated(t *testing.T) {
 		t.Log("ListPIPID", "p", p)
 	}
 
-	vp2 := buildVersionProposal(txHashArr[1], "pipID", xutil.EstimateConsensusRoundsForGov(xcom.VersionProposalVote_DurationSeconds()), uint32(1<<16|3<<8|0))
+	vp2 := buildVersionProposal(txHashArr[1], "pipID", xutil.EstimateConsensusRoundsForGov(xcom.VersionProposalVote_DurationSeconds(), currentTestGenesisVersion), uint32(1<<16|3<<8|0))
 
 	err = gov.Submit(sender, vp2, lastBlockHash, lastBlockNumber, stk, stateDB, chainID)
 	if err != nil {
@@ -468,7 +468,7 @@ func TestGovPlugin_SubmitVersion_invalidEndVotingRounds(t *testing.T) {
 		ProposalType:    gov.Version,
 		PIPID:           "versionPIPID",
 		SubmitBlock:     1,
-		EndVotingRounds: xutil.EstimateConsensusRoundsForGov(xcom.VersionProposalVote_DurationSeconds()) + 1, //error
+		EndVotingRounds: xutil.EstimateConsensusRoundsForGov(xcom.VersionProposalVote_DurationSeconds(), currentTestGenesisVersion) + 1, //error
 		Proposer:        nodeIdArr[0],
 		NewVersion:      promoteVersion,
 	}
@@ -530,7 +530,7 @@ func TestGovPlugin_SubmitVersion_NewVersionError(t *testing.T) {
 		ProposalType:    gov.Version,
 		PIPID:           "versionPIPID",
 		SubmitBlock:     1,
-		EndVotingRounds: xutil.EstimateConsensusRoundsForGov(xcom.VersionProposalVote_DurationSeconds()),
+		EndVotingRounds: xutil.EstimateConsensusRoundsForGov(xcom.VersionProposalVote_DurationSeconds(), version),
 		Proposer:        nodeIdArr[0],
 		NewVersion:      newVersionErr, //error, less than activeVersion
 	}
@@ -599,7 +599,7 @@ func TestGovPlugin_SubmitCancel_invalidEndVotingRounds(t *testing.T) {
 		ProposalType:    gov.Cancel,
 		PIPID:           "CancelPIPID",
 		SubmitBlock:     1,
-		EndVotingRounds: xutil.EstimateConsensusRoundsForGov(xcom.VersionProposalVote_DurationSeconds()),
+		EndVotingRounds: xutil.EstimateConsensusRoundsForGov(xcom.VersionProposalVote_DurationSeconds(), currentTestGenesisVersion),
 		Proposer:        nodeIdArr[1],
 		TobeCanceled:    txHashArr[0],
 	}
@@ -625,7 +625,7 @@ func TestGovPlugin_SubmitCancel_noVersionProposal(t *testing.T) {
 		ProposalType:    gov.Cancel,
 		PIPID:           "cancelPIPID",
 		SubmitBlock:     1,
-		EndVotingRounds: xutil.EstimateConsensusRoundsForGov(xcom.VersionProposalVote_DurationSeconds()) - 1,
+		EndVotingRounds: xutil.EstimateConsensusRoundsForGov(xcom.VersionProposalVote_DurationSeconds(), currentTestGenesisVersion) - 1,
 		Proposer:        nodeIdArr[0],
 		TobeCanceled:    txHashArr[0],
 	}
@@ -982,15 +982,15 @@ func TestGovPlugin_textProposalPassed(t *testing.T) {
 	if err != nil {
 		t.Fatal("find proposal error", "err", err)
 	}
-
-	lastBlockNumber = uint64(xutil.CalcBlocksEachEpoch() - 1)
+	acversion := gov.GetCurrentActiveVersion(stateDB)
+	lastBlockNumber = uint64(xutil.CalcBlocksEachEpoch(acversion) - 1)
 	lastHeader = types.Header{
 		Number: big.NewInt(int64(lastBlockNumber)),
 	}
 	lastBlockHash = lastHeader.Hash()
 	sndb.SetCurrent(lastBlockHash, *big.NewInt(int64(lastBlockNumber)), *big.NewInt(int64(lastBlockNumber)))
 
-	build_staking_data_more(uint64(xutil.CalcBlocksEachEpoch()))
+	build_staking_data_more(uint64(xutil.CalcBlocksEachEpoch(acversion)))
 	beginBlock(t)
 	sndb.Commit(lastBlockHash)
 	sndb.Compaction()
@@ -1031,7 +1031,8 @@ func TestGovPlugin_textProposalFailed(t *testing.T) {
 	sndb.Commit(lastBlockHash)
 	sndb.Compaction()
 
-	endVotingBlock := xutil.CalEndVotingBlock(1, xutil.EstimateConsensusRoundsForGov(xcom.VersionProposalVote_DurationSeconds()))
+	acversion := gov.GetCurrentActiveVersion(stateDB)
+	endVotingBlock := xutil.CalEndVotingBlock(1, xutil.EstimateConsensusRoundsForGov(xcom.VersionProposalVote_DurationSeconds(), acversion), acversion)
 	//	actvieBlock := xutil.CalActiveBlock(endVotingBlock)
 
 	buildBlockNoCommit(2)
@@ -1040,14 +1041,14 @@ func TestGovPlugin_textProposalFailed(t *testing.T) {
 	sndb.Commit(lastBlockHash)
 	sndb.Compaction()
 
-	lastBlockNumber = uint64(xutil.CalcBlocksEachEpoch() - 1)
+	lastBlockNumber = uint64(xutil.CalcBlocksEachEpoch(acversion) - 1)
 	lastHeader = types.Header{
 		Number: big.NewInt(int64(lastBlockNumber)),
 	}
 	lastBlockHash = lastHeader.Hash()
 	sndb.SetCurrent(lastBlockHash, *big.NewInt(int64(lastBlockNumber)), *big.NewInt(int64(lastBlockNumber)))
 
-	build_staking_data_more(uint64(xutil.CalcBlocksEachEpoch()))
+	build_staking_data_more(uint64(xutil.CalcBlocksEachEpoch(acversion)))
 	beginBlock(t)
 	sndb.Commit(lastBlockHash)
 	sndb.Compaction()
@@ -1086,7 +1087,8 @@ func TestGovPlugin_versionProposalPreActive(t *testing.T) {
 	sndb.Commit(lastBlockHash)
 	sndb.Compaction()
 
-	endVotingBlock := xutil.CalEndVotingBlock(1, xutil.EstimateConsensusRoundsForGov(xcom.VersionProposalVote_DurationSeconds()))
+	acversion := gov.GetCurrentActiveVersion(stateDB)
+	endVotingBlock := xutil.CalEndVotingBlock(1, xutil.EstimateConsensusRoundsForGov(xcom.VersionProposalVote_DurationSeconds(), acversion), acversion)
 	//	actvieBlock := xutil.CalActiveBlock(endVotingBlock)
 
 	buildBlockNoCommit(2)
@@ -1096,14 +1098,14 @@ func TestGovPlugin_versionProposalPreActive(t *testing.T) {
 	sndb.Commit(lastBlockHash)
 	sndb.Compaction()
 
-	lastBlockNumber = uint64(xutil.CalcBlocksEachEpoch() - 1)
+	lastBlockNumber = uint64(xutil.CalcBlocksEachEpoch(acversion) - 1)
 	lastHeader = types.Header{
 		Number: big.NewInt(int64(lastBlockNumber)),
 	}
 	lastBlockHash = lastHeader.Hash()
 	sndb.SetCurrent(lastBlockHash, *big.NewInt(int64(lastBlockNumber)), *big.NewInt(int64(lastBlockNumber)))
 
-	build_staking_data_more(uint64(xutil.CalcBlocksEachEpoch()))
+	build_staking_data_more(uint64(xutil.CalcBlocksEachEpoch(acversion)))
 
 	beginBlock(t)
 
@@ -1183,7 +1185,8 @@ func TestGovPlugin_versionProposalActive(t *testing.T) {
 	sndb.Commit(lastBlockHash)
 	sndb.Compaction() //flush to LevelDB
 
-	endVotingBlock := xutil.CalEndVotingBlock(1, xutil.EstimateConsensusRoundsForGov(xcom.VersionProposalVote_DurationSeconds()))
+	acversion := gov.GetCurrentActiveVersion(stateDB)
+	endVotingBlock := xutil.CalEndVotingBlock(1, xutil.EstimateConsensusRoundsForGov(xcom.VersionProposalVote_DurationSeconds(), acversion), acversion)
 	actvieBlock := xutil.CalActiveBlock(endVotingBlock)
 
 	buildBlockNoCommit(2)

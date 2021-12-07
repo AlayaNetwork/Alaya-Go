@@ -10,6 +10,7 @@ import (
 const (
 	coordinatorWaitTimeout    = 200 * time.Millisecond
 	efficientCoordinatorRatio = 15 // TODO
+	defaultUnitID             = 0
 )
 
 type awaiting interface {
@@ -76,14 +77,14 @@ type RGBroadcastManager struct {
 
 // NewBridge creates a new Bridge to update consensus state and consensus msg.
 func NewRGBroadcastManager(cbft *Cbft) *RGBroadcastManager {
-	_, unitID, err := cbft.getGroupByValidatorID(cbft.state.Epoch(), cbft.Node().ID())
-	if err != nil {
-		cbft.log.Trace("The current node is not a consensus node, no need to start RGBroadcastManager", "epoch", cbft.state.Epoch(), "nodeID", cbft.Node().ID().String())
-		unitID = 0
-	}
+	//_, unitID, err := cbft.getGroupByValidatorID(cbft.state.Epoch(), cbft.Node().ID())
+	//if err != nil {
+	//	cbft.log.Trace("The current node is not a consensus node, no need to start RGBroadcastManager", "epoch", cbft.state.Epoch(), "nodeID", cbft.Node().ID().String())
+	//	unitID = 0
+	//}
 	m := &RGBroadcastManager{
 		cbft:                            cbft,
-		delayDuration:                   time.Duration(unitID) * coordinatorWaitTimeout,
+		delayDuration:                   time.Duration(defaultUnitID) * coordinatorWaitTimeout,
 		awaitingRGBlockQuorumCerts:      make(map[uint64]*awaitingJob),
 		hadSendRGBlockQuorumCerts:       make(map[uint64]*protocols.RGBlockQuorumCert),
 		awaitingRGViewChangeQuorumCerts: make(map[uint64]*awaitingJob),
@@ -318,6 +319,7 @@ func (m *RGBroadcastManager) broadcastFunc(a awaiting) {
 		m.cbft.network.Broadcast(rg)
 		m.hadSendRGBlockQuorumCerts[msg.Index()] = rg
 		delete(m.awaitingRGBlockQuorumCerts, msg.Index())
+		m.cbft.state.AddRGBlockQuorumCert(node.Index, rg)
 	case *awaitingRGViewQC:
 		viewChangeQC, prepareQCs := m.cbft.state.FindMaxGroupRGViewChangeQuorumCert(msg.GroupID())
 		if viewChangeQC == nil {
@@ -337,6 +339,7 @@ func (m *RGBroadcastManager) broadcastFunc(a awaiting) {
 		m.cbft.network.Broadcast(rg)
 		m.hadSendRGViewChangeQuorumCerts[msg.Index()] = rg
 		delete(m.awaitingRGViewChangeQuorumCerts, msg.Index())
+		m.cbft.state.AddRGViewChangeQuorumCert(node.Index, rg)
 	}
 }
 
@@ -363,7 +366,7 @@ func (m *RGBroadcastManager) Reset() {
 	_, unitID, err := m.cbft.getGroupByValidatorID(m.cbft.state.Epoch(), m.cbft.Node().ID())
 	if err != nil {
 		m.cbft.log.Trace("The current node is not a consensus node, no need to start RGBroadcastManager", "epoch", m.cbft.state.Epoch(), "nodeID", m.cbft.Node().ID().String())
-		unitID = 0
+		unitID = defaultUnitID
 	}
 	m.delayDuration = time.Duration(unitID) * coordinatorWaitTimeout
 	m.awaitingRGBlockQuorumCerts = make(map[uint64]*awaitingJob)
