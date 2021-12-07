@@ -3738,7 +3738,7 @@ func (sk *StakingPlugin) HasStake(blockHash common.Hash, addr common.Address) (b
 func (sk *StakingPlugin) Adjust0170RoundValidators(blockHash common.Hash, blockNumber uint64) error {
 	oldIndex := &staking.ValArrIndex{
 		Start: blockNumber,
-		End:   xcom.ConsensusSize(params.FORKVERSION_0_16_0),
+		End:   blockNumber + xcom.ConsensusSize(params.FORKVERSION_0_16_0),
 	}
 	//获取旧ValidatorQueue
 	queue, err := sk.db.GetRoundValListByIrr(oldIndex.Start, oldIndex.End)
