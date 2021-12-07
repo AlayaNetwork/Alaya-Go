@@ -3733,6 +3733,42 @@ func (sk *StakingPlugin) HasStake(blockHash common.Hash, addr common.Address) (b
 	return sk.db.HasAccountStakeRc(blockHash, addr)
 }
 
+// 0170分组共识在Epoch第一个块生效，但新Epoch的轮值共识节点是旧版本选出的
+// Adjust0170Validators调整共识节点的index以便在新Epoch按新Range出块
+func (sk *StakingPlugin) Adjust0170RoundValidators(blockHash common.Hash, blockNumber uint64) error {
+	oldIndex := &staking.ValArrIndex{
+		Start: blockNumber,
+		End:   xcom.ConsensusSize(params.FORKVERSION_0_16_0),
+	}
+	//获取旧ValidatorQueue
+	queue, err := sk.db.GetRoundValListByIrr(oldIndex.Start, oldIndex.End)
+	if nil != err {
+		log.Error("Adjust0170RoundValidators: Query round validators failed",
+			"Start", blockNumber, "End", oldIndex.End, "err", err)
+		return err
+	}
+
+	// 根据新ConsensusSize更新index和RoundValList
+	newQueue := &staking.ValidatorArray{
+		Start: oldIndex.Start,
+		End:   oldIndex.Start + xcom.ConsensusSize(params.FORKVERSION_0_17_0),
+		Arr:   queue,
+	}
+	if err := sk.setRoundValListAndIndex(blockNumber, blockHash, newQueue); nil != err {
+		log.Error("Failed to SetNextValidatorList on Election", "blockNumber", blockNumber,
+			"blockHash", blockHash.Hex(), "err", err)
+		return err
+	}
+	// 删除旧ValidatorQueue
+	if err := sk.db.DelRoundValListByBlockHash(blockHash, oldIndex.Start, oldIndex.End); nil != err {
+		log.Error("Adjust0170RoundValidators: delete oldIndex validators failed",
+			"oldIndex start", oldIndex.Start, "oldIndex end", oldIndex.End,
+			"blockNumber", blockNumber, "blockHash", blockHash.Hex(), "err", err)
+		return err
+	}
+	return nil
+}
+
 func calcCandidateTotalAmount(can *staking.Candidate) *big.Int {
 	release := new(big.Int).Add(can.Released, can.ReleasedHes)
 	restrictingPlan := new(big.Int).Add(can.RestrictingPlan, can.RestrictingPlanHes)

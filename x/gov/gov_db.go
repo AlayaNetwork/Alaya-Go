@@ -202,6 +202,24 @@ func GetVotedVerifierMap(proposalID common.Hash, blockHash common.Hash) (map[eno
 	return votedMap, nil
 }
 
+// update tally result status to Active
+func UpdateTallyResult(proposalID common.Hash, state xcom.StateDB) error {
+	//log.Debug("it's time to active the pre-active version proposal")
+	tallyResult, err := GetTallyResult(proposalID, state)
+	if err != nil || tallyResult == nil {
+		log.Error("find pre-active version proposal tally result failed.", "proposalID", proposalID)
+		return err
+	}
+	//update tally status to "active"
+	tallyResult.Status = Active
+
+	if err := SetTallyResult(*tallyResult, state); err != nil {
+		log.Error("update version proposal tally result failed.", "proposalID", proposalID)
+		return err
+	}
+	return nil
+}
+
 func SetTallyResult(tallyResult TallyResult, state xcom.StateDB) error {
 	value, err := json.Marshal(tallyResult)
 	if err != nil {
