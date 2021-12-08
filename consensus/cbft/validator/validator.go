@@ -457,6 +457,7 @@ func (vp *ValidatorPool) Update(blockNumber uint64, epoch uint64, isElection boo
 	}
 
 	if isElection {
+		// 提前更新nextValidators，为了p2p早一步订阅分组事件以便建链接
 		nds, err = vp.agency.GetValidators(NextRound(blockNumber))
 		if err != nil {
 			log.Error("Get validator error", "blockNumber", blockNumber, "err", err)
