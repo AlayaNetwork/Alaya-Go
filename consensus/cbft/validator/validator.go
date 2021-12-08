@@ -463,21 +463,22 @@ func (vp *ValidatorPool) Update(blockNumber uint64, epoch uint64, isElection boo
 			log.Error("Get validator error", "blockNumber", blockNumber, "err", err)
 			return err
 		}
-		vp.nextValidators = nds
 		if vp.grouped {
 			nds.Grouped(eventMux, epoch)
 		}
+		vp.nextValidators = nds
 	} else {
 		// 节点中间重启过， nextValidators没有赋值
 		if vp.nextValidators == nil {
-			vp.nextValidators, err = vp.agency.GetValidators(NextRound(blockNumber))
+			nds, err = vp.agency.GetValidators(NextRound(blockNumber))
 			if err != nil {
-				log.Error("Get nextValidators error", "blockNumber", blockNumber, "err", err)
+				log.Error("Get validator error", "blockNumber", blockNumber, "err", err)
 				return err
 			}
 			if vp.grouped {
 				nds.Grouped(eventMux, epoch)
 			}
+			vp.nextValidators = nds
 		}
 		vp.prevValidators = vp.currentValidators
 		vp.currentValidators = vp.nextValidators
@@ -486,7 +487,7 @@ func (vp *ValidatorPool) Update(blockNumber uint64, epoch uint64, isElection boo
 		vp.epoch = epoch
 		vp.unitID = vp.currentValidators.UnitID(vp.nodeID)
 		vp.nextValidators = nil
-		log.Info("Update validator", "validators", nds.String(), "switchpoint", vp.switchPoint, "epoch", vp.epoch, "lastNumber", vp.lastNumber)
+		log.Info("Update validator", "validators", vp.currentValidators.String(), "switchpoint", vp.switchPoint, "epoch", vp.epoch, "lastNumber", vp.lastNumber)
 	}
 	return nil
 }
