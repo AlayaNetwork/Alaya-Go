@@ -467,6 +467,17 @@ func (vp *ValidatorPool) Update(blockNumber uint64, epoch uint64, isElection boo
 			nds.Grouped(eventMux, epoch)
 		}
 	} else {
+		// 节点中间重启过， nextValidators没有赋值
+		if vp.nextValidators == nil {
+			vp.nextValidators, err = vp.agency.GetValidators(NextRound(blockNumber))
+			if err != nil {
+				log.Error("Get nextValidators error", "blockNumber", blockNumber, "err", err)
+				return err
+			}
+			if vp.grouped {
+				nds.Grouped(eventMux, epoch)
+			}
+		}
 		vp.prevValidators = vp.currentValidators
 		vp.currentValidators = vp.nextValidators
 		vp.switchPoint = vp.currentValidators.ValidBlockNumber - 1
