@@ -3766,6 +3766,8 @@ func (sk *StakingPlugin) Adjust0170RoundValidators(blockHash common.Hash, blockN
 			"blockNumber", blockNumber, "blockHash", blockHash.Hex(), "err", err)
 		return err
 	}
+	log.Debug("Adjust0170RoundValidators OK!", "queue", queue.String(),
+		"oldIndex.Start", oldIndex.Start, "oldIndex.End", oldIndex.End, "newQueue.Start", newQueue.Start, "newQueue.End", newQueue.End)
 	return nil
 }
 
