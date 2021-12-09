@@ -321,7 +321,7 @@ type ValidatorPool struct {
 
 	prevValidators    *cbfttypes.Validators // Previous round validators
 	currentValidators *cbfttypes.Validators // Current round validators
-	nextValidators    *cbfttypes.Validators // Next round validators
+	nextValidators    *cbfttypes.Validators // Next round validators, to Post Pub event
 }
 
 // NewValidatorPool new a validator pool.
@@ -415,49 +415,81 @@ func (vp *ValidatorPool) MockSwitchPoint(number uint64) {
 }
 
 // Update switch validators.
-func (vp *ValidatorPool) Update(blockNumber uint64, epoch uint64, isElection bool, eventMux *event.TypeMux) error {
+func (vp *ValidatorPool) Update(blockNumber uint64, epoch uint64, isElection bool, version uint32, eventMux *event.TypeMux) error {
 	vp.lock.Lock()
 	defer vp.lock.Unlock()
 
-	// Election block update nextValidators
+	// 生效后第一个共识周期的Election block已经是新值（2130）所以第一次触发update是cbft.tryChangeView->shouldSwitch
 	if blockNumber <= vp.switchPoint && !isElection {
 		log.Debug("Already update validator before", "blockNumber", blockNumber, "switchPoint", vp.switchPoint)
 		return errors.New("already updated before")
 	}
 
-	nds, err := vp.agency.GetValidators(NextRound(blockNumber))
-	if err != nil {
-		log.Error("Get validator error", "blockNumber", blockNumber, "err", err)
-		return err
+	var err error
+	var nds *cbfttypes.Validators
+
+	//生效后第一个共识周期的switchpoint是旧值，此时不能切换
+	//判断依据是新validators和current完全相同且nextValidators为空
+	if !isElection && vp.nextValidators == nil {
+		nds, err = vp.agency.GetValidators(NextRound(blockNumber))
+		if err != nil {
+			log.Error("Get validator error", "blockNumber", blockNumber, "err", err)
+			return err
+		}
+		if vp.currentValidators.Equal(nds) {
+			vp.currentValidators = nds
+			vp.switchPoint = nds.ValidBlockNumber - 1
+			vp.lastNumber = vp.agency.GetLastNumber(blockNumber)
+			//不切换，所以epoch不增
+			vp.grouped = false
+			return nil
+		} else {
+			return fmt.Errorf("ValidatorPool update failed!", "currentValidators", vp.currentValidators.String(), "nds", nds.String())
+		}
+	}
+	//分组提案生效后第一个共识round到ElectionPoint时初始化分组信息
+	if !vp.grouped {
+		if version >= params.FORKVERSION_0_17_0 {
+			vp.grouped = true
+			vp.groupValidatorsLimit = xcom.MaxGroupValidators()
+			vp.coordinatorLimit = xcom.CoordinatorsLimit()
+		}
 	}
 
-	if vp.grouped {
-		nds.Grouped(eventMux, epoch)
-		vp.unitID = nds.UnitID(vp.nodeID)
-	}
-
-	if isElection && vp.grouped {
+	if isElection {
+		// 提前更新nextValidators，为了p2p早一步订阅分组事件以便建链接
+		nds, err = vp.agency.GetValidators(NextRound(blockNumber))
+		if err != nil {
+			log.Error("Get validator error", "blockNumber", blockNumber, "err", err)
+			return err
+		}
+		if vp.grouped {
+			nds.Grouped(eventMux, epoch)
+		}
 		vp.nextValidators = nds
-		log.Info("Update nextValidators", "validators", nds.String(), "switchpoint", vp.switchPoint, "epoch", vp.epoch, "lastNumber", vp.lastNumber)
 	} else {
+		// 节点中间重启过， nextValidators没有赋值
+		if vp.nextValidators == nil {
+			nds, err = vp.agency.GetValidators(NextRound(blockNumber))
+			if err != nil {
+				log.Error("Get validator error", "blockNumber", blockNumber, "err", err)
+				return err
+			}
+			if vp.grouped {
+				nds.Grouped(eventMux, epoch)
+			}
+			vp.nextValidators = nds
+		}
 		vp.prevValidators = vp.currentValidators
-		vp.currentValidators = nds
-		vp.switchPoint = nds.ValidBlockNumber - 1
+		vp.currentValidators = vp.nextValidators
+		vp.switchPoint = vp.currentValidators.ValidBlockNumber - 1
 		vp.lastNumber = vp.agency.GetLastNumber(NextRound(blockNumber))
 		vp.epoch = epoch
-		log.Info("Update validator", "validators", nds.String(), "switchpoint", vp.switchPoint, "epoch", vp.epoch, "lastNumber", vp.lastNumber)
+		vp.unitID = vp.currentValidators.UnitID(vp.nodeID)
+		vp.nextValidators = nil
+		log.Info("Update validator", "validators", vp.currentValidators.String(), "switchpoint", vp.switchPoint, "epoch", vp.epoch, "lastNumber", vp.lastNumber)
 	}
 	return nil
-}
-
-// SetupGroup update validatorpool group info
-func (vp *ValidatorPool) SetupGroup(needGroup bool) {
-	vp.lock.Lock()
-	defer vp.lock.Unlock()
-
-	vp.grouped = needGroup
-	vp.groupValidatorsLimit = xcom.MaxGroupValidators()
-	vp.coordinatorLimit = xcom.CoordinatorsLimit()
 }
 
 // GetValidatorByNodeID get the validator by node id.
