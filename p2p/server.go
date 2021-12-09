@@ -1277,7 +1277,7 @@ func (srv *Server) StartWatching(eventMux *event.TypeMux) {
 }
 
 func (srv *Server) watching() {
-	events := srv.eventMux.Subscribe(cbfttypes.AddValidatorEvent{}, cbfttypes.RemoveValidatorEvent{})
+	events := srv.eventMux.Subscribe(cbfttypes.AddValidatorEvent{}, cbfttypes.RemoveValidatorEvent{}, cbfttypes.NewGroupsEvent{}, cbfttypes.ExpiredTopicEvent{})
 	defer events.Unsubscribe()
 
 	for {
@@ -1286,28 +1286,28 @@ func (srv *Server) watching() {
 			if ev == nil {
 				continue
 			}
-
-			switch ev.Data.(type) {
+			switch data := ev.Data.(type) {
 			case cbfttypes.AddValidatorEvent:
-				addEv, ok := ev.Data.(cbfttypes.AddValidatorEvent)
-				if !ok {
-					log.Error("Received add validator event type error")
-					continue
-				}
-				log.Trace("Received AddValidatorEvent", "nodeID", addEv.Node.ID().String())
-				srv.AddConsensusPeer(addEv.Node)
+				log.Trace("Received AddValidatorEvent", "nodeID", data.Node.ID().String())
+				srv.AddConsensusPeer(data.Node)
 			case cbfttypes.RemoveValidatorEvent:
-				removeEv, ok := ev.Data.(cbfttypes.RemoveValidatorEvent)
-				if !ok {
-					log.Error("Received remove validator event type error")
-					continue
+				log.Trace("Received RemoveValidatorEvent", "nodeID", data.Node.ID().String())
+				srv.RemoveConsensusPeer(data.Node)
+			case cbfttypes.NewGroupsEvent:
+				srv.topicSubscriberMu.Lock()
+				topicSubscriber := make([]enode.ID, 0)
+				for _, node := range data.Validators.Nodes {
+					topicSubscriber = append(topicSubscriber, node.NodeID)
 				}
-				log.Trace("Received RemoveValidatorEvent", "nodeID", removeEv.Node.ID().String())
-				srv.RemoveConsensusPeer(removeEv.Node)
+				srv.topicSubscriber[data.Topic] = topicSubscriber
+				srv.topicSubscriberMu.Unlock()
+			case cbfttypes.ExpiredTopicEvent:
+				srv.topicSubscriberMu.Lock()
+				delete(srv.topicSubscriber, data.Topic)
+				srv.topicSubscriberMu.Unlock()
 			default:
 				log.Error("Received unexcepted event")
 			}
-
 		case <-srv.quit:
 			return
 		}
