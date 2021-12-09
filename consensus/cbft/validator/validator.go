@@ -309,9 +309,6 @@ type ValidatorPool struct {
 	// current epoch
 	epoch uint64
 
-	// Uint ID of the group where the current node is located
-	unitID uint32
-
 	// grouped indicates if validators need grouped
 	grouped bool
 	// max validators in per group
@@ -355,16 +352,15 @@ func NewValidatorPool(agency consensus.Agency, blockNumber, epoch uint64, nodeID
 		pool.switchPoint = pool.currentValidators.ValidBlockNumber - 1
 	}
 	if needGroup {
-		pool.currentValidators.Grouped()
-		pool.unitID, _ = pool.currentValidators.UnitID(nodeID)
+		pool.organize(pool.currentValidators, epoch, eventMux)
 		if pool.nextValidators == nil {
 			nds, err := pool.agency.GetValidators(NextRound(pool.currentValidators.ValidBlockNumber))
 			if err != nil {
 				log.Debug("Get nextValidators error", "blockNumber", blockNumber, "err", err)
 				return pool
 			}
-			nds.Grouped()
 			pool.nextValidators = nds
+			pool.organize(pool.nextValidators, epoch+1, eventMux)
 		}
 	}
 	log.Debug("Update validator", "validators", pool.currentValidators.String(), "switchpoint", pool.switchPoint, "epoch", pool.epoch, "lastNumber", pool.lastNumber)
@@ -388,8 +384,7 @@ func (vp *ValidatorPool) Reset(blockNumber uint64, epoch uint64, eventMux *event
 		vp.switchPoint = vp.currentValidators.ValidBlockNumber - 1
 	}
 	if vp.grouped {
-		vp.currentValidators.Grouped()
-		vp.unitID, _ = vp.currentValidators.UnitID(vp.nodeID)
+		vp.organize(vp.currentValidators, epoch, eventMux)
 	}
 	log.Debug("Update validator", "validators", vp.currentValidators.String(), "switchpoint", vp.switchPoint, "epoch", vp.epoch, "lastNumber", vp.lastNumber)
 }
@@ -472,10 +467,10 @@ func (vp *ValidatorPool) Update(blockNumber uint64, epoch uint64, isElection boo
 			log.Error("Get validator error", "blockNumber", blockNumber, "err", err)
 			return err
 		}
-		if vp.grouped {
-			nds.Grouped()
-		}
 		vp.nextValidators = nds
+		if vp.grouped {
+			vp.organize(vp.nextValidators, epoch, eventMux)
+		}
 	} else {
 		// 节点中间重启过， nextValidators没有赋值
 		if vp.nextValidators == nil {
@@ -484,17 +479,16 @@ func (vp *ValidatorPool) Update(blockNumber uint64, epoch uint64, isElection boo
 				log.Error("Get validator error", "blockNumber", blockNumber, "err", err)
 				return err
 			}
-			if vp.grouped {
-				nds.Grouped()
-			}
 			vp.nextValidators = nds
+			if vp.grouped {
+				vp.organize(vp.nextValidators, epoch, eventMux)
+			}
 		}
 		vp.prevValidators = vp.currentValidators
 		vp.currentValidators = vp.nextValidators
 		vp.switchPoint = vp.currentValidators.ValidBlockNumber - 1
 		vp.lastNumber = vp.agency.GetLastNumber(NextRound(blockNumber))
 		vp.epoch = epoch
-		vp.unitID, _ = vp.currentValidators.UnitID(vp.nodeID)
 		vp.nextValidators = nil
 		log.Info("Update validator", "validators", vp.currentValidators.String(), "switchpoint", vp.switchPoint, "epoch", vp.epoch, "lastNumber", vp.lastNumber)
 	}
