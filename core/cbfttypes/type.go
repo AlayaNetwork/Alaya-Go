@@ -68,9 +68,17 @@ type RemoveValidatorEvent struct {
 	Node *enode.Node
 }
 
+type ConsensusTopicEvent struct {
+	Topic string // consensus:{epoch}
+}
+
 type NewGroupsEvent struct {
 	Topic      string // consensus:{epoch}:{groupID}
 	Validators *GroupValidators
+}
+
+type ExpiredConsensusTopicEvent struct {
+	Topic string // consensus:{epoch}
 }
 
 type ExpiredTopicEvent struct {
