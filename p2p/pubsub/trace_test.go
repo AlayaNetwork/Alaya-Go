@@ -2,9 +2,11 @@ package pubsub
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
 	"github.com/AlayaNetwork/Alaya-Go/p2p/pubsub/message"
+	"os"
 	"testing"
 	"time"
 )
@@ -48,6 +50,9 @@ func testWithTracer(t *testing.T, tracer EventTracer) {
 	for i := 1; i < 20; i++ {
 		connect(t, hosts[0], hosts[i])
 	}
+	connectSome(t, hosts, 6)
+
+	time.Sleep(time.Second)
 
 	// build the mesh
 	var subs []*Subscription
@@ -164,38 +169,39 @@ func (ts *traceStats) check(t *testing.T) {
 	}
 }
 
-//func TestJSONTracer(t *testing.T) {
-//	tracer, err := NewJSONTracer("/tmp/trace.out.json")
-//	if err != nil {
-//		t.Fatal(err)
-//	}
-//
-//	testWithTracer(t, tracer)
-//	time.Sleep(time.Second)
-//	tracer.Close()
-//
-//	var stats traceStats
-//	var evt message.TraceEvent
-//
-//	f, err := os.Open("/tmp/trace.out.json")
-//	if err != nil {
-//		t.Fatal(err)
-//	}
-//	defer f.Close()
-//
-//	dec := json.NewDecoder(f)
-//	for {
-//		evt.Reset()
-//		err := dec.Decode(&evt)
-//		if err != nil {
-//			break
-//		}
-//
-//		stats.process(&evt)
-//	}
-//
-//	stats.check(t)
-//}
+func TestJSONTracer(t *testing.T) {
+	tracer, err := NewJSONTracer("D:\\trace.out.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testWithTracer(t, tracer)
+	time.Sleep(time.Second)
+	tracer.Close()
+
+	var stats traceStats
+	var evt message.TraceEvent
+
+	f, err := os.Open("D:\\trace.out.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+
+	dec := json.NewDecoder(f)
+	for {
+		evt.Reset()
+		err := dec.Decode(&evt)
+		if err != nil {
+			break
+		}
+
+		stats.process(&evt)
+	}
+
+	stats.check(t)
+}
+
 //
 //func TestPBTracer(t *testing.T) {
 //	tracer, err := NewPBTracer("/tmp/trace.out.pb")
