@@ -21,6 +21,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
+
 	"github.com/AlayaNetwork/Alaya-Go/common"
 	ctypes "github.com/AlayaNetwork/Alaya-Go/consensus/cbft/types"
 	"github.com/AlayaNetwork/Alaya-Go/log"
@@ -28,7 +30,6 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
 	"github.com/AlayaNetwork/Alaya-Go/p2p/pubsub"
 	"github.com/AlayaNetwork/Alaya-Go/rlp"
-	"sync"
 )
 
 const (
@@ -62,7 +63,8 @@ type PubSub struct {
 	onReceive receiveCallback
 
 	// All topics subscribed
-	topics map[string]*pubsub.Topic
+	topics   map[string]*pubsub.Topic
+	topicCtx map[string]context.Context
 	// The set of topics we are subscribed to
 	mySubs map[string]*pubsub.Subscription
 	sync.Mutex
@@ -137,12 +139,16 @@ func (ps *PubSub) Subscribe(topic string) error {
 	if err != nil {
 		return err
 	}
+	ctx := context.Background()
+	ps.pss.DiscoverTopic(ctx, topic)
+
 	subscription, err := t.Subscribe()
 	if err != nil {
 		return err
 	}
 	ps.topics[topic] = t
 	ps.mySubs[topic] = subscription
+	ps.topicCtx[topic] = ctx
 
 	go ps.listen(subscription)
 	return nil
@@ -193,6 +199,10 @@ func (ps *PubSub) Cancel(topic string) error {
 		sb.Cancel()
 		delete(ps.mySubs, topic)
 		delete(ps.topics, topic)
+	}
+	if ctx, ok := ps.topicCtx[topic]; ok {
+		ctx.Done()
+		delete(ps.topicCtx, topic)
 	}
 	return nil
 }

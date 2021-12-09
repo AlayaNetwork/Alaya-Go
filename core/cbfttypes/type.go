@@ -75,7 +75,11 @@ type NewGroupsEvent struct {
 	Validators *GroupValidators
 }
 
-type UpdateValidatorEvent struct{}
+type ExpiredTopicEvent struct {
+	Topic string // consensus:{epoch}:{groupID}
+}
+
+//type UpdateValidatorEvent struct{}
 
 type ValidateNode struct {
 	Index     uint32             `json:"index"`
