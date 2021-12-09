@@ -27,7 +27,6 @@ import (
 
 	"github.com/AlayaNetwork/Alaya-Go/common/hexutil"
 	"github.com/AlayaNetwork/Alaya-Go/event"
-	"github.com/AlayaNetwork/Alaya-Go/log"
 	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
 	"github.com/AlayaNetwork/Alaya-Go/x/xcom"
 
@@ -295,25 +294,24 @@ func (vs *Validators) GroupID(nodeID enode.ID) (uint32, error) {
 	return groupID, nil
 }
 
-func (vs *Validators) UnitID(nodeID enode.ID) uint32 {
+func (vs *Validators) UnitID(nodeID enode.ID) (uint32, error) {
 	if len(vs.SortedNodes) == 0 {
 		vs.Sort()
 	}
 
 	idx, err := vs.Index(nodeID)
 	if err != nil {
-		log.Error("get preValidator index failed!", "err", err)
-		return idx
+		return idx, err
 	}
 
 	groupID, _ := vs.GroupID(nodeID)
 	unitID := uint32(0)
 	for i, node := range vs.GroupNodes[groupID].Nodes {
 		if idx == node.Index {
-			unitID = uint32(i)
+			return uint32(i), nil
 		}
 	}
-	return unitID
+	return unitID, errors.New("not found the specified nodeID")
 }
 
 func (gvs *GroupValidators) GroupedUnits() {

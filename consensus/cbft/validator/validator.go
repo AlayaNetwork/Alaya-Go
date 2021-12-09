@@ -356,7 +356,7 @@ func NewValidatorPool(agency consensus.Agency, blockNumber, epoch uint64, nodeID
 	}
 	if needGroup {
 		pool.currentValidators.Grouped(eventMux, epoch)
-		pool.unitID = pool.currentValidators.UnitID(nodeID)
+		pool.unitID, _ = pool.currentValidators.UnitID(nodeID)
 		if pool.nextValidators == nil {
 			nds, err := pool.agency.GetValidators(NextRound(pool.currentValidators.ValidBlockNumber))
 			if err != nil {
@@ -389,7 +389,7 @@ func (vp *ValidatorPool) Reset(blockNumber uint64, epoch uint64, eventMux *event
 	}
 	if vp.grouped {
 		vp.currentValidators.Grouped(eventMux, epoch)
-		vp.unitID = vp.currentValidators.UnitID(vp.nodeID)
+		vp.unitID, _ = vp.currentValidators.UnitID(vp.nodeID)
 	}
 	log.Debug("Update validator", "validators", vp.currentValidators.String(), "switchpoint", vp.switchPoint, "epoch", vp.epoch, "lastNumber", vp.lastNumber)
 }
@@ -494,7 +494,7 @@ func (vp *ValidatorPool) Update(blockNumber uint64, epoch uint64, isElection boo
 		vp.switchPoint = vp.currentValidators.ValidBlockNumber - 1
 		vp.lastNumber = vp.agency.GetLastNumber(NextRound(blockNumber))
 		vp.epoch = epoch
-		vp.unitID = vp.currentValidators.UnitID(vp.nodeID)
+		vp.unitID, _ = vp.currentValidators.UnitID(vp.nodeID)
 		vp.nextValidators = nil
 		log.Info("Update validator", "validators", vp.currentValidators.String(), "switchpoint", vp.switchPoint, "epoch", vp.epoch, "lastNumber", vp.lastNumber)
 	}
@@ -750,9 +750,9 @@ func (vp *ValidatorPool) GetUnitID(epoch uint64, nodeID enode.ID) (uint32, error
 	defer vp.lock.RUnlock()
 
 	if vp.epochToBlockNumber(epoch) <= vp.switchPoint {
-		return vp.prevValidators.UnitID(nodeID), nil
+		return vp.prevValidators.UnitID(nodeID)
 	}
-	return vp.unitID, nil
+	return vp.currentValidators.UnitID(nodeID)
 }
 
 // UnitID return current node's index according epoch
@@ -834,8 +834,8 @@ func (vp *ValidatorPool) GetGroupByValidatorID(epoch uint64, nodeID enode.ID) (u
 	if nil != err {
 		return 0, 0, err
 	}
-	unitID := validators.UnitID(nodeID)
-	return groupID, unitID, nil
+	unitID, err := validators.UnitID(nodeID)
+	return groupID, unitID, err
 }
 
 // 返回指定epoch下节点的分组信息，key=groupID，value=分组节点index集合
