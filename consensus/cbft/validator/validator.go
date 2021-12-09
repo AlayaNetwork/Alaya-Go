@@ -491,6 +491,8 @@ func (vp *ValidatorPool) Update(blockNumber uint64, epoch uint64, isElection boo
 		vp.epoch = epoch
 		vp.nextValidators = nil
 		log.Info("Update validator", "validators", vp.currentValidators.String(), "switchpoint", vp.switchPoint, "epoch", vp.epoch, "lastNumber", vp.lastNumber)
+		//切换共识轮时需要将上一轮分组的topic取消订阅
+		vp.dissolve(epoch, eventMux)
 	}
 	return nil
 }
