@@ -10,9 +10,9 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/p2p/enr"
 )
 
-// SubscribeTopic to  the given topic.A given validator and subscription handler is
+// DiscoverTopic to  the given topic.A given validator and subscription handler is
 // used to handle messages from the subnet. The base protobuf message is used to initialize new messages for decoding.
-func (srv *Server) SubscribeTopic(ctx context.Context, topic string) {
+func (srv *Server) DiscoverTopic(ctx context.Context, topic string) {
 
 	ticker := time.NewTicker(time.Second * 1)
 
@@ -146,80 +146,3 @@ func (srv *Server) filterPeer(node *enode.Node) bool {
 	}
 	return true
 }
-
-/*
-func (srv *Server) RefreshTopicENR() {
-	// return early if discv5 isnt running
-	if srv.DiscV5 == nil {
-		return
-	}
-	bitTopics := bitfield.NewBitvector64()
-	committees := srv.GetAllTopics()
-	for _, idx := range committees {
-		bitTopics.SetBitAt(idx, true)
-	}
-	currentBitTopics, err := getBitvector(srv.Config.TopicKey, srv.DiscV5.Self().Record())
-	if err != nil {
-		log.Error("Could not retrieve att bitfield", "err", err)
-		return
-	}
-
-	if bytes.Equal(bitTopics, currentBitTopics) {
-		// return early if bitfields haven't changed
-		return
-	}
-	srv.updateTopicRecord(bitTopics)
-	// ping all peers to inform them of new metadata
-	//todo not sure ping here
-	//s.pingPeers()
-}
-
-func (srv *Server) updateTopicRecord(bitVAtt bitfield.Bitvector64) {
-	entry := enr.WithEntry(srv.Config.TopicKey, &bitVAtt)
-	srv.DiscV5.LocalNode().Set(entry)
-}
-
-func (srv *Server) GetAllTopics() []uint64 {
-	return nil
-}
-
-// Reads the attestation subnets entry from a node's ENR and determines
-// the committee indices of the attestation subnets the node is subscribed to.
-func (srv *Server) getTopics(record *enr.Record) ([]uint64, error) {
-	bitV, err := getBitvector(srv.Config.TopicKey, record)
-	if err != nil {
-		return nil, err
-	}
-	if len(bitV) != byteCount(int(srv.Config.TopicCount)) {
-		return []uint64{}, errors.Errorf("invalid bitvector provided, it has a size of %d", len(bitV))
-	}
-	var topicIdxs []uint64
-	for i := uint64(0); i < srv.Config.TopicCount; i++ {
-		if bitV.BitAt(i) {
-			topicIdxs = append(topicIdxs, i)
-		}
-	}
-	return topicIdxs, nil
-}
-
-// Parses the attestation subnets ENR entry in a node and extracts its value
-// as a bitvector for further manipulation.
-func getBitvector(key string, record *enr.Record) (bitfield.Bitvector64, error) {
-	bitV := bitfield.NewBitvector64()
-	entry := enr.WithEntry(key, &bitV)
-	err := record.Load(entry)
-	if err != nil {
-		return nil, err
-	}
-	return bitV, nil
-}
-
-// Determines the number of bytes that are used
-// to represent the provided number of bits.
-func byteCount(bitCount int) int {
-	numOfBytes := bitCount / 8
-	if bitCount%8 != 0 {
-		numOfBytes++
-	}
-	return numOfBytes
-}*/
