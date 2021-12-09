@@ -23,8 +23,9 @@ import (
 )
 
 type PubSubServer struct {
-	pubSub *pubsub.PubSub
-	host   *Host
+	p2pServer *Server
+	pubSub    *pubsub.PubSub
+	host      *Host
 }
 
 func NewPubSubServer(localNode *enode.Node, p2pServer *Server) *PubSubServer {
@@ -36,8 +37,9 @@ func NewPubSubServer(localNode *enode.Node, p2pServer *Server) *PubSubServer {
 	}
 
 	return &PubSubServer{
-		pubSub: gossipSub,
-		host:   host,
+		p2pServer: p2pServer,
+		pubSub:    gossipSub,
+		host:      host,
 	}
 }
 
