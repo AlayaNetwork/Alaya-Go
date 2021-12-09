@@ -77,6 +77,10 @@ type NewGroupsEvent struct {
 	Validators *GroupValidators
 }
 
+type ExpiredConsensusTopicEvent struct {
+	Topic string // consensus:{epoch}
+}
+
 type ExpiredTopicEvent struct {
 	Topic string // consensus:{epoch}:{groupID}
 }
