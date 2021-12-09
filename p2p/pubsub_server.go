@@ -18,6 +18,7 @@ package p2p
 
 import (
 	"context"
+
 	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
 	"github.com/AlayaNetwork/Alaya-Go/p2p/pubsub"
 )
@@ -64,4 +65,8 @@ func (pss *PubSubServer) NewConn(peer *Peer, rw MsgReadWriter) chan error {
 	pss.Host().AddConn(peer.ID(), conn)
 	pss.Host().NotifyAll(conn)
 	return errCh
+}
+
+func (pss *PubSubServer) DiscoverTopic(ctx context.Context, topic string) {
+	pss.p2pServer.DiscoverTopic(ctx, topic)
 }
