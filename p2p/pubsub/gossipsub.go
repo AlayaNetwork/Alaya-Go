@@ -489,7 +489,7 @@ func (gs *GossipSubRouter) Attach(p *PubSub) {
 }
 
 func (gs *GossipSubRouter) AddPeer(p *enode.Node, proto ProtocolID) {
-	log.Debug("PEERUP: Add new peer %s using %s", "peer", p, "proto", proto)
+	log.Debug("PEERUP: Add new peer", "peer", p.ID().TerminalString(), "proto", proto)
 	gs.tracer.AddPeer(p, proto)
 	gs.peers[p.ID()] = proto
 
@@ -518,7 +518,7 @@ loop:
 }
 
 func (gs *GossipSubRouter) RemovePeer(p enode.ID) {
-	log.Debug("PEERDOWN: Remove disconnected peer %s", "peer", p)
+	log.Debug("PEERDOWN: Remove disconnected peer", "peer", p.TerminalString())
 	gs.tracer.RemovePeer(p)
 	delete(gs.peers, p)
 	for _, peers := range gs.mesh {
@@ -597,19 +597,19 @@ func (gs *GossipSubRouter) handleIHave(p enode.ID, ctl *message.ControlMessage) 
 	// we ignore IHAVE gossip from any peer whose score is below the gossip threshold
 	score := gs.score.Score(p)
 	if score < gs.gossipThreshold {
-		log.Debug("IHAVE: ignoring peer %s with score below threshold [score = %f]", "peer", p, "score", score)
+		log.Debug("IHAVE: ignoring peer with score below threshold", "peer", p.TerminalString(), "score", score)
 		return nil
 	}
 
 	// IHAVE flood protection
 	gs.peerhave[p]++
 	if gs.peerhave[p] > gs.params.MaxIHaveMessages {
-		log.Debug("IHAVE: peer %s has advertised too many times (%d) within this heartbeat interval; ignoring", "peer", "messages", p, gs.peerhave[p])
+		log.Debug("IHAVE: peer has advertised too many times within this heartbeat interval; ignoring", "peer", p.TerminalString(), "messages", gs.peerhave[p])
 		return nil
 	}
 
 	if gs.iasked[p] >= gs.params.MaxIHaveLength {
-		log.Debug("IHAVE: peer %s has already advertised too many messages (%d); ignoring", "peer", p, "messages", gs.iasked[p])
+		log.Debug("IHAVE: peer has already advertised too many messages; ignoring", "peer", p.TerminalString(), "messages", gs.iasked[p])
 		return nil
 	}
 
@@ -642,7 +642,7 @@ func (gs *GossipSubRouter) handleIHave(p enode.ID, ctl *message.ControlMessage) 
 		iask = gs.params.MaxIHaveLength - gs.iasked[p]
 	}
 
-	log.Debug("IHAVE: Asking for %d out of %d messages from %s", "iask", iask, "iwant", len(iwant), "peer", p)
+	log.Debug("IHAVE: request node to get messages", "iask", iask, "iwant", len(iwant), "peer", p.TerminalString())
 
 	iwantlst := make([]string, 0, len(iwant))
 	for mid := range iwant {
@@ -665,7 +665,7 @@ func (gs *GossipSubRouter) handleIWant(p enode.ID, ctl *message.ControlMessage) 
 	// we don't respond to IWANT requests from any peer whose score is below the gossip threshold
 	score := gs.score.Score(p)
 	if score < gs.gossipThreshold {
-		log.Debug("IWANT: ignoring peer %s with score below threshold [score = %f]", "peer", p, "score", score)
+		log.Debug("IWANT: ignoring peer with score below threshold", "peer", p.TerminalString(), "score", score)
 		return nil
 	}
 
@@ -682,7 +682,7 @@ func (gs *GossipSubRouter) handleIWant(p enode.ID, ctl *message.ControlMessage) 
 			}
 
 			if count > gs.params.GossipRetransmission {
-				log.Debug("IWANT: Peer %s has asked for message %s too many times; ignoring request", "peer", p, "mid", mid)
+				log.Debug("IWANT: Peer has asked for message too many times; ignoring request", "peer", p.TerminalString(), "mid", mid)
 				continue
 			}
 
@@ -694,7 +694,7 @@ func (gs *GossipSubRouter) handleIWant(p enode.ID, ctl *message.ControlMessage) 
 		return nil
 	}
 
-	log.Debug("IWANT: Sending %d messages to %s", "ihave", len(ihave), "peer", p)
+	log.Debug("IWANT: Sending some messages to node", "ihave", len(ihave), "peer", p.TerminalString())
 
 	msgs := make([]*message.Message, 0, len(ihave))
 	for _, msg := range ihave {
@@ -735,7 +735,7 @@ func (gs *GossipSubRouter) handleGraft(p enode.ID, ctl *message.ControlMessage) 
 		// we don't GRAFT to/from direct peers; complain loudly if this happens
 		_, direct := gs.direct[p]
 		if direct {
-			log.Warn("GRAFT: ignoring request from direct peer %s", "peer", p)
+			log.Warn("GRAFT: ignoring request from direct peer", "peer", p.TerminalString())
 			// this is possibly a bug from non-reciprocal configuration; send a PRUNE
 			prune = append(prune, topic)
 			// but don't PX
@@ -746,7 +746,7 @@ func (gs *GossipSubRouter) handleGraft(p enode.ID, ctl *message.ControlMessage) 
 		// make sure we are not backing off that peer
 		expire, backoff := gs.backoff[topic][p]
 		if backoff && now.Before(expire) {
-			log.Debug("GRAFT: ignoring backed off peer %s", "peer", p)
+			log.Debug("GRAFT: ignoring backed off peer", "peer", p)
 			// add behavioural penalty
 			gs.score.AddPenalty(p, 1)
 			// no PX
@@ -766,7 +766,7 @@ func (gs *GossipSubRouter) handleGraft(p enode.ID, ctl *message.ControlMessage) 
 		// check the score
 		if score < 0 {
 			// we don't GRAFT peers with negative score
-			log.Debug("GRAFT: ignoring peer %s with negative score [score = %f, topic = %s]", "peer", p, "score", score, "topic", topic)
+			log.Debug("GRAFT: ignoring peer with negative score", "peer", p.TerminalString(), "score", score, "topic", topic)
 			// we do send them PRUNE however, because it's a matter of protocol correctness
 			prune = append(prune, topic)
 			// but we won't PX to them
@@ -785,7 +785,7 @@ func (gs *GossipSubRouter) handleGraft(p enode.ID, ctl *message.ControlMessage) 
 			continue
 		}
 
-		log.Debug("GRAFT: add mesh link from %s in %s", "peer", p, "topic", topic)
+		log.Debug("GRAFT: add mesh", "peer", p.TerminalString(), "topic", topic)
 		gs.tracer.Graft(p, topic)
 		peers[p] = struct{}{}
 	}
@@ -812,7 +812,7 @@ func (gs *GossipSubRouter) handlePrune(p enode.ID, ctl *message.ControlMessage) 
 			continue
 		}
 
-		log.Debug("PRUNE: Remove mesh link to %s in %s", "peer", p, "topic", topic)
+		log.Debug("PRUNE: Remove mesh", "peer", p.TerminalString(), "topic", topic)
 		gs.tracer.Prune(p, topic)
 		delete(peers, p)
 		// is there a backoff specified by the peer? if so obey it.
@@ -827,7 +827,7 @@ func (gs *GossipSubRouter) handlePrune(p enode.ID, ctl *message.ControlMessage) 
 		if len(px) > 0 {
 			// we ignore PX from peers with insufficient score
 			if score < gs.acceptPXThreshold {
-				log.Debug("PRUNE: ignoring PX from peer %s with insufficient score [score = %f, topic = %s]", "peer", p, "score", score, "topic", topic)
+				log.Debug("PRUNE: ignoring PX from peer with insufficient score", "peer", p.TerminalString(), "score", score, "topic", topic)
 				continue
 			}
 
@@ -912,7 +912,7 @@ func (gs *GossipSubRouter) connector() {
 				continue
 			}
 
-			log.Debug("connecting to peer", "peer", ci.p)
+			log.Debug("connecting to peer", "peer", ci.p.TerminalString())
 			/*	cab, ok := peerstore.GetCertifiedAddrBook(gs.p.host.Peerstore())
 				if ok && ci.spr != nil {
 					_, err := cab.ConsumePeerRecord(ci.spr, peerstore.TempAddrTTL)
@@ -925,7 +925,7 @@ func (gs *GossipSubRouter) connector() {
 			err := gs.p.host.Connect(ctx, ci.p)
 			cancel()
 			if err != nil {
-				log.Debug("error connecting to peer", "peer", ci.p, "err", err)
+				log.Debug("error connecting to peer", "peer", ci.p.TerminalString(), "err", err)
 			}
 
 		case <-gs.p.ctx.Done():
@@ -1052,7 +1052,7 @@ func (gs *GossipSubRouter) Join(topic string) {
 	}
 
 	for p := range gmap {
-		log.Debug("JOIN: Add mesh link to %s in %s", "peer", p, "topic", topic)
+		log.Debug("JOIN: Add mesh", "peer", p.TerminalString(), "topic", topic)
 		gs.tracer.Graft(p, topic)
 		gs.sendGraft(p, topic)
 	}
@@ -1070,7 +1070,7 @@ func (gs *GossipSubRouter) Leave(topic string) {
 	delete(gs.mesh, topic)
 
 	for p := range gmap {
-		log.Debug("LEAVE: Remove mesh link to %s in %s", "peer", p, "topic", topic)
+		log.Debug("LEAVE: Remove mesh", "peer", p.TerminalString(), "topic", topic)
 		gs.tracer.Prune(p, topic)
 		gs.sendPrune(p, topic)
 	}
@@ -1256,7 +1256,7 @@ func fragmentMessageIds(msgIds []string, limit int) [][]string {
 		size := len(msgIds[i]) + protobufOverhead
 		if size > limit {
 			// pathological case where a single message ID exceeds the limit.
-			log.Warn("message ID length %d exceeds limit %d, removing from outgoing gossip", "size", size, "limit", limit)
+			log.Warn("message ID length exceeds limit, removing from outgoing gossip", "size", size, "limit", limit)
 			continue
 		}
 		bucketLen += size
@@ -1346,7 +1346,7 @@ func (gs *GossipSubRouter) heartbeat() {
 		}
 
 		graftPeer := func(p enode.ID) {
-			log.Debug("HEARTBEAT: Add mesh link to %s in %s", "peer", p, "topic", topic)
+			log.Debug("HEARTBEAT: Add mesh", "peer", p.TerminalString(), "topic", topic)
 			gs.tracer.Graft(p, topic)
 			peers[p] = struct{}{}
 			topics := tograft[p]
@@ -1356,7 +1356,7 @@ func (gs *GossipSubRouter) heartbeat() {
 		// drop all peers with negative score, without PX
 		for p := range peers {
 			if score(p) < 0 {
-				log.Debug("HEARTBEAT: Prune peer %s with negative score [score = %f, topic = %s]", "peer", p, "score", score(p), "topic", topic)
+				log.Debug("HEARTBEAT: Prune peer with negative score", "peer", p.TerminalString(), "score", score(p), "topic", topic)
 				prunePeer(p)
 				noPX[p] = true
 			}
@@ -1437,7 +1437,7 @@ func (gs *GossipSubRouter) heartbeat() {
 
 			// prune the excess peers
 			for _, p := range plst[gs.params.D:] {
-				log.Debug("HEARTBEAT: Remove mesh link to %s in %s", "peer", p, "topic", topic)
+				log.Debug("HEARTBEAT: Remove mesh", "peer", p.TerminalString(), "topic", topic)
 				prunePeer(p)
 			}
 		}
@@ -1498,7 +1498,7 @@ func (gs *GossipSubRouter) heartbeat() {
 				})
 
 				for _, p := range plst {
-					log.Debug("HEARTBEAT: Opportunistically graft peer %s on topic %s", "peer", p, "topic", topic)
+					log.Debug("HEARTBEAT: Opportunistically graft peer on topic", "peer", p.TerminalString(), "topic", topic)
 					graftPeer(p)
 				}
 			}
@@ -1572,7 +1572,7 @@ func (gs *GossipSubRouter) clearIHaveCounters() {
 
 func (gs *GossipSubRouter) applyIwantPenalties() {
 	for p, count := range gs.gossipTracer.GetBrokenPromises() {
-		log.Info("peer %s didn't follow up in %d IWANT requests; adding penalty", "peer", p, "count", count)
+		log.Info("peer didn't follow up in IWANT requests; adding penalty", "peer", p.TerminalString(), "count", count)
 		gs.score.AddPenalty(p, count)
 	}
 }
@@ -1673,7 +1673,7 @@ func (gs *GossipSubRouter) emitGossip(topic string, exclude map[enode.ID]struct{
 	// if we are emitting more than GossipSubMaxIHaveLength mids, truncate the list
 	if len(mids) > gs.params.MaxIHaveLength {
 		// we do the truncation (with shuffling) per peer below
-		log.Debug("too many messages for gossip; will truncate IHAVE list (%d messages)", "mids", len(mids))
+		log.Debug("too many messages for gossip; will truncate IHAVE list", "mids", len(mids))
 	}
 
 	// Send gossip to GossipFactor peers above threshold, with a minimum of D_lazy.
