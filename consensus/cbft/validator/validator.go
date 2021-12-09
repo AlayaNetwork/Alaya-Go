@@ -488,11 +488,12 @@ func (vp *ValidatorPool) Update(blockNumber uint64, epoch uint64, isElection boo
 		vp.currentValidators = vp.nextValidators
 		vp.switchPoint = vp.currentValidators.ValidBlockNumber - 1
 		vp.lastNumber = vp.agency.GetLastNumber(NextRound(blockNumber))
+		currEpoch := vp.epoch
 		vp.epoch = epoch
 		vp.nextValidators = nil
 		log.Info("Update validator", "validators", vp.currentValidators.String(), "switchpoint", vp.switchPoint, "epoch", vp.epoch, "lastNumber", vp.lastNumber)
 		//切换共识轮时需要将上一轮分组的topic取消订阅
-		vp.dissolve(epoch, eventMux)
+		vp.dissolve(currEpoch, eventMux)
 	}
 	return nil
 }
@@ -876,8 +877,10 @@ func (vp *ValidatorPool) organize(validators *cbfttypes.Validators, epoch uint64
 	if nil != err {
 		return err
 	}
-	topic := cbfttypes.ConsensusGroupTopicName(epoch, gvs.GetGroupID())
-	eventMux.Post(cbfttypes.NewGroupsEvent{Topic: topic, Validators: gvs})
+	consensusTopic := cbfttypes.ConsensusTopicName(epoch)
+	eventMux.Post(cbfttypes.ConsensusTopicEvent{Topic: consensusTopic})
+	groupTopic := cbfttypes.ConsensusGroupTopicName(epoch, gvs.GetGroupID())
+	eventMux.Post(cbfttypes.NewGroupsEvent{Topic: groupTopic, Validators: gvs})
 	return nil
 }
 
@@ -890,6 +893,8 @@ func (vp *ValidatorPool) dissolve(epoch uint64, eventMux *event.TypeMux) {
 	if nil != err {
 		return
 	}
-	topic := cbfttypes.ConsensusGroupTopicName(epoch, gvs.GetGroupID())
-	eventMux.Post(cbfttypes.ExpiredTopicEvent{Topic: topic})
+	consensusTopic := cbfttypes.ConsensusTopicName(epoch)
+	eventMux.Post(cbfttypes.ConsensusTopicEvent{Topic: consensusTopic})
+	groupTopic := cbfttypes.ConsensusGroupTopicName(epoch, gvs.GetGroupID())
+	eventMux.Post(cbfttypes.ExpiredTopicEvent{Topic: groupTopic})
 }
