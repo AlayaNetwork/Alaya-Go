@@ -23,12 +23,12 @@ import (
 	"time"
 )
 
-type PeerManager interface {
-}
+// Get a list of connected nodes
+type Peers func() []*Peer
 
 type Network struct {
 	sync.RWMutex
-	server *Server
+	GetPeers Peers
 
 	m map[pubsub.Notifiee]struct{}
 
@@ -38,11 +38,11 @@ type Network struct {
 	}
 }
 
-func NewNetwork(server *Server) *Network {
+func NewNetwork(getPeers Peers) *Network {
 	n := &Network{
-		RWMutex: sync.RWMutex{},
-		server:  server,
-		m:       make(map[pubsub.Notifiee]struct{}),
+		RWMutex:  sync.RWMutex{},
+		GetPeers: getPeers,
+		m:        make(map[pubsub.Notifiee]struct{}),
 	}
 	n.conns.m = make(map[enode.ID][]pubsub.Conn)
 	return n
@@ -77,7 +77,7 @@ func (n *Network) ConnsToPeer(p enode.ID) []pubsub.Conn {
 }
 
 func (n *Network) Connectedness(id enode.ID) pubsub.Connectedness {
-	for _, p := range n.server.Peers() {
+	for _, p := range n.GetPeers() {
 		if p.ID() == id {
 			return pubsub.Connected
 		}
@@ -126,7 +126,7 @@ func (n *Network) NotifyAll(conn pubsub.Conn) {
 
 func (n *Network) Peers() []enode.ID {
 	var eids []enode.ID
-	for _, p := range n.server.Peers() {
+	for _, p := range n.GetPeers() {
 		eids = append(eids, p.ID())
 	}
 	return eids

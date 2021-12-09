@@ -23,13 +23,12 @@ import (
 )
 
 type PubSubServer struct {
-	p2pServer *Server
-	pubSub    *pubsub.PubSub
-	host      *Host
+	pubSub *pubsub.PubSub
+	host   *Host
 }
 
 func NewPubSubServer(localNode *enode.Node, p2pServer *Server) *PubSubServer {
-	network := NewNetwork(p2pServer)
+	network := NewNetwork(p2pServer.Peers)
 	host := NewHost(localNode, network)
 	gossipSub, err := pubsub.NewGossipSub(context.Background(), host)
 	if err != nil {
@@ -37,9 +36,8 @@ func NewPubSubServer(localNode *enode.Node, p2pServer *Server) *PubSubServer {
 	}
 
 	return &PubSubServer{
-		p2pServer: p2pServer,
-		pubSub:    gossipSub,
-		host:      host,
+		pubSub: gossipSub,
+		host:   host,
 	}
 }
 
