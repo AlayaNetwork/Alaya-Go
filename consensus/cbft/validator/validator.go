@@ -878,3 +878,16 @@ func (vp *ValidatorPool) organize(validators *cbfttypes.Validators, epoch uint64
 	eventMux.Post(cbfttypes.NewGroupsEvent{Topic: topic, Validators: gvs})
 	return nil
 }
+
+// dissolve prevValidators group
+func (vp *ValidatorPool) dissolve(epoch uint64, eventMux *event.TypeMux) {
+	if !vp.grouped {
+		return
+	}
+	gvs, err := vp.prevValidators.GetGroupValidators(vp.nodeID)
+	if nil != err {
+		return
+	}
+	topic := cbfttypes.ConsensusGroupTopicName(epoch, gvs.GetGroupID())
+	eventMux.Post(cbfttypes.ExpiredTopicEvent{Topic: topic})
+}
