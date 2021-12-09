@@ -497,7 +497,7 @@ func TestValidatorPool(t *testing.T) {
 
 	eventMux := &event.TypeMux{}
 
-	validatorPool.Update(80, 1, false, eventMux)
+	validatorPool.Update(80, 1, false, 0, eventMux)
 	assert.True(t, validatorPool.IsValidator(0, nodes[0].Node.ID()))
 	assert.False(t, validatorPool.IsValidator(1, nodes[0].Node.ID()))
 }
@@ -621,7 +621,7 @@ func TestValidatorPoolReset(t *testing.T) {
 func TestValidatorGrouped(t *testing.T) {
 	nodes := newTestNodeByNum(100)
 	vs := newValidators(nodes, 0)
-	vs.Grouped(nil, 0)
+	vs.Grouped(new(event.TypeMux), 0)
 	assert.Equal(t, 4, len(vs.GroupNodes))
 	assert.Equal(t, 25, len(vs.GroupNodes[3].Nodes))
 	assert.Equal(t, uint32(74), vs.GroupNodes[2].Nodes[24].Index)
