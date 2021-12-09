@@ -621,21 +621,21 @@ func TestValidatorPoolReset(t *testing.T) {
 func TestValidatorGrouped(t *testing.T) {
 	nodes := newTestNodeByNum(100)
 	vs := newValidators(nodes, 0)
-	vs.Grouped(new(event.TypeMux), 0)
+	vs.Grouped()
 	assert.Equal(t, 4, len(vs.GroupNodes))
 	assert.Equal(t, 25, len(vs.GroupNodes[3].Nodes))
 	assert.Equal(t, uint32(74), vs.GroupNodes[2].Nodes[24].Index)
 	assert.Equal(t, 5, len(vs.GroupNodes[2].Units))
 	assert.Equal(t, uint32(74), vs.GroupNodes[2].Units[4][4])
 
-	vs.Grouped(nil, 0)
+	vs.Grouped()
 	assert.Equal(t, 4, len(vs.GroupNodes))
 	assert.Equal(t, 25, len(vs.GroupNodes[0].Nodes))
 	assert.Equal(t, 25, len(vs.GroupNodes[2].Nodes))
 	assert.Equal(t, 25, len(vs.GroupNodes[3].Nodes))
 	assert.Equal(t, uint32(79), vs.GroupNodes[3].Units[0][4])
 
-	vs.Grouped(nil, 0)
+	vs.Grouped()
 	assert.Equal(t, 6, len(vs.GroupNodes))
 	assert.Equal(t, 17, len(vs.GroupNodes[0].Nodes))
 	assert.Equal(t, 6, len(vs.GroupNodes[2].Units))
@@ -678,7 +678,7 @@ func TestUpdate(t *testing.T) {
 	if err != nil {
 		t.Log("agency.GetValidators", "err", err)
 	}
-	next.Grouped(eventMux, 1)
+	next.Grouped()
 	assert.NotEqual(t, vp.currentValidators, next)
 
 	t.Log("TestUpdate", "vp.lastNumber", vp.lastNumber)

@@ -26,7 +26,6 @@ import (
 	"sort"
 
 	"github.com/AlayaNetwork/Alaya-Go/common/hexutil"
-	"github.com/AlayaNetwork/Alaya-Go/event"
 	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
 	"github.com/AlayaNetwork/Alaya-Go/x/xcom"
 
@@ -146,7 +145,7 @@ func (vs *Validators) String() string {
 
 func (vs *Validators) NodeList() []enode.ID {
 	nodeList := make([]enode.ID, 0)
-	for id, _ := range vs.Nodes {
+	for id := range vs.Nodes {
 		nodeList = append(nodeList, id)
 	}
 	return nodeList
@@ -272,26 +271,25 @@ func (vs *Validators) Sort() {
 	sort.Sort(vs.SortedNodes)
 }
 
-func (vs *Validators) GroupID(nodeID enode.ID) (uint32, error) {
+func (vs *Validators) GetGroupValidators(nodeID enode.ID) (*GroupValidators, error) {
 	if len(vs.SortedNodes) == 0 {
 		vs.Sort()
 	}
 
 	idx, err := vs.Index(nodeID)
 	if err != nil {
-		return math.MaxUint32, err
+		return nil, err
 	}
 
-	groupID := uint32(0)
-	for _, group := range vs.GroupNodes {
-		goupLen := len(group.Nodes)
-		if idx <= group.Nodes[goupLen-1].Index {
+	var ret *GroupValidators
+	for _, gvs := range vs.GroupNodes {
+		goupLen := len(gvs.Nodes)
+		if idx <= gvs.Nodes[goupLen-1].Index {
+			ret = gvs
 			break
-		} else {
-			groupID = groupID + 1
 		}
 	}
-	return groupID, nil
+	return ret, nil
 }
 
 func (vs *Validators) UnitID(nodeID enode.ID) (uint32, error) {
@@ -304,14 +302,16 @@ func (vs *Validators) UnitID(nodeID enode.ID) (uint32, error) {
 		return idx, err
 	}
 
-	groupID, _ := vs.GroupID(nodeID)
-	unitID := uint32(0)
-	for i, node := range vs.GroupNodes[groupID].Nodes {
+	gvs, err := vs.GetGroupValidators(nodeID)
+	if err != nil {
+		return 0, err
+	}
+	for i, node := range gvs.Nodes {
 		if idx == node.Index {
 			return uint32(i), nil
 		}
 	}
-	return unitID, errors.New("not found the specified nodeID")
+	return 0, errors.New("not found the specified nodeID")
 }
 
 func (gvs *GroupValidators) GroupedUnits() {
@@ -326,11 +326,15 @@ func (gvs *GroupValidators) GroupedUnits() {
 	}
 }
 
+func (gvs *GroupValidators) GetGroupID() uint32 {
+	return gvs.groupID
+}
+
 // Grouped fill validators into groups
 // groupValidatorsLimit is a factor to determine how many groups are grouped
 // eg: [validatorCount,groupValidatorsLimit]=
 // [50,25] = 25,25;[43,25] = 22,21; [101,25] = 21,20,20,20,20
-func (vs *Validators) Grouped(eventMux *event.TypeMux, epoch uint64) error {
+func (vs *Validators) Grouped() error {
 	// sort nodes by index
 	if len(vs.SortedNodes) == 0 {
 		vs.Sort()
@@ -361,15 +365,13 @@ func (vs *Validators) Grouped(eventMux *event.TypeMux, epoch uint64) error {
 		}
 		groupValidators := new(GroupValidators)
 		groupValidators.Nodes = vs.SortedNodes[begin:end]
-		groupValidators.groupID = uint32(i)
+		groupValidators.groupID = i
 		vs.GroupNodes[i] = groupValidators
 	}
 
 	// fill group unit
-	for i, gvs := range vs.GroupNodes {
+	for _, gvs := range vs.GroupNodes {
 		gvs.GroupedUnits()
-		topic := ConsensusGroupTopicName(epoch, uint32(i))
-		eventMux.Post(NewGroupsEvent{Topic: topic, Validators: gvs})
 	}
 	return nil
 }
