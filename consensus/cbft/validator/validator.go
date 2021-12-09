@@ -355,8 +355,17 @@ func NewValidatorPool(agency consensus.Agency, blockNumber, epoch uint64, nodeID
 		pool.switchPoint = pool.currentValidators.ValidBlockNumber - 1
 	}
 	if needGroup {
-		pool.prevValidators.Grouped(eventMux, epoch)
+		pool.currentValidators.Grouped(eventMux, epoch)
 		pool.unitID = pool.currentValidators.UnitID(nodeID)
+		if pool.nextValidators == nil {
+			nds, err := pool.agency.GetValidators(NextRound(pool.currentValidators.ValidBlockNumber))
+			if err != nil {
+				log.Debug("Get nextValidators error", "blockNumber", blockNumber, "err", err)
+				return pool
+			}
+			nds.Grouped(eventMux, epoch+1)
+			pool.nextValidators = nds
+		}
 	}
 	log.Debug("Update validator", "validators", pool.currentValidators.String(), "switchpoint", pool.switchPoint, "epoch", pool.epoch, "lastNumber", pool.lastNumber)
 	return pool
@@ -444,7 +453,7 @@ func (vp *ValidatorPool) Update(blockNumber uint64, epoch uint64, isElection boo
 			vp.grouped = false
 			return nil
 		} else {
-			return fmt.Errorf("ValidatorPool update failed!", "currentValidators", vp.currentValidators.String(), "nds", nds.String())
+			return fmt.Errorf("ValidatorPool update failed, currentValidators:%s, nds:%s", vp.currentValidators.String(), nds.String())
 		}
 	}
 	//分组提案生效后第一个共识round到ElectionPoint时初始化分组信息
@@ -464,7 +473,7 @@ func (vp *ValidatorPool) Update(blockNumber uint64, epoch uint64, isElection boo
 			return err
 		}
 		if vp.grouped {
-			nds.Grouped(eventMux, epoch)
+			nds.Grouped(eventMux, epoch+1)
 		}
 		vp.nextValidators = nds
 	} else {
