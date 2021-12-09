@@ -161,8 +161,8 @@ func (ps *PubSub) listen(s *pubsub.Subscription) {
 		if err != nil {
 			if err != pubsub.ErrSubscriptionCancelled {
 				ps.Cancel(s.Topic())
+				log.Error("Failed to listen to topic message", "topic", s.Topic(), "error", err)
 			}
-			log.Error("Failed to listen to topic message", "error", err)
 			return
 		}
 		if subMsg != nil {
