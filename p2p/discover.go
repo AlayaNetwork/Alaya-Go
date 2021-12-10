@@ -29,13 +29,15 @@ func (srv *Server) DiscoverTopic(ctx context.Context, topic string) {
 
 				// Check   there are enough peers
 				if !srv.validPeersExist(topic) {
+					srv.topicSubscriberMu.RLock()
+					nodes, ok := srv.topicSubscriber[topic]
+					if !ok {
+						srv.topicSubscriberMu.RUnlock()
+						continue
+					}
+					srv.topicSubscriberMu.RUnlock()
 					log.Debug("No peers found subscribed  gossip topic . Searching network for peers subscribed to the topic.", "topic", topic)
-					_, err := srv.FindPeersWithTopic(
-						ctx,
-						topic,
-						srv.Config.MinimumPeersPerTopic,
-					)
-					if err != nil {
+					if err := srv.FindPeersWithTopic(ctx, topic, nodes, srv.Config.MinimumPeersPerTopic); err != nil {
 						log.Error("Could not search for peers", "err", err)
 						return
 					}
@@ -52,33 +54,30 @@ func (srv *Server) validPeersExist(subnetTopic string) bool {
 	return len(numOfPeers) >= srv.Config.MinimumPeersPerTopic
 }
 
-/*
-func (srv *Server) topicToIdx(topic string) uint64 {
-	return 0
-}*/
-
 // FindPeersWithTopic performs a network search for peers
 // subscribed to a particular subnet. Then we try to connect
 // with those peers. This method will block until the required amount of
 // peers are found, the method only exits in the event of context timeouts.
-func (srv *Server) FindPeersWithTopic(ctx context.Context, topic string, threshold int) (bool, error) {
+func (srv *Server) FindPeersWithTopic(ctx context.Context, topic string, nodes []enode.ID, threshold int) error {
 
 	if srv.DiscV5 == nil {
 		// return if discovery isn't set
-		return false, nil
+		return nil
 	}
 
-	//topic += s.Encoding().ProtocolSuffix()
 	iterator := srv.DiscV5.RandomNodes()
-	iterator = filterNodes(ctx, iterator, srv.filterPeerForTopic(topic))
+	iterator = filterNodes(ctx, iterator, srv.filterPeerForTopic(nodes))
 
 	currNum := len(srv.pubSubServer.PubSub().ListPeers(topic))
 	wg := new(sync.WaitGroup)
+
+	try := 0
 	for {
 		if err := ctx.Err(); err != nil {
-			return false, err
+			return err
 		}
-		if currNum >= threshold {
+		// Retry at most 3 times
+		if try >= 3 || currNum >= threshold {
 			break
 		}
 		nodes := enode.ReadNodes(iterator, int(srv.Config.MinimumPeersInTopicSearch))
@@ -92,20 +91,15 @@ func (srv *Server) FindPeersWithTopic(ctx context.Context, topic string, thresho
 		// Wait for all dials to be completed.
 		wg.Wait()
 		currNum = len(srv.pubSubServer.PubSub().ListPeers(topic))
+		try++
 	}
-	return true, nil
+	return nil
 }
 
 // returns a method with filters peers specifically for a particular attestation subnet.
-func (srv *Server) filterPeerForTopic(topic string) func(node *enode.Node) bool {
+func (srv *Server) filterPeerForTopic(nodes []enode.ID) func(node *enode.Node) bool {
 	return func(node *enode.Node) bool {
 		if !srv.filterPeer(node) {
-			return false
-		}
-		srv.topicSubscriberMu.RLock()
-		defer srv.topicSubscriberMu.RUnlock()
-		nodes, ok := srv.topicSubscriber[topic]
-		if !ok {
 			return false
 		}
 		for _, peer := range nodes {
