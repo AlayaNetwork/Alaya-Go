@@ -880,7 +880,7 @@ func (vp *ValidatorPool) organize(validators *cbfttypes.Validators, epoch uint64
 	consensusTopic := cbfttypes.ConsensusTopicName(epoch)
 	eventMux.Post(cbfttypes.ConsensusTopicEvent{Topic: consensusTopic})
 	groupTopic := cbfttypes.ConsensusGroupTopicName(epoch, gvs.GetGroupID())
-	eventMux.Post(cbfttypes.NewGroupsEvent{Topic: groupTopic, Validators: gvs})
+	eventMux.Post(cbfttypes.GroupsTopicEvent{Topic: groupTopic, Validators: gvs})
 	return nil
 }
 
@@ -896,5 +896,5 @@ func (vp *ValidatorPool) dissolve(epoch uint64, eventMux *event.TypeMux) {
 	consensusTopic := cbfttypes.ConsensusTopicName(epoch)
 	eventMux.Post(cbfttypes.ExpiredConsensusTopicEvent{Topic: consensusTopic})
 	groupTopic := cbfttypes.ConsensusGroupTopicName(epoch, gvs.GetGroupID())
-	eventMux.Post(cbfttypes.ExpiredTopicEvent{Topic: groupTopic})
+	eventMux.Post(cbfttypes.ExpiredGroupsTopicEvent{Topic: groupTopic})
 }

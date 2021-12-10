@@ -1277,7 +1277,7 @@ func (srv *Server) StartWatching(eventMux *event.TypeMux) {
 }
 
 func (srv *Server) watching() {
-	events := srv.eventMux.Subscribe(cbfttypes.AddValidatorEvent{}, cbfttypes.RemoveValidatorEvent{}, cbfttypes.NewGroupsEvent{}, cbfttypes.ExpiredTopicEvent{})
+	events := srv.eventMux.Subscribe(cbfttypes.AddValidatorEvent{}, cbfttypes.RemoveValidatorEvent{}, cbfttypes.NewTopicEvent{}, cbfttypes.ExpiredTopicEvent{})
 	defer events.Unsubscribe()
 
 	for {
@@ -1293,11 +1293,11 @@ func (srv *Server) watching() {
 			case cbfttypes.RemoveValidatorEvent:
 				log.Trace("Received RemoveValidatorEvent", "nodeID", data.Node.ID().String())
 				srv.RemoveConsensusPeer(data.Node)
-			case cbfttypes.NewGroupsEvent:
+			case cbfttypes.NewTopicEvent:
 				srv.topicSubscriberMu.Lock()
 				topicSubscriber := make([]enode.ID, 0)
-				for _, node := range data.Validators.Nodes {
-					topicSubscriber = append(topicSubscriber, node.NodeID)
+				for _, node := range data.Nodes {
+					topicSubscriber = append(topicSubscriber, node)
 				}
 				srv.topicSubscriber[data.Topic] = topicSubscriber
 				srv.topicSubscriberMu.Unlock()
