@@ -236,7 +236,7 @@ func (v *validation) Push(src enode.ID, msg *Message) bool {
 		select {
 		case v.validateQ <- &validateReq{vals, src, msg}:
 		default:
-			log.Debug("message validation throttled: queue full; dropping message from %s", "from", src)
+			log.Debug("message validation throttled: queue full; drop the message", "from", src.TerminalString())
 			v.tracer.RejectMessage(msg, RejectValidationQueueFull)
 		}
 		return false
@@ -278,7 +278,7 @@ func (v *validation) validate(vals []*topicVal, src enode.ID, msg *Message, sync
 	// the Signature is required to be nil upon receiving the message in PubSub.pushMsg.
 	if msg.Signature != nil {
 		if !v.validateSignature(msg) {
-			log.Debug("message signature validation failed; dropping message from %s", "src", src)
+			log.Debug("message signature validation failed; drop the message", "src", src.TerminalString())
 			v.tracer.RejectMessage(msg, RejectInvalidSignature)
 			return ValidationError{Reason: RejectInvalidSignature}
 		}
@@ -318,7 +318,7 @@ loop:
 	}
 
 	if result == ValidationReject {
-		log.Debug("message validation failed; dropping message from %s", "src", src)
+		log.Debug("message validation failed; drop the message", "src", src.TerminalString())
 		v.tracer.RejectMessage(msg, RejectValidationFailed)
 		return ValidationError{Reason: RejectValidationFailed}
 	}
@@ -332,7 +332,7 @@ loop:
 				<-v.validateThrottle
 			}()
 		default:
-			log.Debug("message validation throttled; dropping message from %s", "src", src)
+			log.Debug("message validation throttled; drop the message", "src", src.TerminalString())
 			v.tracer.RejectMessage(msg, RejectValidationThrottled)
 		}
 		return nil
@@ -373,15 +373,15 @@ func (v *validation) doValidateTopic(vals []*topicVal, src enode.ID, msg *Messag
 	case ValidationAccept:
 		v.p.sendMsg <- msg
 	case ValidationReject:
-		log.Debug("message validation failed; dropping message from %s", "src", src)
+		log.Debug("message validation failed; drop the message", "src", src.TerminalString())
 		v.tracer.RejectMessage(msg, RejectValidationFailed)
 		return
 	case ValidationIgnore:
-		log.Debug("message validation punted; ignoring message from %s", "src", src)
+		log.Debug("message validation punted; ignore the message", "src", src.TerminalString())
 		v.tracer.RejectMessage(msg, RejectValidationIgnored)
 		return
 	case validationThrottled:
-		log.Debug("message validation throttled; ignoring message from %s", "src", src)
+		log.Debug("message validation throttled; ignore the message", "src", src.TerminalString())
 		v.tracer.RejectMessage(msg, RejectValidationThrottled)
 
 	default:
@@ -456,7 +456,7 @@ func (v *validation) validateSingleTopic(val *topicVal, src enode.ID, msg *Messa
 func (val *topicVal) validateMsg(ctx context.Context, src enode.ID, msg *Message) ValidationResult {
 	start := time.Now()
 	defer func() {
-		log.Debug("validation done; took %s", "time", time.Since(start))
+		log.Debug("validation done", "time", time.Since(start))
 	}()
 
 	if val.validateTimeout > 0 {
@@ -475,7 +475,7 @@ func (val *topicVal) validateMsg(ctx context.Context, src enode.ID, msg *Message
 		return r
 
 	default:
-		log.Warn("Unexpected result from validator: %d; ignoring message", "r", r)
+		log.Warn("Unexpected result from validator; ignoring message", "r", r)
 		return ValidationIgnore
 	}
 }

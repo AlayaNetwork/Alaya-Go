@@ -214,8 +214,6 @@ type Message struct {
 }
 
 func (m *Message) GetFrom() enode.ID {
-	//var id enode.ID
-	//copy(id[:], m.Message.GetFrom())
 	return m.Message.GetFrom()
 }
 
@@ -532,12 +530,12 @@ func (p *PubSub) processLoop(ctx context.Context) {
 
 			ch, ok := p.peers[pid.ID()]
 			if !ok {
-				log.Warn("new stream for unknown peer: ", pid)
+				log.Warn("new stream for unknown peer: ", pid.ID().TerminalString())
 				continue
 			}
 
 			if p.blacklist.Contains(pid.ID()) {
-				log.Warn("closing stream for blacklisted peer: ", pid)
+				log.Warn("closing stream for blacklisted peer: ", pid.ID().TerminalString())
 				close(ch)
 				delete(p.peers, pid.ID())
 				continue
@@ -602,7 +600,7 @@ func (p *PubSub) processLoop(ctx context.Context) {
 			thunk()
 
 		case pid := <-p.blacklistPeer:
-			log.Info("Blacklisting peer", "peer", pid)
+			log.Info("Blacklisting peer", "peer", pid.ID().TerminalString())
 			p.blacklist.Add(pid.ID())
 
 			ch, ok := p.peers[pid.ID()]
@@ -638,10 +636,6 @@ func (p *PubSub) handlePendingPeers() {
 	p.newPeersPrioLk.Unlock()
 
 	for pid := range newPeers {
-		/*if p.host.Network().Connectedness(pid) != Connected {
-			continue
-		}*/
-
 		if _, ok := p.peers[pid]; ok {
 			log.Debug("already have connection to peer: ", pid)
 			continue
@@ -865,7 +859,7 @@ func (p *PubSub) announce(topic string, sub bool) {
 		case peer <- out:
 			p.tracer.SendRPC(out, pid)
 		default:
-			log.Info("Can't send announce message to peer %s: queue full; scheduling retry", "peer", pid)
+			log.Info("Can't send announce message to peer: queue full; scheduling retry", "peer", pid.TerminalString())
 			p.tracer.DropRPC(out, pid)
 			go p.announceRetry(pid, topic, sub)
 		}
@@ -908,7 +902,7 @@ func (p *PubSub) doAnnounceRetry(pid enode.ID, topic string, sub bool) {
 	case peer <- out:
 		p.tracer.SendRPC(out, pid)
 	default:
-		log.Info("Can't send announce message to peer %s: queue full; scheduling retry", "peer", pid)
+		log.Info("Can't send announce message to peer: queue full; scheduling retry", "peer", pid.TerminalString())
 		p.tracer.DropRPC(out, pid)
 		go p.announceRetry(pid, topic, sub)
 	}
@@ -924,7 +918,7 @@ func (p *PubSub) notifySubs(msg *Message) {
 		case f.ch <- msg:
 		default:
 			p.tracer.UndeliverableMessage(msg)
-			log.Info("Can't deliver message to subscription for topic %s; subscriber too slow", "topic", topic)
+			log.Info("Can't deliver message to subscription; subscriber too slow", "topic", topic)
 		}
 	}
 }
@@ -989,7 +983,7 @@ func (p *PubSub) handleIncomingRPC(rpc *RPC) {
 		var err error
 		subs, err = p.subFilter.FilterIncomingSubscriptions(rpc.from.ID(), subs)
 		if err != nil {
-			log.Debug("subscription filter error: %s; ignoring RPC", "err", err)
+			log.Debug("subscription filter error; ignoring RPC", "err", err)
 			return
 		}
 	}
@@ -1027,12 +1021,12 @@ func (p *PubSub) handleIncomingRPC(rpc *RPC) {
 	// ask the router to vet the peer before commiting any processing resources
 	switch p.rt.AcceptFrom(rpc.from) {
 	case AcceptNone:
-		log.Debug("received RPC from router graylisted peer %s; dropping RPC", "from", rpc.from)
+		log.Debug("received RPC from router graylisted peer; dropping RPC", "from", rpc.from.ID().TerminalString())
 		return
 
 	case AcceptControl:
 		if len(rpc.GetPublish()) > 0 {
-			log.Debug("peer %s was throttled by router; ignoring %d payload messages", "from", rpc.from, "lengths", len(rpc.GetPublish()))
+			log.Debug("peer was throttled by router; ignoring payload messages", "from", rpc.from.ID().TerminalString(), "lengths", len(rpc.GetPublish()))
 		}
 		p.tracer.ThrottlePeer(rpc.from.ID())
 
@@ -1066,28 +1060,28 @@ func (p *PubSub) pushMsg(msg *Message) {
 	src := msg.ReceivedFrom
 	// reject messages from blacklisted peers
 	if p.blacklist.Contains(src.ID()) {
-		log.Debug("dropping message from blacklisted peer %s", "peer", src)
+		log.Debug("dropping message from blacklisted peer", "peer", src.ID().TerminalString())
 		p.tracer.RejectMessage(msg, RejectBlacklstedPeer)
 		return
 	}
 
 	// even if they are forwarded by good peers
 	if p.blacklist.Contains(msg.GetFrom()) {
-		log.Debug("dropping message from blacklisted source %s", "peer", src)
+		log.Debug("dropping message from blacklisted source", "peer", src.ID().TerminalString())
 		p.tracer.RejectMessage(msg, RejectBlacklistedSource)
 		return
 	}
 
 	err := p.checkSigningPolicy(msg)
 	if err != nil {
-		log.Debug("dropping message from %s: %s", "peer", src, "err", err)
+		log.Debug("dropping message", "fromPeer", src.ID().TerminalString(), "err", err)
 		return
 	}
 
 	// reject messages claiming to be from ourselves but not locally published
 	self := p.host.ID()
 	if msg.GetFrom() == self.ID() && src.ID() != self.ID() {
-		log.Debug("dropping message claiming to be from self but forwarded from %s", "peer", src)
+		log.Debug("dropping message claiming to be from self but forwarded", "peer", src)
 		p.tracer.RejectMessage(msg, RejectSelfOrigin)
 		return
 	}
