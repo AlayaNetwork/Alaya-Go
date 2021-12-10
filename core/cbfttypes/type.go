@@ -68,19 +68,6 @@ type RemoveValidatorEvent struct {
 	Node *enode.Node
 }
 
-type ConsensusTopicEvent struct {
-	Topic string // consensus:{epoch}
-}
-
-type GroupsTopicEvent struct {
-	Topic      string // consensus:{epoch}:{groupID}
-	Validators *GroupValidators
-}
-
-type ExpiredConsensusTopicEvent ExpiredTopicEvent // consensus:{epoch}
-
-type ExpiredGroupsTopicEvent ExpiredTopicEvent // consensus:{epoch}:{groupID}
-
 // NewTopicEvent use for p2p,Nodes under this topic will be discovered
 type NewTopicEvent struct {
 	Topic string
@@ -91,6 +78,12 @@ type NewTopicEvent struct {
 type ExpiredTopicEvent struct {
 	Topic string
 }
+
+type GroupTopicEvent struct {
+	Topic string // consensus:{epoch}:{groupID}
+}
+
+type ExpiredGroupTopicEvent ExpiredTopicEvent // consensus:{epoch}:{groupID}
 
 //type UpdateValidatorEvent struct{}
 
@@ -347,6 +340,15 @@ func (gvs *GroupValidators) GroupedUnits() {
 
 func (gvs *GroupValidators) GetGroupID() uint32 {
 	return gvs.groupID
+}
+
+// return all NodeIDs in the group
+func (gvs *GroupValidators) NodeList() []enode.ID {
+	nodeList := make([]enode.ID, 0)
+	for _, id := range gvs.Nodes {
+		nodeList = append(nodeList, id.NodeID)
+	}
+	return nodeList
 }
 
 // Grouped fill validators into groups
