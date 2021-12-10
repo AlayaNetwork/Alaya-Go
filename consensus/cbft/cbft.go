@@ -280,12 +280,12 @@ func (cbft *Cbft) Start(chain consensus.ChainReader, blockCache consensus.BlockC
 
 	needGroup := blockCache.GetActiveVersion(block.Header().SealHash()) >= params.FORKVERSION_0_17_0
 	if isGenesis() {
-    cbft.validatorPool = validator.NewValidatorPool(agency, block.NumberU64(), cstate.DefaultEpoch, cbft.config.Option.Node.ID(), needGroup, cbft.eventMux)
+		cbft.validatorPool = validator.NewValidatorPool(agency, block.NumberU64(), cstate.DefaultEpoch, cbft.config.Option.Node.ID(), needGroup, cbft.eventMux)
 		// init RGMsg broadcast manager
 		cbft.RGBroadcastManager = NewRGBroadcastManager(cbft)
 		cbft.changeView(cstate.DefaultEpoch, cstate.DefaultViewNumber, block, qc, nil)
 	} else {
-    cbft.validatorPool = validator.NewValidatorPool(agency, block.NumberU64(), qc.Epoch, cbft.config.Option.Node.ID(), needGroup, cbft.eventMux)
+		cbft.validatorPool = validator.NewValidatorPool(agency, block.NumberU64(), qc.Epoch, cbft.config.Option.Node.ID(), needGroup, cbft.eventMux)
 		// init RGMsg broadcast manager
 		cbft.RGBroadcastManager = NewRGBroadcastManager(cbft)
 		cbft.changeView(qc.Epoch, qc.ViewNumber, block, qc, nil)
@@ -1352,19 +1352,17 @@ func (cbft *Cbft) commitBlock(commitBlock *types.Block, commitQC *ctypes.QuorumC
 		ChainStateUpdateCB: func() { cbft.bridge.UpdateChainState(qcState, lockState, commitState) },
 	})
 
-	activeVersion := cbft.blockCache.GetActiveVersion(cpy.Header().SealHash())
+	activeVersion := cpy.Header().GetActiveVersion()
 	// should grouped according max commit block's state
 	shouldGroup := func() bool {
 		return cbft.validatorPool.NeedGroup() || activeVersion >= params.FORKVERSION_0_17_0
 	}
 
-	// post NewGroupsEvent to join topic according group info
+	// post GroupsTopicEvent to join topic according group info
 	if xutil.IsElection(cpy.NumberU64(), activeVersion) {
-		// TODO: get groupvalidatorslimit and coordinatorlimit from gov
 		if shouldGroup() {
-			cbft.validatorPool.SetupGroup(true)
+			cbft.validatorPool.Update(cpy.NumberU64(), cbft.state.Epoch()+1, true, activeVersion, cbft.eventMux)
 		}
-		cbft.validatorPool.Update(cpy.NumberU64(), cbft.state.Epoch()+1, true, cbft.eventMux)
 	}
 }
 

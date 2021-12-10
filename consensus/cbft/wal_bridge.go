@@ -330,7 +330,7 @@ func (cbft *Cbft) recoveryQCState(qcs []*protocols.State, parent *types.Block) e
 
 // recoveryChainStateProcess tries to recovery the corresponding state to cbft consensus.
 func (cbft *Cbft) recoveryChainStateProcess(stateType uint16, s *protocols.State) {
-	cbft.trySwitchValidator(s.Block.NumberU64())
+	cbft.trySwitchValidator(s.Block.NumberU64(), s.Block.ActiveVersion())
 	cbft.tryWalChangeView(s.QuorumCert.Epoch, s.QuorumCert.ViewNumber, s.Block, s.QuorumCert, nil)
 	cbft.state.AddQCBlock(s.Block, s.QuorumCert)
 	cbft.state.AddQC(s.QuorumCert)
@@ -360,9 +360,9 @@ func (cbft *Cbft) recoveryChainStateProcess(stateType uint16, s *protocols.State
 }
 
 // trySwitch tries to switch next validator.
-func (cbft *Cbft) trySwitchValidator(blockNumber uint64) {
+func (cbft *Cbft) trySwitchValidator(blockNumber uint64, version uint32) {
 	if cbft.validatorPool.ShouldSwitch(blockNumber) {
-		if err := cbft.validatorPool.Update(blockNumber, cbft.state.Epoch()+1, false, cbft.eventMux); err != nil {
+		if err := cbft.validatorPool.Update(blockNumber, cbft.state.Epoch()+1, false, version, cbft.eventMux); err != nil {
 			cbft.log.Debug("Update validator error", "err", err.Error())
 		}
 	}

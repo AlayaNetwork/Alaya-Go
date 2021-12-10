@@ -100,20 +100,10 @@ func (govPlugin *GovPlugin) BeginBlock(blockHash common.Hash, header *types.Head
 			if params.LtMinorVersion(versionProposal.NewVersion) {
 				panic(fmt.Sprintf("Please upgrade to：%s", params.FormatVersion(versionProposal.NewVersion)))
 			}
-			//log.Debug("it's time to active the pre-active version proposal")
-			tallyResult, err := gov.GetTallyResult(preActiveVersionProposalID, state)
-			if err != nil || tallyResult == nil {
-				log.Error("find pre-active version proposal tally result failed.", "blockNumber", blockNumber, "blockHash", blockHash, "preActiveVersionProposalID", preActiveVersionProposalID)
+			if err = gov.UpdateTallyResult(preActiveVersionProposalID, state); err != nil {
+				log.Error("UpdateTallyResult failed.", "blockNumber", blockNumber, "blockHash", blockHash, "preActiveVersionProposalID", preActiveVersionProposalID)
 				return err
 			}
-			//update tally status to "active"
-			tallyResult.Status = gov.Active
-
-			if err := gov.SetTallyResult(*tallyResult, state); err != nil {
-				log.Error("update version proposal tally result failed.", "blockNumber", blockNumber, "preActiveVersionProposalID", preActiveVersionProposalID)
-				return err
-			}
-
 			if err = gov.MovePreActiveProposalIDToEnd(blockHash, preActiveVersionProposalID); err != nil {
 				log.Error("move version proposal ID to EndProposalID list failed.", "blockNumber", blockNumber, "blockHash", blockHash, "preActiveVersionProposalID", preActiveVersionProposalID)
 				return err
@@ -164,8 +154,21 @@ func (govPlugin *GovPlugin) BeginBlock(blockHash common.Hash, header *types.Head
 					log.Error("save EcHash0170 to stateDB failed.", "blockNumber", blockNumber, "blockHash", blockHash, "preActiveProposalID", preActiveVersionProposalID)
 					return err
 				}
+
+				if err := gov.UpdateGovernParamValue(gov.ModuleSlashing, gov.KeyZeroProduceCumulativeTime, fmt.Sprint(xcom.ZeroProduceCumulativeTime0170()), blockNumber, blockHash); err != nil {
+					return err
+				}
+				if err := gov.UpdateGovernParamValue(gov.ModuleStaking, gov.KeyMaxValidators, fmt.Sprint(xcom.MaxValidators0170()), blockNumber, blockHash); err != nil {
+					return err
+				}
 				log.Info("Successfully upgraded the new version 0.17.0", "blockNumber", blockNumber, "blockHash", blockHash, "preActiveProposalID", preActiveVersionProposalID)
+
+				if err := StakingInstance().Adjust0170RoundValidators(blockHash, blockNumber); err != nil {
+					log.Error("Adjust 0.17.0 validators failed！", "blockNumber", blockNumber, "blockHash", blockHash, "preActiveProposalID", preActiveVersionProposalID)
+					return err
+				}
 			}
+
 			header.SetActiveVersion(versionProposal.NewVersion)
 			log.Info("version proposal is active", "blockNumber", blockNumber, "proposalID", versionProposal.ProposalID, "newVersion", versionProposal.NewVersion, "newVersionString", xutil.ProgramVersion2Str(versionProposal.NewVersion))
 		}
