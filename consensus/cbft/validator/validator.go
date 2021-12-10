@@ -488,11 +488,12 @@ func (vp *ValidatorPool) Update(blockNumber uint64, epoch uint64, isElection boo
 		vp.currentValidators = vp.nextValidators
 		vp.switchPoint = vp.currentValidators.ValidBlockNumber - 1
 		vp.lastNumber = vp.agency.GetLastNumber(NextRound(blockNumber))
+		currEpoch := vp.epoch
 		vp.epoch = epoch
 		vp.nextValidators = nil
 		log.Info("Update validator", "validators", vp.currentValidators.String(), "switchpoint", vp.switchPoint, "epoch", vp.epoch, "lastNumber", vp.lastNumber)
 		//切换共识轮时需要将上一轮分组的topic取消订阅
-		vp.dissolve(epoch, eventMux)
+		vp.dissolve(currEpoch, eventMux)
 	}
 	return nil
 }
@@ -874,22 +875,35 @@ func (vp *ValidatorPool) organize(validators *cbfttypes.Validators, epoch uint64
 
 	gvs, err := validators.GetGroupValidators(vp.nodeID)
 	if nil != err {
+		// 当前节点不是共识节点
 		return err
 	}
-	topic := cbfttypes.ConsensusGroupTopicName(epoch, gvs.GetGroupID())
-	eventMux.Post(cbfttypes.NewGroupsEvent{Topic: topic, Validators: gvs})
+
+	consensusNodeIDs := validators.NodeList()
+	groupNodeIDs := gvs.NodeList()
+	consensusTopic := cbfttypes.ConsensusTopicName(epoch)
+	groupTopic := cbfttypes.ConsensusGroupTopicName(epoch, gvs.GetGroupID())
+
+	eventMux.Post(cbfttypes.NewTopicEvent{Topic: consensusTopic, Nodes: consensusNodeIDs})
+	eventMux.Post(cbfttypes.NewTopicEvent{Topic: groupTopic, Nodes: groupNodeIDs})
+	eventMux.Post(cbfttypes.GroupTopicEvent{Topic: groupTopic})
 	return nil
 }
 
 // dissolve prevValidators group
 func (vp *ValidatorPool) dissolve(epoch uint64, eventMux *event.TypeMux) {
-	if !vp.grouped {
+	if !vp.grouped || vp.prevValidators == nil {
 		return
 	}
 	gvs, err := vp.prevValidators.GetGroupValidators(vp.nodeID)
 	if nil != err {
 		return
 	}
-	topic := cbfttypes.ConsensusGroupTopicName(epoch, gvs.GetGroupID())
-	eventMux.Post(cbfttypes.ExpiredTopicEvent{Topic: topic})
+
+	consensusTopic := cbfttypes.ConsensusTopicName(epoch)
+	groupTopic := cbfttypes.ConsensusGroupTopicName(epoch, gvs.GetGroupID())
+
+	eventMux.Post(cbfttypes.ExpiredTopicEvent{Topic: consensusTopic})  // for p2p
+	eventMux.Post(cbfttypes.ExpiredTopicEvent{Topic: groupTopic})      // for p2p
+	eventMux.Post(cbfttypes.ExpiredGroupTopicEvent{Topic: groupTopic}) // for cbft
 }
