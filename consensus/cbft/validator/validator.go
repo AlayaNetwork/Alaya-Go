@@ -875,12 +875,18 @@ func (vp *ValidatorPool) organize(validators *cbfttypes.Validators, epoch uint64
 
 	gvs, err := validators.GetGroupValidators(vp.nodeID)
 	if nil != err {
+		// 当前节点不是共识节点
 		return err
 	}
+
+	consensusNodeIDs := validators.NodeList()
+	groupNodeIDs := gvs.NodeList()
 	consensusTopic := cbfttypes.ConsensusTopicName(epoch)
-	eventMux.Post(cbfttypes.ConsensusTopicEvent{Topic: consensusTopic})
 	groupTopic := cbfttypes.ConsensusGroupTopicName(epoch, gvs.GetGroupID())
-	eventMux.Post(cbfttypes.GroupsTopicEvent{Topic: groupTopic, Validators: gvs})
+
+	eventMux.Post(cbfttypes.NewTopicEvent{Topic: consensusTopic, Nodes: consensusNodeIDs})
+	eventMux.Post(cbfttypes.NewTopicEvent{Topic: groupTopic, Nodes: groupNodeIDs})
+	eventMux.Post(cbfttypes.GroupTopicEvent{Topic: groupTopic})
 	return nil
 }
 
@@ -893,8 +899,11 @@ func (vp *ValidatorPool) dissolve(epoch uint64, eventMux *event.TypeMux) {
 	if nil != err {
 		return
 	}
+
 	consensusTopic := cbfttypes.ConsensusTopicName(epoch)
-	eventMux.Post(cbfttypes.ExpiredConsensusTopicEvent{Topic: consensusTopic})
 	groupTopic := cbfttypes.ConsensusGroupTopicName(epoch, gvs.GetGroupID())
-	eventMux.Post(cbfttypes.ExpiredGroupsTopicEvent{Topic: groupTopic})
+
+	eventMux.Post(cbfttypes.ExpiredTopicEvent{Topic: consensusTopic})  // for p2p
+	eventMux.Post(cbfttypes.ExpiredTopicEvent{Topic: groupTopic})      // for p2p
+	eventMux.Post(cbfttypes.ExpiredGroupTopicEvent{Topic: groupTopic}) // for cbft
 }
