@@ -72,17 +72,24 @@ type ConsensusTopicEvent struct {
 	Topic string // consensus:{epoch}
 }
 
-type NewGroupsEvent struct {
+type GroupsTopicEvent struct {
 	Topic      string // consensus:{epoch}:{groupID}
 	Validators *GroupValidators
 }
 
-type ExpiredConsensusTopicEvent struct {
-	Topic string // consensus:{epoch}
+type ExpiredConsensusTopicEvent ExpiredTopicEvent // consensus:{epoch}
+
+type ExpiredGroupsTopicEvent ExpiredTopicEvent // consensus:{epoch}:{groupID}
+
+// NewTopicEvent use for p2p,Nodes under this topic will be discovered
+type NewTopicEvent struct {
+	Topic string
+	Nodes []enode.ID
 }
 
+// ExpiredTopicEvent use for p2p,Nodes under this topic may be disconnected
 type ExpiredTopicEvent struct {
-	Topic string // consensus:{epoch}:{groupID}
+	Topic string
 }
 
 //type UpdateValidatorEvent struct{}
