@@ -148,7 +148,6 @@ func (m *RGBroadcastManager) needBroadcast(a awaiting) bool {
 	}
 }
 
-// cbft层在调用AsyncSendRGBlockQuorumCert时需判断view和viewTimeout等情况
 func (m *RGBroadcastManager) broadcast(a awaiting) {
 	m.mux.Lock()
 	defer m.mux.Unlock()
@@ -178,9 +177,18 @@ func (m *RGBroadcastManager) broadcast(a awaiting) {
 	}
 }
 
-//func (m *RGBroadcastManager) allowRGBlockQuorumCert(rgMsg ctypes.ConsensusMsg) bool {
-//	return rgMsg.EpochNum() == m.cbft.state.Epoch() && rgMsg.ViewNum() == m.cbft.state.ViewNumber()
-//}
+func (m *RGBroadcastManager) allowRGBlockQuorumCert(a awaiting) bool {
+	switch a.(type) {
+	case *awaitingRGBlockQC:
+		if m.cbft.state.IsDeadline() {
+			m.cbft.log.Debug("Current view had timeout, refuse to send RGBlockQuorumCert")
+			return false
+		}
+	case *awaitingRGViewQC:
+		return true
+	}
+	return true
+}
 
 func (m *RGBroadcastManager) upgradeCoordinator(a awaiting) bool {
 	// Check whether the current node is the first group member
@@ -210,10 +218,21 @@ func (m *RGBroadcastManager) upgradeCoordinator(a awaiting) bool {
 	}
 	if !m.enoughCoordinator(groupID, unitID, coordinatorIndexes, receiveIndexes) {
 		m.cbft.log.Warn("Upgrade the current node to Coordinator", "groupID", groupID, "unitID", unitID, "coordinatorIndexes", coordinatorIndexes, "receiveIndexes", receiveIndexes)
+		m.recordMetrics(a)
 		return true
 	}
 	m.cbft.log.Debug("Enough Coordinator, no need to upgrade to Coordinator", "groupID", groupID, "unitID", unitID, "coordinatorIndexes", coordinatorIndexes, "receiveIndexes", receiveIndexes)
 	return false
+}
+
+func (m *RGBroadcastManager) recordMetrics(a awaiting) {
+	switch a.(type) {
+	case *awaitingRGBlockQC:
+		upgradeCoordinatorBlockCounter.Inc(1)
+	case *awaitingRGViewQC:
+		upgradeCoordinatorViewCounter.Inc(1)
+	default:
+	}
 }
 
 func (m *RGBroadcastManager) enoughCoordinator(groupID, unitID uint32, coordinatorIndexes [][]uint32, receiveIndexes []uint32) bool {
@@ -247,37 +266,9 @@ func (m *RGBroadcastManager) countCoordinator(unitID uint32, coordinatorIndexes 
 }
 
 func (m *RGBroadcastManager) broadcastFunc(a awaiting) {
-	if m.cbft.state.IsDeadline() {
-		m.cbft.log.Debug("Current view had timeout, Refuse to send RGQuorumCert")
+	if !m.allowRGBlockQuorumCert(a) {
 		return
 	}
-
-	//alreadyQCBlock := func() bool {
-	//	if _, ok := rgMsg.(*protocols.RGBlockQuorumCert); ok {
-	//		return m.cbft.blockTree.FindBlockByHash(rgMsg.BHash()) != nil || rgMsg.BlockNum() <= m.cbft.state.HighestLockBlock().NumberU64()
-	//	}
-	//	return false
-	//}
-
-	//if !m.allowRGBlockQuorumCert(rgMsg) || alreadyQCBlock() {
-	//	return
-	//}
-
-	//findParentQC := func(blockIndex, groupID uint32) *ctypes.QuorumCert {
-	//	votes := m.cbft.state.AllPrepareVoteByIndex(blockIndex)
-	//	if votes != nil && len(votes) > 0 {
-	//		for _, v := range votes {
-	//			return v.ParentQC
-	//		}
-	//	}
-	//	rgqcs := m.cbft.state.FindGroupRGBlockQuorumCerts(blockIndex, groupID)
-	//	if rgqcs != nil && len(rgqcs) > 0 {
-	//		for _, qc := range rgqcs {
-	//			return qc.ParentQC
-	//		}
-	//	}
-	//	return nil
-	//}
 
 	if !m.upgradeCoordinator(a) {
 		return
@@ -292,7 +283,6 @@ func (m *RGBroadcastManager) broadcastFunc(a awaiting) {
 	m.mux.Lock()
 	defer m.mux.Unlock()
 
-	// TODO 如果该blockIndex已经qc，是否不用发送分组聚合签名
 	switch msg := a.(type) {
 	case *awaitingRGBlockQC:
 		// Query the QuorumCert with the largest number of signatures in the current group
@@ -301,7 +291,6 @@ func (m *RGBroadcastManager) broadcastFunc(a awaiting) {
 			m.cbft.log.Error("Cannot find the RGBlockQuorumCert of the current group", "blockIndex", msg.blockIndex, "groupID", msg.GroupID())
 			return
 		}
-		//ParentQC := findParentQC(msg.blockIndex, msg.GroupID())
 		if blockQC.BlockNumber != 1 && parentQC == nil {
 			m.cbft.log.Error("Cannot find the ParentQC corresponding to the current blockQC", "blockIndex", msg.blockIndex, "blockNumber", blockQC.BlockNumber, "groupID", msg.GroupID())
 			return
@@ -344,6 +333,7 @@ func (m *RGBroadcastManager) broadcastFunc(a awaiting) {
 }
 
 // AsyncSendRGQuorumCert queues list of RGQuorumCert propagation to a remote peer.
+// Before calling this function, it will be judged whether the current node is validator
 func (m *RGBroadcastManager) AsyncSendRGQuorumCert(a awaiting) {
 	select {
 	case m.broadcastCh <- a:

@@ -412,10 +412,8 @@ func (cbft *Cbft) OnInsertQCBlock(blocks []*types.Block, qcs []*ctypes.QuorumCer
 	if len(blocks) != len(qcs) {
 		return fmt.Errorf("block qc is inconsistent")
 	}
-	//todo insert tree, update view
 	for i := 0; i < len(blocks); i++ {
 		block, qc := blocks[i], qcs[i]
-		//todo verify qc
 
 		if err := cbft.safetyRules.QCBlockRules(block, qc); err != nil {
 			if err.NewView() {
@@ -553,7 +551,6 @@ func (cbft *Cbft) onAsyncExecuteStatus(s *executor.BlockExecuteStatus) {
 // Sign the block that has been executed
 // Every time try to trigger a send PrepareVote
 func (cbft *Cbft) signBlock(hash common.Hash, number uint64, index uint32) error {
-	// todo sign vote
 	// parentQC added when sending
 	// Determine if the current consensus node is
 	node, err := cbft.isCurrentValidator()
@@ -566,7 +563,7 @@ func (cbft *Cbft) signBlock(hash common.Hash, number uint64, index uint32) error
 		BlockHash:      hash,
 		BlockNumber:    number,
 		BlockIndex:     index,
-		ValidatorIndex: uint32(node.Index),
+		ValidatorIndex: node.Index,
 	}
 
 	if err := cbft.signMsgByBls(prepareVote); err != nil {
@@ -644,84 +641,10 @@ func (cbft *Cbft) publishTopicMsg(msg ctypes.ConsensusMsg) error {
 	return cbft.pubSub.Publish(topic, protocols.MessageType(msg), msg)
 }
 
-//func (cbft *Cbft) trySendRGBlockQuorumCert() {
-//	// Check timeout
-//	if cbft.state.IsDeadline() {
-//		cbft.log.Debug("Current view had timeout, Refuse to send RGBlockQuorumCert")
-//		return
-//	}
-//
-//	node, err := cbft.isCurrentValidator()
-//	if err != nil || node == nil {
-//		cbft.log.Debug("Current node is not validator, no need to send RGBlockQuorumCert")
-//		return
-//	}
-//
-//	groupID, _, err := cbft.getGroupByValidatorID(cbft.state.Epoch(), cbft.NodeID())
-//	if err != nil {
-//		cbft.log.Debug("Current node is not validator, no need to send RGBlockQuorumCert")
-//		return
-//	}
-//
-//	enoughVotes := func(blockIndex, groupID uint32) (bool, *ctypes.QuorumCert, *ctypes.QuorumCert) {
-//		threshold := cbft.groupThreshold(cbft.state.Epoch(), groupID)
-//		groupVotes := cbft.groupPrepareVotes(cbft.state.Epoch(), blockIndex, groupID)
-//		if len(groupVotes) >= threshold {
-//			// generatePrepareQC by votes
-//			rgqc := cbft.generatePrepareQC(groupVotes)
-//			// get parentQC
-//			var parentQC *ctypes.QuorumCert
-//			for _, v := range groupVotes {
-//				parentQC = v.ParentQC
-//				break
-//			}
-//			// Add SelectRGQuorumCerts
-//			cbft.state.AddSelectRGQuorumCerts(blockIndex, groupID, rgqc, parentQC)
-//			return true, rgqc, parentQC
-//		}
-//		return false, nil, nil
-//	}
-//
-//	alreadyRGBlockQuorumCerts := func(blockIndex, groupID uint32) (bool, *ctypes.QuorumCert, *ctypes.QuorumCert) {
-//		blockQC, parentQC := cbft.state.FindMaxGroupRGQuorumCert(blockIndex, groupID)
-//		if blockQC != nil {
-//			return true, blockQC, parentQC
-//		}
-//		return false, blockQC, parentQC
-//	}
-//
-//	for i := uint32(0); i < cbft.config.Sys.Amount; i++ {
-//		if cbft.state.FindRGBlockQuorumCerts(i, groupID, node.Index) != nil {
-//			cbft.log.Debug("Had async send RGBlockQuorumCert, don't send again", "blockIndex", i, "groupID", groupID, "nodeIndex", node.Index)
-//			continue
-//		}
-//
-//		exists, blockQC, parentQC := alreadyRGBlockQuorumCerts(i, groupID)
-//		if !exists {
-//			exists, blockQC, parentQC = enoughVotes(i, groupID)
-//			if !exists {
-//				continue
-//			}
-//		}
-//		cbft.state.AddRGBlockQuorumCert(node.Index, &protocols.RGBlockQuorumCert{
-//			GroupID:        groupID,
-//			BlockQC:        blockQC,
-//			ValidatorIndex: node.Index,
-//			ParentQC:       parentQC,
-//		})
-//
-//		cbft.RGBroadcastManager.AsyncSendRGQuorumCert(&awaitingRGBlockQC{
-//			groupID:    groupID,
-//			blockIndex: i,
-//		})
-//		cbft.log.Debug("Async send RGBlockQuorumCert", "blockIndex", i, "groupID", groupID, "nodeIndex", node.Index)
-//	}
-//}
-
 func (cbft *Cbft) trySendRGBlockQuorumCert() {
 	// Check timeout
 	if cbft.state.IsDeadline() {
-		cbft.log.Debug("Current view had timeout, Refuse to send RGBlockQuorumCert")
+		cbft.log.Debug("Current view had timeout, refuse to send RGBlockQuorumCert")
 		return
 	}
 
@@ -751,18 +674,24 @@ func (cbft *Cbft) trySendRGBlockQuorumCert() {
 			}
 			// Add SelectRGQuorumCerts
 			cbft.state.AddSelectRGQuorumCerts(blockIndex, groupID, rgqc, parentQC)
+			blockGroupQCBySelfCounter.Inc(1)
 			return true
 		}
 		return false
 	}
 
 	alreadyRGBlockQuorumCerts := func(blockIndex, groupID uint32) bool {
-		return cbft.state.SelectRGQuorumCertsLen(blockIndex, groupID) > 0
+		len := cbft.state.SelectRGQuorumCertsLen(blockIndex, groupID)
+		if len > 0 {
+			blockGroupQCByOtherCounter.Inc(1)
+			return true
+		}
+		return false
 	}
 
 	for index := uint32(0); index <= cbft.state.MaxViewBlockIndex(); index++ {
 		if cbft.state.HadSendRGBlockQuorumCerts(index) {
-			cbft.log.Debug("Had async send RGBlockQuorumCert, don't send again", "blockIndex", index, "groupID", groupID)
+			cbft.log.Debug("RGBlockQuorumCert has been sent, no need to send again", "blockIndex", index, "groupID", groupID)
 			continue
 		}
 
@@ -772,18 +701,15 @@ func (cbft *Cbft) trySendRGBlockQuorumCert() {
 				blockIndex: index,
 			})
 			cbft.state.AddSendRGBlockQuorumCerts(index)
-			cbft.log.Debug("Async send RGBlockQuorumCert", "blockIndex", index, "groupID", groupID, "nodeIndex")
+			cbft.log.Debug("Send RGBlockQuorumCert asynchronously", "blockIndex", index, "groupID", groupID)
+			// record metrics
+			block := cbft.state.ViewBlockByIndex(index)
+			blockGroupQCTimer.UpdateSince(time.Unix(int64(block.Time()), 0))
 		}
 	}
 }
 
 func (cbft *Cbft) trySendRGViewChangeQuorumCert() {
-	// Check timeout
-	if cbft.state.IsDeadline() {
-		cbft.log.Debug("Current view had timeout, Refuse to send RGViewChangeQuorumCert")
-		return
-	}
-
 	groupID, _, err := cbft.getGroupByValidatorID(cbft.state.Epoch(), cbft.Node().ID())
 	if err != nil {
 		cbft.log.Debug("Current node is not validator, no need to send RGViewChangeQuorumCert")
@@ -805,17 +731,23 @@ func (cbft *Cbft) trySendRGViewChangeQuorumCert() {
 			}
 			// Add SelectRGViewChangeQuorumCerts
 			cbft.state.AddSelectRGViewChangeQuorumCerts(groupID, rgqc, prepareQCs)
+			viewGroupQCBySelfCounter.Inc(1)
 			return true
 		}
 		return false
 	}
 
 	alreadyRGViewChangeQuorumCerts := func(groupID uint32) bool {
-		return cbft.state.SelectRGViewChangeQuorumCertsLen(groupID) > 0
+		len := cbft.state.SelectRGViewChangeQuorumCertsLen(groupID)
+		if len > 0 {
+			viewGroupQCByOtherCounter.Inc(1)
+			return true
+		}
+		return false
 	}
 
 	if cbft.state.HadSendRGViewChangeQuorumCerts(cbft.state.ViewNumber()) {
-		cbft.log.Debug("Had async send RGViewChangeQuorumCert, don't send again", "groupID", groupID)
+		cbft.log.Debug("RGViewChangeQuorumCert has been sent, no need to send again", "groupID", groupID)
 		return
 	}
 
@@ -825,7 +757,8 @@ func (cbft *Cbft) trySendRGViewChangeQuorumCert() {
 			viewNumber: cbft.state.ViewNumber(),
 		})
 		cbft.state.AddSendRGViewChangeQuorumCerts(cbft.state.ViewNumber())
-		cbft.log.Debug("Async send RGBlockQuorumCert", "groupID", groupID)
+		cbft.log.Debug("Send RGViewChangeQuorumCert asynchronously", "groupID", groupID)
+		viewGroupQCTimer.UpdateSince(cbft.state.Deadline())
 	}
 }
 
@@ -1003,6 +936,7 @@ func (cbft *Cbft) findQCBlock() {
 		size := cbft.state.PrepareVoteLenByIndex(next)
 		if size >= threshold {
 			qc = cbft.generatePrepareQC(cbft.state.AllPrepareVoteByIndex(next))
+			blockWholeQCByVotesCounter.Inc(1)
 			cbft.log.Debug("Enough prepareVote have been received, generate prepareQC", "qc", qc.String())
 		}
 		return qc.Len() >= threshold
@@ -1018,6 +952,7 @@ func (cbft *Cbft) findQCBlock() {
 		}
 		if size >= threshold {
 			qc = cbft.combinePrepareQC(rgqcs)
+			blockWholeQCByRGQCCounter.Inc(1)
 			cbft.log.Debug("Enough RGBlockQuorumCerts have been received, combine prepareQC", "qc", qc.String())
 		}
 		return qc.Len() >= threshold
@@ -1038,6 +973,7 @@ func (cbft *Cbft) findQCBlock() {
 					qc.AddSign(v.Signature, v.BlockIndex)
 				}
 			}
+			blockWholeQCByCombineCounter.Inc(1)
 			cbft.log.Debug("Enough RGBlockQuorumCerts and prepareVote have been received, combine prepareQC", "qc", qc.String())
 		}
 		return qc.Len() >= threshold
@@ -1055,6 +991,7 @@ func (cbft *Cbft) findQCBlock() {
 			cbft.network.Broadcast(&protocols.BlockQuorumCert{BlockQC: qc})
 			// metrics
 			blockQCCollectedGauage.Update(int64(block.Time()))
+			blockWholeQCTimer.UpdateSince(time.Unix(int64(block.Time()), 0))
 			cbft.trySendPrepareVote()
 		}
 	}
@@ -1152,6 +1089,7 @@ func (cbft *Cbft) tryChangeView() {
 		size := cbft.state.ViewChangeLen()
 		if size >= threshold {
 			viewChangeQC = cbft.generateViewChangeQC(cbft.state.AllViewChange())
+			viewWholeQCByVcsCounter.Inc(1)
 			cbft.log.Info("Receive enough viewchange, generate viewChangeQC", "view", cbft.state.ViewString(), "viewChangeQC", viewChangeQC.String())
 		}
 		return viewChangeQC.HasLength() >= threshold
@@ -1167,6 +1105,7 @@ func (cbft *Cbft) tryChangeView() {
 		}
 		if size >= threshold {
 			viewChangeQC = cbft.combineViewChangeQC(viewChangeQCs)
+			viewWholeQCByRGQCCounter.Inc(1)
 			cbft.log.Debug("Enough RGViewChangeQuorumCerts have been received, combine ViewChangeQC", "qc", qc.String())
 		}
 		return viewChangeQC.HasLength() >= threshold
@@ -1187,6 +1126,7 @@ func (cbft *Cbft) tryChangeView() {
 					cbft.MergeViewChange(viewChangeQC, v)
 				}
 			}
+			viewWholeQCByCombineCounter.Inc(1)
 			cbft.log.Debug("Enough RGViewChangeQuorumCerts and viewchange have been received, combine ViewChangeQC", "qc", qc.String())
 		}
 		return viewChangeQC.HasLength() >= threshold
@@ -1197,6 +1137,7 @@ func (cbft *Cbft) tryChangeView() {
 	}
 
 	if alreadyQC() {
+		viewWholeQCTimer.UpdateSince(cbft.state.Deadline())
 		cbft.tryChangeViewByViewChange(viewChangeQC)
 	}
 }
@@ -1342,7 +1283,7 @@ func (cbft *Cbft) changeView(epoch, viewNumber uint64, block *types.Block, qc *c
 	cbft.state.SetViewTimer(interval())
 	cbft.state.SetLastViewChangeQC(viewChangeQC)
 
-	// metrics.
+	// record metrics
 	viewNumberGauage.Update(int64(viewNumber))
 	epochNumberGauage.Update(int64(epoch))
 	viewChangedTimer.UpdateSince(time.Unix(int64(block.Time()), 0))

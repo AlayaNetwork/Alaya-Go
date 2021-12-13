@@ -21,6 +21,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/AlayaNetwork/Alaya-Go/core/cbfttypes"
+	"github.com/AlayaNetwork/Alaya-Go/event"
 	"sync"
 
 	"github.com/AlayaNetwork/Alaya-Go/common"
@@ -68,6 +70,8 @@ type PubSub struct {
 	// The set of topics we are subscribed to
 	mySubs map[string]*pubsub.Subscription
 	sync.Mutex
+
+	quit chan struct{}
 }
 
 // Protocol.Run()
@@ -120,13 +124,42 @@ func NewPubSub(server *p2p.PubSubServer) *PubSub {
 		pss:    server,
 		topics: make(map[string]*pubsub.Topic),
 		mySubs: make(map[string]*pubsub.Subscription),
+		quit:   make(chan struct{}),
 	}
 }
 
-func (ps *PubSub) Init(config ctypes.Config, get getByIDFunc, onReceive receiveCallback) {
+func (ps *PubSub) Init(config ctypes.Config, get getByIDFunc, onReceive receiveCallback, eventMux *event.TypeMux) {
 	ps.config = config
 	ps.getPeerById = get
 	ps.onReceive = onReceive
+
+	go ps.watching(eventMux)
+}
+
+func (ps *PubSub) watching(eventMux *event.TypeMux) {
+	events := eventMux.Subscribe(cbfttypes.GroupTopicEvent{}, cbfttypes.ExpiredGroupTopicEvent{})
+	defer events.Unsubscribe()
+
+	for {
+		select {
+		case ev := <-events.Chan():
+			if ev == nil {
+				continue
+			}
+			switch data := ev.Data.(type) {
+			case cbfttypes.GroupTopicEvent:
+				log.Trace("Received GroupTopicEvent", "topic", data.Topic)
+				ps.Subscribe(data.Topic)
+			case cbfttypes.ExpiredGroupTopicEvent:
+				log.Trace("Received ExpiredGroupTopicEvent", "topic", data.Topic)
+				ps.Cancel(data.Topic)
+			default:
+				log.Error("Received unexcepted event")
+			}
+		case <-ps.quit:
+			return
+		}
+	}
 }
 
 //Subscribe subscribe a topic
@@ -229,4 +262,8 @@ func (ps *PubSub) Publish(topic string, code uint64, data interface{}) error {
 	}
 
 	return t.Publish(context.Background(), env)
+}
+
+func (ps *PubSub) Stop() {
+	close(ps.quit)
 }

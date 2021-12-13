@@ -787,7 +787,7 @@ func (cbft *Cbft) MissingViewChangeNodes() (v *protocols.GetViewChange, err erro
 }
 
 func (cbft *Cbft) KnownVoteIndexes(blockIndex uint32) []uint32 {
-	groupNodes := cbft.validatorPool.GetGroupIndexes(cbft.state.Epoch())
+	groupNodes := cbft.getGroupIndexes(cbft.state.Epoch())
 	allVotes := cbft.state.AllPrepareVoteByIndex(blockIndex)
 	known := make([]uint32, 0)
 	for groupID, indexes := range groupNodes {
@@ -795,7 +795,7 @@ func (cbft *Cbft) KnownVoteIndexes(blockIndex uint32) []uint32 {
 		for _, index := range indexes {
 			if _, ok := allVotes[index]; ok {
 				known = append(known, index)
-			} else if qc != nil && qc.HasSign(index) {
+			} else if qc.HasSign(index) {
 				known = append(known, index)
 			}
 		}
@@ -804,7 +804,7 @@ func (cbft *Cbft) KnownVoteIndexes(blockIndex uint32) []uint32 {
 }
 
 func (cbft *Cbft) KnownViewChangeIndexes() []uint32 {
-	groupNodes := cbft.validatorPool.GetGroupIndexes(cbft.state.Epoch())
+	groupNodes := cbft.getGroupIndexes(cbft.state.Epoch())
 	allViewChanges := cbft.state.AllViewChange()
 	known := make([]uint32, 0)
 	for groupID, indexes := range groupNodes {
@@ -812,7 +812,7 @@ func (cbft *Cbft) KnownViewChangeIndexes() []uint32 {
 		for _, index := range indexes {
 			if _, ok := allViewChanges[index]; ok {
 				known = append(known, index)
-			} else if qc != nil && qc.HasSign(index) {
+			} else if qc.HasSign(index) {
 				known = append(known, index)
 			}
 		}
@@ -821,16 +821,25 @@ func (cbft *Cbft) KnownViewChangeIndexes() []uint32 {
 }
 
 func (cbft *Cbft) MissGroupVotes(blockIndex uint32) *ctypes.UnKnownGroups {
-	groupNodes := cbft.validatorPool.GetGroupIndexes(cbft.state.Epoch())
+	groupNodes := cbft.getGroupIndexes(cbft.state.Epoch())
 	allVotes := cbft.state.AllPrepareVoteByIndex(blockIndex)
 
 	validatorLen := cbft.currentValidatorLen()
 	unKnowns := &ctypes.UnKnownGroups{UnKnown: make([]*ctypes.UnKnownGroup, 0)}
 
+	// just for record metrics
+	missGroups := 0
+	missVotes := 0
+
 	for groupID, indexes := range groupNodes {
 		qc, _ := cbft.state.FindMaxGroupRGQuorumCert(blockIndex, groupID)
 		groupLen := cbft.groupLen(cbft.state.Epoch(), groupID)
-		if qc == nil || qc.Len() < groupLen {
+		// just for record metrics
+		groupThreshold := cbft.groupThreshold(cbft.state.Epoch(), groupID)
+		if qc.Len() < groupThreshold {
+			missGroups++
+		}
+		if qc.Len() < groupLen {
 			unKnownSet := utils.NewBitArray(uint32(validatorLen))
 			for _, index := range indexes {
 				if _, ok := allVotes[index]; !ok && !qc.HasSign(index) {
@@ -847,22 +856,36 @@ func (cbft *Cbft) MissGroupVotes(blockIndex uint32) *ctypes.UnKnownGroups {
 					UnKnownSet: unKnownSet,
 				}
 				unKnowns.UnKnown = append(unKnowns.UnKnown, unKnownGroup)
+				// just for record metrics
+				missVotes += unKnownSet.HasLength()
 			}
 		}
 	}
+	// just for record metrics
+	missRGBlockQuorumCertsGauage.Update(int64(missGroups))
+	missVotesGauage.Update(int64(missVotes))
 	return unKnowns
 }
 
 func (cbft *Cbft) MissGroupViewChanges() *ctypes.UnKnownGroups {
-	groupNodes := cbft.validatorPool.GetGroupIndexes(cbft.state.Epoch())
+	groupNodes := cbft.getGroupIndexes(cbft.state.Epoch())
 	allViewChange := cbft.state.AllViewChange()
 
 	validatorLen := cbft.currentValidatorLen()
 	unKnowns := &ctypes.UnKnownGroups{UnKnown: make([]*ctypes.UnKnownGroup, 0)}
 
+	// just for record metrics
+	missGroups := 0
+	missViewChanges := 0
+
 	for groupID, indexes := range groupNodes {
 		qc, _ := cbft.state.FindMaxGroupRGViewChangeQuorumCert(groupID)
 		groupLen := cbft.groupLen(cbft.state.Epoch(), groupID)
+		// just for record metrics
+		groupThreshold := cbft.groupThreshold(cbft.state.Epoch(), groupID)
+		if qc.Len() < groupThreshold {
+			missGroups++
+		}
 		if qc == nil || qc.Len() < groupLen {
 			unKnownSet := utils.NewBitArray(uint32(validatorLen))
 			for _, index := range indexes {
@@ -876,9 +899,14 @@ func (cbft *Cbft) MissGroupViewChanges() *ctypes.UnKnownGroups {
 					UnKnownSet: unKnownSet,
 				}
 				unKnowns.UnKnown = append(unKnowns.UnKnown, unKnownGroup)
+				// just for record metrics
+				missViewChanges += unKnownSet.HasLength()
 			}
 		}
 	}
+	// just for record metrics
+	missRGViewQuorumCertsGauage.Update(int64(missGroups))
+	missVcsGauage.Update(int64(missViewChanges))
 	return unKnowns
 }
 

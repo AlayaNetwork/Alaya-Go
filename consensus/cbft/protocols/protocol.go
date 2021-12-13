@@ -456,7 +456,6 @@ func (s *GetPrepareBlock) BHash() common.Hash {
 }
 
 // GetBlockQuorumCert is the protocol message for obtaining an aggregated signature.
-// todo: Need to determine the attribute field - ParentQC.
 type GetBlockQuorumCert struct {
 	BlockHash   common.Hash  `json:"blockHash"`   // The hash of the block to be acquired.
 	BlockNumber uint64       `json:"blockNumber"` // The number of the block to be acquired.
@@ -833,11 +832,16 @@ func (rgb *RGBlockQuorumCert) MsgHash() common.Hash {
 
 	v := utils.BuildHash(RGBlockQuorumCertMsg, utils.MergeBytes(
 		common.Uint32ToBytes(rgb.GroupID),
-		common.Uint32ToBytes(rgb.ValidatorIndex), // To upgrade a slave node to a master node, it is necessary to determine whether the previous marshalling node sends RGBlockQuorumCertMsg, so the ValidatorIndex needs to be added here
+		common.Uint32ToBytes(rgb.ValidatorIndex),
+		common.Uint64ToBytes(rgb.BlockQC.Epoch),
+		common.Uint64ToBytes(rgb.BlockQC.ViewNumber),
 		rgb.BlockQC.BlockHash.Bytes(),
 		common.Uint64ToBytes(rgb.BlockQC.BlockNumber),
-		rgb.BlockQC.Signature.Bytes(),
-		rgb.BlockQC.ValidatorSet.Bytes()))
+		common.Uint32ToBytes(rgb.BlockQC.BlockIndex),
+		rgb.Signature.Bytes(),
+		//rgb.BlockQC.Signature.Bytes(),
+		//rgb.BlockQC.ValidatorSet.Bytes()
+	))
 
 	rgb.messageHash.Store(v)
 	return v
@@ -915,16 +919,19 @@ func (rgv *RGViewChangeQuorumCert) MsgHash() common.Hash {
 	if mhash := rgv.messageHash.Load(); mhash != nil {
 		return mhash.(common.Hash)
 	}
+
 	epoch, viewNumber, blockEpoch, blockViewNumber, hash, number := rgv.ViewChangeQC.MaxBlock()
 	mv := utils.BuildHash(RGViewChangeQuorumCertMsg, utils.MergeBytes(
 		common.Uint32ToBytes(rgv.GroupID),
-		common.Uint32ToBytes(rgv.ValidatorIndex), // To upgrade a slave node to a master node, it is necessary to determine whether the previous marshalling node sends RGBlockQuorumCertMsg, so the ValidatorIndex needs to be added here
+		common.Uint32ToBytes(rgv.ValidatorIndex),
 		common.Uint64ToBytes(epoch),
 		common.Uint64ToBytes(viewNumber),
 		common.Uint64ToBytes(blockEpoch),
 		common.Uint64ToBytes(blockViewNumber),
 		hash.Bytes(),
-		common.Uint64ToBytes(number)))
+		common.Uint64ToBytes(number),
+		rgv.Signature.Bytes(),
+	))
 	rgv.messageHash.Store(mv)
 	return mv
 }
