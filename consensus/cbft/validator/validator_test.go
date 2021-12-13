@@ -619,27 +619,22 @@ func TestValidatorPoolReset(t *testing.T) {
 }
 
 func TestValidatorGrouped(t *testing.T) {
+
 	nodes := newTestNodeByNum(100)
 	vs := newValidators(nodes, 0)
 	vs.Grouped()
 	assert.Equal(t, 4, len(vs.GroupNodes))
-	assert.Equal(t, 25, len(vs.GroupNodes[3].Nodes))
 	assert.Equal(t, uint32(74), vs.GroupNodes[2].Nodes[24].Index)
 	assert.Equal(t, 5, len(vs.GroupNodes[2].Units))
 	assert.Equal(t, uint32(74), vs.GroupNodes[2].Units[4][4])
 
-	vs.Grouped()
-	assert.Equal(t, 4, len(vs.GroupNodes))
 	assert.Equal(t, 25, len(vs.GroupNodes[0].Nodes))
 	assert.Equal(t, 25, len(vs.GroupNodes[2].Nodes))
 	assert.Equal(t, 25, len(vs.GroupNodes[3].Nodes))
 	assert.Equal(t, uint32(79), vs.GroupNodes[3].Units[0][4])
 
-	vs.Grouped()
-	assert.Equal(t, 6, len(vs.GroupNodes))
-	assert.Equal(t, 17, len(vs.GroupNodes[0].Nodes))
-	assert.Equal(t, 6, len(vs.GroupNodes[2].Units))
-	assert.Equal(t, uint32(48), vs.GroupNodes[2].Units[4][2])
+	assert.Equal(t, 5, len(vs.GroupNodes[2].Units))
+	assert.Equal(t, uint32(72), vs.GroupNodes[2].Units[4][2])
 }
 
 func TestGetGroupID(t *testing.T) {
@@ -649,17 +644,17 @@ func TestGetGroupID(t *testing.T) {
 	vp := NewValidatorPool(agency, 0, 0, nodes[0].Node.ID(), true, new(event.TypeMux))
 
 	grpID, _ := vp.GetGroupID(0, nodes[0].Node.ID())
-	assert.Equal(t, 0, grpID)
+	assert.Equal(t, uint32(0), grpID)
 }
 
 func TestGetUintID(t *testing.T) {
 	bls.Init(bls.BLS12_381)
 	nodes := newTestNodeByNum(100)
 	agency := newTestInnerAgency(nodes)
-	vp := NewValidatorPool(agency, 0, 0, nodes[0].Node.ID(), false, new(event.TypeMux))
+	vp := NewValidatorPool(agency, 0, 0, nodes[0].Node.ID(), true, new(event.TypeMux))
 
-	untID, _ := vp.GetGroupID(0, nodes[0].Node.ID())
-	assert.Equal(t, 0, untID)
+	unitID, _ := vp.GetGroupID(0, nodes[0].Node.ID())
+	assert.Equal(t, uint32(0), unitID)
 }
 
 func TestUpdate(t *testing.T) {
@@ -681,8 +676,6 @@ func TestUpdate(t *testing.T) {
 	next.Grouped()
 	assert.NotEqual(t, vp.currentValidators, next)
 
-	t.Log("TestUpdate", "vp.lastNumber", vp.lastNumber)
-	t.Log("TestUpdate", "next.lastNumber", next.ValidBlockNumber)
 	vp.Update(250, 0, false, 0, eventMux)
 	assert.Nil(t, vp.nextValidators)
 	vp.Update(vp.lastNumber, 0, true, 0, eventMux)
