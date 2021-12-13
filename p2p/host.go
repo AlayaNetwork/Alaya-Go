@@ -18,6 +18,7 @@ package p2p
 
 import (
 	"context"
+	"errors"
 	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
 	"github.com/AlayaNetwork/Alaya-Go/p2p/pubsub"
 	"github.com/libp2p/go-libp2p-core/connmgr"
@@ -25,17 +26,19 @@ import (
 )
 
 type Host struct {
-	node    *enode.Node
-	network *Network
-	streams map[enode.ID]pubsub.Stream
 	sync.Mutex
+	node     *enode.Node
+	network  *Network
+	streams  map[enode.ID]pubsub.Stream
+	handlers map[pubsub.ProtocolID]pubsub.StreamHandler
 }
 
 func NewHost(localNode *enode.Node, network *Network) *Host {
 	host := &Host{
-		node:    localNode,
-		streams: make(map[enode.ID]pubsub.Stream),
-		network: network,
+		node:     localNode,
+		streams:  make(map[enode.ID]pubsub.Stream),
+		network:  network,
+		handlers: map[pubsub.ProtocolID]pubsub.StreamHandler{},
 	}
 	return host
 }
@@ -53,21 +56,34 @@ func (h *Host) Connect(ctx context.Context, pi enode.ID) error {
 }
 
 func (h *Host) SetStreamHandler(pid pubsub.ProtocolID, handler pubsub.StreamHandler) {
-
+	h.Lock()
+	defer h.Unlock()
+	h.handlers[pid] = handler
 }
 
 func (h *Host) SetStreamHandlerMatch(pubsub.ProtocolID, func(string) bool, pubsub.StreamHandler) {
 
 }
 
-func (h *Host) RemoveStreamHandler(pid pubsub.ProtocolID) {
+func (h *Host) StreamHandler(pid pubsub.ProtocolID) pubsub.StreamHandler {
+	h.Lock()
+	defer h.Unlock()
+	return h.handlers[pid]
+}
 
+func (h *Host) RemoveStreamHandler(pid pubsub.ProtocolID) {
+	h.Lock()
+	defer h.Unlock()
+	delete(h.handlers, pid)
 }
 
 func (h *Host) NewStream(ctx context.Context, nodeId enode.ID, pids ...pubsub.ProtocolID) (pubsub.Stream, error) {
 	h.Lock()
 	defer h.Unlock()
-	return h.streams[nodeId], nil
+	if s, ok := h.streams[nodeId]; ok {
+		return s, nil
+	}
+	return nil, errors.New("no stream exists for this node")
 }
 
 func (h *Host) SetStream(nodeId enode.ID, stream pubsub.Stream) {
@@ -81,9 +97,20 @@ func (h *Host) Close() error {
 }
 
 func (h *Host) ConnManager() connmgr.ConnManager {
-	return nil
+	return &connmgr.NullConnMgr{}
 }
 
 func (h *Host) NotifyAll(conn pubsub.Conn) {
 	h.network.NotifyAll(conn)
+}
+
+func (h *Host) AddConn(p enode.ID, conn pubsub.Conn) {
+	h.network.SetConn(p, conn)
+}
+
+func (h *Host) DisConn(p enode.ID) {
+	h.Lock()
+	defer h.Unlock()
+	delete(h.streams, p)
+	h.network.RemoveConn(p)
 }

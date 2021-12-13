@@ -54,9 +54,7 @@ func (p *PubSub) handleNewStream(s Stream) {
 		p.inboundStreamsMx.Unlock()
 	}()
 
-	//r := protoio.NewDelimitedReader(s, p.maxMessageSize)
 	for {
-
 		rpc := new(RPC)
 		if err := s.Read(&rpc.RPC); err != nil {
 			log.Error("Read message error", "err", err)
@@ -64,11 +62,11 @@ func (p *PubSub) handleNewStream(s Stream) {
 			s.Close(err)
 			return
 		}
-
 		rpc.from = peer
 		select {
 		case p.incoming <- rpc:
 		case <-p.ctx.Done():
+			s.Close(nil)
 			return
 		}
 	}
@@ -100,7 +98,7 @@ func (p *PubSub) handleNewPeer(ctx context.Context, pid enode.ID, outgoing <-cha
 		return
 	}
 
-	go p.handleNewStream(s)
+	go p.host.StreamHandler(s.Protocol())(s)
 	go p.handleSendingMessages(ctx, s, outgoing)
 	//go p.handlePeerEOF(ctx, s)
 	select {
@@ -145,6 +143,7 @@ func (p *PubSub) handleSendingMessages(ctx context.Context, s Stream, outgoing <
 			}
 
 			if !message.IsEmpty(&rpc.RPC) {
+				message.Filling(&rpc.RPC)
 				if err := s.Write(&rpc.RPC); err != nil {
 					log.Error("Send message fail", "err", err)
 					return

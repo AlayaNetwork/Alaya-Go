@@ -2,6 +2,7 @@ package pubsub
 
 import (
 	"context"
+	"io"
 	"time"
 
 	"github.com/libp2p/go-libp2p-core/connmgr"
@@ -36,7 +37,7 @@ type ProtocolID string
 // It is called Host because it is both Server and Client (and Peer
 // may be confusing).
 type Host interface {
-	// ID returns the (local) peer.ID associated with this Host
+	// ID returns the (local) enode.ID associated with this Host
 	ID() *enode.Node
 
 	// Peerstore returns the Host's repository of Peer Addresses and Keys.
@@ -46,7 +47,7 @@ type Host interface {
 	Network() Network
 
 	// Connect ensures there is a connection between this host and the peer with
-	// given peer.ID. Connect will absorb the addresses in pi into its internal
+	// given enode.ID. Connect will absorb the addresses in pi into its internal
 	// peerstore. If there is not an active connection, Connect will issue a
 	// h.Network.Dial, and block until a connection is open, or an error is
 	// returned. // TODO: Relay + NAT.
@@ -62,6 +63,9 @@ type Host interface {
 	// SetStreamHandlerMatch sets the protocol handler on the Host's Mux
 	// using a matching function for protocol selection.
 	SetStreamHandlerMatch(ProtocolID, func(string) bool, StreamHandler)
+
+	// Get a handler
+	StreamHandler(pid ProtocolID) StreamHandler
 
 	// RemoveStreamHandler removes a handler on the mux that was set by
 	// SetStreamHandler
@@ -89,11 +93,15 @@ type StreamHandler func(Stream)
 // connections (see swarm pkg, and peerstream.Swarm). Connections
 // are encrypted with a TLS-like protocol.
 type Network interface {
+	io.Closer
 	// ConnsToPeer returns the connections in this Netowrk for given peer.
 	ConnsToPeer(p enode.ID) []Conn
 
 	// Connectedness returns a state signaling connection capabilities
 	Connectedness(enode.ID) Connectedness
+
+	// Conns returns the connections in this Netowrk
+	Conns() []Conn
 
 	// Notify/StopNotify register and unregister a notifiee for signals
 	Notify(Notifiee)
@@ -129,6 +137,7 @@ type Stream interface {
 // be useful to get information about the peer on the other side:
 //  stream.Conn().RemotePeer()
 type Conn interface {
+	io.Closer
 	// ID returns an identifier that uniquely identifies this Conn within this
 	// host, during this run. Connection IDs may repeat across restarts.
 	ID() string
