@@ -64,7 +64,7 @@ type PubSub struct {
 
 	// All topics subscribed
 	topics   map[string]*pubsub.Topic
-	topicCtx map[string]context.Context
+	topicCtx map[string]context.CancelFunc
 	// The set of topics we are subscribed to
 	mySubs map[string]*pubsub.Subscription
 	sync.Mutex
@@ -140,7 +140,7 @@ func (ps *PubSub) Subscribe(topic string) error {
 	if err != nil {
 		return err
 	}
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
 	ps.pss.DiscoverTopic(ctx, topic)
 
 	subscription, err := t.Subscribe()
@@ -149,7 +149,7 @@ func (ps *PubSub) Subscribe(topic string) error {
 	}
 	ps.topics[topic] = t
 	ps.mySubs[topic] = subscription
-	ps.topicCtx[topic] = ctx
+	ps.topicCtx[topic] = cancel
 
 	go ps.listen(subscription)
 	return nil
@@ -201,8 +201,8 @@ func (ps *PubSub) Cancel(topic string) error {
 		delete(ps.mySubs, topic)
 		delete(ps.topics, topic)
 	}
-	if ctx, ok := ps.topicCtx[topic]; ok {
-		ctx.Done()
+	if cancel, ok := ps.topicCtx[topic]; ok {
+		cancel()
 		delete(ps.topicCtx, topic)
 	}
 	return nil
