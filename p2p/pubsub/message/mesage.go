@@ -1,6 +1,10 @@
 package message
 
-import "github.com/AlayaNetwork/Alaya-Go/p2p/enode"
+import (
+	"errors"
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
+	"github.com/AlayaNetwork/Alaya-Go/rlp"
+)
 
 type RPC struct {
 	Subscriptions []*RPC_SubOpts
@@ -15,6 +19,26 @@ func IsEmpty(rpc *RPC) bool {
 		}
 	}
 	return true
+}
+
+func Filling(rpc *RPC) {
+	if rpc != nil {
+		if rpc.Subscriptions == nil {
+			rpc.Subscriptions = make([]*RPC_SubOpts, 0)
+		}
+		if rpc.Publish == nil {
+			rpc.Publish = make([]*Message, 0)
+		}
+		if rpc.Control == nil {
+			rpc.Control = &ControlMessage{}
+		}
+	}
+}
+
+func (m *RPC) Reset() {
+	m.Subscriptions = make([]*RPC_SubOpts, 0)
+	m.Publish = make([]*Message, 0)
+	m.Control = &ControlMessage{}
 }
 
 func (m *RPC) Size() (n int) {
@@ -224,6 +248,13 @@ func (m *ControlMessage) Size() (n int) {
 		}
 	}
 	return n
+}
+
+func (m *ControlMessage) Marshal() ([]byte, error) {
+	if m != nil {
+		return rlp.EncodeToBytes(m)
+	}
+	return nil, errors.New("serialized object is empty")
 }
 
 type ControlIHave struct {

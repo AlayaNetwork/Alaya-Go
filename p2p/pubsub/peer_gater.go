@@ -357,7 +357,7 @@ func (pg *peerGater) AcceptFrom(p *enode.Node) AcceptStatus {
 		return AcceptAll
 	}
 
-	log.Debug("throttling peer %s with threshold %f", "peer", p, "threshold", threshold)
+	log.Debug("throttling peer with threshold", "peer", p.ID().TerminalString(), "threshold", threshold)
 	return AcceptControl
 }
 
