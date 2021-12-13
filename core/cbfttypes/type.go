@@ -338,6 +338,7 @@ func (gvs *GroupValidators) GroupedUnits() {
 	}
 }
 
+// return groupID
 func (gvs *GroupValidators) GetGroupID() uint32 {
 	return gvs.groupID
 }
