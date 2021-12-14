@@ -25,7 +25,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/AlayaNetwork/Alaya-Go/ethdb/leveldb"
+	"github.com/AlayaNetwork/Alaya-Go/ethdb/memorydb"
+
+	"github.com/AlayaNetwork/Alaya-Go/core/rawdb"
 
 	"github.com/AlayaNetwork/Alaya-Go/crypto"
 
@@ -75,10 +77,12 @@ func newBlockChainForTesting(db ethdb.Database) (*BlockChain, error) {
 }
 
 func TestCleaner(t *testing.T) {
-	tmpDir, err := ioutil.TempDir("", "alaya")
-	assert.Nil(t, err)
-	defer os.RemoveAll(tmpDir)
-	db, err := leveldb.New(tmpDir, 100, 1024, "")
+	frdir, err := ioutil.TempDir("", "")
+	if err != nil {
+		t.Fatalf("failed to create temp freezer dir: %v", err)
+	}
+	defer os.Remove(frdir)
+	db, err := rawdb.NewDatabaseWithFreezer(memorydb.New(), frdir, "")
 	assert.Nil(t, err)
 
 	blockchain, err := newBlockChainForTesting(db)
@@ -131,10 +135,12 @@ func TestCleaner(t *testing.T) {
 }
 
 func TestStopCleaner(t *testing.T) {
-	tmpDir, _ := ioutil.TempDir("", "alaya")
-	defer os.RemoveAll(tmpDir)
-
-	db, err := leveldb.New(tmpDir, 100, 1024, "")
+	frdir, err := ioutil.TempDir("", "")
+	if err != nil {
+		t.Fatalf("failed to create temp freezer dir: %v", err)
+	}
+	defer os.Remove(frdir)
+	db, err := rawdb.NewDatabaseWithFreezer(memorydb.New(), frdir, "")
 	assert.Nil(t, err)
 
 	blockchain, err := newBlockChainForTesting(db)
