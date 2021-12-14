@@ -17,8 +17,10 @@
 package network
 
 import (
+	"context"
 	ctypes "github.com/AlayaNetwork/Alaya-Go/consensus/cbft/types"
 	"github.com/AlayaNetwork/Alaya-Go/crypto"
+	"github.com/AlayaNetwork/Alaya-Go/event"
 	"github.com/AlayaNetwork/Alaya-Go/node"
 	"github.com/AlayaNetwork/Alaya-Go/p2p"
 	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
@@ -29,11 +31,12 @@ import (
 	"time"
 )
 
-func makePubSub(handlerMsg func(p *peer, msg *p2p.Msg) error) *PubSub {
+func makePubSub(handlerMsg func(p *peer, msg *p2p.Msg) error) (*PubSub, *p2p.Server) {
 	sk, err := crypto.GenerateKey()
 	if nil != err {
 		panic(err)
 	}
+	ctx, cancel := context.WithCancel(context.Background())
 	p2pServer := &p2p.Server{Config: node.DefaultConfig.P2P}
 	p2pServer.PrivateKey = sk
 	p2pServer.NoDiscovery = true
@@ -42,13 +45,13 @@ func makePubSub(handlerMsg func(p *peer, msg *p2p.Msg) error) *PubSub {
 		panic(err)
 	}
 	localNode := enode.NewV4(&sk.PublicKey, nil, 0, 0)
-	psServer := p2p.NewPubSubServer(localNode, p2pServer)
+	psServer := p2p.NewPubSubServer(ctx, localNode, p2pServer)
+	p2pServer.SetPubSubServer(psServer, cancel)
 	pubSub := NewPubSub(psServer)
-
 	pubSub.Init(ctypes.Config{Sys: params.AlayaChainConfig.Cbft, Option: nil}, func(id string) (p *peer, err error) {
 		return nil, nil
-	}, handlerMsg)
-	return pubSub
+	}, handlerMsg, new(event.TypeMux))
+	return pubSub, p2pServer
 }
 
 type TestPSRW struct {
@@ -81,7 +84,7 @@ func TestPubSubPublish(t *testing.T) {
 
 	wg := sync.WaitGroup{}
 	wg.Add(len(expect))
-	pubSub1 := makePubSub(func(p *peer, msg *p2p.Msg) error {
+	pubSub1, p2pServer1 := makePubSub(func(p *peer, msg *p2p.Msg) error {
 		var tm TestMsg
 		err := msg.Decode(&tm)
 		assert.Equal(t, tm.Title, expect[1].Title)
@@ -89,7 +92,8 @@ func TestPubSubPublish(t *testing.T) {
 		t.Log("pubSub1 receive:", "data", tm, "err", err)
 		return nil
 	})
-	pubSub2 := makePubSub(func(p *peer, msg *p2p.Msg) error {
+	defer p2pServer1.Stop()
+	pubSub2, p2pServer2 := makePubSub(func(p *peer, msg *p2p.Msg) error {
 		var tm TestMsg
 		err := msg.Decode(&tm)
 		assert.Equal(t, tm.Title, expect[0].Title)
@@ -97,6 +101,7 @@ func TestPubSubPublish(t *testing.T) {
 		t.Log("pubSub2 receive:", "data", tm, "err", err)
 		return nil
 	})
+	defer p2pServer2.Stop()
 
 	n1Chan := make(chan p2p.Msg)
 	n2Chan := make(chan p2p.Msg)
@@ -166,7 +171,7 @@ func TestPubSubPublish_DifferentTopics(t *testing.T) {
 
 	wg := sync.WaitGroup{}
 	wg.Add(len(expect))
-	pubSub1 := makePubSub(func(p *peer, msg *p2p.Msg) error {
+	pubSub1, p2pServer1 := makePubSub(func(p *peer, msg *p2p.Msg) error {
 		var tm TestMsg
 		err := msg.Decode(&tm)
 		if tm.Title != expect[1].Title && tm.Title != expect[2].Title {
@@ -176,7 +181,8 @@ func TestPubSubPublish_DifferentTopics(t *testing.T) {
 		t.Log("pubSub1 receive:", "data", tm, "err", err)
 		return nil
 	})
-	pubSub2 := makePubSub(func(p *peer, msg *p2p.Msg) error {
+	defer p2pServer1.Stop()
+	pubSub2, p2pServer2 := makePubSub(func(p *peer, msg *p2p.Msg) error {
 		var tm TestMsg
 		err := msg.Decode(&tm)
 		assert.Equal(t, tm.Title, expect[0].Title)
@@ -184,7 +190,8 @@ func TestPubSubPublish_DifferentTopics(t *testing.T) {
 		t.Log("pubSub2 receive:", "data", tm, "err", err)
 		return nil
 	})
-	pubSub3 := makePubSub(func(p *peer, msg *p2p.Msg) error {
+	defer p2pServer2.Stop()
+	pubSub3, p2pServer3 := makePubSub(func(p *peer, msg *p2p.Msg) error {
 		var tm TestMsg
 		err := msg.Decode(&tm)
 		assert.Equal(t, tm.Title, expect[0].Title)
@@ -192,6 +199,7 @@ func TestPubSubPublish_DifferentTopics(t *testing.T) {
 		t.Log("pubSub3 receive:", "data", tm, "err", err)
 		return nil
 	})
+	defer p2pServer3.Stop()
 
 	n1_2Chan := make(chan p2p.Msg)
 	n2_1Chan := make(chan p2p.Msg)
@@ -297,7 +305,7 @@ func TestPubSubPublish_ForwardMessage(t *testing.T) {
 
 	wg := sync.WaitGroup{}
 	wg.Add(6)
-	pubSub1 := makePubSub(func(p *peer, msg *p2p.Msg) error {
+	pubSub1, p2pServer1 := makePubSub(func(p *peer, msg *p2p.Msg) error {
 		var tm TestMsg
 		err := msg.Decode(&tm)
 		if tm.Title != expect[1].Title && tm.Title != expect[2].Title {
@@ -307,7 +315,8 @@ func TestPubSubPublish_ForwardMessage(t *testing.T) {
 		wg.Done()
 		return nil
 	})
-	pubSub2 := makePubSub(func(p *peer, msg *p2p.Msg) error {
+	defer p2pServer1.Stop()
+	pubSub2, p2pServer2 := makePubSub(func(p *peer, msg *p2p.Msg) error {
 		var tm TestMsg
 		err := msg.Decode(&tm)
 		if tm.Title != expect[0].Title && tm.Title != expect[2].Title {
@@ -317,7 +326,8 @@ func TestPubSubPublish_ForwardMessage(t *testing.T) {
 		wg.Done()
 		return nil
 	})
-	pubSub3 := makePubSub(func(p *peer, msg *p2p.Msg) error {
+	defer p2pServer2.Stop()
+	pubSub3, p2pServer3 := makePubSub(func(p *peer, msg *p2p.Msg) error {
 		var tm TestMsg
 		err := msg.Decode(&tm)
 		if tm.Title != expect[0].Title && tm.Title != expect[1].Title {
@@ -327,6 +337,7 @@ func TestPubSubPublish_ForwardMessage(t *testing.T) {
 		wg.Done()
 		return nil
 	})
+	defer p2pServer3.Stop()
 
 	n1_2Chan := make(chan p2p.Msg)
 	n2_1Chan := make(chan p2p.Msg)
