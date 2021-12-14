@@ -364,7 +364,7 @@ func (vs *Validators) Grouped() error {
 
 	validatorCount := uint32(vs.SortedNodes.Len())
 	groupNum := validatorCount / xcom.MaxGroupValidators()
-	mod := validatorCount % xcom.CoordinatorsLimit()
+	mod := validatorCount % xcom.MaxGroupValidators()
 	if mod > 0 {
 		groupNum = groupNum + 1
 	}

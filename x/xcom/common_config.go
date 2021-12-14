@@ -52,7 +52,7 @@ const (
 	CeilMaxValidators         = 201
 	CeilMaxValidators0170     = 500
 	FloorMaxConsensusVals     = 4
-	CeilMaxConsensusVals      = 25
+	CeilMaxConsensusVals      = 500
 	PositiveInfinity          = "+∞"
 	CeilUnStakeFreezeDuration = 168 * 2
 	CeilMaxEvidenceAge        = CeilUnStakeFreezeDuration - 1
