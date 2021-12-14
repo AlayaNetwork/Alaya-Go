@@ -44,7 +44,7 @@ type EconomicModel0170Extend struct {
 }
 
 type EconomicModel0170CommonConfig struct {
-	MaxGroupValidators uint32 `json:"caxGroupValidators"` // max validators count in 1 group
+	MaxGroupValidators uint32 `json:"maxGroupValidators"` // max validators count in 1 group
 	CoordinatorsLimit  uint32 `json:"coordinatorLimit"`   // max Coordinators count in 1 group
 	MaxConsensusVals   uint64 `json:"maxConsensusVals"`   // The consensus validators count
 }
