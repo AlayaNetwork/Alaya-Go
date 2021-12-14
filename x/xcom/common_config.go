@@ -161,16 +161,16 @@ type EconomicModel struct {
 
 // When the chain is started, if new parameters are added, add them to this structure
 type EconomicModelExtend struct {
-	Reward      rewardConfigExtend      `json:"reward"`
-	Restricting restrictingConfigExtend `json:"restricting"`
+	Reward      RewardConfigExtend      `json:"reward"`
+	Restricting RestrictingConfigExtend `json:"restricting"`
 	Extend0170  EconomicModel0170Extend `json:"extend_0170,omitempty"`
 }
 
-type rewardConfigExtend struct {
+type RewardConfigExtend struct {
 	TheNumberOfDelegationsReward uint16 `json:"theNumberOfDelegationsReward"` // The maximum number of delegates that can receive rewards at a time
 }
 
-type restrictingConfigExtend struct {
+type RestrictingConfigExtend struct {
 	MinimumRelease *big.Int `json:"minimumRelease"` //The minimum number of Restricting release in one epoch
 }
 
@@ -292,10 +292,10 @@ func getDefaultEMConfig(netId int8) *EconomicModel {
 			},
 		}
 		ece = &EconomicModelExtend{
-			Reward: rewardConfigExtend{
+			Reward: RewardConfigExtend{
 				TheNumberOfDelegationsReward: 20,
 			},
-			Restricting: restrictingConfigExtend{
+			Restricting: RestrictingConfigExtend{
 				MinimumRelease: new(big.Int).Mul(oneAtp, new(big.Int).SetInt64(80)),
 			},
 			Extend0170: EconomicModel0170Extend{
@@ -365,10 +365,10 @@ func getDefaultEMConfig(netId int8) *EconomicModel {
 			},
 		}
 		ece = &EconomicModelExtend{
-			Reward: rewardConfigExtend{
+			Reward: RewardConfigExtend{
 				TheNumberOfDelegationsReward: 20,
 			},
-			Restricting: restrictingConfigExtend{
+			Restricting: RestrictingConfigExtend{
 				MinimumRelease: new(big.Int).SetInt64(1),
 			},
 			Extend0170: EconomicModel0170Extend{
@@ -437,10 +437,10 @@ func getDefaultEMConfig(netId int8) *EconomicModel {
 			},
 		}
 		ece = &EconomicModelExtend{
-			Reward: rewardConfigExtend{
+			Reward: RewardConfigExtend{
 				TheNumberOfDelegationsReward: 2,
 			},
-			Restricting: restrictingConfigExtend{
+			Restricting: RestrictingConfigExtend{
 				MinimumRelease: new(big.Int).SetInt64(1),
 			},
 			Extend0170: EconomicModel0170Extend{

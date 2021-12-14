@@ -7,7 +7,6 @@ import (
 
 	"github.com/AlayaNetwork/Alaya-Go/log"
 	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
-	"github.com/AlayaNetwork/Alaya-Go/p2p/enr"
 )
 
 // DiscoverTopic to  the given topic.A given validator and subscription handler is
@@ -60,12 +59,12 @@ func (srv *Server) validPeersExist(subnetTopic string) bool {
 // peers are found, the method only exits in the event of context timeouts.
 func (srv *Server) FindPeersWithTopic(ctx context.Context, topic string, nodes []enode.ID, threshold int) error {
 
-	if srv.DiscV5 == nil {
+	if srv.ntab == nil {
 		// return if discovery isn't set
 		return nil
 	}
 
-	iterator := srv.DiscV5.RandomNodes()
+	iterator := srv.ntab.RandomNodes()
 	iterator = filterNodes(ctx, iterator, srv.filterPeerForTopic(nodes))
 
 	currNum := len(srv.pubSubServer.PubSub().ListPeers(topic))
@@ -136,11 +135,11 @@ func (srv *Server) filterPeer(node *enode.Node) bool {
 		return false
 	}
 	// do not dial nodes with their tcp ports not set
-	if err := node.Record().Load(enr.WithEntry("tcp", new(enr.TCP))); err != nil {
+	/*if err := node.Record().Load(enr.WithEntry("tcp", new(enr.TCP))); err != nil {
 		if !enr.IsNotFound(err) {
 			log.Error("Could not retrieve tcp port", err)
 		}
 		return false
-	}
+	}*/
 	return true
 }
