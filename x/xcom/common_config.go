@@ -484,7 +484,7 @@ func CheckOperatingThreshold(threshold *big.Int) error {
 func CheckMaxValidators(num int, version uint32) error {
 	if version >= params.FORKVERSION_0_17_0 {
 		if num < int(MaxConsensusVals(version)) || num > CeilMaxValidators0170 {
-			return common.InvalidParameter.Wrap(fmt.Sprintf("The MaxValidators must be [%d, %d]", int(MaxConsensusVals(version)), CeilMaxValidators))
+			return common.InvalidParameter.Wrap(fmt.Sprintf("The MaxValidators must be [%d, %d]", int(MaxConsensusVals(version)), CeilMaxValidators0170))
 		}
 	} else {
 		if num < int(MaxConsensusVals(version)) || num > CeilMaxValidators {
