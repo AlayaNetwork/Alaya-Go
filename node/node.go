@@ -17,9 +17,9 @@
 package node
 
 import (
+	"context"
 	"errors"
 	"fmt"
-	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
 	"math/big"
 	"net"
 	"os"
@@ -27,6 +27,8 @@ import (
 	"reflect"
 	"strings"
 	"sync"
+
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
 
 	"github.com/AlayaNetwork/Alaya-Go/core/rawdb"
 
@@ -204,8 +206,9 @@ func (n *Node) Start() error {
 
 	running := &p2p.Server{Config: n.serverConfig}
 	localNode := enode.NewV4(&n.serverConfig.PrivateKey.PublicKey, nil, 0, 0)
-	pubSubServer := p2p.NewPubSubServer(localNode, running)
-	running.SetPubSubServer(pubSubServer)
+	ctx, cancel := context.WithCancel(context.Background())
+	pubSubServer := p2p.NewPubSubServer(ctx, localNode, running)
+	running.SetPubSubServer(pubSubServer, cancel)
 	n.log.Info("Starting peer-to-peer node", "instance", n.serverConfig.Name)
 
 	// Otherwise copy and specialize the P2P configuration

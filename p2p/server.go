@@ -19,6 +19,7 @@ package p2p
 
 import (
 	"bytes"
+	"context"
 	"crypto/ecdsa"
 	"encoding/hex"
 	"errors"
@@ -225,7 +226,8 @@ type Server struct {
 	addconsensus    chan *dialTask
 	removeconsensus chan *enode.Node
 
-	pubSubServer *PubSubServer
+	pubSubServer       *PubSubServer
+	cancelPubSubServer context.CancelFunc
 
 	topicSubscriberMu sync.RWMutex
 	topicSubscriber   map[string][]enode.ID
@@ -461,6 +463,7 @@ func (srv *Server) Stop() {
 		// this unblocks listener Accept
 		srv.listener.Close()
 	}
+	srv.cancelPubSubServer()
 	close(srv.quit)
 	srv.lock.Unlock()
 	srv.loopWG.Wait()
@@ -1314,6 +1317,7 @@ func (srv *Server) watching() {
 	}
 }
 
-func (srv *Server) SetPubSubServer(pss *PubSubServer) {
+func (srv *Server) SetPubSubServer(pss *PubSubServer, cancel context.CancelFunc) {
 	srv.pubSubServer = pss
+	srv.cancelPubSubServer = cancel
 }
