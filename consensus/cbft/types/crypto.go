@@ -207,7 +207,7 @@ func (q ViewChangeQuorumCert) CannibalizeBytes() ([]byte, error) {
 	return crypto.Keccak256(buf), nil
 }
 
-func (q ViewChangeQuorumCert) Len() int {
+func (q *ViewChangeQuorumCert) Len() int {
 	if q.ValidatorSet == nil {
 		return 0
 	}
@@ -333,6 +333,9 @@ func (v ViewChangeQC) MaxBlock() (uint64, uint64, uint64, uint64, common.Hash, u
 }
 
 func (v *ViewChangeQC) Len() int {
+	if v == nil || len(v.QCs) <= 0 {
+		return 0
+	}
 	length := 0
 	for _, qc := range v.QCs {
 		length += qc.Len()
@@ -341,7 +344,7 @@ func (v *ViewChangeQC) Len() int {
 }
 
 func (v *ViewChangeQC) HasLength() int {
-	if v == nil {
+	if v == nil || len(v.QCs) <= 0 {
 		return 0
 	}
 	return v.ValidatorSet().HasLength()

@@ -1148,7 +1148,7 @@ func (cbft *Cbft) richViewChangeQC(viewChangeQC *ctypes.ViewChangeQC) {
 		cbft.log.Info("Local node is not validator")
 		return
 	}
-	hadSend := cbft.state.ViewChangeByIndex(uint32(node.Index))
+	hadSend := cbft.state.ViewChangeByIndex(node.Index)
 	if hadSend != nil && !viewChangeQC.ExistViewChange(hadSend.Epoch, hadSend.ViewNumber, hadSend.BlockHash) {
 		cert, err := cbft.generateViewChangeQuorumCert(hadSend)
 		if err != nil {

@@ -121,10 +121,11 @@ func (ps *PubSub) Protocols() []p2p.Protocol {
 
 func NewPubSub(server *p2p.PubSubServer) *PubSub {
 	return &PubSub{
-		pss:    server,
-		topics: make(map[string]*pubsub.Topic),
-		mySubs: make(map[string]*pubsub.Subscription),
-		quit:   make(chan struct{}),
+		pss:      server,
+		topics:   make(map[string]*pubsub.Topic),
+		topicCtx: make(map[string]context.CancelFunc),
+		mySubs:   make(map[string]*pubsub.Subscription),
+		quit:     make(chan struct{}),
 	}
 }
 
