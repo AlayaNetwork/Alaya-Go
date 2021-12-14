@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
-
 package utils
 
 import (
@@ -241,7 +240,6 @@ func (bA *BitArray) not() *BitArray {
 // If bA is longer than o, o is right padded with zeroes
 func (bA *BitArray) Sub(o *BitArray) *BitArray {
 	if bA == nil || o == nil {
-		// TODO: Decide if we should do 1's complement here?
 		return nil
 	}
 	// output is the same size as bA

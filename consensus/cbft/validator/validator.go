@@ -604,7 +604,6 @@ func (vp *ValidatorPool) VerifyHeader(header *types.Header) error {
 	if err != nil {
 		return err
 	}
-	// todo: need confirmed.
 	return vp.agency.VerifyHeader(header, nil)
 }
 

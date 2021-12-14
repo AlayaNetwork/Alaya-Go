@@ -359,11 +359,12 @@ func (v *ViewChangeQC) ValidatorSet() *utils.BitArray {
 }
 
 func (v *ViewChangeQC) HasSign(signIndex uint32) bool {
-	if len(v.QCs) > 0 {
-		for _, qc := range v.QCs {
-			if qc.HasSign(signIndex) {
-				return true
-			}
+	if v == nil || len(v.QCs) <= 0 {
+		return false
+	}
+	for _, qc := range v.QCs {
+		if qc.HasSign(signIndex) {
+			return true
 		}
 	}
 	return false

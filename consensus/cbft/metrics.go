@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
-
 package cbft
 
 import (
@@ -43,4 +42,36 @@ var (
 	highestQCNumberGauage     = metrics.NewRegisteredGauge("cbft/gauage/block/qc/number", nil)
 	highestLockedNumberGauage = metrics.NewRegisteredGauge("cbft/gauage/block/locked/number", nil)
 	highestCommitNumberGauage = metrics.NewRegisteredGauge("cbft/gauage/block/commit/number", nil)
+
+	// for rand-grouped-consensus block
+	upgradeCoordinatorBlockCounter = metrics.NewRegisteredCounter("cbft/counter/block/upgradeCoordinator/count", nil)
+
+	blockGroupQCBySelfCounter  = metrics.NewRegisteredCounter("cbft/counter/block/groupqc/self/count", nil)  // Own group
+	blockGroupQCByOtherCounter = metrics.NewRegisteredCounter("cbft/counter/block/groupqc/other/count", nil) // Own group
+
+	blockWholeQCByVotesCounter   = metrics.NewRegisteredCounter("cbft/counter/block/wholeqc/votes/count", nil)
+	blockWholeQCByRGQCCounter    = metrics.NewRegisteredCounter("cbft/counter/block/wholeqc/rgqc/count", nil)
+	blockWholeQCByCombineCounter = metrics.NewRegisteredCounter("cbft/counter/block/wholeqc/combine/count", nil)
+
+	blockGroupQCTimer = metrics.NewRegisteredTimer("cbft/timer/block/group/qc", nil) // Own group
+	blockWholeQCTimer = metrics.NewRegisteredTimer("cbft/timer/block/whole/qc", nil)
+
+	missRGBlockQuorumCertsGauage = metrics.NewRegisteredGauge("cbft/gauage/block/miss/rgqc", nil)
+	missVotesGauage              = metrics.NewRegisteredGauge("cbft/gauage/block/miss/vote", nil)
+
+	// for rand-grouped-consensus viewChange
+	upgradeCoordinatorViewCounter = metrics.NewRegisteredCounter("cbft/counter/view/upgradeCoordinator/count", nil)
+
+	viewGroupQCBySelfCounter  = metrics.NewRegisteredCounter("cbft/counter/view/groupqc/self/count", nil)
+	viewGroupQCByOtherCounter = metrics.NewRegisteredCounter("cbft/counter/view/groupqc/other/count", nil) // Own group
+
+	viewWholeQCByVcsCounter     = metrics.NewRegisteredCounter("cbft/counter/view/wholeqc/vcs/count", nil)
+	viewWholeQCByRGQCCounter    = metrics.NewRegisteredCounter("cbft/counter/view/wholeqc/rgqc/count", nil)
+	viewWholeQCByCombineCounter = metrics.NewRegisteredCounter("cbft/counter/view/wholeqc/combine/count", nil)
+
+	viewGroupQCTimer = metrics.NewRegisteredTimer("cbft/timer/view/group/qc", nil) // Own group
+	viewWholeQCTimer = metrics.NewRegisteredTimer("cbft/timer/view/whole/qc", nil)
+
+	missRGViewQuorumCertsGauage = metrics.NewRegisteredGauge("cbft/gauage/view/miss/rgqc", nil)
+	missVcsGauage               = metrics.NewRegisteredGauge("cbft/gauage/view/miss/vote", nil)
 )

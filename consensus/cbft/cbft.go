@@ -270,7 +270,7 @@ func (cbft *Cbft) Start(chain consensus.ChainReader, blockCache consensus.BlockC
 	go cbft.network.Start()
 
 	// Data required to initialize pubsub
-	cbft.pubSub.Init(cbft.config, cbft.network.GetPeer, cbft.network.HandleRGMsg)
+	cbft.pubSub.Init(cbft.config, cbft.network.GetPeer, cbft.network.HandleRGMsg, cbft.eventMux)
 
 	if cbft.config.Option.Node == nil {
 		cbft.config.Option.Node = enode.NewV4(&cbft.nodeServiceContext.NodePriKey().PublicKey, nil, 0, 0)
@@ -381,7 +381,6 @@ func (cbft *Cbft) recordMessage(msg *ctypes.MsgInfo) error {
 	if int64(count) > cbft.config.Option.MaxQueuesLimit {
 		log.Warn("Discarded message, exceeded allowance for the layer of cbft", "peer", msg.PeerID, "msgHash", msg.Msg.MsgHash().TerminalString())
 		// Need further confirmation.
-		// todo: Is the program exiting or dropping the message here?
 		return fmt.Errorf("execeed max queues limit")
 	}
 	cbft.queues[msg.PeerID] = count
@@ -1121,6 +1120,7 @@ func (cbft *Cbft) Close() error {
 	}
 	cbft.bridge.Close()
 	cbft.RGBroadcastManager.Close()
+	cbft.pubSub.Stop()
 	return nil
 }
 
@@ -1437,6 +1437,10 @@ func (cbft *Cbft) currentProposer() *cbfttypes.ValidateNode {
 
 func (cbft *Cbft) getGroupByValidatorID(epoch uint64, nodeID enode.ID) (uint32, uint32, error) {
 	return cbft.validatorPool.GetGroupByValidatorID(epoch, nodeID)
+}
+
+func (cbft *Cbft) getGroupIndexes(epoch uint64) map[uint32][]uint32 {
+	return cbft.validatorPool.GetGroupIndexes(epoch)
 }
 
 func (cbft *Cbft) isProposer(epoch, viewNumber uint64, nodeIndex uint32) bool {
