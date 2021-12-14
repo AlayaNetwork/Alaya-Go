@@ -173,9 +173,6 @@ type Config struct {
 
 	clock mclock.Clock
 
-	TopicKey   string // TopicKey is the ENR key of the topic bitfield in the enr.
-	TopicCount uint64
-
 	MinimumPeersInTopicSearch uint
 
 	MinimumPeersPerTopic int
