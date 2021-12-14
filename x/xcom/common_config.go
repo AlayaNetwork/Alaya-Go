@@ -49,7 +49,8 @@ const (
 	Hundred                   = 100
 	TenThousand               = 10000
 	CeilBlocksReward          = 50000
-	CeilMaxValidators         = 500
+	CeilMaxValidators         = 201
+	CeilMaxValidators0170     = 500
 	FloorMaxConsensusVals     = 4
 	CeilMaxConsensusVals      = 25
 	PositiveInfinity          = "+∞"
@@ -481,8 +482,14 @@ func CheckOperatingThreshold(threshold *big.Int) error {
 }
 
 func CheckMaxValidators(num int, version uint32) error {
-	if num < int(MaxConsensusVals(version)) || num > CeilMaxValidators {
-		return common.InvalidParameter.Wrap(fmt.Sprintf("The MaxValidators must be [%d, %d]", int(MaxConsensusVals(version)), CeilMaxValidators))
+	if version >= params.FORKVERSION_0_17_0 {
+		if num < int(MaxConsensusVals(version)) || num > CeilMaxValidators0170 {
+			return common.InvalidParameter.Wrap(fmt.Sprintf("The MaxValidators must be [%d, %d]", int(MaxConsensusVals(version)), CeilMaxValidators))
+		}
+	} else {
+		if num < int(MaxConsensusVals(version)) || num > CeilMaxValidators {
+			return common.InvalidParameter.Wrap(fmt.Sprintf("The MaxValidators must be [%d, %d]", int(MaxConsensusVals(version)), CeilMaxValidators))
+		}
 	}
 	return nil
 }
@@ -604,9 +611,9 @@ func CheckEconomicModel(version uint32) error {
 		return errors.New("The issuance period must be integer multiples of the settlement period and multiples must be greater than or equal to 4")
 	}
 
-	if MaxConsensusVals(version) < FloorMaxConsensusVals || MaxConsensusVals(version) > CeilMaxConsensusVals {
+	/*if MaxConsensusVals(version) < FloorMaxConsensusVals || MaxConsensusVals(version) > CeilMaxConsensusVals {
 		return fmt.Errorf("The consensus validator num must be [%d, %d]", FloorMaxConsensusVals, CeilMaxConsensusVals)
-	}
+	}*/
 
 	if err := CheckMaxValidators(int(ec.Staking.MaxValidators), version); nil != err {
 		return err
