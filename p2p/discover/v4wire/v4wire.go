@@ -51,8 +51,8 @@ type (
 		From, To   Endpoint
 		Expiration uint64
 		// Ignore additional fields (for forward compatibility).
-		Rest   []rlp.RawValue `rlp:"tail"`
-		ENRSeq uint64         `rlp:"optional"` // Sequence number of local record, added by EIP-868.
+		Rest []rlp.RawValue `rlp:"tail"`
+		//	ENRSeq uint64         `rlp:"optional"` // Sequence number of local record, added by EIP-868.
 	}
 
 	// Pong is the reply to ping.
@@ -64,8 +64,8 @@ type (
 		ReplyTok   []byte // This contains the hash of the ping packet.
 		Expiration uint64 // Absolute timestamp at which the packet becomes invalid.
 		// Ignore additional fields (for forward compatibility).
-		Rest   []rlp.RawValue `rlp:"tail"`
-		ENRSeq uint64         `rlp:"optional"` // Sequence number of local record, added by EIP-868.
+		Rest []rlp.RawValue `rlp:"tail"`
+		//	ENRSeq uint64         `rlp:"optional"` // Sequence number of local record, added by EIP-868.
 	}
 
 	// Findnode is a query for nodes close to the given target.
