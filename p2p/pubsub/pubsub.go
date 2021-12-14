@@ -308,7 +308,7 @@ func NewPubSub(ctx context.Context, h Host, rt PubSubRouter, opts ...Option) (*P
 
 	go ps.processLoop(ctx)
 
-	(*PubSubNotif)(ps).Initialize()
+	//(*PubSubNotif)(ps).Initialize()
 
 	return ps, nil
 }
