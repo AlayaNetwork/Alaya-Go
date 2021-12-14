@@ -65,7 +65,7 @@ type (
 		Expiration uint64 // Absolute timestamp at which the packet becomes invalid.
 		// Ignore additional fields (for forward compatibility).
 		Rest []rlp.RawValue `rlp:"tail"`
-		//	ENRSeq uint64         `rlp:"optional"` // Sequence number of local record, added by EIP-868.
+		//ENRSeq uint64         `rlp:"optional"` // Sequence number of local record, added by EIP-868.
 	}
 
 	// Findnode is a query for nodes close to the given target.
