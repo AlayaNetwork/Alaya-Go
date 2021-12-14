@@ -431,10 +431,11 @@ func (vp *ValidatorPool) Update(blockNumber uint64, epoch uint64, isElection boo
 
 	var err error
 	var nds *cbfttypes.Validators
+	needGroup := version >= params.FORKVERSION_0_17_0
 
 	//生效后第一个共识周期的switchpoint是旧值，此时不能切换
 	//判断依据是新validators和current完全相同且nextValidators为空
-	if !isElection && vp.nextValidators == nil {
+	if !isElection && vp.nextValidators == nil && needGroup {
 		nds, err = vp.agency.GetValidators(NextRound(blockNumber))
 		if err != nil {
 			log.Error("Get validator error", "blockNumber", blockNumber, "err", err)
@@ -453,7 +454,7 @@ func (vp *ValidatorPool) Update(blockNumber uint64, epoch uint64, isElection boo
 	}
 	//分组提案生效后第一个共识round到ElectionPoint时初始化分组信息
 	if !vp.grouped {
-		if version >= params.FORKVERSION_0_17_0 {
+		if needGroup {
 			vp.grouped = true
 			vp.groupValidatorsLimit = xcom.MaxGroupValidators()
 			vp.coordinatorLimit = xcom.CoordinatorsLimit()

@@ -29,10 +29,10 @@ type PubSubServer struct {
 	host      *Host
 }
 
-func NewPubSubServer(localNode *enode.Node, p2pServer *Server) *PubSubServer {
+func NewPubSubServer(ctx context.Context, localNode *enode.Node, p2pServer *Server) *PubSubServer {
 	network := NewNetwork(p2pServer.Peers)
 	host := NewHost(localNode, network)
-	gossipSub, err := pubsub.NewGossipSub(context.Background(), host)
+	gossipSub, err := pubsub.NewGossipSub(ctx, host)
 	if err != nil {
 		panic("Failed to NewGossipSub: " + err.Error())
 	}
