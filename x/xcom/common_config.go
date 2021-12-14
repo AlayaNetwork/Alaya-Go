@@ -51,7 +51,7 @@ const (
 	CeilBlocksReward          = 50000
 	CeilMaxValidators         = 500
 	FloorMaxConsensusVals     = 4
-	CeilMaxConsensusVals      = 25
+	CeilMaxConsensusVals      = 500
 	PositiveInfinity          = "+∞"
 	CeilUnStakeFreezeDuration = 168 * 2
 	CeilMaxEvidenceAge        = CeilUnStakeFreezeDuration - 1
