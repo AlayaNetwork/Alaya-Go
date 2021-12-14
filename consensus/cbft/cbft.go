@@ -278,7 +278,12 @@ func (cbft *Cbft) Start(chain consensus.ChainReader, blockCache consensus.BlockC
 		cbft.config.Option.NodePriKey = cbft.nodeServiceContext.NodePriKey()
 	}
 
-	needGroup := blockCache.GetActiveVersion(block.Header().SealHash()) >= params.FORKVERSION_0_17_0
+	version, err := blockCache.GetActiveVersion(block.Header())
+	if err != nil {
+		log.Error("GetActiveVersion failed during startup of cbft", "err", err)
+		return err
+	}
+	needGroup := version >= params.FORKVERSION_0_17_0
 	if isGenesis() {
 		cbft.validatorPool = validator.NewValidatorPool(agency, block.NumberU64(), cstate.DefaultEpoch, cbft.config.Option.Node.ID(), needGroup, cbft.eventMux)
 		// init RGMsg broadcast manager

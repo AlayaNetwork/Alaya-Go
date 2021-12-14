@@ -350,9 +350,12 @@ func (bcc *BlockChainCache) WriteBlock(block *types.Block) error {
 }
 
 // CurrentActiveVersion return current gov version
-func (bcc *BlockChainCache) GetActiveVersion(sealHash common.Hash) uint32 {
-	state := bcc.ReadStateDB(sealHash)
-	return gov.GetCurrentActiveVersion(state)
+func (bcc *BlockChainCache) GetActiveVersion(header *types.Header) (uint32, error) {
+	if state, err := bcc.GetState(header); err != nil {
+		return 0, err
+	} else {
+		return gov.GetCurrentActiveVersion(state), nil
+	}
 }
 
 type sealHashNumber struct {

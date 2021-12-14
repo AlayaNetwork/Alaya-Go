@@ -70,8 +70,7 @@ type BlockCache interface {
 	WriteBlock(block *types.Block) error
 
 	// CurrentActiveVersion return current gov version
-	GetActiveVersion(sealhash common.Hash) uint32
-
+	GetActiveVersion(header *types.Header) (uint32, error)
 }
 
 // Engine is an algorithm agnostic consensus engine.

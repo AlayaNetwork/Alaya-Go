@@ -290,15 +290,58 @@ func (g *Genesis) UnmarshalAddressHRP(r io.Reader) (string, error) {
 	return genesisAddressHRP.Config.AddressHRP, nil
 }
 
-func (g *Genesis) UnmarshalEconomicConfigExtend(r io.Reader) error {
+func (g *Genesis) UnmarshalEconomicConfigExtend(file *os.File) error {
+	newEce := xcom.GetEce()
 	var genesisEcConfig struct {
-		EconomicModel *xcom.EconomicModelExtend `json:"economicModel"`
+		EconomicModel *struct {
+			Reward      xcom.RewardConfigExtend      `json:"reward"`
+			Restricting xcom.RestrictingConfigExtend `json:"restricting"`
+		} `json:"economicModel"`
 	}
-	genesisEcConfig.EconomicModel = xcom.GetEce()
-	if err := json.NewDecoder(r).Decode(&genesisEcConfig); err != nil {
+	file.Seek(0, io.SeekStart)
+	if err := json.NewDecoder(file).Decode(&genesisEcConfig); err != nil {
 		return fmt.Errorf("invalid genesis file economicModel: %v", err)
 	}
-	xcom.ResetEconomicExtendConfig(genesisEcConfig.EconomicModel)
+
+	if genesisEcConfig.EconomicModel != nil {
+		if genesisEcConfig.EconomicModel.Reward.TheNumberOfDelegationsReward != 0 {
+			newEce.Reward.TheNumberOfDelegationsReward = genesisEcConfig.EconomicModel.Reward.TheNumberOfDelegationsReward
+		}
+
+		if genesisEcConfig.EconomicModel.Restricting.MinimumRelease != nil {
+			newEce.Restricting.MinimumRelease = genesisEcConfig.EconomicModel.Restricting.MinimumRelease
+		}
+	}
+
+	file.Seek(0, io.SeekStart)
+	var genesis0170EcConfig struct {
+		EconomicModel *xcom.EconomicModel0170Extend `json:"economicModel"`
+	}
+	if err := json.NewDecoder(file).Decode(&genesis0170EcConfig); err != nil {
+		return fmt.Errorf("invalid genesis file for  genesis0170EcConfig: %v", err)
+	}
+	if genesis0170EcConfig.EconomicModel != nil {
+		if genesis0170EcConfig.EconomicModel.Common.MaxGroupValidators != 0 {
+			newEce.Extend0170.Common.MaxGroupValidators = genesis0170EcConfig.EconomicModel.Common.MaxGroupValidators
+		}
+		if genesis0170EcConfig.EconomicModel.Common.CoordinatorsLimit != 0 {
+			newEce.Extend0170.Common.CoordinatorsLimit = genesis0170EcConfig.EconomicModel.Common.CoordinatorsLimit
+		}
+		if genesis0170EcConfig.EconomicModel.Common.MaxConsensusVals != 0 {
+			newEce.Extend0170.Common.MaxConsensusVals = genesis0170EcConfig.EconomicModel.Common.MaxConsensusVals
+		}
+
+		if genesis0170EcConfig.EconomicModel.Staking.MaxValidators != 0 {
+			newEce.Extend0170.Staking.MaxValidators = genesis0170EcConfig.EconomicModel.Staking.MaxValidators
+		}
+
+		if genesis0170EcConfig.EconomicModel.Slashing.ZeroProduceCumulativeTime != 0 {
+			newEce.Extend0170.Slashing.ZeroProduceCumulativeTime = genesis0170EcConfig.EconomicModel.Slashing.ZeroProduceCumulativeTime
+		}
+
+	}
+
+	xcom.ResetEconomicExtendConfig(newEce)
 	return nil
 }
 
@@ -320,7 +363,6 @@ func (g *Genesis) InitGenesisAndSetEconomicConfig(path string) error {
 
 	g.EconomicModel = xcom.GetEc(xcom.DefaultAlayaNet)
 
-	file.Seek(0, io.SeekStart)
 	if err := g.UnmarshalEconomicConfigExtend(file); nil != err {
 		return err
 	}

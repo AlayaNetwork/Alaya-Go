@@ -49,9 +49,10 @@ const (
 	Hundred                   = 100
 	TenThousand               = 10000
 	CeilBlocksReward          = 50000
-	CeilMaxValidators         = 500
+	CeilMaxValidators         = 201
+	CeilMaxValidators0170     = 500
 	FloorMaxConsensusVals     = 4
-	CeilMaxConsensusVals      = 25
+	CeilMaxConsensusVals      = 500
 	PositiveInfinity          = "+∞"
 	CeilUnStakeFreezeDuration = 168 * 2
 	CeilMaxEvidenceAge        = CeilUnStakeFreezeDuration - 1
@@ -161,16 +162,16 @@ type EconomicModel struct {
 
 // When the chain is started, if new parameters are added, add them to this structure
 type EconomicModelExtend struct {
-	Reward      rewardConfigExtend      `json:"reward"`
-	Restricting restrictingConfigExtend `json:"restricting"`
+	Reward      RewardConfigExtend      `json:"reward"`
+	Restricting RestrictingConfigExtend `json:"restricting"`
 	Extend0170  EconomicModel0170Extend `json:"extend_0170,omitempty"`
 }
 
-type rewardConfigExtend struct {
+type RewardConfigExtend struct {
 	TheNumberOfDelegationsReward uint16 `json:"theNumberOfDelegationsReward"` // The maximum number of delegates that can receive rewards at a time
 }
 
-type restrictingConfigExtend struct {
+type RestrictingConfigExtend struct {
 	MinimumRelease *big.Int `json:"minimumRelease"` //The minimum number of Restricting release in one epoch
 }
 
@@ -292,10 +293,10 @@ func getDefaultEMConfig(netId int8) *EconomicModel {
 			},
 		}
 		ece = &EconomicModelExtend{
-			Reward: rewardConfigExtend{
+			Reward: RewardConfigExtend{
 				TheNumberOfDelegationsReward: 20,
 			},
-			Restricting: restrictingConfigExtend{
+			Restricting: RestrictingConfigExtend{
 				MinimumRelease: new(big.Int).Mul(oneAtp, new(big.Int).SetInt64(80)),
 			},
 			Extend0170: EconomicModel0170Extend{
@@ -365,10 +366,10 @@ func getDefaultEMConfig(netId int8) *EconomicModel {
 			},
 		}
 		ece = &EconomicModelExtend{
-			Reward: rewardConfigExtend{
+			Reward: RewardConfigExtend{
 				TheNumberOfDelegationsReward: 20,
 			},
-			Restricting: restrictingConfigExtend{
+			Restricting: RestrictingConfigExtend{
 				MinimumRelease: new(big.Int).SetInt64(1),
 			},
 			Extend0170: EconomicModel0170Extend{
@@ -437,10 +438,10 @@ func getDefaultEMConfig(netId int8) *EconomicModel {
 			},
 		}
 		ece = &EconomicModelExtend{
-			Reward: rewardConfigExtend{
+			Reward: RewardConfigExtend{
 				TheNumberOfDelegationsReward: 2,
 			},
-			Restricting: restrictingConfigExtend{
+			Restricting: RestrictingConfigExtend{
 				MinimumRelease: new(big.Int).SetInt64(1),
 			},
 			Extend0170: EconomicModel0170Extend{
@@ -481,8 +482,14 @@ func CheckOperatingThreshold(threshold *big.Int) error {
 }
 
 func CheckMaxValidators(num int, version uint32) error {
-	if num < int(MaxConsensusVals(version)) || num > CeilMaxValidators {
-		return common.InvalidParameter.Wrap(fmt.Sprintf("The MaxValidators must be [%d, %d]", int(MaxConsensusVals(version)), CeilMaxValidators))
+	if version >= params.FORKVERSION_0_17_0 {
+		if num < int(MaxConsensusVals(version)) || num > CeilMaxValidators0170 {
+			return common.InvalidParameter.Wrap(fmt.Sprintf("The MaxValidators must be [%d, %d]", int(MaxConsensusVals(version)), CeilMaxValidators0170))
+		}
+	} else {
+		if num < int(MaxConsensusVals(version)) || num > CeilMaxValidators {
+			return common.InvalidParameter.Wrap(fmt.Sprintf("The MaxValidators must be [%d, %d]", int(MaxConsensusVals(version)), CeilMaxValidators))
+		}
 	}
 	return nil
 }
@@ -604,9 +611,9 @@ func CheckEconomicModel(version uint32) error {
 		return errors.New("The issuance period must be integer multiples of the settlement period and multiples must be greater than or equal to 4")
 	}
 
-	if MaxConsensusVals(version) < FloorMaxConsensusVals || MaxConsensusVals(version) > CeilMaxConsensusVals {
+	/*if MaxConsensusVals(version) < FloorMaxConsensusVals || MaxConsensusVals(version) > CeilMaxConsensusVals {
 		return fmt.Errorf("The consensus validator num must be [%d, %d]", FloorMaxConsensusVals, CeilMaxConsensusVals)
-	}
+	}*/
 
 	if err := CheckMaxValidators(int(ec.Staking.MaxValidators), version); nil != err {
 		return err
