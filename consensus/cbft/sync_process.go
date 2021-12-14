@@ -630,7 +630,7 @@ func (cbft *Cbft) OnGetViewChange(id string, msg *protocols.GetViewChange) error
 
 		if len(viewChanges) > 0 || len(RGViewChangeQuorumCerts) > 0 {
 			cbft.network.Send(id, &protocols.ViewChanges{VCs: viewChanges, RGViewChangeQuorumCerts: RGViewChangeQuorumCerts})
-			cbft.log.Debug("Send ViewChanges", "peer", id, "blockIndex", "viewChanges length", len(viewChanges), "RGViewChangeQuorumCerts length", len(RGViewChangeQuorumCerts))
+			cbft.log.Debug("Send ViewChanges", "peer", id, "viewChanges length", len(viewChanges), "RGViewChangeQuorumCerts length", len(RGViewChangeQuorumCerts))
 		}
 		return nil
 	}
@@ -886,7 +886,7 @@ func (cbft *Cbft) MissGroupViewChanges() *ctypes.UnKnownGroups {
 		if qc.Len() < groupThreshold {
 			missGroups++
 		}
-		if qc == nil || qc.Len() < groupLen {
+		if qc.Len() < groupLen {
 			unKnownSet := utils.NewBitArray(uint32(validatorLen))
 			for _, index := range indexes {
 				if _, ok := allViewChange[index]; !ok && !qc.HasSign(index) {

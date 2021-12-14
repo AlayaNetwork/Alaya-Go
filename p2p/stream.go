@@ -26,7 +26,7 @@ import (
 const (
 
 	// Msg code of PubSub's message
-	PubSubMsgCode = 0xff
+	PubSubMsgCode = 0x00
 )
 
 // Stream is the stream type used by pubsub. In general
