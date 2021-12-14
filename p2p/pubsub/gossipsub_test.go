@@ -1585,13 +1585,12 @@ func TestGossipsubOpportunisticGrafting(t *testing.T) {
 	// connect the real hosts with degree 5
 	connectSome(t, hosts[:10], 5)
 
-	// TODO check
-	/*// sybil squatters for the remaining 40 hosts
+	// sybil squatters for the remaining 40 hosts
+	getGossipsubs(ctx, hosts[10:])
 	for _, h := range hosts[10:] {
 		squatter := &sybilSquatter{h: h}
-		// TODO pubSub check
-		h.SetStreamHandler(GossipSubID_v10, squatter.handleStream)
-	}*/
+		h.SetStreamHandler(GossipSubID_v11, squatter.handleStream)
+	}
 
 	// connect all squatters to every real host
 	for _, squatter := range hosts[10:] {
@@ -1652,42 +1651,34 @@ func TestGossipsubOpportunisticGrafting(t *testing.T) {
 	}
 }
 
-// TODO pubSub check
-/*type sybilSquatter struct {
+type sybilSquatter struct {
 	h Host
 }
 
 func (sq *sybilSquatter) handleStream(s Stream) {
 	defer s.Close(nil)
-
-	os, err := sq.h.NewStream(context.Background(), s.Conn().RemotePeer().ID(), GossipSubID_v10)
+	os, err := sq.h.NewStream(context.Background(), s.Conn().RemotePeer().ID(), GossipSubID_v11)
 	if err != nil {
 		panic(err)
 	}
 
 	// send a subscription for test in the output stream to become candidate for GRAFT
 	// and then just read and ignore the incoming RPCs
-	r := protoio.NewDelimitedReader(s, 1<<20)
-	w := protoio.NewDelimitedWriter(os)
 	truth := true
 	topic := "test"
-	err = w.WriteMsg(&pb.RPC{Subscriptions: []*pb.RPC_SubOpts{{Subscribe: &truth, Topicid: &topic}}})
+	err = os.Write(&message.RPC{Subscriptions: []*message.RPC_SubOpts{{Subscribe: &truth, Topicid: &topic}}})
 	if err != nil {
 		panic(err)
 	}
 
-	var rpc pb.RPC
 	for {
-		rpc.Reset()
-		err = r.ReadMsg(&rpc)
+		var rpc message.RPC
+		err = os.Read(&rpc)
 		if err != nil {
-			if err != io.EOF {
-				s.Reset()
-			}
 			return
 		}
 	}
-}*/
+}
 
 func TestGossipsubPeerScoreInspect(t *testing.T) {
 	// this test exercises the code path sof peer score inspection
