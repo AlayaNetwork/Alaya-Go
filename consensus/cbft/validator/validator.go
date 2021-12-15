@@ -412,7 +412,7 @@ func (vp *ValidatorPool) EnableVerifyEpoch(epoch uint64) error {
 	if epoch+1 == vp.epoch || epoch == vp.epoch {
 		return nil
 	}
-	return fmt.Errorf("enable verify epoch:%d,%d, request:%d", vp.epoch-1, vp.epoch, epoch)
+	return fmt.Errorf("unable verify epoch:%d,%d, request:%d", vp.epoch-1, vp.epoch, epoch)
 }
 
 func (vp *ValidatorPool) MockSwitchPoint(number uint64) {
@@ -454,6 +454,7 @@ func (vp *ValidatorPool) Update(blockNumber uint64, epoch uint64, isElection boo
 		} else {
 			return fmt.Errorf("ValidatorPool update failed, currentValidators:%s, nds:%s", vp.currentValidators.String(), nds.String())
 		}
+		log.Debug("update currentValidators success!", "lastNumber", vp.lastNumber, "grouped", vp.grouped, "switchPoint", vp.switchPoint)
 	}
 	//分组提案生效后第一个共识round到ElectionPoint时初始化分组信息
 	if !vp.grouped {
@@ -496,10 +497,11 @@ func (vp *ValidatorPool) Update(blockNumber uint64, epoch uint64, isElection boo
 		currEpoch := vp.epoch
 		vp.epoch = epoch
 		vp.nextValidators = nil
-		log.Info("Update validator", "validators", vp.currentValidators.String(), "switchpoint", vp.switchPoint, "epoch", vp.epoch, "lastNumber", vp.lastNumber)
+		log.Info("Update validator", "validators.len", vp.currentValidators.Len(), "switchpoint", vp.switchPoint, "epoch", vp.epoch, "lastNumber", vp.lastNumber)
 		//切换共识轮时需要将上一轮分组的topic取消订阅
 		vp.dissolve(currEpoch, eventMux)
 	}
+	log.Debug("Update OK", "blockNumber", blockNumber, "epoch", epoch, "isElection", isElection, "version", version)
 	return nil
 }
 
@@ -761,11 +763,6 @@ func (vp *ValidatorPool) GetUnitID(epoch uint64, nodeID enode.ID) (uint32, error
 		return vp.prevValidators.UnitID(nodeID)
 	}
 	return vp.currentValidators.UnitID(nodeID)
-}
-
-// UnitID return current node's index according epoch
-func (vp *ValidatorPool) UnitID(epoch uint64) (uint32, error) {
-	return vp.GetUnitID(epoch, vp.nodeID)
 }
 
 func NextRound(blockNumber uint64) uint64 {
