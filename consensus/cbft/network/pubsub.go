@@ -205,7 +205,7 @@ func (ps *PubSub) listen(s *pubsub.Subscription) {
 		if subMsg != nil {
 			var gmsg GMsg
 			if err := rlp.DecodeBytes(subMsg.Data, &gmsg); err != nil {
-				log.Error("Failed to parse topic message", "error", err)
+				log.Error("Failed to parse topic message", "topic", s.Topic(), "error", err)
 				ps.Cancel(s.Topic())
 				return
 			}
@@ -215,13 +215,14 @@ func (ps *PubSub) listen(s *pubsub.Subscription) {
 				Payload: bytes.NewReader(common.CopyBytes(gmsg.Data)),
 			}
 			if ps.pss.Host().ID().ID() == subMsg.From {
-				log.Trace("Receive a message from myself", "fromId", subMsg.From.TerminalString())
+				log.Trace("Receive a message from myself", "fromId", subMsg.From.TerminalString(), "topic", s.Topic(), "msgCode", gmsg.Code)
 				continue
 			}
 			fromPeer, err := ps.getPeerById(subMsg.ReceivedFrom.ID().TerminalString())
 			if err != nil {
-				log.Error("Failed to execute getPeerById", "err", err)
+				log.Error("Failed to execute getPeerById", "receivedFrom", subMsg.ReceivedFrom.ID().TerminalString(), "topic", s.Topic(), "err", err)
 			} else {
+				log.Trace("Receive a message", "topic", s.Topic(), "receivedFrom", fromPeer.ID().TerminalString(), "msgFrom", subMsg.From.TerminalString(), "msgCode", gmsg.Code)
 				ps.onReceive(fromPeer, &msg)
 			}
 		}
