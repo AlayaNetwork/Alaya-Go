@@ -359,8 +359,10 @@ func NewValidatorPool(agency consensus.Agency, blockNumber, epoch uint64, nodeID
 				log.Debug("Get nextValidators error", "blockNumber", blockNumber, "err", err)
 				return pool
 			}
-			pool.nextValidators = nds
-			pool.organize(pool.nextValidators, epoch+1, eventMux)
+			if nds != nil && !pool.currentValidators.Equal(nds) {
+				pool.nextValidators = nds
+				pool.organize(pool.nextValidators, epoch+1, eventMux)
+			}
 		}
 	}
 	log.Debug("Update validator", "validators", pool.currentValidators.String(), "switchpoint", pool.switchPoint, "epoch", pool.epoch, "lastNumber", pool.lastNumber)
@@ -432,11 +434,12 @@ func (vp *ValidatorPool) Update(blockNumber uint64, epoch uint64, isElection boo
 	var err error
 	var nds *cbfttypes.Validators
 	needGroup := version >= params.FORKVERSION_0_17_0
+	nextRoundBlockNumber := blockNumber + xcom.ElectionDistance() + 1
 
 	//生效后第一个共识周期的switchpoint是旧值，此时不能切换
 	//判断依据是新validators和current完全相同且nextValidators为空
 	if !isElection && vp.nextValidators == nil && needGroup {
-		nds, err = vp.agency.GetValidators(NextRound(blockNumber))
+		nds, err = vp.agency.GetValidators(nextRoundBlockNumber)
 		if err != nil {
 			log.Error("Get validator error", "blockNumber", blockNumber, "err", err)
 			return err
@@ -463,7 +466,7 @@ func (vp *ValidatorPool) Update(blockNumber uint64, epoch uint64, isElection boo
 
 	if isElection {
 		// 提前更新nextValidators，为了p2p早一步订阅分组事件以便建链接
-		nds, err = vp.agency.GetValidators(NextRound(blockNumber))
+		nds, err = vp.agency.GetValidators(nextRoundBlockNumber)
 		if err != nil {
 			log.Error("Get validator error", "blockNumber", blockNumber, "err", err)
 			return err
@@ -475,6 +478,7 @@ func (vp *ValidatorPool) Update(blockNumber uint64, epoch uint64, isElection boo
 	} else {
 		// 节点中间重启过， nextValidators没有赋值
 		if vp.nextValidators == nil {
+			// 此时blockNumber==vp.lastNumber blockNumber+1即为下一轮
 			nds, err = vp.agency.GetValidators(NextRound(blockNumber))
 			if err != nil {
 				log.Error("Get validator error", "blockNumber", blockNumber, "err", err)

@@ -65,8 +65,9 @@ type PubSub struct {
 	onReceive receiveCallback
 
 	// All topics subscribed
-	topics   map[string]*pubsub.Topic
-	topicCtx map[string]context.CancelFunc
+	topics      map[string]*pubsub.Topic
+	topicCtx    map[string]context.Context
+	topicCancel map[string]context.CancelFunc
 	// The set of topics we are subscribed to
 	mySubs map[string]*pubsub.Subscription
 	sync.Mutex
@@ -121,15 +122,16 @@ func (ps *PubSub) Protocols() []p2p.Protocol {
 
 func NewPubSub(server *p2p.PubSubServer) *PubSub {
 	return &PubSub{
-		pss:      server,
-		topics:   make(map[string]*pubsub.Topic),
-		topicCtx: make(map[string]context.CancelFunc),
-		mySubs:   make(map[string]*pubsub.Subscription),
-		quit:     make(chan struct{}),
+		pss:         server,
+		topics:      make(map[string]*pubsub.Topic),
+		topicCtx:    make(map[string]context.Context),
+		topicCancel: make(map[string]context.CancelFunc),
+		mySubs:      make(map[string]*pubsub.Subscription),
+		quit:        make(chan struct{}),
 	}
 }
 
-func (ps *PubSub) Init(config ctypes.Config, get getByIDFunc, onReceive receiveCallback, eventMux *event.TypeMux) {
+func (ps *PubSub) Start(config ctypes.Config, get getByIDFunc, onReceive receiveCallback, eventMux *event.TypeMux) {
 	ps.config = config
 	ps.getPeerById = get
 	ps.onReceive = onReceive
@@ -183,7 +185,8 @@ func (ps *PubSub) Subscribe(topic string) error {
 	}
 	ps.topics[topic] = t
 	ps.mySubs[topic] = subscription
-	ps.topicCtx[topic] = cancel
+	ps.topicCtx[topic] = ctx
+	ps.topicCancel[topic] = cancel
 
 	go ps.listen(subscription)
 	return nil
@@ -235,9 +238,10 @@ func (ps *PubSub) Cancel(topic string) error {
 		delete(ps.mySubs, topic)
 		delete(ps.topics, topic)
 	}
-	if cancel, ok := ps.topicCtx[topic]; ok {
+	if cancel, ok := ps.topicCancel[topic]; ok {
 		cancel()
 		delete(ps.topicCtx, topic)
+		delete(ps.topicCancel, topic)
 	}
 	return nil
 }
@@ -262,7 +266,7 @@ func (ps *PubSub) Publish(topic string, code uint64, data interface{}) error {
 		return err
 	}
 
-	return t.Publish(context.Background(), env)
+	return t.Publish(ps.topicCtx[topic], env)
 }
 
 func (ps *PubSub) Stop() {

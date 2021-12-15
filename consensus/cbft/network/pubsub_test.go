@@ -48,7 +48,7 @@ func makePubSub(handlerMsg func(p *peer, msg *p2p.Msg) error) (*PubSub, *p2p.Ser
 	psServer := p2p.NewPubSubServer(ctx, localNode, p2pServer)
 	p2pServer.SetPubSubServer(psServer, cancel)
 	pubSub := NewPubSub(psServer)
-	pubSub.Init(ctypes.Config{Sys: params.AlayaChainConfig.Cbft, Option: nil}, func(id string) (p *peer, err error) {
+	pubSub.Start(ctypes.Config{Sys: params.AlayaChainConfig.Cbft, Option: nil}, func(id string) (p *peer, err error) {
 		return nil, nil
 	}, handlerMsg, new(event.TypeMux))
 	return pubSub, p2pServer
