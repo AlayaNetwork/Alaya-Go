@@ -37,7 +37,6 @@ import (
 
 	"github.com/AlayaNetwork/Alaya-Go/p2p/discover/v4wire"
 	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
-	"github.com/AlayaNetwork/Alaya-Go/p2p/enr"
 )
 
 // shared test variables
@@ -460,7 +459,7 @@ func TestUDPv4_successfulPing(t *testing.T) {
 }
 
 // This test checks that EIP-868 requests work.
-func TestUDPv4_EIP868(t *testing.T) {
+/*func TestUDPv4_EIP868(t *testing.T) {
 	test := newUDPTest(t)
 	defer test.close()
 
@@ -495,7 +494,7 @@ func TestUDPv4_EIP868(t *testing.T) {
 			t.Fatalf("wrong node in enrResponse: %v", n)
 		}
 	})
-}
+}*/
 
 // This test verifies that a small network of nodes can boot up into a healthy state.
 func TestUDPv4_smallNetConvergence(t *testing.T) {
