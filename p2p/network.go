@@ -40,7 +40,6 @@ type Network struct {
 
 func NewNetwork(getPeers Peers) *Network {
 	n := &Network{
-		RWMutex:  sync.RWMutex{},
 		GetPeers: getPeers,
 		m:        make(map[pubsub.Notifiee]struct{}),
 	}
@@ -49,8 +48,8 @@ func NewNetwork(getPeers Peers) *Network {
 }
 
 func (n *Network) SetConn(p enode.ID, conn pubsub.Conn) {
-	n.conns.RLock()
-	defer n.conns.RUnlock()
+	n.conns.Lock()
+	defer n.conns.Unlock()
 	conns := n.conns.m[p]
 	if conns == nil {
 		conns = make([]pubsub.Conn, 0)
@@ -60,8 +59,8 @@ func (n *Network) SetConn(p enode.ID, conn pubsub.Conn) {
 }
 
 func (n *Network) RemoveConn(p enode.ID) {
-	n.conns.RLock()
-	defer n.conns.RUnlock()
+	n.conns.Lock()
+	defer n.conns.Unlock()
 	delete(n.conns.m, p)
 }
 
