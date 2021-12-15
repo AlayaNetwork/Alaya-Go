@@ -1067,7 +1067,7 @@ func (cbft *Cbft) tryChangeView() {
 		if err := cbft.validatorPool.Update(block.NumberU64(), cbft.state.Epoch()+1, false, block.Header().GetActiveVersion(), cbft.eventMux); err == nil {
 			cbft.log.Info("Update validator success", "number", block.NumberU64())
 		} else {
-			cbft.log.Error("Update validator failed!", "number", block.NumberU64(), "cbft.state.Epoch()", cbft.state.Epoch())
+			cbft.log.Error("Update validator failed!", "number", block.NumberU64(), "err", err)
 		}
 	}
 
