@@ -30,11 +30,10 @@ func (srv *Server) DiscoverTopic(ctx context.Context, topic string) {
 				if !srv.validPeersExist(topic) {
 					srv.topicSubscriberMu.RLock()
 					nodes, ok := srv.topicSubscriber[topic]
+					srv.topicSubscriberMu.RUnlock()
 					if !ok {
-						srv.topicSubscriberMu.RUnlock()
 						continue
 					}
-					srv.topicSubscriberMu.RUnlock()
 					log.Debug("No peers found subscribed  gossip topic . Searching network for peers subscribed to the topic.", "topic", topic)
 					if err := srv.FindPeersWithTopic(ctx, topic, nodes, srv.Config.MinimumPeersPerTopic); err != nil {
 						log.Error("Could not search for peers", "err", err)
