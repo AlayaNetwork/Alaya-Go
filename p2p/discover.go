@@ -22,7 +22,7 @@ func (srv *Server) DiscoverTopic(ctx context.Context, topic string) {
 				ticker.Stop()
 				return
 			case <-ticker.C:
-				if srv.running {
+				if !srv.running {
 					continue
 				}
 
@@ -92,6 +92,8 @@ func (srv *Server) FindPeersWithTopic(ctx context.Context, topic string, nodes [
 		currNum = len(srv.pubSubServer.PubSub().ListPeers(topic))
 		try++
 	}
+	log.Trace(" Searching network for peers subscribed to the topic done.", "topic", topic, "peers", currNum, "try", try)
+
 	return nil
 }
 
