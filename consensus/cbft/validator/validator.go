@@ -359,8 +359,10 @@ func NewValidatorPool(agency consensus.Agency, blockNumber, epoch uint64, nodeID
 				log.Debug("Get nextValidators error", "blockNumber", blockNumber, "err", err)
 				return pool
 			}
-			pool.nextValidators = nds
-			pool.organize(pool.nextValidators, epoch+1, eventMux)
+			if nds != nil && !pool.currentValidators.Equal(nds) {
+				pool.nextValidators = nds
+				pool.organize(pool.nextValidators, epoch+1, eventMux)
+			}
 		}
 	}
 	log.Debug("Update validator", "validators", pool.currentValidators.String(), "switchpoint", pool.switchPoint, "epoch", pool.epoch, "lastNumber", pool.lastNumber)
