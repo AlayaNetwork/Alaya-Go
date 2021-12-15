@@ -270,7 +270,7 @@ func (cbft *Cbft) Start(chain consensus.ChainReader, blockCache consensus.BlockC
 	go cbft.network.Start()
 
 	// Data required to initialize pubsub
-	cbft.pubSub.Init(cbft.config, cbft.network.GetPeer, cbft.network.HandleRGMsg, cbft.eventMux)
+	cbft.pubSub.Start(cbft.config, cbft.network.GetPeer, cbft.network.HandleRGMsg, cbft.eventMux)
 
 	if cbft.config.Option.Node == nil {
 		cbft.config.Option.Node = enode.NewV4(&cbft.nodeServiceContext.NodePriKey().PublicKey, nil, 0, 0)
