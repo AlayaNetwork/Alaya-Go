@@ -231,7 +231,8 @@ func (t *UDPv4) Ping(n *enode.Node) error {
 func (t *UDPv4) ping(n *enode.Node) (seq uint64, err error) {
 	rm := t.sendPing(n.ID(), &net.UDPAddr{IP: n.IP(), Port: n.UDP()}, nil)
 	if err = <-rm.errc; err == nil {
-		seq = rm.reply.(*v4wire.Pong).ENRSeq
+		//seq = rm.reply.(*v4wire.Pong).ENRSeq
+		return seq, nil
 	}
 	return seq, err
 }
@@ -267,8 +268,8 @@ func (t *UDPv4) makePing(toaddr *net.UDPAddr) *v4wire.Ping {
 		From:       t.ourEndpoint(),
 		To:         v4wire.NewEndpoint(toaddr, 0),
 		Expiration: uint64(time.Now().Add(expiration).Unix()),
-		ENRSeq:     t.localNode.Node().Seq(),
-		Rest:       cRest,
+		//ENRSeq:     t.localNode.Node().Seq(),
+		Rest: cRest,
 	}
 }
 
@@ -679,8 +680,8 @@ func (t *UDPv4) handlePing(h *packetHandlerV4, from *net.UDPAddr, fromID enode.I
 		To:         v4wire.NewEndpoint(from, req.From.TCP),
 		ReplyTok:   mac,
 		Expiration: uint64(time.Now().Add(expiration).Unix()),
-		ENRSeq:     t.localNode.Node().Seq(),
-		Rest:       cRest,
+		//	ENRSeq:     t.localNode.Node().Seq(),
+		Rest: cRest,
 	})
 
 	// Ping back if our last pong on file is too far in the past.
