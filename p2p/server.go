@@ -538,7 +538,7 @@ func (srv *Server) Start() (err error) {
 
 	srv.MinimumPeersInTopicSearch = 6
 	srv.MinimumPeersPerTopic = 10
-	if xcom.MaxGroupValidators() <= 10 {
+	if int(xcom.MaxGroupValidators()) <= srv.MinimumPeersPerTopic {
 		srv.MinimumPeersPerTopic = int(xcom.MaxGroupValidators())
 	}
 
