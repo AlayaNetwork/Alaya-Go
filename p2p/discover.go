@@ -22,7 +22,7 @@ func (srv *Server) DiscoverTopic(ctx context.Context, topic string) {
 				ticker.Stop()
 				return
 			case <-ticker.C:
-				if srv.running {
+				if !srv.running {
 					continue
 				}
 
@@ -30,11 +30,10 @@ func (srv *Server) DiscoverTopic(ctx context.Context, topic string) {
 				if !srv.validPeersExist(topic) {
 					srv.topicSubscriberMu.RLock()
 					nodes, ok := srv.topicSubscriber[topic]
+					srv.topicSubscriberMu.RUnlock()
 					if !ok {
-						srv.topicSubscriberMu.RUnlock()
 						continue
 					}
-					srv.topicSubscriberMu.RUnlock()
 					log.Debug("No peers found subscribed  gossip topic . Searching network for peers subscribed to the topic.", "topic", topic)
 					if err := srv.FindPeersWithTopic(ctx, topic, nodes, srv.Config.MinimumPeersPerTopic); err != nil {
 						log.Error("Could not search for peers", "err", err)
@@ -92,6 +91,8 @@ func (srv *Server) FindPeersWithTopic(ctx context.Context, topic string, nodes [
 		currNum = len(srv.pubSubServer.PubSub().ListPeers(topic))
 		try++
 	}
+	log.Trace(" Searching network for peers subscribed to the topic done.", "topic", topic, "peers", currNum, "try", try)
+
 	return nil
 }
 
