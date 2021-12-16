@@ -425,6 +425,7 @@ func (vp *ValidatorPool) Update(blockNumber uint64, epoch uint64, isElection boo
 	vp.lock.Lock()
 	defer vp.lock.Unlock()
 
+	log.Debug("Update", "blockNumber", blockNumber, "epoch", epoch, "isElection", isElection, "version", version)
 	// 生效后第一个共识周期的Election block已经是新值（2130）所以第一次触发update是cbft.tryChangeView->shouldSwitch
 	if blockNumber <= vp.switchPoint && !isElection {
 		log.Debug("Already update validator before", "blockNumber", blockNumber, "switchPoint", vp.switchPoint)
