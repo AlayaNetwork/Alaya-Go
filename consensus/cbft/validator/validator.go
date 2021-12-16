@@ -882,6 +882,7 @@ func (vp *ValidatorPool) organize(validators *cbfttypes.Validators, epoch uint64
 		// 当前节点不是共识节点
 		return err
 	}
+	log.Debug("ValidatorPool organized OK!", "epoch", epoch, "validators", validators.String())
 
 	consensusNodeIDs := validators.NodeList()
 	groupNodeIDs := gvs.NodeList()
