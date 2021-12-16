@@ -103,13 +103,21 @@ func (sv SortedIndexValidatorNode) Len() int           { return len(sv) }
 func (sv SortedIndexValidatorNode) Swap(i, j int)      { sv[i], sv[j] = sv[j], sv[i] }
 func (sv SortedIndexValidatorNode) Less(i, j int) bool { return sv[i].Index < sv[j].Index }
 
+type GroupCoordinate struct {
+	groupID uint32
+	unitID  uint32
+}
+
+type IDCoordinateMap map[enode.ID]*GroupCoordinate
+
 type GroupValidators struct {
 	// all nodes in this group
 	Nodes []*ValidateNode
 	// Coordinators' index  C0>C1>C2>C3...
 	Units [][]uint32
 	// The group ID
-	groupID uint32
+	groupID  uint32
+	nodesMap IDCoordinateMap
 }
 
 type Validators struct {
@@ -295,8 +303,8 @@ func (vs *Validators) GetGroupValidators(nodeID enode.ID) (*GroupValidators, err
 
 	var ret *GroupValidators
 	for _, gvs := range vs.GroupNodes {
-		goupLen := len(gvs.Nodes)
-		if idx <= gvs.Nodes[goupLen-1].Index {
+		groupLen := len(gvs.Nodes)
+		if idx <= gvs.Nodes[groupLen-1].Index {
 			ret = gvs
 			break
 		}
@@ -318,24 +326,35 @@ func (vs *Validators) UnitID(nodeID enode.ID) (uint32, error) {
 	if err != nil {
 		return 0, err
 	}
-	for i, node := range gvs.Nodes {
-		if idx == node.Index {
-			return uint32(i), nil
-		}
-	}
-	return 0, errors.New("not found the specified nodeID")
+	return gvs.GetUnitID(nodeID)
 }
 
-func (gvs *GroupValidators) GroupedUnits() {
+func (gvs *GroupValidators) GroupOrganized() {
+	gvs.nodesMap = make(IDCoordinateMap, len(gvs.Nodes))
 	coordinatorLimit := xcom.CoordinatorsLimit()
-	unit := make([]uint32, 0, coordinatorLimit)
+	idsSeq := make([]uint32, 0, coordinatorLimit)
+	unitID := uint32(0)
 	for i, n := range gvs.Nodes {
-		unit = append(unit, n.Index)
-		if uint32(len(unit)) >= coordinatorLimit || i == len(gvs.Nodes)-1 {
-			gvs.Units = append(gvs.Units, unit)
-			unit = make([]uint32, 0, coordinatorLimit)
+		gvs.nodesMap[n.NodeID] = &GroupCoordinate{
+			unitID:  unitID,
+			groupID: gvs.groupID,
+		}
+		idsSeq = append(idsSeq, n.Index)
+		if uint32(len(idsSeq)) >= coordinatorLimit || i == len(gvs.Nodes)-1 {
+			gvs.Units = append(gvs.Units, idsSeq)
+			idsSeq = make([]uint32, 0, coordinatorLimit)
+			unitID = unitID + 1
 		}
 	}
+}
+
+// return node's unitID
+func (gvs *GroupValidators) GetUnitID(id enode.ID) (uint32, error) {
+	pos, ok := gvs.nodesMap[id]
+	if ok {
+		return pos.unitID, nil
+	}
+	return uint32(0), errors.New("not found the specified validator")
 }
 
 // return groupID
@@ -361,7 +380,9 @@ func (vs *Validators) Grouped() error {
 	if len(vs.SortedNodes) == 0 {
 		vs.Sort()
 	}
-
+	if uint32(len(vs.SortedNodes)) <= xcom.MaxGroupValidators() {
+		return errors.New("no need grouped")
+	}
 	validatorCount := uint32(vs.SortedNodes.Len())
 	groupNum := validatorCount / xcom.MaxGroupValidators()
 	mod := validatorCount % xcom.MaxGroupValidators()
@@ -393,7 +414,7 @@ func (vs *Validators) Grouped() error {
 
 	// fill group unit
 	for _, gvs := range vs.GroupNodes {
-		gvs.GroupedUnits()
+		gvs.GroupOrganized()
 	}
 	return nil
 }

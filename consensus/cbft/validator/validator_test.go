@@ -647,14 +647,19 @@ func TestGetGroupID(t *testing.T) {
 	assert.Equal(t, uint32(0), grpID)
 }
 
-func TestGetUintID(t *testing.T) {
+func TestGetUnitID(t *testing.T) {
 	bls.Init(bls.BLS12_381)
 	nodes := newTestNodeByNum(100)
 	agency := newTestInnerAgency(nodes)
 	vp := NewValidatorPool(agency, 0, 0, nodes[0].Node.ID(), true, new(event.TypeMux))
 
-	unitID, _ := vp.GetGroupID(0, nodes[0].Node.ID())
+	gvs, _ := vp.currentValidators.GetGroupValidators(nodes[50].Node.ID())
+	unitID, _ := gvs.GetUnitID(nodes[50].Node.ID())
 	assert.Equal(t, uint32(0), unitID)
+
+	gvs, _ = vp.currentValidators.GetGroupValidators(nodes[55].Node.ID())
+	unitID, _ = gvs.GetUnitID(nodes[55].Node.ID())
+	assert.Equal(t, uint32(1), unitID)
 }
 
 func TestUpdate(t *testing.T) {
