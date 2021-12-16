@@ -437,7 +437,12 @@ func (vp *ValidatorPool) Update(blockNumber uint64, epoch uint64, isElection boo
 	var err error
 	var nds *cbfttypes.Validators
 	needGroup := version >= params.FORKVERSION_0_17_0
-	nextRoundBlockNumber := blockNumber + xcom.ElectionDistance() + 1
+	var nextRoundBlockNumber uint64
+	if isElection {
+		nextRoundBlockNumber = blockNumber + xcom.ElectionDistance() + 1
+	} else {
+		nextRoundBlockNumber = blockNumber + 1
+	}
 
 	//生效后第一个共识周期的switchpoint是旧值，此时不能切换
 	//判断依据是新validators和current完全相同且nextValidators为空
@@ -901,7 +906,8 @@ func (vp *ValidatorPool) dissolve(epoch uint64, eventMux *event.TypeMux) {
 		return
 	}
 	gvs, err := vp.prevValidators.GetGroupValidators(vp.nodeID)
-	if nil != err {
+	if nil != err || gvs == nil {
+		// nil != err 说明当前节点上一轮不是共识节点，gvs == nil意味着上一轮共识没分组
 		return
 	}
 
