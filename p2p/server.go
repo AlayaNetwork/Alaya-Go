@@ -31,6 +31,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/AlayaNetwork/Alaya-Go/x/xcom"
+
 	"github.com/AlayaNetwork/Alaya-Go/p2p/enr"
 
 	"github.com/AlayaNetwork/Alaya-Go/crypto"
@@ -533,6 +535,12 @@ func (srv *Server) Start() (err error) {
 	srv.addconsensus = make(chan *dialTask)
 	srv.removeconsensus = make(chan *enode.Node)
 	srv.topicSubscriber = make(map[string][]enode.ID)
+
+	srv.MinimumPeersInTopicSearch = 6
+	srv.MinimumPeersPerTopic = 10
+	if int(xcom.MaxGroupValidators()) <= srv.MinimumPeersPerTopic {
+		srv.MinimumPeersPerTopic = int(xcom.MaxGroupValidators())
+	}
 
 	if err := srv.setupLocalNode(); err != nil {
 		return err
