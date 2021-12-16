@@ -1063,8 +1063,13 @@ func (cbft *Cbft) tryChangeView() {
 			(qc != nil && qc.Epoch == cbft.state.Epoch() && shouldSwitch)
 	}()
 
+	activeVersion, err := cbft.blockCache.GetActiveVersion(block.Header())
+	if err != nil {
+		log.Error("GetActiveVersion failed", "err", err)
+	}
+
 	if shouldSwitch {
-		if err := cbft.validatorPool.Update(block.NumberU64(), cbft.state.Epoch()+1, false, block.Header().GetActiveVersion(), cbft.eventMux); err == nil {
+		if err := cbft.validatorPool.Update(block.NumberU64(), cbft.state.Epoch()+1, false, activeVersion, cbft.eventMux); err == nil {
 			cbft.log.Info("Update validator success", "number", block.NumberU64())
 		} else {
 			cbft.log.Error("Update validator failed!", "number", block.NumberU64(), "err", err)

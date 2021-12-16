@@ -1357,7 +1357,10 @@ func (cbft *Cbft) commitBlock(commitBlock *types.Block, commitQC *ctypes.QuorumC
 		ChainStateUpdateCB: func() { cbft.bridge.UpdateChainState(qcState, lockState, commitState) },
 	})
 
-	activeVersion := cpy.Header().GetActiveVersion()
+	activeVersion, err := cbft.blockCache.GetActiveVersion(commitBlock.Header())
+	if err != nil {
+		log.Error("GetActiveVersion failed", "err", err)
+	}
 	// should grouped according max commit block's state
 	shouldGroup := func() bool {
 		return cbft.validatorPool.NeedGroup() || activeVersion >= params.FORKVERSION_0_17_0

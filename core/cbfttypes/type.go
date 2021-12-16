@@ -381,7 +381,7 @@ func (vs *Validators) Grouped() error {
 		vs.Sort()
 	}
 	if uint32(len(vs.SortedNodes)) <= xcom.MaxGroupValidators() {
-		return errors.New("no need grouped!")
+		return errors.New("no need grouped")
 	}
 	validatorCount := uint32(vs.SortedNodes.Len())
 	groupNum := validatorCount / xcom.MaxGroupValidators()
