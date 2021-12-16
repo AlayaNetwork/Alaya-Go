@@ -352,7 +352,9 @@ func NewValidatorPool(agency consensus.Agency, blockNumber, epoch uint64, nodeID
 		pool.switchPoint = pool.currentValidators.ValidBlockNumber - 1
 	}
 	if needGroup {
-		pool.organize(pool.currentValidators, epoch, eventMux)
+		if err := pool.organize(pool.currentValidators, epoch, eventMux); err != nil {
+			log.Error("ValidatorPool organized failed!", "error", err)
+		}
 		if pool.nextValidators == nil {
 			nds, err := pool.agency.GetValidators(NextRound(pool.currentValidators.ValidBlockNumber))
 			if err != nil {
