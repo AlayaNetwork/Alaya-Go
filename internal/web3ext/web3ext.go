@@ -341,6 +341,10 @@ web3._extend({
 			call: 'debug_consensusStatus',
 		}),
 		new web3._extend.Method({
+			name: 'pubSubStatus',
+			call: 'debug_pubSubStatus',
+		}),
+		new web3._extend.Method({
 			name: 'economicConfig',
 			call: 'debug_economicConfig',
 		}),

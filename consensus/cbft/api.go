@@ -18,6 +18,7 @@ package cbft
 
 import (
 	"encoding/json"
+	"github.com/AlayaNetwork/Alaya-Go/p2p/pubsub"
 
 	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/state"
 	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/types"
@@ -36,6 +37,7 @@ type API interface {
 	Evidences() string
 	GetPrepareQC(number uint64) *types.QuorumCert
 	GetSchnorrNIZKProve() (*bls.SchnorrProof, error)
+	PubSubStatus() *pubsub.Status
 }
 
 // PublicDebugConsensusAPI provides an API to access the Alaya blockchain.
@@ -64,6 +66,11 @@ func (s *PublicDebugConsensusAPI) ConsensusStatus() *Status {
 // GetPrepareQC returns the QC certificate corresponding to the blockNumber.
 func (s *PublicDebugConsensusAPI) GetPrepareQC(number uint64) *types.QuorumCert {
 	return s.engine.GetPrepareQC(number)
+}
+
+// Get information about the nodes in PubSub
+func (s *PublicDebugConsensusAPI) PubSubStatus() *pubsub.Status {
+	return s.engine.PubSubStatus()
 }
 
 // PublicPlatonConsensusAPI provides an API to access the Alaya blockchain.

@@ -1351,3 +1351,57 @@ type addRelayReq struct {
 	topic string
 	resp  chan RelayCancelFunc
 }
+
+type Status struct {
+	Peers   map[enode.ID]ProtocolID `json:"peers"`
+	Mesh    map[string][]enode.ID   `json:"mesh"`
+	OutMesh map[string][]enode.ID   `json:"outMesh"`
+	Topics  []string                `json:"topics"`
+}
+
+func (p *PubSub) GetAllPubSubStatus() *Status {
+	status := &Status{}
+	getInfo := func() {
+		gsr, ok := p.rt.(*GossipSubRouter)
+		if !ok {
+			return
+		}
+		newPeers := gsr.peers
+		status.Peers = newPeers
+
+		newMesh := make(map[string][]enode.ID, len(gsr.mesh))
+		for topic, nodeIdMap := range gsr.mesh {
+			ids := make([]enode.ID, 0)
+			for nodeId, _ := range nodeIdMap {
+				ids = append(ids, nodeId)
+			}
+			newMesh[topic] = ids
+		}
+		status.Mesh = newMesh
+
+		outMesh := make(map[string][]enode.ID)
+		for k, v := range p.topics {
+			nodeList := make([]enode.ID, 0)
+			tmpMap := gsr.mesh[k]
+			for n := range v {
+				if _, ok := tmpMap[n]; !ok {
+					nodeList = append(nodeList, n)
+				}
+			}
+			outMesh[k] = nodeList
+		}
+		status.OutMesh = outMesh
+
+		myTopics := make([]string, 0)
+		for t := range p.myTopics {
+			myTopics = append(myTopics, t)
+		}
+		status.Topics = myTopics
+	}
+
+	select {
+	case p.eval <- getInfo:
+	case <-p.ctx.Done():
+	}
+	return status
+}
