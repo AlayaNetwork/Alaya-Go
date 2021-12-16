@@ -61,8 +61,7 @@ type PubSub struct {
 	pss         *p2p.PubSubServer
 	config      ctypes.Config
 	getPeerById getByIDFunc // Used to get peer by ID.
-
-	onReceive receiveCallback
+	onReceive   receiveCallback
 
 	// All topics subscribed
 	topics      map[string]*pubsub.Topic
@@ -272,4 +271,8 @@ func (ps *PubSub) Publish(topic string, code uint64, data interface{}) error {
 
 func (ps *PubSub) Stop() {
 	close(ps.quit)
+}
+
+func (ps *PubSub) GetAllPubSubStatus() *pubsub.Status {
+	return ps.pss.GetAllPubSubStatus()
 }
