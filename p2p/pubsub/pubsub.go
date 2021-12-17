@@ -1397,6 +1397,7 @@ func (p *PubSub) GetAllPubSubStatus() *Status {
 			myTopics = append(myTopics, t)
 		}
 		status.Topics = myTopics
+		log.Debug("Get PubSub status information", "peers", gsr.peers, "mesh", gsr.mesh, "myTopics", p.myTopics)
 	}
 
 	select {
