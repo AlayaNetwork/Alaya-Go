@@ -746,7 +746,7 @@ func (gs *GossipSubRouter) handleGraft(p enode.ID, ctl *message.ControlMessage) 
 		// make sure we are not backing off that peer
 		expire, backoff := gs.backoff[topic][p]
 		if backoff && now.Before(expire) {
-			log.Debug("GRAFT: ignoring backed off peer", "peer", p)
+			log.Debug("GRAFT: ignoring backed off peer", "peer", p.TerminalString())
 			// add behavioural penalty
 			gs.score.AddPenalty(p, 1)
 			// no PX
