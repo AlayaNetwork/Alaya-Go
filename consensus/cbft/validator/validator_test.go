@@ -671,21 +671,27 @@ func TestUpdate(t *testing.T) {
 	assert.Equal(t, lastNumber, vp.lastNumber)
 	assert.Equal(t, vp.prevValidators, vp.currentValidators)
 
+	vp.Update(250, 0, false, 4352, eventMux)
+	assert.Nil(t, vp.nextValidators)
+	assert.False(t, vp.NeedGroup())
+	assert.Equal(t, vp.epoch, uint64(0))
+
+	vp.Update(980, 0, true, 4352, eventMux)
+	assert.True(t, vp.NeedGroup())
+	assert.Equal(t, vp.epoch, uint64(0))
+
 	nextNodes := newTestNodeByNum(100)
 	nextAgency := newTestInnerAgency(nextNodes)
-
 	next, err := nextAgency.GetValidators(lastNumber + 1)
 	if err != nil {
 		t.Log("agency.GetValidators", "err", err)
 	}
 	next.Grouped()
 	assert.NotEqual(t, vp.currentValidators, next)
-
-	vp.Update(1000, 0, false, 4352, eventMux)
-	assert.Nil(t, vp.nextValidators)
-	vp.Update(vp.lastNumber, 0, true, 4352, eventMux)
 	assert.False(t, vp.nextValidators.Equal(next))
 	vp.nextValidators = next
-	vp.Update(vp.lastNumber+1, 0, false, 4352, eventMux)
+	vp.Update(vp.lastNumber+1, 1, false, 4352, eventMux)
+	assert.True(t, vp.NeedGroup())
+	assert.Equal(t, vp.epoch, uint64(1))
 	assert.Nil(t, vp.nextValidators)
 }
