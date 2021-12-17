@@ -78,6 +78,22 @@ type QuorumCert struct {
 	ValidatorSet *utils.BitArray `json:"validatorSet"`
 }
 
+func (q *QuorumCert) DeepCopyQuorumCert() *QuorumCert {
+	if q == nil {
+		return nil
+	}
+	qc := &QuorumCert{
+		Epoch:        q.Epoch,
+		ViewNumber:   q.ViewNumber,
+		BlockHash:    q.BlockHash,
+		BlockNumber:  q.BlockNumber,
+		BlockIndex:   q.BlockIndex,
+		Signature:    q.Signature,
+		ValidatorSet: q.ValidatorSet.Copy(),
+	}
+	return qc
+}
+
 func (q QuorumCert) CannibalizeBytes() ([]byte, error) {
 	buf, err := rlp.EncodeToBytes([]interface{}{
 		q.Epoch,
@@ -190,6 +206,23 @@ type ViewChangeQuorumCert struct {
 	BlockViewNumber uint64          `json:"blockViewNumber"`
 	Signature       Signature       `json:"signature"`
 	ValidatorSet    *utils.BitArray `json:"validatorSet"`
+}
+
+func (q *ViewChangeQuorumCert) DeepCopyViewChangeQuorumCert() *ViewChangeQuorumCert {
+	if q == nil {
+		return nil
+	}
+	qc := &ViewChangeQuorumCert{
+		Epoch:           q.Epoch,
+		ViewNumber:      q.ViewNumber,
+		BlockHash:       q.BlockHash,
+		BlockNumber:     q.BlockNumber,
+		BlockEpoch:      q.BlockEpoch,
+		BlockViewNumber: q.BlockViewNumber,
+		Signature:       q.Signature,
+		ValidatorSet:    q.ValidatorSet.Copy(),
+	}
+	return qc
 }
 
 func (q ViewChangeQuorumCert) CannibalizeBytes() ([]byte, error) {

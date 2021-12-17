@@ -1452,6 +1452,11 @@ func (cbft *Cbft) getGroupByValidatorID(epoch uint64, nodeID enode.ID) (uint32, 
 	return cbft.validatorPool.GetGroupByValidatorID(epoch, nodeID)
 }
 
+// TODO just for log
+func (cbft *Cbft) GetGroupByValidatorID(nodeID enode.ID) (uint32, uint32, error) {
+	return cbft.getGroupByValidatorID(cbft.state.Epoch(), nodeID)
+}
+
 func (cbft *Cbft) getGroupIndexes(epoch uint64) map[uint32][]uint32 {
 	return cbft.validatorPool.GetGroupIndexes(epoch)
 }
@@ -1483,7 +1488,7 @@ func (cbft *Cbft) verifyConsensusSign(msg ctypes.ConsensusMsg) error {
 
 	// Verify consensus msg signature
 	if err := cbft.validatorPool.Verify(msg.EpochNum(), msg.NodeIndex(), digest, msg.Sign()); err != nil {
-		return authFailedError{err: err}
+		return authFailedError{err: fmt.Errorf("verify consensus sign failed: %v", err)}
 	}
 	return nil
 }

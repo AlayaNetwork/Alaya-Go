@@ -1,6 +1,7 @@
 package cbft
 
 import (
+	"github.com/AlayaNetwork/Alaya-Go/common/hexutil"
 	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/protocols"
 	"reflect"
 	"sync"
@@ -16,11 +17,15 @@ const (
 type awaiting interface {
 	GroupID() uint32
 	Index() uint64
+	Epoch() uint64
+	ViewNumber() uint64
 }
 
 type awaitingRGBlockQC struct {
 	groupID    uint32
 	blockIndex uint32
+	epoch      uint64
+	viewNumber uint64
 }
 
 func (a *awaitingRGBlockQC) GroupID() uint32 {
@@ -31,8 +36,17 @@ func (a *awaitingRGBlockQC) Index() uint64 {
 	return uint64(a.blockIndex)
 }
 
+func (a *awaitingRGBlockQC) Epoch() uint64 {
+	return a.epoch
+}
+
+func (a *awaitingRGBlockQC) ViewNumber() uint64 {
+	return a.viewNumber
+}
+
 type awaitingRGViewQC struct {
 	groupID    uint32
+	epoch      uint64
 	viewNumber uint64
 }
 
@@ -41,6 +55,14 @@ func (a *awaitingRGViewQC) GroupID() uint32 {
 }
 
 func (a *awaitingRGViewQC) Index() uint64 {
+	return a.viewNumber
+}
+
+func (a *awaitingRGViewQC) Epoch() uint64 {
+	return a.epoch
+}
+
+func (a *awaitingRGViewQC) ViewNumber() uint64 {
 	return a.viewNumber
 }
 
@@ -136,6 +158,11 @@ func (m *RGBroadcastManager) awaitingBroadcastRGViewChangeQuorumCert(viewNumber 
 	return false
 }
 
+// equalsState checks if the message is currently CBFT status
+func (m *RGBroadcastManager) equalsState(a awaiting) bool {
+	return a.Epoch() == m.cbft.state.Epoch() && a.ViewNumber() == m.cbft.state.ViewNumber()
+}
+
 // needBroadcast to check whether the message has been sent or is being sent
 func (m *RGBroadcastManager) needBroadcast(a awaiting) bool {
 	switch msg := a.(type) {
@@ -152,9 +179,11 @@ func (m *RGBroadcastManager) broadcast(a awaiting) {
 	m.mux.Lock()
 	defer m.mux.Unlock()
 
-	if !m.needBroadcast(a) {
+	if !m.equalsState(a) || !m.needBroadcast(a) {
 		return
 	}
+	m.cbft.log.Debug("Begin broadcast rg msg", "type", reflect.TypeOf(a), "groupID", a.GroupID(), "index", a.Index(), "delayDuration", m.delayDuration.String())
+
 	timer := time.AfterFunc(m.delayDuration, func() {
 		m.cbft.asyncCallCh <- func() {
 			m.broadcastFunc(a)
@@ -217,7 +246,7 @@ func (m *RGBroadcastManager) upgradeCoordinator(a awaiting) bool {
 		return false
 	}
 	if !m.enoughCoordinator(groupID, unitID, coordinatorIndexes, receiveIndexes) {
-		m.cbft.log.Warn("Upgrade the current node to Coordinator", "groupID", groupID, "unitID", unitID, "coordinatorIndexes", coordinatorIndexes, "receiveIndexes", receiveIndexes)
+		m.cbft.log.Warn("Upgrade the current node to Coordinator", "type", reflect.TypeOf(a), "groupID", groupID, "index", a.Index(), "unitID", unitID, "coordinatorIndexes", coordinatorIndexes, "receiveIndexes", receiveIndexes)
 		m.recordMetrics(a)
 		return true
 	}
@@ -266,7 +295,8 @@ func (m *RGBroadcastManager) countCoordinator(unitID uint32, coordinatorIndexes 
 }
 
 func (m *RGBroadcastManager) broadcastFunc(a awaiting) {
-	if !m.allowRGBlockQuorumCert(a) {
+	m.cbft.log.Debug("Broadcast rg msg", "type", reflect.TypeOf(a), "groupID", a.GroupID(), "index", a.Index())
+	if !m.equalsState(a) || !m.allowRGBlockQuorumCert(a) {
 		return
 	}
 
@@ -306,6 +336,11 @@ func (m *RGBroadcastManager) broadcastFunc(a awaiting) {
 			return
 		}
 		m.cbft.network.Broadcast(rg)
+		// todo just for log
+		digest, _ := rg.CannibalizeBytes()
+		pubKey := m.cbft.config.Option.BlsPriKey.GetPublicKey()
+		blsPublicKey := hexutil.Encode(pubKey.Serialize())
+		m.cbft.log.Debug("Success to broadcast RGBlockQuorumCert", "msg", rg.String(), "data", hexutil.Encode(digest), "sign", hexutil.Encode(rg.Sign()), "pubkey", blsPublicKey)
 		m.hadSendRGBlockQuorumCerts[msg.Index()] = rg
 		delete(m.awaitingRGBlockQuorumCerts, msg.Index())
 		m.cbft.state.AddRGBlockQuorumCert(node.Index, rg)
@@ -326,6 +361,7 @@ func (m *RGBroadcastManager) broadcastFunc(a awaiting) {
 			return
 		}
 		m.cbft.network.Broadcast(rg)
+		m.cbft.log.Debug("Success to broadcast RGViewChangeQuorumCert", "msg", rg.String())
 		m.hadSendRGViewChangeQuorumCerts[msg.Index()] = rg
 		delete(m.awaitingRGViewChangeQuorumCerts, msg.Index())
 		m.cbft.state.AddRGViewChangeQuorumCert(node.Index, rg)
@@ -348,12 +384,13 @@ func (m *RGBroadcastManager) Reset() {
 	defer m.mux.Unlock()
 
 	for _, await := range m.awaitingRGBlockQuorumCerts {
-		await.jobTimer.Stop()
+		await.jobTimer.Stop() // Some JobTimers are already running and may fail to stop
 	}
 	for _, await := range m.awaitingRGViewChangeQuorumCerts {
-		await.jobTimer.Stop()
+		await.jobTimer.Stop() // Some JobTimers are already running and may fail to stop
 	}
 	_, unitID, err := m.cbft.getGroupByValidatorID(m.cbft.state.Epoch(), m.cbft.Node().ID())
+	m.cbft.log.Debug("RGBroadcastManager Reset", "unitID", unitID)
 	if err != nil {
 		m.cbft.log.Trace("The current node is not a consensus node, no need to start RGBroadcastManager", "epoch", m.cbft.state.Epoch(), "nodeID", m.cbft.Node().ID().String())
 		unitID = defaultUnitID

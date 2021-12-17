@@ -67,4 +67,7 @@ type Cbft interface {
 
 	// BlockExists determines if a block exists.
 	BlockExists(blockNumber uint64, blockHash common.Hash) error
+
+	// TODO just for log
+	GetGroupByValidatorID(nodeID enode.ID) (uint32, uint32, error)
 }
