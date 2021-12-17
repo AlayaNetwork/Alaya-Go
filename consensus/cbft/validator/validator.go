@@ -458,11 +458,9 @@ func (vp *ValidatorPool) Update(blockNumber uint64, epoch uint64, isElection boo
 			vp.lastNumber = vp.agency.GetLastNumber(blockNumber)
 			//不切换，所以epoch不增
 			vp.grouped = false
+			log.Debug("update currentValidators success!", "lastNumber", vp.lastNumber, "grouped", vp.grouped, "switchPoint", vp.switchPoint)
 			return nil
-		} else {
-			return fmt.Errorf("ValidatorPool update failed, currentValidators:%s, nds:%s", vp.currentValidators.String(), nds.String())
 		}
-		log.Debug("update currentValidators success!", "lastNumber", vp.lastNumber, "grouped", vp.grouped, "switchPoint", vp.switchPoint)
 	}
 	//分组提案生效后第一个共识round到ElectionPoint时初始化分组信息
 	if !vp.grouped {
