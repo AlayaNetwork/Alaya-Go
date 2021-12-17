@@ -208,8 +208,8 @@ type PrepareVote struct {
 }
 
 func (pv *PrepareVote) String() string {
-	return fmt.Sprintf("{Epoch:%d,ViewNumber:%d,Hash:%s,Number:%d,BlockIndex:%d,ValidatorIndex:%d}",
-		pv.Epoch, pv.ViewNumber, pv.BlockHash.TerminalString(), pv.BlockNumber, pv.BlockIndex, pv.ValidatorIndex)
+	return fmt.Sprintf("{Epoch:%d,ViewNumber:%d,Hash:%s,Number:%d,BlockIndex:%d,Signature:%s,ValidatorIndex:%d}",
+		pv.Epoch, pv.ViewNumber, pv.BlockHash.TerminalString(), pv.BlockNumber, pv.BlockIndex, pv.Signature.String(), pv.ValidatorIndex)
 }
 
 func (pv *PrepareVote) MsgHash() common.Hash {
@@ -821,8 +821,8 @@ type RGBlockQuorumCert struct {
 }
 
 func (rgb *RGBlockQuorumCert) String() string {
-	return fmt.Sprintf("{GroupID:%d,Epoch:%d,ViewNumber:%d,BlockIndx:%d,Hash:%s,Number:%d,ValidatorIndex:%d}",
-		rgb.GroupID, rgb.EpochNum(), rgb.ViewNum(), rgb.BlockIndx(), rgb.BHash().TerminalString(), rgb.BlockNum(), rgb.NodeIndex())
+	return fmt.Sprintf("{GroupID:%d,Epoch:%d,ViewNumber:%d,BlockIndx:%d,Hash:%s,Number:%d,ValidatorIndex:%d,Signature:%s,ValidatorSet:%s}",
+		rgb.GroupID, rgb.EpochNum(), rgb.ViewNum(), rgb.BlockIndx(), rgb.BHash().TerminalString(), rgb.BlockNum(), rgb.NodeIndex(), rgb.Signature.String(), rgb.BlockQC.ValidatorSet.String())
 }
 
 func (rgb *RGBlockQuorumCert) MsgHash() common.Hash {

@@ -1224,7 +1224,7 @@ func (srg *selectedRGBlockQuorumCerts) FindMaxRGQuorumCerts(blockIndex uint32) [
 			for _, qcs := range ps.GroupQuorumCerts {
 				max := findMaxQuorumCert(qcs)
 				if max != nil {
-					groupMaxs = append(groupMaxs, max)
+					groupMaxs = append(groupMaxs, max.DeepCopyQuorumCert())
 				}
 			}
 		}
@@ -1239,7 +1239,7 @@ func (srg *selectedRGBlockQuorumCerts) FindMaxGroupRGQuorumCert(blockIndex, grou
 	max := findMaxQuorumCert(gs)
 	if max != nil {
 		parentQC := srg.BlockRGBlockQuorumCerts[blockIndex].ParentQC
-		return max, parentQC
+		return max.DeepCopyQuorumCert(), parentQC.DeepCopyQuorumCert()
 	}
 	return nil, nil
 }
@@ -1566,9 +1566,9 @@ func (srg *selectedRGViewChangeQuorumCerts) FindMaxGroupRGViewChangeQuorumCert(g
 	prepareQCs := &ctypes.PrepareQCs{QCs: make([]*ctypes.QuorumCert, 0)}
 	for hash, qcs := range rgqcs {
 		max := findMaxViewChangeQuorumCert(qcs)
-		viewChangeQC.QCs = append(viewChangeQC.QCs, max)
+		viewChangeQC.QCs = append(viewChangeQC.QCs, max.DeepCopyViewChangeQuorumCert())
 		if srg.PrepareQCs != nil && srg.PrepareQCs[hash] != nil {
-			prepareQCs.QCs = append(prepareQCs.QCs, srg.PrepareQCs[hash])
+			prepareQCs.QCs = append(prepareQCs.QCs, srg.PrepareQCs[hash].DeepCopyQuorumCert())
 		}
 	}
 	return viewChangeQC, prepareQCs
