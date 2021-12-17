@@ -444,12 +444,14 @@ func newTestInnerAgency(nodes []params.CbftNode) consensus.Agency {
 
 func TestValidatorPool(t *testing.T) {
 	bls.Init(bls.BLS12_381)
-	nodes := newTestNode()
+	nodes := newTestNodeByNum(100)
 	agency := newTestInnerAgency(nodes)
+	eventMux := &event.TypeMux{}
 
-	validatorPool := NewValidatorPool(agency, 0, 0, nodes[0].Node.ID(), false, new(event.TypeMux))
+	validatorPool := NewValidatorPool(agency, 0, 0, nodes[0].Node.ID(), true, eventMux)
 	assert.False(t, validatorPool.ShouldSwitch(0))
-	assert.True(t, validatorPool.ShouldSwitch(40))
+	assert.True(t, validatorPool.ShouldSwitch(1000))
+	assert.Equal(t, uint64(1000), agency.GetLastNumber(2))
 
 	node, err := validatorPool.GetValidatorByNodeID(0, nodes[0].Node.ID())
 	assert.Nil(t, err)
@@ -462,7 +464,7 @@ func TestValidatorPool(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, node.NodeID, nodes[1].Node.ID())
 
-	_, err = validatorPool.GetValidatorByIndex(0, 5)
+	_, err = validatorPool.GetValidatorByIndex(0, 100)
 	assert.Equal(t, err, errors.New("not found the specified validator"))
 
 	vds := newValidators(nodes, 0)
@@ -474,7 +476,7 @@ func TestValidatorPool(t *testing.T) {
 	_, err = validatorPool.GetValidatorByAddr(0, common.NodeAddress{})
 	assert.Equal(t, err, errors.New("invalid address"))
 
-	nodeID := validatorPool.GetNodeIDByIndex(0, 4)
+	nodeID := validatorPool.GetNodeIDByIndex(0, 100)
 	assert.Equal(t, nodeID, enode.ID{})
 
 	nodeID = validatorPool.GetNodeIDByIndex(0, 0)
@@ -494,12 +496,6 @@ func TestValidatorPool(t *testing.T) {
 	assert.True(t, validatorPool.IsValidator(0, nodes[0].Node.ID()))
 	assert.True(t, validatorPool.Len(0) == len(nodes))
 	assert.True(t, validatorPool.IsCandidateNode(enode.ZeroIDv0))
-
-	eventMux := &event.TypeMux{}
-
-	validatorPool.Update(80, 1, false, 0, eventMux)
-	assert.True(t, validatorPool.IsValidator(0, nodes[0].Node.ID()))
-	assert.False(t, validatorPool.IsValidator(1, nodes[0].Node.ID()))
 }
 
 func TestValidatorPoolVerify(t *testing.T) {
@@ -674,17 +670,28 @@ func TestUpdate(t *testing.T) {
 	assert.Equal(t, true, vp.NeedGroup())
 	assert.Equal(t, lastNumber, vp.lastNumber)
 	assert.Equal(t, vp.prevValidators, vp.currentValidators)
-	next, err := agency.GetValidators(lastNumber + 1)
+
+	vp.Update(250, 0, false, 4352, eventMux)
+	assert.Nil(t, vp.nextValidators)
+	assert.False(t, vp.NeedGroup())
+	assert.Equal(t, vp.epoch, uint64(0))
+
+	vp.Update(980, 0, true, 4352, eventMux)
+	assert.True(t, vp.NeedGroup())
+	assert.Equal(t, vp.epoch, uint64(0))
+
+	nextNodes := newTestNodeByNum(100)
+	nextAgency := newTestInnerAgency(nextNodes)
+	next, err := nextAgency.GetValidators(lastNumber + 1)
 	if err != nil {
 		t.Log("agency.GetValidators", "err", err)
 	}
 	next.Grouped()
 	assert.NotEqual(t, vp.currentValidators, next)
-
-	vp.Update(250, 0, false, 0, eventMux)
-	assert.Nil(t, vp.nextValidators)
-	vp.Update(vp.lastNumber, 0, true, 0, eventMux)
-	assert.Equal(t, vp.nextValidators, next)
-	vp.Update(vp.lastNumber+1, 0, false, 0, eventMux)
+	assert.False(t, vp.nextValidators.Equal(next))
+	vp.nextValidators = next
+	vp.Update(vp.lastNumber+1, 1, false, 4352, eventMux)
+	assert.True(t, vp.NeedGroup())
+	assert.Equal(t, vp.epoch, uint64(1))
 	assert.Nil(t, vp.nextValidators)
 }

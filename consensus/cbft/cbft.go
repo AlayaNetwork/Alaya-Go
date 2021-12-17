@@ -22,6 +22,7 @@ import (
 	"crypto/elliptic"
 	"encoding/json"
 	"fmt"
+	"github.com/AlayaNetwork/Alaya-Go/p2p/pubsub"
 	"strings"
 	"sync/atomic"
 
@@ -1007,6 +1008,10 @@ func (cbft *Cbft) Status() []byte {
 		status <- b
 	}
 	return <-status
+}
+
+func (cbft *Cbft) PubSubStatus() *pubsub.Status {
+	return cbft.pubSub.GetAllPubSubStatus()
 }
 
 // GetPrepareQC returns the QC data of the specified block height.

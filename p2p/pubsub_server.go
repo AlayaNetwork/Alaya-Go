@@ -70,3 +70,7 @@ func (pss *PubSubServer) NewConn(peer *Peer, rw MsgReadWriter) chan error {
 func (pss *PubSubServer) DiscoverTopic(ctx context.Context, topic string) {
 	pss.p2pServer.DiscoverTopic(ctx, topic)
 }
+
+func (pss *PubSubServer) GetAllPubSubStatus() *pubsub.Status {
+	return pss.pubSub.GetAllPubSubStatus()
+}
