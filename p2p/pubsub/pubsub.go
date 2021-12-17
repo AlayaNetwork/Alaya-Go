@@ -530,12 +530,12 @@ func (p *PubSub) processLoop(ctx context.Context) {
 
 			ch, ok := p.peers[pid.ID()]
 			if !ok {
-				log.Warn("new stream for unknown peer: ", pid.ID().TerminalString())
+				log.Warn("new stream for unknown peer", "id", pid.ID().TerminalString())
 				continue
 			}
 
 			if p.blacklist.Contains(pid.ID()) {
-				log.Warn("closing stream for blacklisted peer: ", pid.ID().TerminalString())
+				log.Warn("closing stream for blacklisted peer", "id", pid.ID().TerminalString())
 				close(ch)
 				delete(p.peers, pid.ID())
 				continue
@@ -637,12 +637,12 @@ func (p *PubSub) handlePendingPeers() {
 
 	for pid := range newPeers {
 		if _, ok := p.peers[pid]; ok {
-			log.Debug("already have connection to peer: ", pid)
+			log.Debug("already have connection to peer", "id", pid.TerminalString())
 			continue
 		}
 
 		if p.blacklist.Contains(pid) {
-			log.Warn("ignoring connection from blacklisted peer: ", pid)
+			log.Warn("ignoring connection from blacklisted peer", "id", pid.TerminalString())
 			continue
 		}
 
@@ -1081,7 +1081,7 @@ func (p *PubSub) pushMsg(msg *Message) {
 	// reject messages claiming to be from ourselves but not locally published
 	self := p.host.ID()
 	if msg.GetFrom() == self.ID() && src.ID() != self.ID() {
-		log.Debug("dropping message claiming to be from self but forwarded", "peer", src)
+		log.Debug("dropping message claiming to be from self but forwarded", "peer", src.ID().TerminalString())
 		p.tracer.RejectMessage(msg, RejectSelfOrigin)
 		return
 	}
