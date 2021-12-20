@@ -95,6 +95,8 @@ type PlatonStatsService struct {
 	stopSampleMsg   chan struct{}
 	stopBlockMsg    chan struct{}
 	stopOnce        sync.Once
+	quit            chan bool
+	waitQuit        sync.WaitGroup
 }
 
 var (
@@ -104,11 +106,16 @@ var (
 func New(kafkaUrl, kafkaBlockTopic string, ethServ *eth.Ethereum, datadir string) (*PlatonStatsService, error) {
 	log.Info("new PlatON stats service", "kafkaUrl", kafkaUrl, "kafkaBlockTopic", kafkaBlockTopic)
 
+	waitQ := sync.WaitGroup{}
+	waitQ.Add(1)
+
 	platonStatsService = &PlatonStatsService{
 		kafkaUrl:        kafkaUrl,
 		kafkaBlockTopic: kafkaBlockTopic,
 		eth:             ethServ,
 		datadir:         datadir,
+		quit:            make(chan bool),
+		waitQuit:        waitQ,
 	}
 	if len(datadir) > 0 {
 		statsLogFile = filepath.Join(datadir, statsLogFile)
@@ -150,8 +157,10 @@ func (s *PlatonStatsService) Start(server *p2p.Server) error {
 // Stop implements node.Service, terminating the monitoring and reporting daemon.
 func (s *PlatonStatsService) Stop() error {
 	s.stopOnce.Do(func() {
-		close(s.stopSampleMsg)
+		//close(s.stopSampleMsg)
 		//close(s.stopBlockMsg)
+		s.quit <- true
+		s.waitQuit.Wait()
 		if s.kafkaClient != nil {
 			s.kafkaClient.Close()
 		}
@@ -161,7 +170,6 @@ func (s *PlatonStatsService) Stop() error {
 	return nil
 }
 
-//todo: 服务如何退出？整个Node如何停止？
 func (s *PlatonStatsService) blockMsgLoop() {
 	var nextBlockNumber uint64
 	nextBlockNumber = 0
@@ -171,17 +179,23 @@ func (s *PlatonStatsService) blockMsgLoop() {
 	}
 
 	for {
-		nextBlock := s.BlockChain().GetBlockByNumber(nextBlockNumber)
-		if nextBlock != nil {
-			if err := s.reportBlockMsg(nextBlock); err == nil {
-				writeStatsLog(nextBlockNumber)
-				nextBlockNumber = nextBlockNumber + 1
+		select {
+		case <-s.quit:
+			s.waitQuit.Done()
+			return
+		default:
+			nextBlock := s.BlockChain().GetBlockByNumber(nextBlockNumber)
+			if nextBlock != nil {
+				if err := s.reportBlockMsg(nextBlock); err == nil {
+					writeStatsLog(nextBlockNumber)
+					nextBlockNumber = nextBlockNumber + 1
+				} else {
+					//
+					panic(err)
+				}
 			} else {
-				//
-				panic(err)
+				time.Sleep(time.Microsecond * 50)
 			}
-		} else {
-			time.Sleep(time.Microsecond * 50)
 		}
 	}
 }
@@ -305,7 +319,7 @@ func readBlockNumber() (uint64, error) {
 			log.Warn("Failed to read PlatON stats service log", "error", err)
 			return 0, errors.New("Failed to read PlatON stats service log")
 		} else {
-			log.Warn("Success to read PlatON stats service log", "blockNumber", blockNumber)
+			log.Info("Success to read PlatON stats service log", "blockNumber", blockNumber)
 			return blockNumber, nil
 		}
 	}
@@ -313,7 +327,9 @@ func readBlockNumber() (uint64, error) {
 
 func writeStatsLog(blockNumber uint64) {
 	if err := common.WriteFile(statsLogFile, []byte(strconv.FormatUint(blockNumber, 10)), statsLogFlag, os.ModePerm); err != nil {
-		log.Error("Failed to log stats block number", "blockNumber", blockNumber)
+		log.Error("Failed to log stats block number", "file", statsLogFile, "blockNumber", blockNumber, "err", err)
+	} else {
+		log.Debug("Success to log stats block number", "file", statsLogFile, "blockNumber", blockNumber)
 	}
 }
 

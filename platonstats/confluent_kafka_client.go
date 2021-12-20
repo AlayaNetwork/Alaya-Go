@@ -21,7 +21,6 @@ type ConfluentKafkaClient struct {
 }
 
 func NewConfluentKafkaClient(urls, blockTopic string) *ConfluentKafkaClient {
-	//brokers := strings.Split(urls, ",")
 
 	if len(blockTopic) == 0 {
 		blockTopic = defaultKafkaBlockTopic
@@ -68,6 +67,7 @@ func NewConfluentKafkaClient(urls, blockTopic string) *ConfluentKafkaClient {
 func (kc *ConfluentKafkaClient) Close() {
 
 	if kc.producer != nil {
+		kc.producer.Flush(60 * 1000)
 		kc.producer.Close()
 	}
 }
