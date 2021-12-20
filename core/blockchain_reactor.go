@@ -147,7 +147,6 @@ func (bcr *BlockChainReactor) commit(block *types.Block) error {
 		if err := plugin.Confirmed(bcr.NodeId, block); nil != err {
 			log.Error("Failed to call Staking Confirmed", "blockNumber", block.Number(), "blockHash", block.Hash().Hex(), "err", err.Error())
 		}
-
 	}
 
 	log.Info("Call snapshotdb commit on blockchain_reactor", "blockNumber", block.Number(), "blockHash", block.Hash())
@@ -394,7 +393,11 @@ func (bcr *BlockChainReactor) GetLastNumber(blockNumber uint64) uint64 {
 }
 
 func (bcr *BlockChainReactor) GetValidators(blockNumber uint64) (*cbfttypes.Validators, error) {
-	return plugin.StakingInstance().GetValidator(blockNumber)
+	return plugin.StakingInstance().GetValidators(blockNumber)
+}
+
+func (bcr *BlockChainReactor) GetComingValidators(blockHash common.Hash, blockNumber uint64) (*cbfttypes.Validators, error) {
+	return plugin.StakingInstance().GetComingValidators(blockHash, blockNumber)
 }
 
 func (bcr *BlockChainReactor) IsCandidateNode(nodeID enode.IDv0) bool {

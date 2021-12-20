@@ -106,6 +106,10 @@ func (d *StaticAgency) GetValidators(uint64) (*cbfttypes.Validators, error) {
 	return d.validators, nil
 }
 
+func (d *StaticAgency) GetComingValidators(blockHash common.Hash, blockNumber uint64) (*cbfttypes.Validators, error) {
+	return d.GetValidators(blockNumber)
+}
+
 func (d *StaticAgency) IsCandidateNode(nodeID enode.IDv0) bool {
 	return false
 }
@@ -155,6 +159,10 @@ func (d *MockAgency) GetValidators(blockNumber uint64) (*cbfttypes.Validators, e
 		d.validators.ValidBlockNumber = d.validators.ValidBlockNumber + d.interval + 1
 	}
 	return d.validators, nil
+}
+
+func (d *MockAgency) GetComingValidators(blockHash common.Hash, blockNumber uint64) (*cbfttypes.Validators, error) {
+	return d.GetValidators(blockNumber)
 }
 
 func (d *MockAgency) IsCandidateNode(nodeID enode.IDv0) bool {
@@ -284,6 +292,10 @@ func (ia *InnerAgency) GetValidators(blockNumber uint64) (v *cbfttypes.Validator
 	}
 	validators.ValidBlockNumber = vds.ValidBlockNumber
 	return &validators, nil
+}
+
+func (ia *InnerAgency) GetComingValidators(blockHash common.Hash, blockNumber uint64) (*cbfttypes.Validators, error) {
+	return ia.GetValidators(blockNumber)
 }
 
 func (ia *InnerAgency) IsCandidateNode(nodeID enode.IDv0) bool {
@@ -423,7 +435,7 @@ func (vp *ValidatorPool) MockSwitchPoint(number uint64) {
 }
 
 // Update switch validators.
-func (vp *ValidatorPool) Update(blockNumber uint64, epoch uint64, isElection bool, version uint32, eventMux *event.TypeMux) error {
+func (vp *ValidatorPool) Update(blockHash common.Hash, blockNumber uint64, epoch uint64, isElection bool, version uint32, eventMux *event.TypeMux) error {
 	vp.lock.Lock()
 	defer vp.lock.Unlock()
 
@@ -473,10 +485,18 @@ func (vp *ValidatorPool) Update(blockNumber uint64, epoch uint64, isElection boo
 
 	if isElection {
 		// 提前更新nextValidators，为了p2p早一步订阅分组事件以便建链接
-		nds, err = vp.agency.GetValidators(nextRoundBlockNumber)
-		if err != nil {
-			log.Error("Get validator error", "blockNumber", blockNumber, "err", err)
-			return err
+		if blockHash != common.ZeroHash {
+			nds, err = vp.agency.GetComingValidators(blockHash, nextRoundBlockNumber)
+			if err != nil {
+				log.Error("Get coming validators error", "blockNumber", blockNumber, "err", err)
+				return err
+			}
+		} else {
+			nds, err = vp.agency.GetValidators(nextRoundBlockNumber)
+			if err != nil {
+				log.Error("Get validators error", "blockNumber", blockNumber, "err", err)
+				return err
+			}
 		}
 		vp.nextValidators = nds
 		if vp.grouped {
@@ -503,7 +523,7 @@ func (vp *ValidatorPool) Update(blockNumber uint64, epoch uint64, isElection boo
 		currEpoch := vp.epoch
 		vp.epoch = epoch
 		vp.nextValidators = nil
-		log.Info("Update validator", "validators.len", vp.currentValidators.Len(), "switchpoint", vp.switchPoint, "epoch", vp.epoch, "lastNumber", vp.lastNumber)
+		log.Info("Update validators", "validators.len", vp.currentValidators.Len(), "switchpoint", vp.switchPoint, "epoch", vp.epoch, "lastNumber", vp.lastNumber)
 		//切换共识轮时需要将上一轮分组的topic取消订阅
 		vp.dissolve(currEpoch, eventMux)
 	}

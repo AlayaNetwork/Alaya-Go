@@ -165,6 +165,7 @@ type Agency interface {
 	VerifyHeader(header *types.Header, stateDB *state.StateDB) error
 	GetLastNumber(blockNumber uint64) uint64
 	GetValidators(blockNumber uint64) (*cbfttypes.Validators, error)
+	GetComingValidators(blockHash common.Hash, blockNumber uint64) (*cbfttypes.Validators, error)
 	IsCandidateNode(nodeID enode.IDv0) bool
 	OnCommit(block *types.Block) error
 }

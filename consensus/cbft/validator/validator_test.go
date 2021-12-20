@@ -596,6 +596,10 @@ func (m *mockAgency) GetValidators(blockNumber uint64) (*cbfttypes.Validators, e
 	}, nil
 }
 
+func (m *mockAgency) GetComingValidators(blockHash common.Hash, blockNumber uint64) (*cbfttypes.Validators, error) {
+	return m.GetValidators(blockNumber)
+}
+
 func (m *mockAgency) IsCandidateNode(dv0 enode.IDv0) bool { return false }
 
 func (m *mockAgency) OnCommit(block *types.Block) error { return nil }
@@ -671,12 +675,12 @@ func TestUpdate(t *testing.T) {
 	assert.Equal(t, lastNumber, vp.lastNumber)
 	assert.Equal(t, vp.prevValidators, vp.currentValidators)
 
-	vp.Update(250, 0, false, 4352, eventMux)
+	vp.Update(common.ZeroHash, 250, 0, false, 4352, eventMux)
 	assert.Nil(t, vp.nextValidators)
 	assert.False(t, vp.NeedGroup())
 	assert.Equal(t, vp.epoch, uint64(0))
 
-	vp.Update(980, 0, true, 4352, eventMux)
+	vp.Update(common.ZeroHash, 980, 0, true, 4352, eventMux)
 	assert.True(t, vp.NeedGroup())
 	assert.Equal(t, vp.epoch, uint64(0))
 
@@ -690,7 +694,7 @@ func TestUpdate(t *testing.T) {
 	assert.NotEqual(t, vp.currentValidators, next)
 	assert.False(t, vp.nextValidators.Equal(next))
 	vp.nextValidators = next
-	vp.Update(vp.lastNumber+1, 1, false, 4352, eventMux)
+	vp.Update(common.ZeroHash, vp.lastNumber+1, 1, false, 4352, eventMux)
 	assert.True(t, vp.NeedGroup())
 	assert.Equal(t, vp.epoch, uint64(1))
 	assert.Nil(t, vp.nextValidators)

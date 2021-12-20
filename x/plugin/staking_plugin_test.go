@@ -3555,13 +3555,13 @@ func TestStakingPlugin_GetValidator(t *testing.T) {
 	}
 
 	/**
-	Start  GetValidator
+	Start  GetValidators
 	*/
-	valArr, err := StakingInstance().GetValidator(header.Number.Uint64())
+	valArr, err := StakingInstance().GetValidators(header.Number.Uint64())
 
-	assert.Nil(t, err, fmt.Sprintf("Failed to GetValidator, err: %v", err))
+	assert.Nil(t, err, fmt.Sprintf("Failed to GetValidators, err: %v", err))
 	assert.True(t, nil != valArr)
-	t.Log("GetValidator the validators is:", valArr)
+	t.Log("GetValidators the validators is:", valArr)
 
 }
 

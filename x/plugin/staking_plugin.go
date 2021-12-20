@@ -2693,7 +2693,7 @@ func (sk *StakingPlugin) GetLastNumber(blockNumber uint64) uint64 {
 	return 0
 }
 
-func (sk *StakingPlugin) GetValidator(blockNumber uint64) (*cbfttypes.Validators, error) {
+func (sk *StakingPlugin) GetValidators(blockNumber uint64) (*cbfttypes.Validators, error) {
 
 	valArr, err := sk.getCurrValList(common.ZeroHash, blockNumber, QueryStartIrr)
 	if snapshotdb.NonDbNotFoundErr(err) {
@@ -2703,7 +2703,22 @@ func (sk *StakingPlugin) GetValidator(blockNumber uint64) (*cbfttypes.Validators
 	if nil == err && nil != valArr {
 		return buildCbftValidators(valArr.Start, valArr.Arr), nil
 	}
-	return nil, fmt.Errorf("Not Found Validators by blockNumber: %d", blockNumber)
+	return nil, fmt.Errorf("can not found validators by blockNumber: %d", blockNumber)
+}
+
+// validatorpool 在选举块更新nextValidators，触发条件是选举块commit完成，此时block已经实际上不可逆
+// 不从QueryStartIrr查询的原因是此时blockchain_reactor订阅的cbftResult还没处理完，snapshotdb还没有更新最高不可逆区块，查不到
+func (sk *StakingPlugin) GetComingValidators(blockHash common.Hash, blockNumber uint64) (*cbfttypes.Validators, error) {
+
+	valArr, err := sk.getCurrValList(blockHash, blockNumber, QueryStartNotIrr)
+	if snapshotdb.NonDbNotFoundErr(err) {
+		return nil, err
+	}
+
+	if nil == err && nil != valArr {
+		return buildCbftValidators(valArr.Start, valArr.Arr), nil
+	}
+	return nil, fmt.Errorf("can not found validators by blockNumber: %d", blockNumber)
 }
 
 // NOTE: Verify that it is the validator of the current Epoch
