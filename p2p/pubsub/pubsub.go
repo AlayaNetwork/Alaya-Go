@@ -1360,8 +1360,9 @@ type Status struct {
 }
 
 func (p *PubSub) GetAllPubSubStatus() *Status {
-	status := &Status{}
+	result := make(chan *Status, 1)
 	getInfo := func() {
+		status := &Status{}
 		gsr, ok := p.rt.(*GossipSubRouter)
 		if !ok {
 			return
@@ -1398,11 +1399,12 @@ func (p *PubSub) GetAllPubSubStatus() *Status {
 		}
 		status.Topics = myTopics
 		log.Debug("Get PubSub status information", "peers", gsr.peers, "mesh", gsr.mesh, "myTopics", p.myTopics)
+		result <- status
 	}
 
 	select {
 	case p.eval <- getInfo:
 	case <-p.ctx.Done():
 	}
-	return status
+	return <-result
 }
