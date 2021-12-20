@@ -41,7 +41,7 @@ func (p *PubSub) handleNewStream(s Stream) {
 	p.inboundStreamsMx.Lock()
 	_, dup := p.inboundStreams[peer.ID()]
 	if dup {
-		log.Debug("duplicate inbound stream , resetting other stream", "from", peer)
+		log.Debug("duplicate inbound stream , resetting other stream", "from", peer.ID().TerminalString())
 	}
 	p.inboundStreams[peer.ID()] = s
 	p.inboundStreamsMx.Unlock()
@@ -57,7 +57,7 @@ func (p *PubSub) handleNewStream(s Stream) {
 	for {
 		rpc := new(RPC)
 		if err := s.Read(&rpc.RPC); err != nil {
-			log.Error("Read message error", "err", err)
+			log.Error("Read message error", "id", peer.ID().TerminalString(), "err", err)
 			p.notifyPeerDead(peer.ID())
 			s.Close(err)
 			return
@@ -88,7 +88,7 @@ func (p *PubSub) notifyPeerDead(pid enode.ID) {
 func (p *PubSub) handleNewPeer(ctx context.Context, pid enode.ID, outgoing <-chan *RPC) {
 	s, err := p.host.NewStream(p.ctx, pid, p.rt.Protocols()...)
 	if err != nil || s == nil {
-		log.Debug("opening new stream to peer: ", err, pid)
+		log.Debug("opening new stream to peer: ", "id", pid.TerminalString(), "err", err)
 
 		select {
 		case p.newPeerError <- pid:
@@ -100,41 +100,13 @@ func (p *PubSub) handleNewPeer(ctx context.Context, pid enode.ID, outgoing <-cha
 
 	go p.host.StreamHandler(s.Protocol())(s)
 	go p.handleSendingMessages(ctx, s, outgoing)
-	//go p.handlePeerEOF(ctx, s)
 	select {
 	case p.newPeerStream <- s:
 	case <-ctx.Done():
 	}
 }
 
-/*func (p *PubSub) handlePeerEOF(ctx context.Context, s Stream) {
-	pid := s.Conn().RemotePeer()
-	r := protoio.NewDelimitedReader(s, p.maxMessageSize)
-	rpc := new(RPC)
-	for {
-		err := r.ReadMsg(&rpc.RPC)
-		if err != nil {
-			p.notifyPeerDead(pid.ID())
-			return
-		}
-
-		log.Debugf("unexpected message from %s", pid)
-	}
-}*/
-
 func (p *PubSub) handleSendingMessages(ctx context.Context, s Stream, outgoing <-chan *RPC) {
-	//bufw := bufio.NewWriter(s)
-	//wc := protoio.NewDelimitedWriter(bufw)
-
-	/*writeMsg := func(msg proto.Message) error {
-		err := wc.WriteMsg(msg)
-		if err != nil {
-			return err
-		}
-
-		return bufw.Flush()
-	}*/
-
 	for {
 		select {
 		case rpc, ok := <-outgoing:
@@ -145,17 +117,10 @@ func (p *PubSub) handleSendingMessages(ctx context.Context, s Stream, outgoing <
 			if !message.IsEmpty(&rpc.RPC) {
 				message.Filling(&rpc.RPC)
 				if err := s.Write(&rpc.RPC); err != nil {
-					log.Error("Send message fail", "err", err)
+					log.Error("Send message fail", "id", s.Conn().ID(), "err", err)
 					return
 				}
 			}
-
-		/*	err := writeMsg(&rpc.RPC)
-			if err != nil {
-				s.Reset()
-				log.Debugf("writing message to %s: %s", s.Conn().RemotePeer(), err)
-				return
-			}*/
 		case <-ctx.Done():
 			return
 		}

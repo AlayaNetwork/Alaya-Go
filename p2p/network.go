@@ -23,7 +23,7 @@ import (
 	"time"
 )
 
-// Get a list of connected nodes
+// Get a list of connected nodes from p2pServer
 type Peers func() []*Peer
 
 type Network struct {
