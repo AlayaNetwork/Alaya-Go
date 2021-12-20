@@ -428,7 +428,8 @@ func (b *Block) Extra() []byte            { return common.CopyBytes(b.header.Ext
 
 func (b *Block) Header() *Header { return CopyHeader(b.header) }
 
-func (b *Block) ActiveVersion() uint32 { return b.header.activeVersion }
+func (b *Block) ActiveVersion() uint32           { return b.header.activeVersion }
+func (b *Block) SetActiveVersion(version uint32) { b.header.activeVersion = version }
 
 // Body returns the non-header content of the block.
 func (b *Block) Body() *Body { return &Body{b.transactions, b.extraData} }
