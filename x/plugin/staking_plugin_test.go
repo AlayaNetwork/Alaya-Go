@@ -3557,7 +3557,7 @@ func TestStakingPlugin_GetValidator(t *testing.T) {
 	/**
 	Start  GetValidators
 	*/
-	valArr, err := StakingInstance().GetValidators(header.Number.Uint64())
+	valArr, err := StakingInstance().GetValidators(header.Hash(), header.Number.Uint64())
 
 	assert.Nil(t, err, fmt.Sprintf("Failed to GetValidators, err: %v", err))
 	assert.True(t, nil != valArr)
