@@ -215,7 +215,7 @@ func TestStaticAgency(t *testing.T) {
 	vds := newValidators(nodes, 0)
 
 	agency := NewStaticAgency(nodes)
-	validators, err := agency.GetValidators(0)
+	validators, err := agency.GetValidators(common.ZeroHash, 0)
 	assert.True(t, err == nil)
 	assert.Equal(t, *vds, *validators)
 	assert.True(t, agency.Sign(nil) == nil)
@@ -332,12 +332,12 @@ func TestInnerAgency(t *testing.T) {
 	assert.True(t, agency.GetLastNumber(81) == 120)
 	assert.True(t, agency.GetLastNumber(110) == 120)
 
-	validators, err := agency.GetValidators(0)
+	validators, err := agency.GetValidators(common.ZeroHash, 0)
 	assert.True(t, err == nil)
 	assert.Equal(t, *vds, *validators)
 	assert.True(t, blockchain.Genesis() != nil)
 
-	newVds, err := agency.GetValidators(81)
+	newVds, err := agency.GetValidators(common.ZeroHash, 81)
 	assert.True(t, err == nil)
 	assert.True(t, newVds.Len() == 4)
 	assert.True(t, newVds.ValidBlockNumber == 81)
@@ -351,7 +351,7 @@ func TestInnerAgency(t *testing.T) {
 	assert.True(t, newVds.String() != "")
 	assert.False(t, newVds.Equal(validators))
 
-	defaultVds, _ := agency.GetValidators(60)
+	defaultVds, _ := agency.GetValidators(common.ZeroHash, 60)
 	assert.True(t, defaultVds.Equal(validators))
 
 	assert.True(t, agency.GetLastNumber(120) == 120)
@@ -590,7 +590,7 @@ func (m *mockAgency) VerifyHeader(*types.Header, *state.StateDB) error { return 
 
 func (m *mockAgency) GetLastNumber(blockNumber uint64) uint64 { return m.lastNumber }
 
-func (m *mockAgency) GetValidators(blockNumber uint64) (*cbfttypes.Validators, error) {
+func (m *mockAgency) GetValidators(blockHash common.Hash, blockNumber uint64) (*cbfttypes.Validators, error) {
 	return &cbfttypes.Validators{
 		ValidBlockNumber: blockNumber,
 	}, nil
@@ -671,21 +671,27 @@ func TestUpdate(t *testing.T) {
 	assert.Equal(t, lastNumber, vp.lastNumber)
 	assert.Equal(t, vp.prevValidators, vp.currentValidators)
 
+	vp.Update(common.ZeroHash, 250, 0, false, 4352, eventMux)
+	assert.Nil(t, vp.nextValidators)
+	assert.False(t, vp.NeedGroup())
+	assert.Equal(t, vp.epoch, uint64(0))
+
+	vp.Update(common.ZeroHash, 980, 0, true, 4352, eventMux)
+	assert.True(t, vp.NeedGroup())
+	assert.Equal(t, vp.epoch, uint64(0))
+
 	nextNodes := newTestNodeByNum(100)
 	nextAgency := newTestInnerAgency(nextNodes)
-
-	next, err := nextAgency.GetValidators(lastNumber + 1)
+	next, err := nextAgency.GetValidators(common.ZeroHash, lastNumber+1)
 	if err != nil {
 		t.Log("agency.GetValidators", "err", err)
 	}
 	next.Grouped()
 	assert.NotEqual(t, vp.currentValidators, next)
-
-	vp.Update(1000, 0, false, 4352, eventMux)
-	assert.Nil(t, vp.nextValidators)
-	vp.Update(vp.lastNumber, 0, true, 4352, eventMux)
 	assert.False(t, vp.nextValidators.Equal(next))
 	vp.nextValidators = next
-	vp.Update(vp.lastNumber+1, 0, false, 4352, eventMux)
+	vp.Update(common.ZeroHash, vp.lastNumber+1, 1, false, 4352, eventMux)
+	assert.True(t, vp.NeedGroup())
+	assert.Equal(t, vp.epoch, uint64(1))
 	assert.Nil(t, vp.nextValidators)
 }

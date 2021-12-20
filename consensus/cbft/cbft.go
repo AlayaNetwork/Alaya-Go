@@ -22,9 +22,10 @@ import (
 	"crypto/elliptic"
 	"encoding/json"
 	"fmt"
-	"github.com/AlayaNetwork/Alaya-Go/p2p/pubsub"
 	"strings"
 	"sync/atomic"
+
+	"github.com/AlayaNetwork/Alaya-Go/p2p/pubsub"
 
 	"github.com/AlayaNetwork/Alaya-Go/x/xutil"
 
@@ -1367,6 +1368,7 @@ func (cbft *Cbft) commitBlock(commitBlock *types.Block, commitQC *ctypes.QuorumC
 		log.Error("GetActiveVersion failed", "err", err)
 	}
 	// should grouped according max commit block's state
+	// TODO 升级后shouldGroup用块高判断，避免每次都通过cbft.blockCache.GetActiveVersion获取
 	shouldGroup := func() bool {
 		return cbft.validatorPool.NeedGroup() || activeVersion >= params.FORKVERSION_0_17_0
 	}
@@ -1374,7 +1376,7 @@ func (cbft *Cbft) commitBlock(commitBlock *types.Block, commitQC *ctypes.QuorumC
 	// post GroupsTopicEvent to join topic according group info
 	if xutil.IsElection(cpy.NumberU64(), activeVersion) {
 		if shouldGroup() {
-			cbft.validatorPool.Update(cpy.NumberU64(), cbft.state.Epoch()+1, true, activeVersion, cbft.eventMux)
+			cbft.validatorPool.Update(cpy.Hash(), cpy.NumberU64(), cbft.state.Epoch()+1, true, activeVersion, cbft.eventMux)
 		}
 	}
 }
@@ -1452,6 +1454,11 @@ func (cbft *Cbft) getGroupByValidatorID(epoch uint64, nodeID enode.ID) (uint32, 
 	return cbft.validatorPool.GetGroupByValidatorID(epoch, nodeID)
 }
 
+// TODO just for log
+func (cbft *Cbft) GetGroupByValidatorID(nodeID enode.ID) (uint32, uint32, error) {
+	return cbft.getGroupByValidatorID(cbft.state.Epoch(), nodeID)
+}
+
 func (cbft *Cbft) getGroupIndexes(epoch uint64) map[uint32][]uint32 {
 	return cbft.validatorPool.GetGroupIndexes(epoch)
 }
@@ -1483,7 +1490,7 @@ func (cbft *Cbft) verifyConsensusSign(msg ctypes.ConsensusMsg) error {
 
 	// Verify consensus msg signature
 	if err := cbft.validatorPool.Verify(msg.EpochNum(), msg.NodeIndex(), digest, msg.Sign()); err != nil {
-		return authFailedError{err: err}
+		return authFailedError{err: fmt.Errorf("verify consensus sign failed: %v", err)}
 	}
 	return nil
 }

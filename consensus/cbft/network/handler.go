@@ -18,6 +18,7 @@ package network
 
 import (
 	"fmt"
+	"github.com/AlayaNetwork/Alaya-Go/internal/debug"
 	"math/big"
 	"math/rand"
 	"reflect"
@@ -442,26 +443,47 @@ func (h *EngineManager) handler(p *p2p.Peer, rw p2p.MsgReadWriter) error {
 }
 
 func (h *EngineManager) HandleRGMsg(p *peer, msg *p2p.Msg) error {
+	// TODO just for log
+	logVerbosity := debug.GetLogVerbosity()
+	if logVerbosity == log.LvlTrace {
+		myGroupID, _, err1 := h.engine.GetGroupByValidatorID(h.engine.Node().ID())
+		if err1 != nil {
+			p.Log().Error("GetGroupByValidatorID error", "nodeID", h.engine.Node().ID().String())
+		}
+		herGroupID, _, err2 := h.engine.GetGroupByValidatorID(p.Node().ID())
+		if err2 != nil {
+			p.Log().Error("GetGroupByValidatorID error", "nodeID", p.Node().ID().String())
+		}
+		if err1 == nil && err2 == nil {
+			p.Log().Debug("HandleRGMsg", "myGroupID", myGroupID, "myNodeID", h.engine.Node().ID().String(), "herGroupID", herGroupID, "herNodeID", p.Node().ID().String())
+			if myGroupID != herGroupID {
+				p.Log().Error("Invalidate rg msg", "myGroupID", myGroupID, "myNodeID", h.engine.Node().ID().String(), "herGroupID", herGroupID, "herNodeID", p.Node().ID().String())
+			}
+		}
+	}
+
 	// All messages cannot exceed the maximum specified by the agreement.
 	if msg.Size > protocols.CbftProtocolMaxMsgSize {
 		return types.ErrResp(types.ErrMsgTooLarge, "%v > %v", msg.Size, protocols.CbftProtocolMaxMsgSize)
 	}
 
 	switch {
-	case msg.Code == protocols.RGBlockQuorumCertMsg:
-		var request protocols.RGBlockQuorumCert
-		if err := msg.Decode(&request); err != nil {
+	case msg.Code == protocols.PrepareVoteMsg:
+		var request protocols.PrepareVote
+		if err := msg.Decode(&request); err == nil {
 			p.MarkMessageHash((&request).MsgHash())
 			MeteredReadRGMsg(msg)
+			p.Log().Debug("Receive PrepareVoteMsg", "msg", request.String())
 			return h.engine.ReceiveMessage(types.NewMsgInfo(&request, p.PeerID()))
 		}
 		return types.ErrResp(types.ErrInvalidRGMsg, "%s: %v", "unmatched code and data", msg.Code)
 
-	case msg.Code == protocols.RGViewChangeQuorumCertMsg:
-		var request protocols.RGViewChangeQuorumCert
-		if err := msg.Decode(&request); err != nil {
+	case msg.Code == protocols.ViewChangeMsg:
+		var request protocols.ViewChange
+		if err := msg.Decode(&request); err == nil {
 			p.MarkMessageHash((&request).MsgHash())
 			MeteredReadRGMsg(msg)
+			p.Log().Debug("Receive ViewChangeMsg", "msg", request.String())
 			return h.engine.ReceiveMessage(types.NewMsgInfo(&request, p.PeerID()))
 		}
 		return types.ErrResp(types.ErrInvalidRGMsg, "%s: %v", "unmatched code and data", msg.Code)
@@ -503,16 +525,16 @@ func (h *EngineManager) handleMsg(p *peer) error {
 		// Message transfer to cbft message queue.
 		return h.engine.ReceiveMessage(types.NewMsgInfo(&request, p.PeerID()))
 
-	case msg.Code == protocols.PrepareVoteMsg:
-		var request protocols.PrepareVote
+	case msg.Code == protocols.RGBlockQuorumCertMsg:
+		var request protocols.RGBlockQuorumCert
 		if err := msg.Decode(&request); err != nil {
 			return types.ErrResp(types.ErrDecode, "%v: %v", msg, err)
 		}
 		p.MarkMessageHash((&request).MsgHash())
 		return h.engine.ReceiveMessage(types.NewMsgInfo(&request, p.PeerID()))
 
-	case msg.Code == protocols.ViewChangeMsg:
-		var request protocols.ViewChange
+	case msg.Code == protocols.RGViewChangeQuorumCertMsg:
+		var request protocols.RGViewChangeQuorumCert
 		if err := msg.Decode(&request); err != nil {
 			return types.ErrResp(types.ErrDecode, "%v: %v", msg, err)
 		}
