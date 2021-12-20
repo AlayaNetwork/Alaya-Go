@@ -1013,6 +1013,9 @@ func (p *PubSub) handleIncomingRPC(rpc *RPC) {
 
 			if _, ok := tmap[rpc.from.ID()]; ok {
 				delete(tmap, rpc.from.ID())
+				if len(tmap) == 0 {
+					delete(p.topics, t)
+				}
 				p.notifyLeave(t, rpc.from.ID())
 			}
 		}
