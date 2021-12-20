@@ -188,8 +188,11 @@ func (sk *StakingPlugin) EndBlock(blockHash common.Hash, header *types.Header, s
 }
 
 func (sk *StakingPlugin) Confirmed(nodeId enode.IDv0, block *types.Block) error {
-
-	if xutil.IsElection(block.NumberU64(), block.ActiveVersion()) {
+	acVersion := block.ActiveVersion()
+	if acVersion >= params.FORKVERSION_0_17_0 {
+		return nil
+	}
+	if xutil.IsElection(block.NumberU64(), acVersion) {
 
 		next, err := sk.getNextValList(block.Hash(), block.NumberU64(), QueryStartNotIrr)
 		if nil != err {
