@@ -102,12 +102,8 @@ func (d *StaticAgency) GetLastNumber(blockNumber uint64) uint64 {
 	return 0
 }
 
-func (d *StaticAgency) GetValidators(uint64) (*cbfttypes.Validators, error) {
+func (d *StaticAgency) GetValidators(blockHash common.Hash, blockNumber uint64) (*cbfttypes.Validators, error) {
 	return d.validators, nil
-}
-
-func (d *StaticAgency) GetComingValidators(blockHash common.Hash, blockNumber uint64) (*cbfttypes.Validators, error) {
-	return d.GetValidators(blockNumber)
 }
 
 func (d *StaticAgency) IsCandidateNode(nodeID enode.IDv0) bool {
@@ -154,15 +150,11 @@ func (d *MockAgency) GetLastNumber(blockNumber uint64) uint64 {
 	return 0
 }
 
-func (d *MockAgency) GetValidators(blockNumber uint64) (*cbfttypes.Validators, error) {
+func (d *MockAgency) GetValidators(blockHash common.Hash, blockNumber uint64) (*cbfttypes.Validators, error) {
 	if blockNumber > d.interval && blockNumber%d.interval == 1 {
 		d.validators.ValidBlockNumber = d.validators.ValidBlockNumber + d.interval + 1
 	}
 	return d.validators, nil
-}
-
-func (d *MockAgency) GetComingValidators(blockHash common.Hash, blockNumber uint64) (*cbfttypes.Validators, error) {
-	return d.GetValidators(blockNumber)
 }
 
 func (d *MockAgency) IsCandidateNode(nodeID enode.IDv0) bool {
@@ -214,7 +206,7 @@ func (ia *InnerAgency) GetLastNumber(blockNumber uint64) uint64 {
 	if blockNumber <= ia.defaultBlocksPerRound {
 		lastBlockNumber = ia.defaultBlocksPerRound
 	} else {
-		vds, err := ia.GetValidators(blockNumber)
+		vds, err := ia.GetValidators(common.ZeroHash, blockNumber)
 		if err != nil {
 			log.Error("Get validator fail", "blockNumber", blockNumber)
 			return 0
@@ -243,7 +235,7 @@ func (ia *InnerAgency) GetLastNumber(blockNumber uint64) uint64 {
 	return lastBlockNumber
 }
 
-func (ia *InnerAgency) GetValidators(blockNumber uint64) (v *cbfttypes.Validators, err error) {
+func (ia *InnerAgency) GetValidators(blockHash common.Hash, blockNumber uint64) (v *cbfttypes.Validators, err error) {
 	defaultValidators := *ia.defaultValidators
 	baseNumber := blockNumber
 	if blockNumber == 0 {
@@ -294,10 +286,6 @@ func (ia *InnerAgency) GetValidators(blockNumber uint64) (v *cbfttypes.Validator
 	return &validators, nil
 }
 
-func (ia *InnerAgency) GetComingValidators(blockHash common.Hash, blockNumber uint64) (*cbfttypes.Validators, error) {
-	return ia.GetValidators(blockNumber)
-}
-
 func (ia *InnerAgency) IsCandidateNode(nodeID enode.IDv0) bool {
 	return true
 }
@@ -345,14 +333,14 @@ func NewValidatorPool(agency consensus.Agency, blockNumber, epoch uint64, nodeID
 	}
 	// FIXME: Check `GetValidators` return error
 	if agency.GetLastNumber(blockNumber) == blockNumber {
-		pool.prevValidators, _ = agency.GetValidators(blockNumber)
-		pool.currentValidators, _ = agency.GetValidators(NextRound(blockNumber))
+		pool.prevValidators, _ = agency.GetValidators(common.ZeroHash, blockNumber)
+		pool.currentValidators, _ = agency.GetValidators(common.ZeroHash, NextRound(blockNumber))
 		pool.lastNumber = agency.GetLastNumber(NextRound(blockNumber))
 		if blockNumber != 0 {
 			pool.epoch += 1
 		}
 	} else {
-		pool.currentValidators, _ = agency.GetValidators(blockNumber)
+		pool.currentValidators, _ = agency.GetValidators(common.ZeroHash, blockNumber)
 		pool.prevValidators = pool.currentValidators
 		pool.lastNumber = agency.GetLastNumber(blockNumber)
 	}
@@ -368,7 +356,7 @@ func NewValidatorPool(agency consensus.Agency, blockNumber, epoch uint64, nodeID
 			log.Error("ValidatorPool organized failed!", "error", err)
 		}
 		if pool.nextValidators == nil {
-			nds, err := pool.agency.GetValidators(NextRound(pool.currentValidators.ValidBlockNumber))
+			nds, err := pool.agency.GetValidators(common.ZeroHash, NextRound(pool.currentValidators.ValidBlockNumber))
 			if err != nil {
 				log.Debug("Get nextValidators error", "blockNumber", blockNumber, "err", err)
 				return pool
@@ -386,12 +374,12 @@ func NewValidatorPool(agency consensus.Agency, blockNumber, epoch uint64, nodeID
 // Reset reset validator pool.
 func (vp *ValidatorPool) Reset(blockNumber uint64, epoch uint64, eventMux *event.TypeMux) {
 	if vp.agency.GetLastNumber(blockNumber) == blockNumber {
-		vp.prevValidators, _ = vp.agency.GetValidators(blockNumber)
-		vp.currentValidators, _ = vp.agency.GetValidators(NextRound(blockNumber))
+		vp.prevValidators, _ = vp.agency.GetValidators(common.ZeroHash, blockNumber)
+		vp.currentValidators, _ = vp.agency.GetValidators(common.ZeroHash, NextRound(blockNumber))
 		vp.lastNumber = vp.agency.GetLastNumber(NextRound(blockNumber))
 		vp.epoch = epoch + 1
 	} else {
-		vp.currentValidators, _ = vp.agency.GetValidators(blockNumber)
+		vp.currentValidators, _ = vp.agency.GetValidators(common.ZeroHash, blockNumber)
 		vp.prevValidators = vp.currentValidators
 		vp.lastNumber = vp.agency.GetLastNumber(blockNumber)
 		vp.epoch = epoch
@@ -459,7 +447,7 @@ func (vp *ValidatorPool) Update(blockHash common.Hash, blockNumber uint64, epoch
 	//生效后第一个共识周期的switchpoint是旧值，此时不能切换
 	//判断依据是新validators和current完全相同且nextValidators为空
 	if !isElection && vp.nextValidators == nil && needGroup {
-		nds, err = vp.agency.GetValidators(nextRoundBlockNumber)
+		nds, err = vp.agency.GetValidators(blockHash, nextRoundBlockNumber)
 		if err != nil {
 			log.Error("Get validator error", "blockNumber", blockNumber, "err", err)
 			return err
@@ -485,18 +473,10 @@ func (vp *ValidatorPool) Update(blockHash common.Hash, blockNumber uint64, epoch
 
 	if isElection {
 		// 提前更新nextValidators，为了p2p早一步订阅分组事件以便建链接
-		if blockHash != common.ZeroHash {
-			nds, err = vp.agency.GetComingValidators(blockHash, nextRoundBlockNumber)
-			if err != nil {
-				log.Error("Get coming validators error", "blockNumber", blockNumber, "err", err)
-				return err
-			}
-		} else {
-			nds, err = vp.agency.GetValidators(nextRoundBlockNumber)
-			if err != nil {
-				log.Error("Get validators error", "blockNumber", blockNumber, "err", err)
-				return err
-			}
+		nds, err = vp.agency.GetValidators(blockHash, nextRoundBlockNumber)
+		if err != nil {
+			log.Error("Get validators error", "blockNumber", blockNumber, "err", err)
+			return err
 		}
 		vp.nextValidators = nds
 		if vp.grouped {
@@ -506,7 +486,7 @@ func (vp *ValidatorPool) Update(blockHash common.Hash, blockNumber uint64, epoch
 		// 节点中间重启过， nextValidators没有赋值
 		if vp.nextValidators == nil {
 			// 此时blockNumber==vp.lastNumber blockNumber+1即为下一轮
-			nds, err = vp.agency.GetValidators(NextRound(blockNumber))
+			nds, err = vp.agency.GetValidators(blockHash, NextRound(blockNumber))
 			if err != nil {
 				log.Error("Get validator error", "blockNumber", blockNumber, "err", err)
 				return err

@@ -392,12 +392,8 @@ func (bcr *BlockChainReactor) GetLastNumber(blockNumber uint64) uint64 {
 	return plugin.StakingInstance().GetLastNumber(blockNumber)
 }
 
-func (bcr *BlockChainReactor) GetValidators(blockNumber uint64) (*cbfttypes.Validators, error) {
-	return plugin.StakingInstance().GetValidators(blockNumber)
-}
-
-func (bcr *BlockChainReactor) GetComingValidators(blockHash common.Hash, blockNumber uint64) (*cbfttypes.Validators, error) {
-	return plugin.StakingInstance().GetComingValidators(blockHash, blockNumber)
+func (bcr *BlockChainReactor) GetValidators(blockHash common.Hash, blockNumber uint64) (*cbfttypes.Validators, error) {
+	return plugin.StakingInstance().GetValidators(blockHash, blockNumber)
 }
 
 func (bcr *BlockChainReactor) IsCandidateNode(nodeID enode.IDv0) bool {
