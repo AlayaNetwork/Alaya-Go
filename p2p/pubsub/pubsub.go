@@ -1013,6 +1013,9 @@ func (p *PubSub) handleIncomingRPC(rpc *RPC) {
 
 			if _, ok := tmap[rpc.from.ID()]; ok {
 				delete(tmap, rpc.from.ID())
+				if len(tmap) == 0 {
+					delete(p.topics, t)
+				}
 				p.notifyLeave(t, rpc.from.ID())
 			}
 		}
@@ -1385,9 +1388,12 @@ func (p *PubSub) GetAllPubSubStatus() *Status {
 			nodeList := make([]enode.ID, 0)
 			tmpMap := gsr.mesh[k]
 			for n := range v {
-				if _, ok := tmpMap[n]; !ok {
-					nodeList = append(nodeList, n)
+				if tmpMap != nil {
+					if _, ok := tmpMap[n]; ok {
+						continue
+					}
 				}
+				nodeList = append(nodeList, n)
 			}
 			outMesh[k] = nodeList
 		}
