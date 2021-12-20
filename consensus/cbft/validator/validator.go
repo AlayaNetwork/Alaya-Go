@@ -503,12 +503,64 @@ func (vp *ValidatorPool) Update(blockHash common.Hash, blockNumber uint64, epoch
 		currEpoch := vp.epoch
 		vp.epoch = epoch
 		vp.nextValidators = nil
-		log.Info("Update validators", "validators.len", vp.currentValidators.Len(), "switchpoint", vp.switchPoint, "epoch", vp.epoch, "lastNumber", vp.lastNumber)
+
 		//切换共识轮时需要将上一轮分组的topic取消订阅
 		vp.dissolve(currEpoch, eventMux)
+
+		//旧版本（非分组共识）需要发events断开落选的共识节点
+		if !vp.grouped {
+			vp.dealWithOldVersionEvents(epoch, eventMux)
+		}
+		log.Info("Update validators", "validators.len", vp.currentValidators.Len(), "switchpoint", vp.switchPoint, "epoch", vp.epoch, "lastNumber", vp.lastNumber)
 	}
 	log.Debug("Update OK", "blockNumber", blockNumber, "epoch", epoch, "isElection", isElection, "version", version)
 	return nil
+}
+
+// dealWithOldVersionEvents process version <= 0.16.0 logics
+func (vp *ValidatorPool) dealWithOldVersionEvents(epoch uint64, eventMux *event.TypeMux) {
+	isValidatorBefore := vp.isValidator(epoch-1, vp.nodeID)
+	isValidatorAfter := vp.isValidator(epoch, vp.nodeID)
+
+	if isValidatorBefore {
+		// If we are still a consensus node, that adding
+		// new validators as consensus peer, and removing
+		// validators. Added as consensus peersis because
+		// we need to keep connect with other validators
+		// in the consensus stages. Also we are not needed
+		// to keep connect with old validators.
+		if isValidatorAfter {
+			for _, n := range vp.currentValidators.SortedNodes {
+				if node, _ := vp.prevValidators.FindNodeByID(n.NodeID); node == nil {
+					eventMux.Post(cbfttypes.AddValidatorEvent{Node: enode.NewV4(node.PubKey, nil, 0, 0)})
+					log.Trace("Post AddValidatorEvent", "node", node.String())
+				}
+			}
+
+			for _, n := range vp.prevValidators.SortedNodes {
+				if node, _ := vp.currentValidators.FindNodeByID(n.NodeID); node == nil {
+					eventMux.Post(cbfttypes.RemoveValidatorEvent{Node: enode.NewV4(node.PubKey, nil, 0, 0)})
+					log.Trace("Post RemoveValidatorEvent", "node", node.String())
+				}
+			}
+		} else {
+			for _, node := range vp.prevValidators.SortedNodes {
+				eventMux.Post(cbfttypes.RemoveValidatorEvent{Node: enode.NewV4(node.PubKey, nil, 0, 0)})
+				log.Trace("Post RemoveValidatorEvent", "nodeID", node.String())
+			}
+		}
+	} else {
+		// We are become a consensus node, that adding all
+		// validators as consensus peer except us. Added as
+		// consensus peers is because we need to keep connecting
+		// with other validators in the consensus stages.
+		if isValidatorAfter {
+			for _, node := range vp.currentValidators.SortedNodes {
+				eventMux.Post(cbfttypes.AddValidatorEvent{Node: enode.NewV4(node.PubKey, nil, 0, 0)})
+				log.Trace("Post AddValidatorEvent", "nodeID", node.String())
+			}
+		}
+	}
 }
 
 // GetValidatorByNodeID get the validator by node id.
