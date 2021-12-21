@@ -427,10 +427,9 @@ func (vp *ValidatorPool) Update(blockHash common.Hash, blockNumber uint64, epoch
 	vp.lock.Lock()
 	defer vp.lock.Unlock()
 
-	log.Debug("Update", "blockNumber", blockNumber, "epoch", epoch, "isElection", isElection, "version", version)
 	// 生效后第一个共识周期的Election block已经是新值（2130）所以第一次触发update是cbft.tryChangeView->shouldSwitch
 	if blockNumber <= vp.switchPoint && !isElection {
-		log.Debug("Already update validator before", "blockNumber", blockNumber, "switchPoint", vp.switchPoint)
+		log.Trace("Already update validator before", "blockNumber", blockNumber, "switchPoint", vp.switchPoint)
 		return errors.New("already updated before")
 	}
 
@@ -486,7 +485,7 @@ func (vp *ValidatorPool) Update(blockHash common.Hash, blockNumber uint64, epoch
 		// 节点中间重启过， nextValidators没有赋值
 		if vp.nextValidators == nil {
 			// 此时blockNumber==vp.lastNumber blockNumber+1即为下一轮
-			nds, err = vp.agency.GetValidators(blockHash, NextRound(blockNumber))
+			nds, err = vp.agency.GetValidators(blockHash, nextRoundBlockNumber)
 			if err != nil {
 				log.Error("Get validator error", "blockNumber", blockNumber, "err", err)
 				return err
@@ -499,7 +498,7 @@ func (vp *ValidatorPool) Update(blockHash common.Hash, blockNumber uint64, epoch
 		vp.prevValidators = vp.currentValidators
 		vp.currentValidators = vp.nextValidators
 		vp.switchPoint = vp.currentValidators.ValidBlockNumber - 1
-		vp.lastNumber = vp.agency.GetLastNumber(NextRound(blockNumber))
+		vp.lastNumber = vp.agency.GetLastNumber(nextRoundBlockNumber)
 		currEpoch := vp.epoch
 		vp.epoch = epoch
 		vp.nextValidators = nil

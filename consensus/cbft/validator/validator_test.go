@@ -602,7 +602,7 @@ func (m *mockAgency) OnCommit(block *types.Block) error { return nil }
 
 func TestValidatorPoolReset(t *testing.T) {
 	agency := newMockAgency(100)
-	vp := NewValidatorPool(agency, 0, 0, enode.ID{}, false, new(event.TypeMux))
+	vp := NewValidatorPool(agency, 0, 0, enode.ID{}, true, new(event.TypeMux))
 
 	vp.Reset(100, 10, nil)
 	assert.Equal(t, vp.switchPoint, uint64(100))
