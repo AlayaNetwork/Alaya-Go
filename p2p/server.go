@@ -462,7 +462,9 @@ func (srv *Server) Stop() {
 		// this unblocks listener Accept
 		srv.listener.Close()
 	}
-	srv.cancelPubSubServer()
+	if srv.cancelPubSubServer != nil {
+		srv.cancelPubSubServer()
+	}
 	close(srv.quit)
 	srv.lock.Unlock()
 	srv.loopWG.Wait()

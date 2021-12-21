@@ -85,7 +85,7 @@ func (p *ParallelStateProcessor) Process(block *types.Block, statedb *state.Stat
 		}
 		log.Debug("Process end blocker cost time", "blockNumber", block.Number(), "blockHash", block.Hash())
 	}
-
+	block.SetActiveVersion(header.GetActiveVersion())
 	// Finalize the block, applying any consensus engine specific extras (e.g. block rewards)
 	//p.engine.Finalize(p.bc, header, statedb, block.Transactions(), receipts)
 	statedb.IntermediateRoot(true)

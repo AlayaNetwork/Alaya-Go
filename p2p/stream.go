@@ -39,12 +39,12 @@ type Stream struct {
 
 func (s *Stream) String() string {
 	return fmt.Sprintf(
-		"<swarm.Stream local <-> %s>",
-		s.conn.RemotePeer(),
+		"<Stream local <-> %s>",
+		s.conn.RemotePeer().ID().TerminalString(),
 	)
 }
 
-// Conn returns the Conn associated with this stream, as an network.Conn
+// Conn returns the Conn associated with this stream, as an pubsub.Conn
 func (s *Stream) Conn() pubsub.Conn {
 	return s.conn
 }
@@ -59,8 +59,7 @@ func (s *Stream) Protocol() pubsub.ProtocolID {
 // SetProtocol sets the protocol for this stream.
 //
 // This doesn't actually *do* anything other than record the fact that we're
-// speaking the given protocol over this stream. It's still up to the user to
-// negotiate the protocol. This is usually done by the Host.
+// speaking the given protocol over this stream.
 func (s *Stream) SetProtocol(p pubsub.ProtocolID) {
 	s.protocol.Store(p)
 }
@@ -68,12 +67,12 @@ func (s *Stream) SetProtocol(p pubsub.ProtocolID) {
 func (s *Stream) Read(data interface{}) error {
 	msg, err := s.rw.ReadMsg()
 	if err != nil {
-		log.Error("Failed to read PubSub message", "err", err)
+		log.Error("Failed to read PubSub message", "id", s.conn.ID(), "err", err)
 		return err
 	}
 
 	if err := msg.Decode(data); err != nil {
-		log.Error("Decode PubSub message fail", "err", err)
+		log.Error("Decode PubSub message fail", "id", s.conn.ID(), "err", err)
 		return err
 	}
 	return nil
@@ -81,7 +80,7 @@ func (s *Stream) Read(data interface{}) error {
 
 func (s *Stream) Write(data interface{}) error {
 	if err := Send(s.rw, PubSubMsgCode, data); err != nil {
-		log.Error("Failed to send PubSub message", "err", err)
+		log.Error("Failed to send PubSub message", "id", s.conn.ID(), "err", err)
 		return err
 	}
 	return nil

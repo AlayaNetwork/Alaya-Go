@@ -76,11 +76,12 @@ type PubSub struct {
 
 // Protocol.Run()
 func (ps *PubSub) handler(peer *p2p.Peer, rw p2p.MsgReadWriter) error {
+	log.Debug("Start PubSub's processors", "id", peer.ID().TerminalString())
 	errCh := ps.pss.NewConn(peer, rw)
 	defer ps.pss.Host().DisConn(peer.ID())
 
 	handlerErr := <-errCh
-	log.Info("pubsub's handler ends", "err", handlerErr)
+	log.Info("pubsub's handler ends", "id", peer.ID().TerminalString(), "err", handlerErr)
 
 	return handlerErr
 }
@@ -232,12 +233,17 @@ func (ps *PubSub) listen(s *pubsub.Subscription) {
 func (ps *PubSub) Cancel(topic string) error {
 	ps.Lock()
 	defer ps.Unlock()
-	sb := ps.mySubs[topic]
-	if sb != nil {
+	sb, ok := ps.mySubs[topic]
+	if ok && sb != nil {
 		sb.Cancel()
 		delete(ps.mySubs, topic)
+	}
+	t, ok := ps.topics[topic]
+	if ok && t != nil {
+		t.Close()
 		delete(ps.topics, topic)
 	}
+
 	if cancel, ok := ps.topicCancel[topic]; ok {
 		cancel()
 		delete(ps.topicCtx, topic)

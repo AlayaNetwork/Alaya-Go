@@ -530,12 +530,12 @@ func (p *PubSub) processLoop(ctx context.Context) {
 
 			ch, ok := p.peers[pid.ID()]
 			if !ok {
-				log.Warn("new stream for unknown peer: ", pid.ID().TerminalString())
+				log.Warn("new stream for unknown peer", "id", pid.ID().TerminalString())
 				continue
 			}
 
 			if p.blacklist.Contains(pid.ID()) {
-				log.Warn("closing stream for blacklisted peer: ", pid.ID().TerminalString())
+				log.Warn("closing stream for blacklisted peer", "id", pid.ID().TerminalString())
 				close(ch)
 				delete(p.peers, pid.ID())
 				continue
@@ -637,12 +637,12 @@ func (p *PubSub) handlePendingPeers() {
 
 	for pid := range newPeers {
 		if _, ok := p.peers[pid]; ok {
-			log.Debug("already have connection to peer: ", pid)
+			log.Debug("already have connection to peer", "id", pid.TerminalString())
 			continue
 		}
 
 		if p.blacklist.Contains(pid) {
-			log.Warn("ignoring connection from blacklisted peer: ", pid)
+			log.Warn("ignoring connection from blacklisted peer", "id", pid.TerminalString())
 			continue
 		}
 
@@ -1013,6 +1013,9 @@ func (p *PubSub) handleIncomingRPC(rpc *RPC) {
 
 			if _, ok := tmap[rpc.from.ID()]; ok {
 				delete(tmap, rpc.from.ID())
+				if len(tmap) == 0 {
+					delete(p.topics, t)
+				}
 				p.notifyLeave(t, rpc.from.ID())
 			}
 		}
@@ -1081,7 +1084,7 @@ func (p *PubSub) pushMsg(msg *Message) {
 	// reject messages claiming to be from ourselves but not locally published
 	self := p.host.ID()
 	if msg.GetFrom() == self.ID() && src.ID() != self.ID() {
-		log.Debug("dropping message claiming to be from self but forwarded", "peer", src)
+		log.Debug("dropping message claiming to be from self but forwarded", "peer", src.ID().TerminalString())
 		p.tracer.RejectMessage(msg, RejectSelfOrigin)
 		return
 	}
@@ -1360,8 +1363,9 @@ type Status struct {
 }
 
 func (p *PubSub) GetAllPubSubStatus() *Status {
-	status := &Status{}
+	result := make(chan *Status, 1)
 	getInfo := func() {
+		status := &Status{}
 		gsr, ok := p.rt.(*GossipSubRouter)
 		if !ok {
 			return
@@ -1384,9 +1388,12 @@ func (p *PubSub) GetAllPubSubStatus() *Status {
 			nodeList := make([]enode.ID, 0)
 			tmpMap := gsr.mesh[k]
 			for n := range v {
-				if _, ok := tmpMap[n]; !ok {
-					nodeList = append(nodeList, n)
+				if tmpMap != nil {
+					if _, ok := tmpMap[n]; ok {
+						continue
+					}
 				}
+				nodeList = append(nodeList, n)
 			}
 			outMesh[k] = nodeList
 		}
@@ -1397,11 +1404,13 @@ func (p *PubSub) GetAllPubSubStatus() *Status {
 			myTopics = append(myTopics, t)
 		}
 		status.Topics = myTopics
+		log.Debug("Get PubSub status information", "peers", gsr.peers, "mesh", gsr.mesh, "myTopics", p.myTopics)
+		result <- status
 	}
 
 	select {
 	case p.eval <- getInfo:
 	case <-p.ctx.Done():
 	}
-	return status
+	return <-result
 }
