@@ -13,5 +13,5 @@ RUN apk add --no-cache ca-certificates libstdc++ bash tzdata gmp-dev
 COPY --from=builder /Alaya-Go/build/bin/alaya /usr/local/bin/
 
 VOLUME /data/alaya
-EXPOSE 6060 6789 6790 16789 16789/udp
+EXPOSE 6060 6789 6790 6791 16789 16789/udp
 ENTRYPOINT ["alaya"]
