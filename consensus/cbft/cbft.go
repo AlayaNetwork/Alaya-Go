@@ -22,9 +22,10 @@ import (
 	"crypto/elliptic"
 	"encoding/json"
 	"fmt"
-	"github.com/AlayaNetwork/Alaya-Go/p2p/pubsub"
 	"strings"
 	"sync/atomic"
+
+	"github.com/AlayaNetwork/Alaya-Go/p2p/pubsub"
 
 	"github.com/AlayaNetwork/Alaya-Go/x/xutil"
 
@@ -1367,6 +1368,7 @@ func (cbft *Cbft) commitBlock(commitBlock *types.Block, commitQC *ctypes.QuorumC
 		log.Error("GetActiveVersion failed", "err", err)
 	}
 	// should grouped according max commit block's state
+	// TODO 升级后shouldGroup用块高判断，避免每次都通过cbft.blockCache.GetActiveVersion获取
 	shouldGroup := func() bool {
 		return cbft.validatorPool.NeedGroup() || activeVersion >= params.FORKVERSION_0_17_0
 	}
@@ -1374,7 +1376,7 @@ func (cbft *Cbft) commitBlock(commitBlock *types.Block, commitQC *ctypes.QuorumC
 	// post GroupsTopicEvent to join topic according group info
 	if xutil.IsElection(cpy.NumberU64(), activeVersion) {
 		if shouldGroup() {
-			cbft.validatorPool.Update(cpy.NumberU64(), cbft.state.Epoch()+1, true, activeVersion, cbft.eventMux)
+			cbft.validatorPool.Update(cpy.Hash(), cpy.NumberU64(), cbft.state.Epoch()+1, true, activeVersion, cbft.eventMux)
 		}
 	}
 }
