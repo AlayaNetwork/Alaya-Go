@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"github.com/AlayaNetwork/Alaya-Go/common"
 	"github.com/AlayaNetwork/Alaya-Go/common/hexutil"
+	"github.com/AlayaNetwork/Alaya-Go/common/json"
 	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/utils"
 	"github.com/AlayaNetwork/Alaya-Go/crypto"
 	"github.com/AlayaNetwork/Alaya-Go/crypto/bls"
@@ -428,6 +429,17 @@ func (v *ViewChangeQC) AppendQuorumCert(viewChangeQC *ViewChangeQuorumCert) {
 	v.QCs = append(v.QCs, viewChangeQC)
 }
 
+func (v *ViewChangeQC) DeepCopyViewChangeQC() *ViewChangeQC {
+	if v == nil || len(v.QCs) <= 0 {
+		return nil
+	}
+	cpy := &ViewChangeQC{QCs: make([]*ViewChangeQuorumCert, 0, len(v.QCs))}
+	for _, qc := range v.QCs {
+		cpy.AppendQuorumCert(qc.DeepCopyViewChangeQuorumCert())
+	}
+	return cpy
+}
+
 type PrepareQCs struct {
 	QCs []*QuorumCert `json:"qcs"`
 }
@@ -459,13 +471,24 @@ func (p *PrepareQCs) AppendQuorumCert(qc *QuorumCert) {
 	p.QCs = append(p.QCs, qc)
 }
 
+func (p *PrepareQCs) DeepCopyPrepareQCs() *PrepareQCs {
+	if p == nil || len(p.QCs) <= 0 {
+		return nil
+	}
+	cpy := &PrepareQCs{QCs: make([]*QuorumCert, 0, len(p.QCs))}
+	for _, qc := range p.QCs {
+		cpy.AppendQuorumCert(qc.DeepCopyQuorumCert())
+	}
+	return cpy
+}
+
 type UnKnownGroups struct {
 	UnKnown []*UnKnownGroup `json:"unKnown"`
 }
 
 type UnKnownGroup struct {
-	GroupID    uint32 `json:"groupID"`
-	UnKnownSet *utils.BitArray
+	GroupID    uint32          `json:"groupID"`
+	UnKnownSet *utils.BitArray `json:"unKnownSet"`
 }
 
 func (unKnowns *UnKnownGroups) UnKnownSize() int {
@@ -482,4 +505,11 @@ func (unKnowns *UnKnownGroups) UnKnownSize() int {
 		}
 	}
 	return unKnownSets.HasLength()
+}
+
+func (unKnowns *UnKnownGroups) String() string {
+	if b, err := json.Marshal(unKnowns); err == nil {
+		return string(b)
+	}
+	return ""
 }

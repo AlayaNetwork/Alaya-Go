@@ -1,7 +1,6 @@
 package cbft
 
 import (
-	"github.com/AlayaNetwork/Alaya-Go/common/hexutil"
 	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/protocols"
 	"reflect"
 	"sync"
@@ -225,7 +224,7 @@ func (m *RGBroadcastManager) upgradeCoordinator(a awaiting) bool {
 	if err != nil || groupID != a.GroupID() {
 		return false
 	}
-	if unitID == uint32(0) { // the first echelon,Send by default
+	if unitID == defaultUnitID { // the first echelon, Send by default
 		return true
 	}
 
@@ -234,6 +233,7 @@ func (m *RGBroadcastManager) upgradeCoordinator(a awaiting) bool {
 		m.cbft.log.Error("Get coordinator indexes by groupID error")
 		return false
 	}
+	m.cbft.log.Trace("CoordinatorIndexes", "groupID", groupID, "unitID", unitID, "coordinatorIndexes", coordinatorIndexes)
 
 	var receiveIndexes []uint32
 
@@ -246,15 +246,15 @@ func (m *RGBroadcastManager) upgradeCoordinator(a awaiting) bool {
 		return false
 	}
 	if !m.enoughCoordinator(groupID, unitID, coordinatorIndexes, receiveIndexes) {
-		m.cbft.log.Warn("Upgrade the current node to Coordinator", "type", reflect.TypeOf(a), "groupID", groupID, "index", a.Index(), "unitID", unitID, "coordinatorIndexes", coordinatorIndexes, "receiveIndexes", receiveIndexes)
-		m.recordMetrics(a)
+		m.cbft.log.Warn("Upgrade the current node to Coordinator", "type", reflect.TypeOf(a), "groupID", groupID, "unitID", unitID, "blockIndex", a.Index(), "coordinatorIndexes", coordinatorIndexes, "receiveIndexes", receiveIndexes)
+		m.recordUpgradeCoordinatorMetrics(a)
 		return true
 	}
 	m.cbft.log.Debug("Enough Coordinator, no need to upgrade to Coordinator", "groupID", groupID, "unitID", unitID, "coordinatorIndexes", coordinatorIndexes, "receiveIndexes", receiveIndexes)
 	return false
 }
 
-func (m *RGBroadcastManager) recordMetrics(a awaiting) {
+func (m *RGBroadcastManager) recordUpgradeCoordinatorMetrics(a awaiting) {
 	switch a.(type) {
 	case *awaitingRGBlockQC:
 		upgradeCoordinatorBlockCounter.Inc(1)
@@ -265,10 +265,17 @@ func (m *RGBroadcastManager) recordMetrics(a awaiting) {
 }
 
 func (m *RGBroadcastManager) enoughCoordinator(groupID, unitID uint32, coordinatorIndexes [][]uint32, receiveIndexes []uint32) bool {
+	if len(receiveIndexes) == 0 {
+		return false
+	}
 	enough := func() int {
 		// The total number of validators in the current group
 		total := m.cbft.groupLen(m.cbft.state.Epoch(), groupID)
-		return total * efficientCoordinatorRatio / 100
+		threshold := total * efficientCoordinatorRatio / 100
+		if threshold <= 0 {
+			threshold = 1
+		}
+		return threshold
 	}()
 
 	return m.countCoordinator(unitID, coordinatorIndexes, receiveIndexes) >= enough
@@ -336,11 +343,7 @@ func (m *RGBroadcastManager) broadcastFunc(a awaiting) {
 			return
 		}
 		m.cbft.network.Broadcast(rg)
-		// todo just for log
-		digest, _ := rg.CannibalizeBytes()
-		pubKey := m.cbft.config.Option.BlsPriKey.GetPublicKey()
-		blsPublicKey := hexutil.Encode(pubKey.Serialize())
-		m.cbft.log.Debug("Success to broadcast RGBlockQuorumCert", "msg", rg.String(), "data", hexutil.Encode(digest), "sign", hexutil.Encode(rg.Sign()), "pubkey", blsPublicKey)
+		m.cbft.log.Debug("Success to broadcast RGBlockQuorumCert", "msg", rg.String())
 		m.hadSendRGBlockQuorumCerts[msg.Index()] = rg
 		delete(m.awaitingRGBlockQuorumCerts, msg.Index())
 		m.cbft.state.AddRGBlockQuorumCert(node.Index, rg)

@@ -1634,7 +1634,7 @@ func (cbft *Cbft) verifyConsensusMsg(msg ctypes.ConsensusMsg) (*cbfttypes.Valida
 	switch cm := msg.(type) {
 	case *protocols.PrepareBlock:
 		proposer := cbft.currentProposer()
-		if uint32(proposer.Index) != msg.NodeIndex() {
+		if proposer.Index != msg.NodeIndex() {
 			return nil, fmt.Errorf("current proposer index:%d, prepare block author index:%d", proposer.Index, msg.NodeIndex())
 		}
 		// BlockNum equal 1, the parent's block is genesis, doesn't has prepareQC

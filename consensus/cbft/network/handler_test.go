@@ -141,6 +141,10 @@ func (s *fakeCbft) BlockExists(blockNumber uint64, blockHash common.Hash) error 
 	return nil
 }
 
+func (s *fakeCbft) GetGroupByValidatorID(nodeID enode.ID) (uint32, uint32, error) {
+	return 0, 0, nil
+}
+
 // Create a new EngineManager.
 func newHandle(t *testing.T) (*EngineManager, *fakeCbft) {
 	// init local peer and engineManager.
