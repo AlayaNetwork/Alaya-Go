@@ -541,7 +541,7 @@ type GetPrepareVote struct {
 }
 
 func (s *GetPrepareVote) String() string {
-	return fmt.Sprintf("{Epoch:%d,ViewNumber:%d,BlockIndex:%d,UnKnownSetLen:%d}", s.Epoch, s.ViewNumber, s.BlockIndex, s.UnKnownSet.UnKnownSize())
+	return fmt.Sprintf("{Epoch:%d,ViewNumber:%d,BlockIndex:%d,UnKnownSetLen:%d,UnKnownSet:%s}", s.Epoch, s.ViewNumber, s.BlockIndex, s.UnKnownSet.UnKnownSize(), s.UnKnownSet.String())
 }
 
 func (s *GetPrepareVote) MsgHash() common.Hash {
@@ -753,7 +753,7 @@ type GetViewChange struct {
 }
 
 func (s *GetViewChange) String() string {
-	return fmt.Sprintf("{Epoch:%d,ViewNumber:%d,UnKnownSetLen:%d}", s.Epoch, s.ViewNumber, s.UnKnownSet.UnKnownSize())
+	return fmt.Sprintf("{Epoch:%d,ViewNumber:%d,UnKnownSetLen:%d,UnKnownSet:%s}", s.Epoch, s.ViewNumber, s.UnKnownSet.UnKnownSize(), s.UnKnownSet.String())
 }
 
 func (s *GetViewChange) MsgHash() common.Hash {
