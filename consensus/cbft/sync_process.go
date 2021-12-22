@@ -382,7 +382,7 @@ func (cbft *Cbft) OnGetPrepareVote(id string, msg *protocols.GetPrepareVote) err
 				}
 				if len(prepareVoteMap) > 0 {
 					for i := uint32(0); i < un.UnKnownSet.Size(); i++ {
-						if rgqc != nil && rgqc.BlockQC.HasSign(i) {
+						if !un.UnKnownSet.GetIndex(i) || rgqc != nil && rgqc.BlockQC.HasSign(i) {
 							continue
 						}
 						if v, ok := prepareVoteMap[i]; ok {
@@ -613,7 +613,7 @@ func (cbft *Cbft) OnGetViewChange(id string, msg *protocols.GetViewChange) error
 			}
 			if len(viewChangeMap) > 0 {
 				for i := uint32(0); i < un.UnKnownSet.Size(); i++ {
-					if rgqc != nil && rgqc.ViewChangeQC.HasSign(i) {
+					if !un.UnKnownSet.GetIndex(i) || rgqc != nil && rgqc.ViewChangeQC.HasSign(i) {
 						continue
 					}
 					if v, ok := viewChangeMap[i]; ok {
@@ -904,7 +904,7 @@ func (cbft *Cbft) MissingPrepareVote() (v *protocols.GetPrepareVote, err error) 
 						BlockIndex: index,
 						UnKnownSet: unKnownGroups,
 					}, nil
-					cbft.log.Debug("MissingPrepareVote", "blockIndex", index, "size", size, "threshold", threshold, "request", v.String())
+					cbft.log.Debug("MissingPrepareVote", "blockIndex", index, "known", size, "threshold", threshold, "request", v.String())
 					break
 				}
 			}
@@ -943,7 +943,7 @@ func (cbft *Cbft) MissingViewChangeNodes() (v *protocols.GetViewChange, err erro
 					ViewNumber: cbft.state.ViewNumber(),
 					UnKnownSet: unKnownGroups,
 				}, nil
-				cbft.log.Debug("MissingViewChangeNodes", "size", size, "threshold", threshold, "request", v.String())
+				cbft.log.Debug("MissingViewChangeNodes", "known", size, "threshold", threshold, "request", v.String())
 			}
 		}
 		if v == nil {
