@@ -501,7 +501,7 @@ func (cbft *Cbft) insertPrepareQC(qc *ctypes.QuorumCert) {
 		hasExecuted := func() bool {
 			if cbft.validatorPool.IsValidator(qc.Epoch, cbft.config.Option.Node.ID()) {
 				return cbft.state.HadSendPrepareVote().Had(qc.BlockIndex) && linked(qc.BlockNumber)
-			} else if cbft.validatorPool.IsCandidateNode(cbft.config.Option.NodeID) {
+			} else {
 				blockIndex, finish := cbft.state.Executing()
 				return blockIndex != math.MaxUint32 && (qc.BlockIndex < blockIndex || (qc.BlockIndex == blockIndex && finish)) && linked(qc.BlockNumber)
 			}
@@ -987,8 +987,27 @@ func (cbft *Cbft) findQCBlock() {
 		return qc.Len() >= threshold
 	}
 
+	linked := func(blockIndex uint32) bool {
+		block := cbft.state.ViewBlockByIndex(blockIndex)
+		if block != nil {
+			parent, _ := cbft.blockTree.FindBlockAndQC(block.ParentHash(), block.NumberU64()-1)
+			return parent != nil && cbft.state.HighestQCBlock().NumberU64()+1 == block.NumberU64()
+		}
+		return false
+	}
+
+	hasExecuted := func(blockIndex uint32) bool {
+		if cbft.validatorPool.IsValidator(cbft.state.Epoch(), cbft.config.Option.Node.ID()) {
+			return cbft.state.HadSendPrepareVote().Had(blockIndex)
+		} else {
+			executingIndex, finish := cbft.state.Executing()
+			return blockIndex != math.MaxUint32 && (blockIndex < executingIndex || (executingIndex == blockIndex && finish)) && linked(blockIndex)
+		}
+		return false
+	}
+
 	alreadyQC := func() bool {
-		return cbft.state.HadSendPrepareVote().Had(next) && (enoughRGQuorumCerts() || enoughVotes() || enoughCombine())
+		return hasExecuted(next) && (enoughRGQuorumCerts() || enoughVotes() || enoughCombine())
 	}
 
 	if alreadyQC() {
