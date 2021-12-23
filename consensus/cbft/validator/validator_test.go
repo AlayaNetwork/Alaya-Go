@@ -671,12 +671,12 @@ func TestUpdate(t *testing.T) {
 	assert.Equal(t, lastNumber, vp.lastNumber)
 	assert.Equal(t, vp.prevValidators, vp.currentValidators)
 
-	vp.Update(common.ZeroHash, 250, 0, false, 4352, eventMux)
+	vp.Update(common.ZeroHash, 250, 0, 4352, eventMux)
 	assert.Nil(t, vp.nextValidators)
 	assert.False(t, vp.NeedGroup())
 	assert.Equal(t, vp.epoch, uint64(0))
 
-	vp.Update(common.ZeroHash, 980, 0, true, 4352, eventMux)
+	vp.InitComingValidators(common.ZeroHash, 980, eventMux)
 	assert.True(t, vp.NeedGroup())
 	assert.Equal(t, vp.epoch, uint64(0))
 
@@ -690,7 +690,7 @@ func TestUpdate(t *testing.T) {
 	assert.NotEqual(t, vp.currentValidators, next)
 	assert.False(t, vp.nextValidators.Equal(next))
 	vp.nextValidators = next
-	vp.Update(common.ZeroHash, vp.lastNumber+1, 1, false, 4352, eventMux)
+	vp.Update(common.ZeroHash, vp.lastNumber+1, 1, 4352, eventMux)
 	assert.True(t, vp.NeedGroup())
 	assert.Equal(t, vp.epoch, uint64(1))
 	assert.Nil(t, vp.nextValidators)

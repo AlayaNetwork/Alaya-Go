@@ -423,96 +423,91 @@ func (vp *ValidatorPool) MockSwitchPoint(number uint64) {
 }
 
 // Update switch validators.
-func (vp *ValidatorPool) Update(blockHash common.Hash, blockNumber uint64, epoch uint64, isElection bool, version uint32, eventMux *event.TypeMux) error {
+func (vp *ValidatorPool) Update(blockHash common.Hash, blockNumber uint64, epoch uint64, version uint32, eventMux *event.TypeMux) error {
 	vp.lock.Lock()
 	defer vp.lock.Unlock()
 
+	needGroup := version >= params.FORKVERSION_0_17_0
+	//分组提案生效后第一个共识round到ElectionPoint时初始化分组信息
+	if !vp.grouped && needGroup {
+		vp.grouped = true
+		vp.groupValidatorsLimit = xcom.MaxGroupValidators()
+		vp.coordinatorLimit = xcom.CoordinatorsLimit()
+	}
 	// 生效后第一个共识周期的Election block已经是新值（2130）所以第一次触发update是cbft.tryChangeView->shouldSwitch
-	if blockNumber <= vp.switchPoint && !isElection {
+	if blockNumber <= vp.switchPoint {
 		log.Trace("Already update validator before", "blockNumber", blockNumber, "switchPoint", vp.switchPoint)
 		return errors.New("already updated before")
 	}
 
 	var err error
 	var nds *cbfttypes.Validators
-	needGroup := version >= params.FORKVERSION_0_17_0
-	var nextRoundBlockNumber uint64
-	if isElection {
-		nextRoundBlockNumber = blockNumber + xcom.ElectionDistance() + 1
-	} else {
-		nextRoundBlockNumber = blockNumber + 1
-	}
-
-	//生效后第一个共识周期的switchpoint是旧值，此时不能切换
-	//判断依据是新validators和current完全相同且nextValidators为空
-	if !isElection && vp.nextValidators == nil && needGroup {
-		nds, err = vp.agency.GetValidators(blockHash, nextRoundBlockNumber)
+	if vp.nextValidators == nil {
+		nds, err = vp.agency.GetValidators(blockHash, NextRound(blockNumber))
 		if err != nil {
 			log.Error("Get validator error", "blockNumber", blockNumber, "err", err)
 			return err
 		}
-		if vp.currentValidators.Equal(nds) {
-			vp.currentValidators = nds
-			vp.switchPoint = nds.ValidBlockNumber - 1
-			vp.lastNumber = vp.agency.GetLastNumber(blockNumber)
-			//不切换，所以epoch不增
-			vp.grouped = false
-			log.Debug("update currentValidators success!", "lastNumber", vp.lastNumber, "grouped", vp.grouped, "switchPoint", vp.switchPoint)
-			return nil
-		}
-	}
-	//分组提案生效后第一个共识round到ElectionPoint时初始化分组信息
-	if !vp.grouped {
 		if needGroup {
-			vp.grouped = true
-			vp.groupValidatorsLimit = xcom.MaxGroupValidators()
-			vp.coordinatorLimit = xcom.CoordinatorsLimit()
+			//生效后第一个共识周期的switchpoint是旧值，此时不能切换
+			//判断依据是新validators和current完全相同且nextValidators为空
+			if vp.currentValidators.Equal(nds) {
+				vp.currentValidators = nds
+				vp.switchPoint = nds.ValidBlockNumber - 1
+				vp.lastNumber = vp.agency.GetLastNumber(blockNumber)
+				//不切换，所以epoch不增
+				vp.grouped = false
+				log.Debug("update currentValidators success!", "lastNumber", vp.lastNumber, "grouped", vp.grouped, "switchPoint", vp.switchPoint)
+				return nil
+			}
 		}
-	}
 
-	if isElection {
-		// 提前更新nextValidators，为了p2p早一步订阅分组事件以便建链接
-		nds, err = vp.agency.GetValidators(blockHash, nextRoundBlockNumber)
-		if err != nil {
-			log.Error("Get validators error", "blockNumber", blockNumber, "err", err)
-			return err
-		}
+		// 节点中间重启过， nextValidators没有赋值
 		vp.nextValidators = nds
 		if vp.grouped {
 			vp.organize(vp.nextValidators, epoch, eventMux)
 		}
-	} else {
-		// 节点中间重启过， nextValidators没有赋值
-		if vp.nextValidators == nil {
-			// 此时blockNumber==vp.lastNumber blockNumber+1即为下一轮
-			nds, err = vp.agency.GetValidators(blockHash, nextRoundBlockNumber)
-			if err != nil {
-				log.Error("Get validator error", "blockNumber", blockNumber, "err", err)
-				return err
-			}
-			vp.nextValidators = nds
-			if vp.grouped {
-				vp.organize(vp.nextValidators, epoch, eventMux)
-			}
-		}
-		vp.prevValidators = vp.currentValidators
-		vp.currentValidators = vp.nextValidators
-		vp.switchPoint = vp.currentValidators.ValidBlockNumber - 1
-		vp.lastNumber = vp.agency.GetLastNumber(nextRoundBlockNumber)
-		currEpoch := vp.epoch
-		vp.epoch = epoch
-		vp.nextValidators = nil
-
-		//切换共识轮时需要将上一轮分组的topic取消订阅
-		vp.dissolve(currEpoch, eventMux)
-
-		//旧版本（非分组共识）需要发events断开落选的共识节点
-		if !vp.grouped {
-			vp.dealWithOldVersionEvents(epoch, eventMux)
-		}
-		log.Info("Update validators", "validators.len", vp.currentValidators.Len(), "switchpoint", vp.switchPoint, "epoch", vp.epoch, "lastNumber", vp.lastNumber)
 	}
-	log.Debug("Update OK", "blockNumber", blockNumber, "epoch", epoch, "isElection", isElection, "version", version)
+
+	vp.prevValidators = vp.currentValidators
+	vp.currentValidators = vp.nextValidators
+	vp.switchPoint = vp.currentValidators.ValidBlockNumber - 1
+	vp.lastNumber = vp.agency.GetLastNumber(NextRound(blockNumber))
+	currEpoch := vp.epoch
+	vp.epoch = epoch
+	vp.nextValidators = nil
+
+	//切换共识轮时需要将上一轮分组的topic取消订阅
+	vp.dissolve(currEpoch, eventMux)
+	//旧版本（非分组共识）需要发events断开落选的共识节点
+	if !vp.grouped {
+		vp.dealWithOldVersionEvents(epoch, eventMux)
+	}
+	log.Info("Update validators", "validators.len", vp.currentValidators.Len(), "switchpoint", vp.switchPoint, "epoch", vp.epoch, "lastNumber", vp.lastNumber)
+	return nil
+}
+
+// pre-init validator nodes for the next round.version >= 0.17.0 only
+func (vp *ValidatorPool) InitComingValidators(blockHash common.Hash, blockNumber uint64, eventMux *event.TypeMux) error {
+	vp.lock.Lock()
+	defer vp.lock.Unlock()
+
+	//分组提案生效后第一个共识round到ElectionPoint时初始化分组信息
+	if !vp.grouped {
+		vp.grouped = true
+		vp.groupValidatorsLimit = xcom.MaxGroupValidators()
+		vp.coordinatorLimit = xcom.CoordinatorsLimit()
+	}
+
+	// 提前更新nextValidators，为了p2p早一步订阅分组事件以便建链接
+	nds, err := vp.agency.GetValidators(blockHash, blockNumber+xcom.ElectionDistance()+1)
+	if err != nil {
+		log.Error("Get validators error", "blockNumber", blockNumber, "err", err)
+		return err
+	}
+	vp.nextValidators = nds
+	vp.organize(vp.nextValidators, vp.epoch+1, eventMux)
+	log.Debug("Update nextValidators OK", "blockNumber", blockNumber, "epoch", vp.epoch+1)
 	return nil
 }
 
