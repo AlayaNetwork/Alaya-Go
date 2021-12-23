@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
-
 package xcom
 
 import (
@@ -63,7 +62,7 @@ const (
 	IncreaseIssuanceRatioLowerLimit   = 0
 
 	// When electing consensus nodes, it is used to calculate the P value of the binomial distribution
-	ElectionBase = 25	// New expectations
+	ElectionBase = 25 // New expectations
 
 	ElectionBaseL1 = 3000
 	ElectionBaseL2 = 6000
@@ -856,7 +855,25 @@ func CDFBalance() *big.Int {
 
 func EconomicString() string {
 	if nil != ec {
-		ecByte, _ := json.Marshal(ec)
+		type rewardConfigJson struct {
+			rewardConfig
+			rewardConfigExtend
+		}
+		type EconomicModelJson struct {
+			EconomicModel
+			Reward      rewardConfigJson        `json:"reward"`
+			Restricting restrictingConfigExtend `json:"restricting"`
+		}
+
+		emJson := &EconomicModelJson{
+			EconomicModel: *ec,
+			Reward: rewardConfigJson{
+				rewardConfig:       ec.Reward,
+				rewardConfigExtend: ece.Reward,
+			},
+			Restricting: ece.Restricting,
+		}
+		ecByte, _ := json.Marshal(emJson)
 		return string(ecByte)
 	} else {
 		return ""
