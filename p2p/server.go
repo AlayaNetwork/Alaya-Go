@@ -812,14 +812,14 @@ running:
 			// This channel is used by AddConsensusNode to add an enode
 			// to the consensus node set.
 			srv.log.Trace("Adding consensus node", "node", task.dest)
-
-			if id := task.dest.ID(); !bytes.Equal(crypto.Keccak256(srv.ourHandshake.ID), id[:]) {
+			id := task.dest.ID()
+			if bytes.Equal(crypto.Keccak256(srv.ourHandshake.ID), id[:]) {
 				srv.log.Debug("We are become an consensus node")
 				srv.consensus = true
 			} else {
-				consensusNodes[task.dest.ID()] = true
-				if p, ok := peers[task.dest.ID()]; ok {
-					srv.log.Debug("Add consensus flag", "peer", task.dest.ID())
+				consensusNodes[id] = true
+				if p, ok := peers[id]; ok {
+					srv.log.Debug("Add consensus flag", "peer", id)
 					p.rw.set(consensusDialedConn, true)
 				} else {
 					srv.dialsched.addConsensus(task)
@@ -830,22 +830,23 @@ running:
 			// This channel is used by RemoveConsensusNode to remove an enode
 			// from the consensus node set.
 			srv.log.Trace("Removing consensus node", "node", n)
-			if id := n.ID(); !bytes.Equal(crypto.Keccak256(srv.ourHandshake.ID), id[:]) {
+			id := n.ID()
+			if bytes.Equal(crypto.Keccak256(srv.ourHandshake.ID), id[:]) {
 				srv.log.Debug("We are not an consensus node")
 				srv.consensus = false
 			}
 			//srv.dialsched.removeConsensus(n)
-			if _, ok := consensusNodes[n.ID()]; ok {
-				delete(consensusNodes, n.ID())
+			if _, ok := consensusNodes[id]; ok {
+				delete(consensusNodes, id)
 			}
-			if p, ok := peers[n.ID()]; ok {
+			if p, ok := peers[id]; ok {
 				p.rw.set(consensusDialedConn, false)
 				if !p.rw.is(staticDialedConn | trustedConn | inboundConn) {
 					p.rw.set(dynDialedConn, true)
 				}
-				srv.log.Debug("Remove consensus flag", "peer", n.ID(), "consensus", srv.consensus)
+				srv.log.Debug("Remove consensus flag", "peer", id, "consensus", srv.consensus)
 				if len(peers) > srv.MaxPeers && !p.rw.is(staticDialedConn|trustedConn) {
-					srv.log.Debug("Disconnect non-consensus node", "peer", n.ID(), "flags", p.rw.flags, "peers", len(peers), "consensus", srv.consensus)
+					srv.log.Debug("Disconnect non-consensus node", "peer", id, "flags", p.rw.flags, "peers", len(peers), "consensus", srv.consensus)
 					p.Disconnect(DiscRequested)
 				}
 			}

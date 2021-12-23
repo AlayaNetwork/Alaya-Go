@@ -102,9 +102,6 @@ func (srv *Server) filterPeerForTopic(nodes []enode.ID) func(node *enode.Node) b
 		if !srv.filterPeer(node) {
 			return false
 		}
-		if !srv.dialsched.IsReadyToDial(node) {
-			return false
-		}
 
 		for _, peer := range nodes {
 			if peer == node.ID() {
