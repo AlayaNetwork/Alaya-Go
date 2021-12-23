@@ -382,7 +382,7 @@ func (cbft *Cbft) OnGetPrepareVote(id string, msg *protocols.GetPrepareVote) err
 				}
 				if len(prepareVoteMap) > 0 {
 					for i := uint32(0); i < un.UnKnownSet.Size(); i++ {
-						if rgqc != nil && rgqc.BlockQC.HasSign(i) {
+						if !un.UnKnownSet.GetIndex(i) || rgqc != nil && rgqc.BlockQC.HasSign(i) {
 							continue
 						}
 						if v, ok := prepareVoteMap[i]; ok {
@@ -613,7 +613,7 @@ func (cbft *Cbft) OnGetViewChange(id string, msg *protocols.GetViewChange) error
 			}
 			if len(viewChangeMap) > 0 {
 				for i := uint32(0); i < un.UnKnownSet.Size(); i++ {
-					if rgqc != nil && rgqc.ViewChangeQC.HasSign(i) {
+					if !un.UnKnownSet.GetIndex(i) || rgqc != nil && rgqc.ViewChangeQC.HasSign(i) {
 						continue
 					}
 					if v, ok := viewChangeMap[i]; ok {
@@ -747,43 +747,6 @@ func (cbft *Cbft) OnViewChanges(id string, msg *protocols.ViewChanges) error {
 		}
 	}
 	return nil
-}
-
-// MissingViewChangeNodes returns the node ID of the missing vote.
-//
-// Notes:
-// Use the channel to complete serial execution to prevent concurrency.
-func (cbft *Cbft) MissingViewChangeNodes() (v *protocols.GetViewChange, err error) {
-	result := make(chan struct{})
-
-	cbft.asyncCallCh <- func() {
-		defer func() { result <- struct{}{} }()
-
-		if !cbft.state.IsDeadline() {
-			v, err = nil, fmt.Errorf("no need sync viewchange")
-			return
-		}
-
-		threshold := cbft.threshold(cbft.currentValidatorLen())
-		size := len(cbft.KnownViewChangeIndexes())
-		cbft.log.Debug("The length of viewChange", "size", size, "threshold", threshold)
-
-		if size < threshold {
-			unKnownGroups := cbft.MissGroupViewChanges()
-			if len(unKnownGroups.UnKnown) > 0 {
-				v, err = &protocols.GetViewChange{
-					Epoch:      cbft.state.Epoch(),
-					ViewNumber: cbft.state.ViewNumber(),
-					UnKnownSet: unKnownGroups,
-				}, nil
-			}
-		}
-		if v == nil {
-			err = fmt.Errorf("not need sync prepare vote")
-		}
-	}
-	<-result
-	return
 }
 
 func (cbft *Cbft) KnownVoteIndexes(blockIndex uint32) []uint32 {
@@ -933,7 +896,6 @@ func (cbft *Cbft) MissingPrepareVote() (v *protocols.GetPrepareVote, err error) 
 			size := len(cbft.KnownVoteIndexes(index))
 			// We need sync prepare votes when a long time not arrived QC.
 			if size < threshold { // need sync prepare votes
-				cbft.log.Debug("MissingPrepareVote", "blockIndex", index, "size", size, "threshold", threshold)
 				unKnownGroups := cbft.MissGroupVotes(index)
 				if len(unKnownGroups.UnKnown) > 0 {
 					v, err = &protocols.GetPrepareVote{
@@ -942,8 +904,46 @@ func (cbft *Cbft) MissingPrepareVote() (v *protocols.GetPrepareVote, err error) 
 						BlockIndex: index,
 						UnKnownSet: unKnownGroups,
 					}, nil
+					cbft.log.Debug("MissingPrepareVote", "blockIndex", index, "known", size, "threshold", threshold, "request", v.String())
 					break
 				}
+			}
+		}
+		if v == nil {
+			err = fmt.Errorf("not need sync prepare vote")
+		}
+	}
+	<-result
+	return
+}
+
+// MissingViewChangeNodes returns the node ID of the missing vote.
+//
+// Notes:
+// Use the channel to complete serial execution to prevent concurrency.
+func (cbft *Cbft) MissingViewChangeNodes() (v *protocols.GetViewChange, err error) {
+	result := make(chan struct{})
+
+	cbft.asyncCallCh <- func() {
+		defer func() { result <- struct{}{} }()
+
+		if !cbft.state.IsDeadline() {
+			v, err = nil, fmt.Errorf("no need sync viewchange")
+			return
+		}
+
+		threshold := cbft.threshold(cbft.currentValidatorLen())
+		size := len(cbft.KnownViewChangeIndexes())
+
+		if size < threshold {
+			unKnownGroups := cbft.MissGroupViewChanges()
+			if len(unKnownGroups.UnKnown) > 0 {
+				v, err = &protocols.GetViewChange{
+					Epoch:      cbft.state.Epoch(),
+					ViewNumber: cbft.state.ViewNumber(),
+					UnKnownSet: unKnownGroups,
+				}, nil
+				cbft.log.Debug("MissingViewChangeNodes", "known", size, "threshold", threshold, "request", v.String())
 			}
 		}
 		if v == nil {

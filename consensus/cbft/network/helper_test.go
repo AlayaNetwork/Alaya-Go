@@ -435,3 +435,7 @@ func (s *mockCbft) OnPong(nodeID string, netLatency int64) error {
 func (s *mockCbft) BlockExists(blockNumber uint64, blockHash common.Hash) error {
 	return nil
 }
+
+func (s *mockCbft) GetGroupByValidatorID(nodeID enode.ID) (uint32, uint32, error) {
+	return 0, 0, nil
+}
