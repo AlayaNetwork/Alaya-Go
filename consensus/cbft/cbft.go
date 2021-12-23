@@ -1376,7 +1376,7 @@ func (cbft *Cbft) commitBlock(commitBlock *types.Block, commitQC *ctypes.QuorumC
 	// post GroupsTopicEvent to join topic according group info
 	if xutil.IsElection(cpy.NumberU64(), activeVersion) {
 		if shouldGroup() {
-			cbft.validatorPool.Update(cpy.Hash(), cpy.NumberU64(), cbft.state.Epoch()+1, true, activeVersion, cbft.eventMux)
+			cbft.validatorPool.InitComingValidators(cpy.Hash(), cpy.NumberU64(), cbft.eventMux)
 		}
 	}
 }

@@ -18,16 +18,17 @@ package network
 
 import (
 	"fmt"
-	"github.com/AlayaNetwork/Alaya-Go/internal/debug"
 	"math/big"
 	"math/rand"
 	"reflect"
 	"strconv"
 	"time"
 
+	"github.com/AlayaNetwork/Alaya-Go/internal/debug"
+
 	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
 
-	"github.com/hashicorp/golang-lru"
+	lru "github.com/hashicorp/golang-lru"
 
 	"github.com/AlayaNetwork/Alaya-Go/common"
 
@@ -633,7 +634,7 @@ func (h *EngineManager) handleMsg(p *peer) error {
 	case msg.Code == protocols.PongMsg:
 		// Processed after receiving the pong message.
 		curTime := time.Now().UnixNano()
-		log.Debug("Handle a eth Pong message", "curTime", curTime)
+		log.Debug("Handle a alaya Pong message", "curTime", curTime)
 		var pongTime protocols.Pong
 		if err := msg.Decode(&pongTime); err != nil {
 			return types.ErrResp(types.ErrDecode, "%v: %v", msg, err)

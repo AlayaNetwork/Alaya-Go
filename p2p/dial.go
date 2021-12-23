@@ -272,23 +272,6 @@ func (d *dialScheduler) loop(it enode.Iterator) {
 
 loop:
 	for {
-		select {
-		case task := <-d.consensusNodesIn:
-			if err := d.checkDial(task.dest); err != nil {
-				d.log.Trace("Discarding dial candidate", "id", task.dest.ID(), "ip", task.dest.IP(), "reason", err)
-			} else {
-				d.startDial(task)
-			}
-			continue
-		case node := <-d.checkReadyToDial:
-			if err := d.checkDial(node); err == nil {
-				d.checkReadyToDialDone <- true
-			} else {
-				d.checkReadyToDialDone <- false
-			}
-			continue
-		default:
-		}
 		// Launch new dials if slots are available.
 		slots := d.freeDialSlots()
 		slots -= d.startStaticDials(slots)
@@ -301,6 +284,18 @@ loop:
 		d.logStats()
 
 		select {
+		case task := <-d.consensusNodesIn:
+			if err := d.checkDial(task.dest); err != nil {
+				d.log.Trace("Discarding dial consensus node", "id", task.dest.ID(), "ip", task.dest.IP(), "reason", err)
+			} else {
+				d.startDial(task)
+			}
+		case node := <-d.checkReadyToDial:
+			if err := d.checkDial(node); err == nil {
+				d.checkReadyToDialDone <- true
+			} else {
+				d.checkReadyToDialDone <- false
+			}
 		case node := <-nodesCh:
 			if err := d.checkDial(node); err != nil {
 				d.log.Trace("Discarding dial candidate", "id", node.ID(), "ip", node.IP(), "reason", err)

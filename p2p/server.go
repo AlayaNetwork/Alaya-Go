@@ -220,10 +220,12 @@ type Server struct {
 	// State of run loop and listenLoop.
 	inboundHistory expHeap
 
-	eventMux        *event.TypeMux
-	consensus       bool
-	addconsensus    chan *dialTask
-	removeconsensus chan *enode.Node
+	eventMux              *event.TypeMux
+	consensus             bool
+	addconsensus          chan *dialTask
+	removeconsensus       chan *enode.Node
+	addConsensusStatus    chan []enode.ID
+	removeConsensusStatus chan map[enode.ID]struct{}
 
 	pubSubServer       *PubSubServer
 	cancelPubSubServer context.CancelFunc
@@ -536,6 +538,8 @@ func (srv *Server) Start() (err error) {
 	srv.peerOpDone = make(chan struct{})
 	srv.addconsensus = make(chan *dialTask)
 	srv.removeconsensus = make(chan *enode.Node)
+	srv.addConsensusStatus = make(chan []enode.ID)
+	srv.removeConsensusStatus = make(chan map[enode.ID]struct{})
 	srv.topicSubscriber = make(map[string][]enode.ID)
 
 	srv.MinimumPeersInTopicSearch = 6
@@ -843,6 +847,25 @@ running:
 				if len(peers) > srv.MaxPeers && !p.rw.is(staticDialedConn|trustedConn) {
 					srv.log.Debug("Disconnect non-consensus node", "peer", n.ID(), "flags", p.rw.flags, "peers", len(peers), "consensus", srv.consensus)
 					p.Disconnect(DiscRequested)
+				}
+			}
+		case nodes := <-srv.addConsensusStatus:
+			for _, id := range nodes {
+				if p, ok := peers[id]; ok {
+					if !p.rw.is(consensusDialedConn) {
+						p.rw.set(consensusDialedConn, true)
+					}
+				}
+			}
+		case nodes := <-srv.removeConsensusStatus:
+			for _, p := range peers {
+				if p.rw.is(consensusDialedConn) {
+					if _, ok := nodes[p.ID()]; !ok {
+						p.rw.set(consensusDialedConn, false)
+						if !p.rw.is(staticDialedConn | trustedConn | inboundConn) {
+							p.rw.set(dynDialedConn, true)
+						}
+					}
 				}
 			}
 		case n := <-srv.addtrusted:
@@ -1313,10 +1336,19 @@ func (srv *Server) watching() {
 					topicSubscriber = append(topicSubscriber, node)
 				}
 				srv.topicSubscriber[data.Topic] = topicSubscriber
+				srv.addConsensusStatus <- topicSubscriber
 				srv.topicSubscriberMu.Unlock()
 			case cbfttypes.ExpiredTopicEvent:
 				srv.topicSubscriberMu.Lock()
 				delete(srv.topicSubscriber, data.Topic)
+				nodes := make(map[enode.ID]struct{})
+				// 为了防止有的节点是其他组的共识节点,所以要遍历全部
+				for _, nodeIDs := range srv.topicSubscriber {
+					for _, nodeID := range nodeIDs {
+						nodes[nodeID] = struct{}{}
+					}
+				}
+				srv.removeConsensusStatus <- nodes
 				srv.topicSubscriberMu.Unlock()
 			default:
 				log.Error("Received unexcepted event")
