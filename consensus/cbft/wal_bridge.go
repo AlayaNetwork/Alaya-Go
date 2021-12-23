@@ -364,7 +364,7 @@ func (cbft *Cbft) recoveryChainStateProcess(stateType uint16, s *protocols.State
 // trySwitch tries to switch next validator.
 func (cbft *Cbft) trySwitchValidator(blockHash common.Hash, blockNumber uint64, version uint32) {
 	if cbft.validatorPool.ShouldSwitch(blockNumber) {
-		if err := cbft.validatorPool.Update(blockHash, blockNumber, cbft.state.Epoch()+1, false, version, cbft.eventMux); err != nil {
+		if err := cbft.validatorPool.Update(blockHash, blockNumber, cbft.state.Epoch()+1, version, cbft.eventMux); err != nil {
 			cbft.log.Debug("Update validator error", "err", err.Error())
 		}
 	}
