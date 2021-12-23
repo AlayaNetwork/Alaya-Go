@@ -812,8 +812,8 @@ running:
 			// This channel is used by AddConsensusNode to add an enode
 			// to the consensus node set.
 			srv.log.Trace("Adding consensus node", "node", task.dest)
-
-			if id := task.dest.ID(); !bytes.Equal(crypto.Keccak256(srv.ourHandshake.ID), id[:]) {
+			id := task.dest.ID()
+			if bytes.Equal(crypto.Keccak256(srv.ourHandshake.ID), id[:]) {
 				srv.log.Debug("We are become an consensus node")
 				srv.consensus = true
 			} else {
@@ -830,7 +830,8 @@ running:
 			// This channel is used by RemoveConsensusNode to remove an enode
 			// from the consensus node set.
 			srv.log.Trace("Removing consensus node", "node", n)
-			if id := n.ID(); !bytes.Equal(crypto.Keccak256(srv.ourHandshake.ID), id[:]) {
+			id := n.ID()
+			if bytes.Equal(crypto.Keccak256(srv.ourHandshake.ID), id[:]) {
 				srv.log.Debug("We are not an consensus node")
 				srv.consensus = false
 			}
