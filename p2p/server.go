@@ -224,14 +224,14 @@ type Server struct {
 	consensus             bool
 	addconsensus          chan *dialTask
 	removeconsensus       chan *enode.Node
-	addConsensusStatus    chan []enode.ID
-	removeConsensusStatus chan map[enode.ID]struct{}
+	updateConsensusStatus chan map[enode.ID]struct{}
 
 	pubSubServer       *PubSubServer
 	cancelPubSubServer context.CancelFunc
 
 	topicSubscriberMu sync.RWMutex
 	topicSubscriber   map[string][]enode.ID
+	ConsensusPeers    map[enode.ID]struct{}
 }
 
 type peerOpFunc func(map[enode.ID]*Peer)
@@ -538,9 +538,9 @@ func (srv *Server) Start() (err error) {
 	srv.peerOpDone = make(chan struct{})
 	srv.addconsensus = make(chan *dialTask)
 	srv.removeconsensus = make(chan *enode.Node)
-	srv.addConsensusStatus = make(chan []enode.ID)
-	srv.removeConsensusStatus = make(chan map[enode.ID]struct{})
+	srv.updateConsensusStatus = make(chan map[enode.ID]struct{})
 	srv.topicSubscriber = make(map[string][]enode.ID)
+	srv.ConsensusPeers = make(map[enode.ID]struct{})
 
 	srv.MinimumPeersInTopicSearch = 6
 	srv.MinimumPeersPerTopic = 10
@@ -849,22 +849,13 @@ running:
 					p.Disconnect(DiscRequested)
 				}
 			}
-		case nodes := <-srv.addConsensusStatus:
-			for _, id := range nodes {
-				if p, ok := peers[id]; ok {
-					if !p.rw.is(consensusDialedConn) {
-						p.rw.set(consensusDialedConn, true)
-					}
-				}
-			}
-		case nodes := <-srv.removeConsensusStatus:
+		case nodes := <-srv.updateConsensusStatus:
 			for _, p := range peers {
-				if p.rw.is(consensusDialedConn) {
-					if _, ok := nodes[p.ID()]; !ok {
-						p.rw.set(consensusDialedConn, false)
-						if !p.rw.is(staticDialedConn | trustedConn | inboundConn) {
-							p.rw.set(dynDialedConn, true)
-						}
+				if _, ok := nodes[p.ID()]; ok {
+					p.rw.set(consensusDialedConn, true)
+				} else {
+					if !p.rw.is(staticDialedConn | trustedConn | inboundConn) {
+						p.rw.set(dynDialedConn, true)
 					}
 				}
 			}
@@ -900,8 +891,13 @@ running:
 			}
 
 			if consensusNodes[c.node.ID()] {
-				c.flags |= consensusDialedConn
+				c.set(consensusDialedConn, true)
 			}
+			srv.topicSubscriberMu.RLock()
+			if _, ok := srv.ConsensusPeers[c.node.ID()]; ok {
+				c.set(consensusDialedConn, true)
+			}
+			srv.topicSubscriberMu.RUnlock()
 
 			// TODO: track in-progress inbound node IDs (pre-Peer) to avoid dialing them.
 			c.cont <- srv.postHandshakeChecks(peers, inboundCount, c)
@@ -1334,21 +1330,19 @@ func (srv *Server) watching() {
 				topicSubscriber := make([]enode.ID, 0)
 				for _, node := range data.Nodes {
 					topicSubscriber = append(topicSubscriber, node)
+					srv.ConsensusPeers[node] = struct{}{}
 				}
 				srv.topicSubscriber[data.Topic] = topicSubscriber
-				srv.addConsensusStatus <- topicSubscriber
+				srv.updateConsensusStatus <- srv.ConsensusPeers
 				srv.topicSubscriberMu.Unlock()
 			case cbfttypes.ExpiredTopicEvent:
 				srv.topicSubscriberMu.Lock()
-				delete(srv.topicSubscriber, data.Topic)
-				nodes := make(map[enode.ID]struct{})
-				// 为了防止有的节点是其他组的共识节点,所以要遍历全部
-				for _, nodeIDs := range srv.topicSubscriber {
-					for _, nodeID := range nodeIDs {
-						nodes[nodeID] = struct{}{}
-					}
+				nodesDel := srv.topicSubscriber[data.Topic]
+				for _, node := range nodesDel {
+					delete(srv.ConsensusPeers, node)
 				}
-				srv.removeConsensusStatus <- nodes
+				delete(srv.topicSubscriber, data.Topic)
+				srv.updateConsensusStatus <- srv.ConsensusPeers
 				srv.topicSubscriberMu.Unlock()
 			default:
 				log.Error("Received unexcepted event")
