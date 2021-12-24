@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
-
 package staking
 
 import (
@@ -1311,13 +1310,17 @@ type Reward struct {
 }
 
 type RewardReturn struct {
-	PackageReward *hexutil.Big
-	StakingReward *hexutil.Big
-	YearNum       uint32
-	YearStartNum  uint64
-	YearEndNum    uint64
-	RemainEpoch   uint32
-	AvgPackTime   uint64
+	CurPackageReward  *hexutil.Big
+	CurStakingReward  *hexutil.Big
+	NextPackageReward *hexutil.Big
+	NextStakingReward *hexutil.Big
+	PackageReward     *hexutil.Big
+	StakingReward     *hexutil.Big
+	YearNum           uint32
+	YearStartNum      uint64
+	YearEndNum        uint64
+	RemainEpoch       uint32
+	AvgPackTime       uint64
 }
 
 type TransBlockReturnQueue []*TransBlockReturn
