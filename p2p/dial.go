@@ -107,9 +107,6 @@ type dialScheduler struct {
 	addPeerCh        chan *conn
 	remPeerCh        chan *conn
 
-	checkReadyToDial     chan *enode.Node
-	checkReadyToDialDone chan bool
-
 	// Everything below here belongs to loop and
 	// should only be accessed by code on the loop goroutine.
 	dialing   map[enode.ID]*dialTask // active tasks
@@ -169,20 +166,18 @@ func (cfg dialConfig) withDefaults() dialConfig {
 
 func newDialScheduler(config dialConfig, it enode.Iterator, setupFunc dialSetupFunc) *dialScheduler {
 	d := &dialScheduler{
-		dialConfig:           config.withDefaults(),
-		setupFunc:            setupFunc,
-		dialing:              make(map[enode.ID]*dialTask),
-		static:               make(map[enode.ID]*dialTask),
-		peers:                make(map[enode.ID]struct{}),
-		doneCh:               make(chan *dialTask),
-		nodesIn:              make(chan *enode.Node),
-		consensusNodesIn:     make(chan *dialTask),
-		addStaticCh:          make(chan *enode.Node),
-		remStaticCh:          make(chan *enode.Node),
-		addPeerCh:            make(chan *conn),
-		remPeerCh:            make(chan *conn),
-		checkReadyToDial:     make(chan *enode.Node),
-		checkReadyToDialDone: make(chan bool),
+		dialConfig:       config.withDefaults(),
+		setupFunc:        setupFunc,
+		dialing:          make(map[enode.ID]*dialTask),
+		static:           make(map[enode.ID]*dialTask),
+		peers:            make(map[enode.ID]struct{}),
+		doneCh:           make(chan *dialTask),
+		nodesIn:          make(chan *enode.Node),
+		consensusNodesIn: make(chan *dialTask),
+		addStaticCh:      make(chan *enode.Node),
+		remStaticCh:      make(chan *enode.Node),
+		addPeerCh:        make(chan *conn),
+		remPeerCh:        make(chan *conn),
 	}
 	d.lastStatsLog = d.clock.Now()
 	d.ctx, d.cancel = context.WithCancel(context.Background())
@@ -196,15 +191,6 @@ func newDialScheduler(config dialConfig, it enode.Iterator, setupFunc dialSetupF
 func (d *dialScheduler) stop() {
 	d.cancel()
 	d.wg.Wait()
-}
-
-func (d *dialScheduler) IsReadyToDial(n *enode.Node) bool {
-	select {
-	case d.checkReadyToDial <- n:
-		return <-d.checkReadyToDialDone
-	case <-d.ctx.Done():
-	}
-	return false
 }
 
 // addStatic adds a static dial candidate.
@@ -289,12 +275,6 @@ loop:
 				d.log.Trace("Discarding dial consensus node", "id", task.dest.ID(), "ip", task.dest.IP(), "reason", err)
 			} else {
 				d.startDial(task)
-			}
-		case node := <-d.checkReadyToDial:
-			if err := d.checkDial(node); err == nil {
-				d.checkReadyToDialDone <- true
-			} else {
-				d.checkReadyToDialDone <- false
 			}
 		case node := <-nodesCh:
 			if err := d.checkDial(node); err != nil {
