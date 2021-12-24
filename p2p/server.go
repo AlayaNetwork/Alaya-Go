@@ -1333,6 +1333,9 @@ func (srv *Server) watching() {
 					topicSubscriber = append(topicSubscriber, node)
 					srv.ConsensusPeers[node] = struct{}{}
 				}
+				if _, ok := srv.ConsensusPeers[srv.localnode.ID()]; ok {
+					srv.consensus = true
+				}
 				srv.topicSubscriber[data.Topic] = topicSubscriber
 				srv.updateConsensusStatus <- srv.ConsensusPeers
 				srv.topicSubscriberMu.Unlock()
@@ -1343,6 +1346,9 @@ func (srv *Server) watching() {
 					delete(srv.ConsensusPeers, node)
 				}
 				delete(srv.topicSubscriber, data.Topic)
+				if _, ok := srv.ConsensusPeers[srv.localnode.ID()]; !ok {
+					srv.consensus = false
+				}
 				srv.updateConsensusStatus <- srv.ConsensusPeers
 				srv.topicSubscriberMu.Unlock()
 			default:
