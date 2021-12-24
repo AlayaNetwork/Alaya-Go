@@ -132,6 +132,9 @@ func (srv *Server) filterPeer(node *enode.Node) bool {
 	if node.IP() == nil {
 		return false
 	}
+	if node.ID() == srv.localnode.ID() {
+		return false
+	}
 	// do not dial nodes with their tcp ports not set
 	/*if err := node.Record().Load(enr.WithEntry("tcp", new(enr.TCP))); err != nil {
 		if !enr.IsNotFound(err) {

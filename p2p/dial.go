@@ -273,6 +273,9 @@ loop:
 		case task := <-d.consensusNodesIn:
 			if err := d.checkDial(task.dest); err != nil {
 				d.log.Trace("Discarding dial consensus node", "id", task.dest.ID(), "ip", task.dest.IP(), "reason", err)
+				if task.doneHook != nil {
+					task.doneHook()
+				}
 			} else {
 				d.startDial(task)
 			}

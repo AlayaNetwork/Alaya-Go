@@ -816,11 +816,17 @@ running:
 			if bytes.Equal(crypto.Keccak256(srv.ourHandshake.ID), id[:]) {
 				srv.log.Debug("We are become an consensus node")
 				srv.consensus = true
+				if task.doneHook != nil {
+					task.doneHook()
+				}
 			} else {
 				consensusNodes[id] = true
 				if p, ok := peers[id]; ok {
 					srv.log.Debug("Add consensus flag", "peer", id)
 					p.rw.set(consensusDialedConn, true)
+					if task.doneHook != nil {
+						task.doneHook()
+					}
 				} else {
 					srv.dialsched.addConsensus(task)
 				}
@@ -1333,6 +1339,9 @@ func (srv *Server) watching() {
 					topicSubscriber = append(topicSubscriber, node)
 					srv.ConsensusPeers[node] = struct{}{}
 				}
+				if _, ok := srv.ConsensusPeers[srv.localnode.ID()]; ok {
+					srv.consensus = true
+				}
 				srv.topicSubscriber[data.Topic] = topicSubscriber
 				srv.updateConsensusStatus <- srv.ConsensusPeers
 				srv.topicSubscriberMu.Unlock()
@@ -1343,6 +1352,9 @@ func (srv *Server) watching() {
 					delete(srv.ConsensusPeers, node)
 				}
 				delete(srv.topicSubscriber, data.Topic)
+				if _, ok := srv.ConsensusPeers[srv.localnode.ID()]; !ok {
+					srv.consensus = false
+				}
 				srv.updateConsensusStatus <- srv.ConsensusPeers
 				srv.topicSubscriberMu.Unlock()
 			default:
