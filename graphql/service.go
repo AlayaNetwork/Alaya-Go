@@ -17,20 +17,69 @@
 package graphql
 
 import (
+	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
 
-	"github.com/AlayaNetwork/Alaya-Go/node"
-
 	"github.com/graph-gophers/graphql-go"
-	"github.com/graph-gophers/graphql-go/relay"
+
+	"github.com/AlayaNetwork/Alaya-Go/node"
 
 	"github.com/AlayaNetwork/Alaya-Go/internal/ethapi"
 	"github.com/AlayaNetwork/Alaya-Go/log"
 	"github.com/AlayaNetwork/Alaya-Go/p2p"
 	"github.com/AlayaNetwork/Alaya-Go/rpc"
+
+	graphqlEth "github.com/AlayaNetwork/graphql-go"
+
+	json2 "github.com/AlayaNetwork/Alaya-Go/common/json"
 )
+
+type handler struct {
+	Schema    *graphql.Schema
+	SchemaEth *graphqlEth.Schema
+}
+
+func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	var params struct {
+		Query         string                 `json:"query"`
+		OperationName string                 `json:"operationName"`
+		Variables     map[string]interface{} `json:"variables"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if r.URL.Path == "/graphql" || r.URL.Path == "/graphql/" {
+		response := h.SchemaEth.Exec(r.Context(), params.Query, params.OperationName, params.Variables)
+		responseJSON, err := json2.Marshal(response)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if len(response.Errors) > 0 {
+			w.WriteHeader(http.StatusBadRequest)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(responseJSON)
+	} else {
+		response := h.Schema.Exec(r.Context(), params.Query, params.OperationName, params.Variables)
+		responseJSON, err := json.Marshal(response)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if len(response.Errors) > 0 {
+			w.WriteHeader(http.StatusBadRequest)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(responseJSON)
+	}
+}
 
 // Service encapsulates a GraphQL service.
 type Service struct {
@@ -96,12 +145,25 @@ func newHandler(backend ethapi.Backend) (http.Handler, error) {
 	if err != nil {
 		return nil, err
 	}
-	h := &relay.Handler{Schema: s}
+
+	sEth, err := graphqlEth.ParseSchema(schema, &q)
+	if err != nil {
+		return nil, err
+	}
+
+	h := handler{Schema: s, SchemaEth: sEth}
 
 	mux := http.NewServeMux()
 	mux.Handle("/", GraphiQL{})
+	mux.Handle("/alaya", GraphiQL{}) // for alaya
+
 	mux.Handle("/graphql", h)
 	mux.Handle("/graphql/", h)
+
+	// for alaya
+	mux.Handle("/alaya/graphql", h)
+	mux.Handle("/alaya/graphql/", h)
+
 	return mux, nil
 }
 

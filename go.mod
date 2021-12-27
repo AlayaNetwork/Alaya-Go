@@ -3,6 +3,7 @@ module github.com/AlayaNetwork/Alaya-Go
 go 1.16
 
 require (
+	github.com/AlayaNetwork/graphql-go v1.2.1-0.20211227063951-8d66eefcb4e3 // indirect
 	github.com/Azure/azure-pipeline-go v0.0.0-20180607212504-7571e8eb0876 // indirect
 	github.com/Azure/azure-storage-blob-go v0.0.0-20180712005634-eaae161d9d5e
 	github.com/PlatONnetwork/wagon v0.6.1-0.20201026015350-67507c2a7b96

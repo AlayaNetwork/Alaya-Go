@@ -96,7 +96,11 @@ var graphiql = []byte(`
 		<div id="graphiql" style="height: 100vh;">Loading...</div>
 		<script>
 			function fetchGQL(params) {
-				return fetch("/graphql", {
+                post = "/alaya/graphql"
+                if (window.location.pathname == "/"){
+					post = "/graphql"
+				}
+				return fetch(post, {
 					method: "post",
 					body: JSON.stringify(params),
 					credentials: "include",
