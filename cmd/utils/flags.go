@@ -382,6 +382,16 @@ var (
 		Usage: "Maximum number of pending connection attempts (defaults used if set to 0)",
 		Value: 0,
 	}
+	MinimumPeersInTopicSearch = cli.IntFlag{
+		Name:  "minpeerstopicsearch",
+		Usage: "Minimum number of nodes per search for the same topic (network disabled if set to 0)",
+		Value: 6,
+	}
+	MinimumPeersPerTopic = cli.IntFlag{
+		Name:  "minpeerstopic",
+		Usage: "Minimum number of nodes to maintain the same topic",
+		Value: 10,
+	}
 	ListenPortFlag = cli.IntFlag{
 		Name:  "port",
 		Usage: "Network listening port",
@@ -876,6 +886,14 @@ func SetP2PConfig(ctx *cli.Context, cfg *p2p.Config) {
 			cfg.MaxPeers = lightPeers
 		}
 	}
+
+	if ctx.GlobalIsSet(MinimumPeersInTopicSearch.Name) {
+		cfg.MinimumPeersInTopicSearch = ctx.GlobalUint(MinimumPeersInTopicSearch.Name)
+	}
+	if ctx.GlobalIsSet(MinimumPeersPerTopic.Name) {
+		cfg.MinimumPeersPerTopic = ctx.GlobalInt(MinimumPeersPerTopic.Name)
+	}
+
 	if !(lightClient || lightServer) {
 		lightPeers = 0
 	}
