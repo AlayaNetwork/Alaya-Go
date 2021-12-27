@@ -542,8 +542,6 @@ func (srv *Server) Start() (err error) {
 	srv.topicSubscriber = make(map[string][]enode.ID)
 	srv.ConsensusPeers = make(map[enode.ID]struct{})
 
-	srv.MinimumPeersInTopicSearch = 6
-	srv.MinimumPeersPerTopic = 10
 	if int(xcom.MaxGroupValidators()) <= srv.MinimumPeersPerTopic {
 		srv.MinimumPeersPerTopic = int(xcom.MaxGroupValidators())
 	}
