@@ -1343,7 +1343,11 @@ func (srv *Server) watching() {
 					srv.consensus = true
 				}
 				srv.topicSubscriber[data.Topic] = topicSubscriber
-				srv.updateConsensusStatus <- srv.ConsensusPeers
+				consensusPeers := make(map[enode.ID]struct{})
+				for id, _ := range srv.ConsensusPeers {
+					consensusPeers[id] = struct{}{}
+				}
+				srv.updateConsensusStatus <- consensusPeers
 				srv.topicSubscriberMu.Unlock()
 			case cbfttypes.ExpiredTopicEvent:
 				srv.topicSubscriberMu.Lock()
@@ -1355,7 +1359,11 @@ func (srv *Server) watching() {
 				if _, ok := srv.ConsensusPeers[srv.localnode.ID()]; !ok {
 					srv.consensus = false
 				}
-				srv.updateConsensusStatus <- srv.ConsensusPeers
+				consensusPeers := make(map[enode.ID]struct{})
+				for id, _ := range srv.ConsensusPeers {
+					consensusPeers[id] = struct{}{}
+				}
+				srv.updateConsensusStatus <- consensusPeers
 				srv.topicSubscriberMu.Unlock()
 			default:
 				log.Error("Received unexcepted event")
