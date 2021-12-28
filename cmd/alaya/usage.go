@@ -163,6 +163,8 @@ var AppHelpFlagGroups = []flagGroup{
 			utils.MaxPeersFlag,
 			utils.MaxConsensusPeersFlag,
 			utils.MaxPendingPeersFlag,
+			utils.MinimumPeersInTopicSearch,
+			utils.MinimumPeersPerTopic,
 			utils.NATFlag,
 			utils.NoDiscoverFlag,
 			//	utils.DiscoveryV5Flag,

@@ -44,10 +44,12 @@ var DefaultConfig = Config{
 	WSPort:           DefaultWSPort,
 	WSModules:        []string{"net", "web3"},
 	P2P: p2p.Config{
-		ListenAddr:        ":16789",
-		MaxPeers:          60,
-		NAT:               nat.Any(),
-		MaxConsensusPeers: 40,
+		ListenAddr:                ":16789",
+		MaxPeers:                  60,
+		NAT:                       nat.Any(),
+		MaxConsensusPeers:         40,
+		MinimumPeersInTopicSearch: 6,
+		MinimumPeersPerTopic:      10,
 	},
 }
 
