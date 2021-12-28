@@ -859,6 +859,7 @@ running:
 				if _, ok := nodes[p.ID()]; ok {
 					p.rw.set(consensusDialedConn, true)
 				} else {
+					p.rw.set(consensusDialedConn, false)
 					if !p.rw.is(staticDialedConn | trustedConn | inboundConn) {
 						p.rw.set(dynDialedConn, true)
 					}
