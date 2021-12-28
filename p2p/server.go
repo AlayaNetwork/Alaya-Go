@@ -961,8 +961,10 @@ running:
 
 func (srv *Server) postHandshakeChecks(peers map[enode.ID]*Peer, inboundCount int, c *conn) error {
 	// Disconnect over limit non-consensus node.
+	//	log.Trace("postHandshakeChecks server status", "consensus", srv.consensus, "peers", len(peers), "MaxPeers", srv.MaxPeers, "consensusDialedConn", c.is(consensusDialedConn), "MaxConsensusPeers", srv.MaxConsensusPeers, "numConsensusPeer", srv.numConsensusPeer(peers))
 	if srv.consensus && len(peers) >= srv.MaxPeers && c.is(consensusDialedConn) && srv.numConsensusPeer(peers) < srv.MaxConsensusPeers {
 		for _, p := range peers {
+			//			log.Trace("postHandshakeChecks peer status", "peer", p.ID(), "status", p.rw.String())
 			if p.rw.is(inboundConn|dynDialedConn) && !p.rw.is(trustedConn|staticDialedConn|consensusDialedConn) {
 				log.Debug("Disconnect over limit connection", "peer", p.ID(), "flags", p.rw.flags, "peers", len(peers))
 				p.Disconnect(DiscRequested)
@@ -1346,22 +1348,24 @@ func (srv *Server) watching() {
 					consensusPeers[id] = struct{}{}
 				}
 				srv.updateConsensusStatus <- consensusPeers
+				log.Trace("Received NewTopicEvent", "consensusPeers", consensusPeers)
 				srv.topicSubscriberMu.Unlock()
 			case cbfttypes.ExpiredTopicEvent:
 				srv.topicSubscriberMu.Lock()
-				nodesDel := srv.topicSubscriber[data.Topic]
-				for _, node := range nodesDel {
-					delete(srv.ConsensusPeers, node)
-				}
 				delete(srv.topicSubscriber, data.Topic)
+				consensusPeers := make(map[enode.ID]struct{})
+				srv.ConsensusPeers = make(map[enode.ID]struct{})
+				for _, peers := range srv.topicSubscriber {
+					for _, peer := range peers {
+						srv.ConsensusPeers[peer] = struct{}{}
+						consensusPeers[peer] = struct{}{}
+					}
+				}
 				if _, ok := srv.ConsensusPeers[srv.localnode.ID()]; !ok {
 					srv.consensus = false
 				}
-				consensusPeers := make(map[enode.ID]struct{})
-				for id, _ := range srv.ConsensusPeers {
-					consensusPeers[id] = struct{}{}
-				}
 				srv.updateConsensusStatus <- consensusPeers
+				log.Trace("Received ExpiredTopicEvent", "consensusPeers", consensusPeers)
 				srv.topicSubscriberMu.Unlock()
 			default:
 				log.Error("Received unexcepted event")
