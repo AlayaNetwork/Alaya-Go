@@ -144,6 +144,9 @@ func (t *tagTracer) removeDeliveryTag(topic string) {
 }
 
 func (t *tagTracer) bumpDeliveryTag(p enode.ID, topic string) error {
+	if t.decayer == nil {
+		return nil
+	}
 	t.RLock()
 	defer t.RUnlock()
 
