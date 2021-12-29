@@ -139,6 +139,21 @@ func buildSendViewChange() *protocols.SendViewChange {
 	}
 }
 
+func buildSendRGBlockQuorumCert() *protocols.SendRGBlockQuorumCert {
+	return &protocols.SendRGBlockQuorumCert{
+		RGEpoch:      epoch,
+		RGViewNumber: viewNumber,
+		RGBlockIndex: 6,
+	}
+}
+
+func buildSendRGViewChangeQuorumCert() *protocols.SendRGViewChangeQuorumCert {
+	return &protocols.SendRGViewChangeQuorumCert{
+		RGEpoch:      epoch,
+		RGViewNumber: viewNumber,
+	}
+}
+
 func buildConfirmedViewChange() *protocols.ConfirmedViewChange {
 	return &protocols.ConfirmedViewChange{
 		Epoch:        epoch,

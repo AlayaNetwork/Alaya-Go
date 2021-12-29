@@ -173,8 +173,11 @@ func testWalWrite(wal Wal) (int, error) {
 		} else if ordinal == 2 {
 			err = wal.WriteSync(buildSendPrepareBlock())
 		} else if ordinal == 3 {
-			//err = getWal().WriteSync(buildSendPrepareVote())
 			err = wal.Write(buildSendPrepareVote())
+		} else if ordinal == 4 {
+			err = wal.Write(buildSendRGBlockQuorumCert())
+		} else if ordinal == 5 {
+			err = wal.Write(buildSendRGViewChangeQuorumCert())
 		}
 		if err != nil {
 			return 0, err
@@ -199,6 +202,10 @@ func testWalLoad(wal Wal) (int, error) {
 		case *protocols.SendPrepareBlock:
 			count++
 		case *protocols.SendPrepareVote:
+			count++
+		case *protocols.SendRGBlockQuorumCert:
+			count++
+		case *protocols.SendRGViewChangeQuorumCert:
 			count++
 		}
 		return nil
@@ -228,7 +235,7 @@ func TestEmptyWal(t *testing.T) {
 
 func TestWalDecoder(t *testing.T) {
 	timestamp := uint64(time.Now().UnixNano())
-	// SendPrepareBlockMsg
+	// MessageSendPrepareBlock
 	prepare := &MessageSendPrepareBlock{
 		Timestamp: timestamp,
 		Data:      buildSendPrepareBlock(),
@@ -248,7 +255,7 @@ func TestWalDecoder(t *testing.T) {
 	assert.Nil(t, err)
 	_, err = WALDecode(data, protocols.SendViewChangeMsg)
 	assert.NotNil(t, err)
-	// MessageSendPrepareVote
+	// MessageSendViewChange
 	view := &MessageSendViewChange{
 		Timestamp: timestamp,
 		Data:      buildSendViewChange(),
@@ -258,7 +265,7 @@ func TestWalDecoder(t *testing.T) {
 	assert.Nil(t, err)
 	_, err = WALDecode(data, protocols.ConfirmedViewChangeMsg)
 	assert.NotNil(t, err)
-	// MessageSendPrepareVote
+	// MessageConfirmedViewChange
 	confirm := &MessageConfirmedViewChange{
 		Timestamp: timestamp,
 		Data:      buildConfirmedViewChange(),
@@ -268,6 +275,26 @@ func TestWalDecoder(t *testing.T) {
 	assert.Nil(t, err)
 	_, err = WALDecode(data, protocols.SendPrepareBlockMsg)
 	assert.NotNil(t, err)
+	// MessageSendRGBlockQuorumCert
+	rgb := &MessageSendRGBlockQuorumCert{
+		Timestamp: timestamp,
+		Data:      buildSendRGBlockQuorumCert(),
+	}
+	data, _ = rlp.EncodeToBytes(rgb)
+	rgbd, err := WALDecode(data, protocols.SendRGBlockQuorumCertMsg)
+	assert.Nil(t, err)
+	assert.IsType(t, &protocols.SendRGBlockQuorumCert{}, rgbd)
+	assert.Equal(t, epoch, rgbd.(*protocols.SendRGBlockQuorumCert).Epoch())
+	// MessageSendRGBlockQuorumCert
+	rgv := &MessageSendRGViewChangeQuorumCert{
+		Timestamp: timestamp,
+		Data:      buildSendRGViewChangeQuorumCert(),
+	}
+	data, _ = rlp.EncodeToBytes(rgv)
+	rgvd, err := WALDecode(data, protocols.SendRGViewChangeQuorumCertMsg)
+	assert.Nil(t, err)
+	assert.IsType(t, &protocols.SendRGViewChangeQuorumCert{}, rgvd)
+	assert.Equal(t, viewNumber, rgvd.(*protocols.SendRGViewChangeQuorumCert).ViewNumber())
 }
 
 func TestWalProtocalMsg(t *testing.T) {

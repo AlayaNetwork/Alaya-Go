@@ -205,7 +205,7 @@ func (m *RGBroadcastManager) broadcast(a awaiting) {
 	}
 }
 
-func (m *RGBroadcastManager) allowRGBlockQuorumCert(a awaiting) bool {
+func (m *RGBroadcastManager) allowRGQuorumCert(a awaiting) bool {
 	switch a.(type) {
 	case *awaitingRGBlockQC:
 		if m.cbft.state.IsDeadline() {
@@ -303,7 +303,7 @@ func (m *RGBroadcastManager) countCoordinator(unitID uint32, coordinatorIndexes 
 
 func (m *RGBroadcastManager) broadcastFunc(a awaiting) {
 	m.cbft.log.Debug("Broadcast rg msg", "type", reflect.TypeOf(a), "groupID", a.GroupID(), "index", a.Index())
-	if !m.equalsState(a) || !m.allowRGBlockQuorumCert(a) {
+	if !m.equalsState(a) || !m.allowRGQuorumCert(a) {
 		return
 	}
 
@@ -342,6 +342,10 @@ func (m *RGBroadcastManager) broadcastFunc(a awaiting) {
 			m.cbft.log.Error("Sign RGBlockQuorumCert failed", "err", err, "rgmsg", rg.String())
 			return
 		}
+		// write SendRGBlockQuorumCert info to wal
+		if !m.cbft.isLoading() {
+			m.cbft.bridge.SendRGBlockQuorumCert(a.Epoch(), a.ViewNumber(), uint32(a.Index()))
+		}
 		m.cbft.network.Broadcast(rg)
 		m.cbft.log.Debug("Success to broadcast RGBlockQuorumCert", "msg", rg.String())
 		m.hadSendRGBlockQuorumCerts[msg.Index()] = rg
@@ -362,6 +366,10 @@ func (m *RGBroadcastManager) broadcastFunc(a awaiting) {
 		if err := m.cbft.signMsgByBls(rg); err != nil {
 			m.cbft.log.Error("Sign RGViewChangeQuorumCert failed", "err", err, "rgmsg", rg.String())
 			return
+		}
+		// write SendRGViewChangeQuorumCert info to wal
+		if !m.cbft.isLoading() {
+			m.cbft.bridge.SendRGViewChangeQuorumCert(a.Epoch(), a.ViewNumber())
 		}
 		m.cbft.network.Broadcast(rg)
 		m.cbft.log.Debug("Success to broadcast RGViewChangeQuorumCert", "msg", rg.String())

@@ -55,6 +55,8 @@ type Bridge interface {
 	SendViewChange(view *protocols.ViewChange)
 	SendPrepareBlock(pb *protocols.PrepareBlock)
 	SendPrepareVote(block *types.Block, vote *protocols.PrepareVote)
+	SendRGBlockQuorumCert(epoch uint64, viewNumber uint64, blockIndex uint32)
+	SendRGViewChangeQuorumCert(epoch uint64, viewNumber uint64)
 	GetViewChangeQC(epoch uint64, viewNumber uint64) (*ctypes.ViewChangeQC, error)
 
 	Close()
@@ -210,31 +212,28 @@ func (b *baseBridge) ConfirmViewChange(epoch, viewNumber uint64, block *types.Bl
 
 // SendViewChange tries to update SendViewChange consensus msg to wal.
 func (b *baseBridge) SendViewChange(view *protocols.ViewChange) {
-	tStart := time.Now()
 	s := &protocols.SendViewChange{
 		ViewChange: view,
 	}
 	if err := b.cbft.wal.WriteSync(s); err != nil {
 		panic(fmt.Sprintf("write send viewChange error, err:%s", err.Error()))
 	}
-	log.Debug("Success to send viewChange", "view", view.String(), "elapsed", time.Since(tStart))
+	log.Debug("Success to send viewChange", "view", view.String())
 }
 
 // SendPrepareBlock tries to update SendPrepareBlock consensus msg to wal.
 func (b *baseBridge) SendPrepareBlock(pb *protocols.PrepareBlock) {
-	tStart := time.Now()
 	s := &protocols.SendPrepareBlock{
 		Prepare: pb,
 	}
 	if err := b.cbft.wal.WriteSync(s); err != nil {
 		panic(fmt.Sprintf("write send prepareBlock error, err:%s", err.Error()))
 	}
-	log.Debug("Success to send prepareBlock", "prepareBlock", pb.String(), "elapsed", time.Since(tStart))
+	log.Debug("Success to send prepareBlock", "prepareBlock", pb.String())
 }
 
 // SendPrepareVote tries to update SendPrepareVote consensus msg to wal.
 func (b *baseBridge) SendPrepareVote(block *types.Block, vote *protocols.PrepareVote) {
-	tStart := time.Now()
 	s := &protocols.SendPrepareVote{
 		Block: block,
 		Vote:  vote,
@@ -242,7 +241,32 @@ func (b *baseBridge) SendPrepareVote(block *types.Block, vote *protocols.Prepare
 	if err := b.cbft.wal.WriteSync(s); err != nil {
 		panic(fmt.Sprintf("write send prepareVote error, err:%s", err.Error()))
 	}
-	log.Debug("Success to send prepareVote", "prepareVote", vote.String(), "elapsed", time.Since(tStart))
+	log.Debug("Success to send prepareVote", "prepareVote", vote.String())
+}
+
+// SendRGBlockQuorumCert tries to update SendRGBlockQuorumCert consensus msg to wal.
+func (b *baseBridge) SendRGBlockQuorumCert(epoch uint64, viewNumber uint64, blockIndex uint32) {
+	s := &protocols.SendRGBlockQuorumCert{
+		RGEpoch:      epoch,
+		RGViewNumber: viewNumber,
+		RGBlockIndex: blockIndex,
+	}
+	if err := b.cbft.wal.WriteSync(s); err != nil {
+		panic(fmt.Sprintf("write send RGBlockQuorumCert error, err:%s", err.Error()))
+	}
+	log.Debug("Success to send RGBlockQuorumCert", "sendRGBlockQuorumCert", s.String())
+}
+
+// SendRGViewChangeQuorumCert tries to update SendRGViewChangeQuorumCert consensus msg to wal.
+func (b *baseBridge) SendRGViewChangeQuorumCert(epoch uint64, viewNumber uint64) {
+	s := &protocols.SendRGViewChangeQuorumCert{
+		RGEpoch:      epoch,
+		RGViewNumber: viewNumber,
+	}
+	if err := b.cbft.wal.WriteSync(s); err != nil {
+		panic(fmt.Sprintf("write send SendRGViewChangeQuorumCert error, err:%s", err.Error()))
+	}
+	log.Debug("Success to send SendRGViewChangeQuorumCert", "sendRGViewChangeQuorumCert", s.String())
 }
 
 func (b *baseBridge) GetViewChangeQC(epoch uint64, viewNumber uint64) (*ctypes.ViewChangeQC, error) {
@@ -448,6 +472,19 @@ func (cbft *Cbft) recoveryMsg(msg interface{}) error {
 			node, _ := cbft.validatorPool.GetValidatorByNodeID(m.Vote.Epoch, cbft.config.Option.Node.ID())
 			cbft.state.AddPrepareVote(uint32(node.Index), m.Vote)
 		}
+
+	case *protocols.SendRGBlockQuorumCert:
+		cbft.log.Debug("Load journal message from wal", "msgType", reflect.TypeOf(msg), "sendRGBlockQuorumCert", m.String())
+		if cbft.equalViewState(m) {
+			cbft.state.AddSendRGBlockQuorumCerts(m.BlockIndex())
+		}
+
+	case *protocols.SendRGViewChangeQuorumCert:
+		cbft.log.Debug("Load journal message from wal", "msgType", reflect.TypeOf(msg), "SendRGViewChangeQuorumCert", m.String())
+		if cbft.equalViewState(m) {
+			cbft.state.AddSendRGViewChangeQuorumCerts(m.ViewNumber())
+		}
+
 	}
 	return nil
 }
