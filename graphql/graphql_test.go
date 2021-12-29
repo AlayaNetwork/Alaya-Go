@@ -1,4 +1,4 @@
-// Copyright 2014 The go-ethereum Authors
+// Copyright 2018 The go-ethereum Authors
 // This file is part of the go-ethereum library.
 //
 // The go-ethereum library is free software: you can redistribute it and/or modify
@@ -14,12 +14,15 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
-package common
+package graphql
 
 import (
 	"testing"
-
-	checker "gopkg.in/check.v1"
 )
 
-func Test(t *testing.T) { checker.TestingT(t) }
+func TestBuildSchema(t *testing.T) {
+	// Make sure the schema can be parsed and matched up to the object model.
+	if _, err := newHandler(nil); err != nil {
+		t.Errorf("Could not construct GraphQL handler: %v", err)
+	}
+}
