@@ -36,7 +36,7 @@ func (srv *Server) DiscoverTopic(ctx context.Context, topic string) {
 					}
 					log.Debug("No peers found subscribed  gossip topic . Searching network for peers subscribed to the topic.", "topic", topic)
 					if err := srv.FindPeersWithTopic(ctx, topic, nodes, srv.Config.MinimumPeersPerTopic); err != nil {
-						log.Error("Could not search for peers", "err", err)
+						log.Debug("Could not search for peers", "err", err)
 						return
 					}
 				}

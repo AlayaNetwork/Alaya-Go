@@ -391,15 +391,15 @@ func (cbft *Cbft) OnViewTimeout() {
 		return
 	}
 
+	// write sendViewChange info to wal
+	if !cbft.isLoading() {
+		cbft.bridge.SendViewChange(viewChange)
+	}
+
 	// send viewChange use pubsub
 	if err := cbft.publishTopicMsg(viewChange); err != nil {
 		cbft.log.Error("Publish viewChange failed", "err", err.Error(), "view", cbft.state.ViewString(), "viewChange", viewChange.String())
 		return
-	}
-
-	// write sendViewChange info to wal
-	if !cbft.isLoading() {
-		cbft.bridge.SendViewChange(viewChange)
 	}
 
 	cbft.state.AddViewChange(uint32(node.Index), viewChange)
@@ -610,6 +610,12 @@ func (cbft *Cbft) trySendPrepareVote() {
 		}
 		if b, qc := cbft.blockTree.FindBlockAndQC(block.ParentHash(), block.NumberU64()-1); b != nil || block.NumberU64() == 0 {
 			p.ParentQC = qc
+
+			// write sendPrepareVote info to wal
+			if !cbft.isLoading() {
+				cbft.bridge.SendPrepareVote(block, p)
+			}
+
 			// send prepareVote use pubsub
 			if err := cbft.publishTopicMsg(p); err != nil {
 				cbft.log.Error("Publish PrepareVote failed", "err", err.Error(), "view", cbft.state.ViewString(), "vote", p.String())
@@ -623,11 +629,6 @@ func (cbft *Cbft) trySendPrepareVote() {
 			pending.Pop()
 
 			//cbft.network.Broadcast(p)
-
-			// write sendPrepareVote info to wal
-			if !cbft.isLoading() {
-				cbft.bridge.SendPrepareVote(block, p)
-			}
 		} else {
 			break
 		}

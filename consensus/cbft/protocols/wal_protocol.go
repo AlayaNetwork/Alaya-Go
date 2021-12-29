@@ -26,10 +26,12 @@ import (
 )
 
 const (
-	ConfirmedViewChangeMsg = 0x01
-	SendViewChangeMsg      = 0x02
-	SendPrepareBlockMsg    = 0x03
-	SendPrepareVoteMsg     = 0x04
+	ConfirmedViewChangeMsg        = 0x01
+	SendViewChangeMsg             = 0x02
+	SendPrepareBlockMsg           = 0x03
+	SendPrepareVoteMsg            = 0x04
+	SendRGBlockQuorumCertMsg      = 0x05
+	SendRGViewChangeQuorumCertMsg = 0x06
 )
 
 const (
@@ -180,12 +182,67 @@ func (s *SendPrepareVote) String() string {
 		s.Vote.Epoch, s.Vote.ViewNumber, s.Vote.BlockIndex, s.Vote.BlockNumber, s.Vote.BlockHash.String())
 }
 
+type SendRGBlockQuorumCert struct {
+	RGEpoch      uint64
+	RGViewNumber uint64
+	RGBlockIndex uint32
+}
+
+func (s SendRGBlockQuorumCert) Epoch() uint64 {
+	return s.RGEpoch
+}
+
+func (s SendRGBlockQuorumCert) ViewNumber() uint64 {
+	return s.RGViewNumber
+}
+
+func (s SendRGBlockQuorumCert) BlockNumber() uint64 {
+	return 0
+}
+
+func (s SendRGBlockQuorumCert) BlockIndex() uint32 {
+	return s.RGBlockIndex
+}
+
+func (s *SendRGBlockQuorumCert) String() string {
+	if s == nil {
+		return ""
+	}
+	return fmt.Sprintf("[epoch:%d, viewNumber:%d, blockIndex:%d]", s.RGEpoch, s.RGViewNumber, s.RGBlockIndex)
+}
+
+type SendRGViewChangeQuorumCert struct {
+	RGEpoch      uint64
+	RGViewNumber uint64
+}
+
+func (s SendRGViewChangeQuorumCert) Epoch() uint64 {
+	return s.RGEpoch
+}
+
+func (s SendRGViewChangeQuorumCert) ViewNumber() uint64 {
+	return s.RGViewNumber
+}
+
+func (s SendRGViewChangeQuorumCert) BlockNumber() uint64 {
+	return 0
+}
+
+func (s *SendRGViewChangeQuorumCert) String() string {
+	if s == nil {
+		return ""
+	}
+	return fmt.Sprintf("[epoch:%d, viewNumber:%d]", s.RGEpoch, s.RGViewNumber)
+}
+
 var (
 	WalMessages = []interface{}{
 		ConfirmedViewChange{},
 		SendViewChange{},
 		SendPrepareBlock{},
 		SendPrepareVote{},
+		SendRGBlockQuorumCert{},
+		SendRGViewChangeQuorumCert{},
 	}
 )
 
@@ -199,6 +256,10 @@ func WalMessageType(msg interface{}) uint64 {
 		return SendPrepareBlockMsg
 	case *SendPrepareVote:
 		return SendPrepareVoteMsg
+	case *SendRGBlockQuorumCert:
+		return SendRGBlockQuorumCertMsg
+	case *SendRGViewChangeQuorumCert:
+		return SendRGViewChangeQuorumCertMsg
 	}
 	panic(fmt.Sprintf("invalid wal msg type %v", reflect.TypeOf(msg)))
 }
