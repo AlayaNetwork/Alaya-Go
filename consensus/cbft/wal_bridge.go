@@ -81,6 +81,12 @@ func (b *emptyBridge) SendPrepareBlock(pb *protocols.PrepareBlock) {
 func (b *emptyBridge) SendPrepareVote(block *types.Block, vote *protocols.PrepareVote) {
 }
 
+func (b *emptyBridge) SendRGBlockQuorumCert(epoch uint64, viewNumber uint64, blockIndex uint32) {
+}
+
+func (b *emptyBridge) SendRGViewChangeQuorumCert(epoch uint64, viewNumber uint64) {
+}
+
 func (b *emptyBridge) GetViewChangeQC(epoch uint64, viewNumber uint64) (*ctypes.ViewChangeQC, error) {
 	return nil, nil
 }
