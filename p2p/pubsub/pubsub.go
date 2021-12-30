@@ -610,6 +610,9 @@ func (p *PubSub) processLoop(ctx context.Context) {
 				for t, tmap := range p.topics {
 					if _, ok := tmap[pid.ID()]; ok {
 						delete(tmap, pid.ID())
+						if len(tmap) == 0 {
+							delete(p.topics, t)
+						}
 						p.notifyLeave(t, pid.ID())
 					}
 				}
@@ -688,6 +691,9 @@ func (p *PubSub) handleDeadPeers() {
 		for t, tmap := range p.topics {
 			if _, ok := tmap[pid]; ok {
 				delete(tmap, pid)
+				if len(tmap) == 0 {
+					delete(p.topics, t)
+				}
 				p.notifyLeave(t, pid)
 			}
 		}
