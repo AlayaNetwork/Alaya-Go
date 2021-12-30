@@ -231,7 +231,7 @@ type Server struct {
 
 	topicSubscriberMu sync.RWMutex
 	topicSubscriber   map[string][]enode.ID
-	ConsensusPeers    map[enode.ID]struct{}
+	ConsensusPeers    map[enode.ID]string
 }
 
 type peerOpFunc func(map[enode.ID]*Peer)
@@ -540,7 +540,7 @@ func (srv *Server) Start() (err error) {
 	srv.removeconsensus = make(chan *enode.Node)
 	srv.updateConsensusStatus = make(chan map[enode.ID]struct{})
 	srv.topicSubscriber = make(map[string][]enode.ID)
-	srv.ConsensusPeers = make(map[enode.ID]struct{})
+	srv.ConsensusPeers = make(map[enode.ID]string)
 
 	if int(xcom.MaxGroupValidators()) <= srv.MinimumPeersPerTopic {
 		srv.MinimumPeersPerTopic = int(xcom.MaxGroupValidators())
@@ -973,6 +973,33 @@ func (srv *Server) postHandshakeChecks(peers map[enode.ID]*Peer, inboundCount in
 			}
 		}
 	}
+	if srv.consensus && c.is(consensusDialedConn) && srv.numConsensusPeer(peers) >= srv.MaxConsensusPeers {
+		srv.topicSubscriberMu.RLock()
+		if connTopic, ok := srv.ConsensusPeers[c.node.ID()]; ok {
+			if len(srv.pubSubServer.PubSub().ListPeers(connTopic)) < srv.MinimumPeersPerTopic {
+				reducedTopicPeerLength := 0
+				reducedTopic := ""
+				for topic, _ := range srv.topicSubscriber {
+					if topic != connTopic {
+						num := len(srv.pubSubServer.PubSub().ListPeers(topic))
+						if num > reducedTopicPeerLength {
+							reducedTopicPeerLength = num
+							reducedTopic = topic
+						}
+					}
+				}
+
+				for id, p := range peers {
+					if srv.ConsensusPeers[id] == reducedTopic && !p.rw.is(trustedConn|staticDialedConn) {
+						log.Debug("Disconnect over limit consensus connection", "peer", p.ID(), "flags", p.rw.flags, "peers", len(peers), "topic", reducedTopic)
+						p.Disconnect(DiscRequested)
+						break
+					}
+				}
+			}
+		}
+		srv.topicSubscriberMu.RUnlock()
+	}
 
 	switch {
 	case c.is(consensusDialedConn) && srv.numConsensusPeer(peers) >= srv.MaxConsensusPeers:
@@ -1338,7 +1365,7 @@ func (srv *Server) watching() {
 				topicSubscriber := make([]enode.ID, 0)
 				for _, node := range data.Nodes {
 					topicSubscriber = append(topicSubscriber, node)
-					srv.ConsensusPeers[node] = struct{}{}
+					srv.ConsensusPeers[node] = data.Topic
 				}
 				if _, ok := srv.ConsensusPeers[srv.localnode.ID()]; ok {
 					srv.consensus = true
@@ -1355,10 +1382,10 @@ func (srv *Server) watching() {
 				srv.topicSubscriberMu.Lock()
 				delete(srv.topicSubscriber, data.Topic)
 				consensusPeers := make(map[enode.ID]struct{})
-				srv.ConsensusPeers = make(map[enode.ID]struct{})
-				for _, peers := range srv.topicSubscriber {
+				srv.ConsensusPeers = make(map[enode.ID]string)
+				for topic, peers := range srv.topicSubscriber {
 					for _, peer := range peers {
-						srv.ConsensusPeers[peer] = struct{}{}
+						srv.ConsensusPeers[peer] = topic
 						consensusPeers[peer] = struct{}{}
 					}
 				}
