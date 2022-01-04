@@ -53,11 +53,11 @@ type Cbft interface {
 	// Return the highest commit block number of the current node.
 	HighestCommitBlockBn() (uint64, common.Hash)
 
-	// Returns the node ID of the missing vote.
-	MissingViewChangeNodes() (types.Message, error)
-
 	// Returns the missing vote.
 	MissingPrepareVote() (types.Message, error)
+
+	// Returns the node ID of the missing vote.
+	MissingViewChangeNodes() (types.Message, error)
 
 	// Returns latest status.
 	LatestStatus() *protocols.GetLatestStatus

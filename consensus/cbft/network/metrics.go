@@ -184,10 +184,10 @@ func (rw *meteredMsgReadWriter) ReadMsg() (p2p.Msg, error) {
 	case msg.Code == protocols.BlockQuorumCertMsg:
 		packets, traffic = reqBlockQuorumCertInPacketsMeter, reqBlockQuorumCertInTrafficMeter
 
-	case msg.Code == protocols.GetPrepareVoteMsg:
+	case msg.Code == protocols.GetPrepareVoteMsg || msg.Code == protocols.GetPrepareVoteV2Msg:
 		packets, traffic = reqGetPrepareVoteInPacketsMeter, reqGetPrepareVoteInTrafficMeter
 
-	case msg.Code == protocols.PrepareVotesMsg:
+	case msg.Code == protocols.PrepareVotesMsg || msg.Code == protocols.PrepareVotesV2Msg:
 		packets, traffic = reqPrepareVotesInPacketsMeter, reqPrepareVotesInTrafficMeter
 
 	case msg.Code == protocols.GetQCBlockListMsg:
@@ -248,7 +248,7 @@ func (rw *meteredMsgReadWriter) WriteMsg(msg p2p.Msg) error {
 		packets, traffic = propPrepareBlockHashOutPacketsMeter, propPrepareBlockHashOutTrafficMeter
 		common.PrepareBlockHashEgressTrafficMeter.Mark(int64(msg.Size))
 
-	case msg.Code == protocols.GetPrepareVoteMsg:
+	case msg.Code == protocols.GetPrepareVoteMsg || msg.Code == protocols.GetPrepareVoteV2Msg:
 		packets, traffic = reqGetPrepareBlockOutPacketsMeter, reqGetPrepareVoteOutTrafficMeter
 		common.GetPrepareVoteEgressTrafficMeter.Mark(int64(msg.Size))
 
@@ -260,7 +260,7 @@ func (rw *meteredMsgReadWriter) WriteMsg(msg p2p.Msg) error {
 		packets, traffic = reqBlockQuorumCertOutPacketsMeter, reqBlockQuorumCertOutTrafficMeter
 		common.BlockQuorumCertEgressTrafficMeter.Mark(int64(msg.Size))
 
-	case msg.Code == protocols.PrepareVotesMsg:
+	case msg.Code == protocols.PrepareVotesMsg || msg.Code == protocols.PrepareVotesV2Msg:
 		packets, traffic = reqPrepareVotesOutPacketsMeter, reqPrepareVotesOutTrafficMeter
 		common.PrepareVotesEgressTrafficMeter.Mark(int64(msg.Size))
 

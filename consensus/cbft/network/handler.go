@@ -604,15 +604,17 @@ func (h *EngineManager) handleMsg(p *peer) error {
 
 	case msg.Code == protocols.GetPrepareVoteMsg:
 		var request protocols.GetPrepareVote
-		if err := msg.Decode(&request); err == nil {
-			return h.engine.ReceiveSyncMsg(types.NewMsgInfo(&request, p.PeerID()))
-		}
-		var requestV2 protocols.GetPrepareVoteV2
-		if err := msg.Decode(&requestV2); err == nil {
-			return h.engine.ReceiveSyncMsg(types.NewMsgInfo(&requestV2, p.PeerID()))
-		} else {
+		if err := msg.Decode(&request); err != nil {
 			return types.ErrResp(types.ErrDecode, "%v: %v", msg, err)
 		}
+		return h.engine.ReceiveSyncMsg(types.NewMsgInfo(&request, p.PeerID()))
+
+	case msg.Code == protocols.PrepareVotesMsg:
+		var request protocols.PrepareVotes
+		if err := msg.Decode(&request); err != nil {
+			return types.ErrResp(types.ErrDecode, "%v: %v", msg, err)
+		}
+		return h.engine.ReceiveSyncMsg(types.NewMsgInfo(&request, p.PeerID()))
 
 	case msg.Code == protocols.PrepareBlockHashMsg:
 		var request protocols.PrepareBlockHash
@@ -621,18 +623,6 @@ func (h *EngineManager) handleMsg(p *peer) error {
 		}
 		p.MarkMessageHash((&request).MsgHash())
 		return h.engine.ReceiveSyncMsg(types.NewMsgInfo(&request, p.PeerID()))
-
-	case msg.Code == protocols.PrepareVotesMsg:
-		var request protocols.PrepareVotes
-		if err := msg.Decode(&request); err == nil {
-			return h.engine.ReceiveSyncMsg(types.NewMsgInfo(&request, p.PeerID()))
-		}
-		var requestV2 protocols.PrepareVotesV2
-		if err := msg.Decode(&requestV2); err == nil {
-			return h.engine.ReceiveSyncMsg(types.NewMsgInfo(&requestV2, p.PeerID()))
-		} else {
-			return types.ErrResp(types.ErrDecode, "%v: %v", msg, err)
-		}
 
 	case msg.Code == protocols.QCBlockListMsg:
 		var request protocols.QCBlockList
@@ -657,15 +647,17 @@ func (h *EngineManager) handleMsg(p *peer) error {
 
 	case msg.Code == protocols.GetViewChangeMsg:
 		var request protocols.GetViewChange
-		if err := msg.Decode(&request); err == nil {
-			return h.engine.ReceiveSyncMsg(types.NewMsgInfo(&request, p.PeerID()))
-		}
-		var requestV2 protocols.GetViewChangeV2
-		if err := msg.Decode(&requestV2); err == nil {
-			return h.engine.ReceiveSyncMsg(types.NewMsgInfo(&requestV2, p.PeerID()))
-		} else {
+		if err := msg.Decode(&request); err != nil {
 			return types.ErrResp(types.ErrDecode, "%v: %v", msg, err)
 		}
+		return h.engine.ReceiveSyncMsg(types.NewMsgInfo(&request, p.PeerID()))
+
+	case msg.Code == protocols.ViewChangesMsg:
+		var request protocols.ViewChanges
+		if err := msg.Decode(&request); err != nil {
+			return types.ErrResp(types.ErrDecode, "%v: %v", msg, err)
+		}
+		return h.engine.ReceiveSyncMsg(types.NewMsgInfo(&request, p.PeerID()))
 
 	case msg.Code == protocols.PingMsg:
 		var pingTime protocols.Ping
@@ -716,17 +708,35 @@ func (h *EngineManager) handleMsg(p *peer) error {
 			return types.ErrResp(types.ErrDecode, "%v: %v", msg, err)
 		}
 		return h.engine.ReceiveSyncMsg(types.NewMsgInfo(&request, p.PeerID()))
-	case msg.Code == protocols.ViewChangesMsg:
-		var request protocols.ViewChanges
-		if err := msg.Decode(&request); err == nil {
-			return h.engine.ReceiveSyncMsg(types.NewMsgInfo(&request, p.PeerID()))
-		}
-		var requestV2 protocols.ViewChangesV2
-		if err := msg.Decode(&requestV2); err == nil {
-			return h.engine.ReceiveSyncMsg(types.NewMsgInfo(&requestV2, p.PeerID()))
-		} else {
+
+	case msg.Code == protocols.GetPrepareVoteV2Msg:
+		var requestV2 protocols.GetPrepareVoteV2
+		if err := msg.Decode(&requestV2); err != nil {
 			return types.ErrResp(types.ErrDecode, "%v: %v", msg, err)
 		}
+		return h.engine.ReceiveSyncMsg(types.NewMsgInfo(&requestV2, p.PeerID()))
+
+	case msg.Code == protocols.PrepareVotesV2Msg:
+		var requestV2 protocols.PrepareVotesV2
+		if err := msg.Decode(&requestV2); err != nil {
+			return types.ErrResp(types.ErrDecode, "%v: %v", msg, err)
+		}
+		return h.engine.ReceiveSyncMsg(types.NewMsgInfo(&requestV2, p.PeerID()))
+
+	case msg.Code == protocols.GetViewChangeV2Msg:
+		var requestV2 protocols.GetViewChangeV2
+		if err := msg.Decode(&requestV2); err != nil {
+			return types.ErrResp(types.ErrDecode, "%v: %v", msg, err)
+
+		}
+		return h.engine.ReceiveSyncMsg(types.NewMsgInfo(&requestV2, p.PeerID()))
+
+	case msg.Code == protocols.ViewChangesV2Msg:
+		var requestV2 protocols.ViewChangesV2
+		if err := msg.Decode(&requestV2); err != nil {
+			return types.ErrResp(types.ErrDecode, "%v: %v", msg, err)
+		}
+		return h.engine.ReceiveSyncMsg(types.NewMsgInfo(&requestV2, p.PeerID()))
 
 	default:
 		return types.ErrResp(types.ErrInvalidMsgCode, "%v", msg.Code)
@@ -818,7 +828,19 @@ func (h *EngineManager) synchronize() {
 				log.Debug("Request missing prepareVote failed", "err", err)
 				break
 			}
-			log.Debug("Had new prepareVote sync request", "msg", msg.String())
+			log.Debug("Had new prepareVote sync request", "msgType", reflect.TypeOf(msg), "msg", msg.String())
+			// Only broadcasts without forwarding.
+			h.PartBroadcast(msg)
+
+		case <-viewTicker.C:
+			// If the local viewChange has insufficient votes,
+			// the GetViewChange message is sent from the missing node.
+			msg, err := h.engine.MissingViewChangeNodes()
+			if err != nil {
+				log.Debug("Request missing viewChange failed", "err", err)
+				break
+			}
+			log.Debug("Had new viewChange sync request", "msgType", reflect.TypeOf(msg), "msg", msg.String())
 			// Only broadcasts without forwarding.
 			h.PartBroadcast(msg)
 
@@ -831,18 +853,6 @@ func (h *EngineManager) synchronize() {
 			}
 			resetTime := time.Duration(rd) * time.Second
 			blockNumberTimer.Reset(resetTime)
-
-		case <-viewTicker.C:
-			// If the local viewChange has insufficient votes,
-			// the GetViewChange message is sent from the missing node.
-			msg, err := h.engine.MissingViewChangeNodes()
-			if err != nil {
-				log.Debug("Request missing viewchange failed", "err", err)
-				break
-			}
-			log.Debug("Had new viewchange sync request", "msg", msg.String())
-			// Only broadcasts without forwarding.
-			h.PartBroadcast(msg)
 
 		case <-pureBlacklistTicker.C:
 			// Iterate over the blacklist and remove

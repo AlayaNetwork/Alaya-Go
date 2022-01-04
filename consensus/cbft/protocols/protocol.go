@@ -37,27 +37,33 @@ const CbftProtocolMaxMsgSize = 10 * 1024 * 1024
 const DefaultAvgLatency = 100
 
 const (
-	CBFTStatusMsg             = 0x00 // Protocol messages belonging to cbft
-	PrepareBlockMsg           = 0x01
-	PrepareVoteMsg            = 0x02
-	ViewChangeMsg             = 0x03
-	GetPrepareBlockMsg        = 0x04
-	GetBlockQuorumCertMsg     = 0x05
-	BlockQuorumCertMsg        = 0x06
-	GetPrepareVoteMsg         = 0x07
-	PrepareVotesMsg           = 0x08
-	GetQCBlockListMsg         = 0x09
-	QCBlockListMsg            = 0x0a
-	GetLatestStatusMsg        = 0x0b
-	LatestStatusMsg           = 0x0c
-	PrepareBlockHashMsg       = 0x0d
-	GetViewChangeMsg          = 0x0e
-	PingMsg                   = 0x0f
-	PongMsg                   = 0x10
-	ViewChangeQuorumCertMsg   = 0x11
-	ViewChangesMsg            = 0x12
+	CBFTStatusMsg           = 0x00 // Protocol messages belonging to cbft
+	PrepareBlockMsg         = 0x01
+	PrepareVoteMsg          = 0x02
+	ViewChangeMsg           = 0x03
+	GetPrepareBlockMsg      = 0x04
+	GetBlockQuorumCertMsg   = 0x05
+	BlockQuorumCertMsg      = 0x06
+	GetPrepareVoteMsg       = 0x07
+	PrepareVotesMsg         = 0x08
+	GetQCBlockListMsg       = 0x09
+	QCBlockListMsg          = 0x0a
+	GetLatestStatusMsg      = 0x0b
+	LatestStatusMsg         = 0x0c
+	PrepareBlockHashMsg     = 0x0d
+	GetViewChangeMsg        = 0x0e
+	PingMsg                 = 0x0f
+	PongMsg                 = 0x10
+	ViewChangeQuorumCertMsg = 0x11
+	ViewChangesMsg          = 0x12
+
+	// for rand-grouped-consensus
 	RGBlockQuorumCertMsg      = 0x13
 	RGViewChangeQuorumCertMsg = 0x14
+	GetPrepareVoteV2Msg       = 0x15
+	PrepareVotesV2Msg         = 0x16
+	GetViewChangeV2Msg        = 0x17
+	ViewChangesV2Msg          = 0x18
 )
 
 // A is used to convert specific message types according to the message body.
@@ -81,11 +87,11 @@ func MessageType(msg interface{}) uint64 {
 		return BlockQuorumCertMsg
 	case *GetQCBlockList:
 		return GetQCBlockListMsg
-	case *GetPrepareVote, *GetPrepareVoteV2:
+	case *GetPrepareVote:
 		return GetPrepareVoteMsg
 	case *PrepareBlockHash:
 		return PrepareBlockHashMsg
-	case *PrepareVotes, *PrepareVotesV2:
+	case *PrepareVotes:
 		return PrepareVotesMsg
 	case *QCBlockList:
 		return QCBlockListMsg
@@ -93,7 +99,7 @@ func MessageType(msg interface{}) uint64 {
 		return GetLatestStatusMsg
 	case *LatestStatus:
 		return LatestStatusMsg
-	case *GetViewChange, *GetViewChangeV2:
+	case *GetViewChange:
 		return GetViewChangeMsg
 	case *Ping:
 		return PingMsg
@@ -101,12 +107,20 @@ func MessageType(msg interface{}) uint64 {
 		return PongMsg
 	case *ViewChangeQuorumCert:
 		return ViewChangeQuorumCertMsg
-	case *ViewChanges, *ViewChangesV2:
+	case *ViewChanges:
 		return ViewChangesMsg
 	case *RGBlockQuorumCert:
 		return RGBlockQuorumCertMsg
 	case *RGViewChangeQuorumCert:
 		return RGViewChangeQuorumCertMsg
+	case *GetPrepareVoteV2:
+		return GetPrepareVoteV2Msg
+	case *PrepareVotesV2:
+		return PrepareVotesV2Msg
+	case *GetViewChangeV2:
+		return GetViewChangeV2Msg
+	case *ViewChangesV2:
+		return ViewChangesV2Msg
 	default:
 	}
 	panic(fmt.Sprintf("unknown message type [%v}", reflect.TypeOf(msg)))
@@ -418,10 +432,9 @@ func (v ViewChangesV2) MsgHash() common.Hash {
 	var mv common.Hash
 	if len(v.VCs) != 0 {
 		epoch, viewNumber := v.VCs[0].Epoch, v.VCs[0].ViewNumber
-		mv = utils.BuildHash(ViewChangesMsg, utils.MergeBytes(common.Uint64ToBytes(epoch),
-			common.Uint64ToBytes(viewNumber)))
+		mv = utils.BuildHash(ViewChangesV2Msg, utils.MergeBytes(common.Uint64ToBytes(epoch), common.Uint64ToBytes(viewNumber)))
 	} else {
-		mv = utils.BuildHash(ViewChangesMsg, common.Hash{}.Bytes())
+		mv = utils.BuildHash(ViewChangesV2Msg, common.Hash{}.Bytes())
 	}
 	v.messageHash.Store(mv)
 	return mv
@@ -608,7 +621,7 @@ func (s *GetPrepareVoteV2) MsgHash() common.Hash {
 	if mhash := s.messageHash.Load(); mhash != nil {
 		return mhash.(common.Hash)
 	}
-	v := utils.BuildHash(GetPrepareVoteMsg, utils.MergeBytes(common.Uint64ToBytes(s.Epoch), common.Uint64ToBytes(s.ViewNumber),
+	v := utils.BuildHash(GetPrepareVoteV2Msg, utils.MergeBytes(common.Uint64ToBytes(s.Epoch), common.Uint64ToBytes(s.ViewNumber),
 		common.Uint32ToBytes(s.BlockIndex)))
 	s.messageHash.Store(v)
 	return v
@@ -662,7 +675,7 @@ func (s *PrepareVotesV2) MsgHash() common.Hash {
 	if mhash := s.messageHash.Load(); mhash != nil {
 		return mhash.(common.Hash)
 	}
-	v := utils.BuildHash(PrepareVotesMsg, utils.MergeBytes(common.Uint64ToBytes(s.Epoch), common.Uint64ToBytes(s.ViewNumber), common.Uint32ToBytes(s.BlockIndex)))
+	v := utils.BuildHash(PrepareVotesV2Msg, utils.MergeBytes(common.Uint64ToBytes(s.Epoch), common.Uint64ToBytes(s.ViewNumber), common.Uint32ToBytes(s.BlockIndex)))
 	s.messageHash.Store(v)
 	return v
 }
@@ -846,8 +859,7 @@ func (s *GetViewChange) MsgHash() common.Hash {
 	if mhash := s.messageHash.Load(); mhash != nil {
 		return mhash.(common.Hash)
 	}
-	v := utils.BuildHash(GetViewChangeMsg,
-		utils.MergeBytes(common.Uint64ToBytes(s.Epoch), common.Uint64ToBytes(s.ViewNumber)))
+	v := utils.BuildHash(GetViewChangeMsg, utils.MergeBytes(common.Uint64ToBytes(s.Epoch), common.Uint64ToBytes(s.ViewNumber)))
 	s.messageHash.Store(v)
 	return v
 }
@@ -872,8 +884,7 @@ func (s *GetViewChangeV2) MsgHash() common.Hash {
 	if mhash := s.messageHash.Load(); mhash != nil {
 		return mhash.(common.Hash)
 	}
-	v := utils.BuildHash(GetViewChangeMsg,
-		utils.MergeBytes(common.Uint64ToBytes(s.Epoch), common.Uint64ToBytes(s.ViewNumber)))
+	v := utils.BuildHash(GetViewChangeV2Msg, utils.MergeBytes(common.Uint64ToBytes(s.Epoch), common.Uint64ToBytes(s.ViewNumber)))
 	s.messageHash.Store(v)
 	return v
 }
