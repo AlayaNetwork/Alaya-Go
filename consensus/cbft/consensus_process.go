@@ -402,7 +402,7 @@ func (cbft *Cbft) OnViewTimeout() {
 		return
 	}
 
-	cbft.state.AddViewChange(uint32(node.Index), viewChange)
+	cbft.state.AddViewChange(node.Index, viewChange)
 	//cbft.network.Broadcast(viewChange)
 	cbft.log.Info("Local add viewChange", "index", node.Index, "viewChange", viewChange.String(), "total", cbft.state.ViewChangeLen())
 
@@ -625,7 +625,7 @@ func (cbft *Cbft) trySendPrepareVote() {
 			//Determine if the current consensus node is
 			node, _ := cbft.isCurrentValidator()
 			cbft.log.Info("Add local prepareVote", "vote", p.String())
-			cbft.state.AddPrepareVote(uint32(node.Index), p)
+			cbft.state.AddPrepareVote(node.Index, p)
 			pending.Pop()
 
 			//cbft.network.Broadcast(p)
@@ -636,16 +636,24 @@ func (cbft *Cbft) trySendPrepareVote() {
 }
 
 func (cbft *Cbft) publishTopicMsg(msg ctypes.ConsensusMsg) error {
-	groupID, _, err := cbft.getGroupByValidatorID(cbft.state.Epoch(), cbft.Node().ID())
-	if err != nil {
-		return fmt.Errorf("the group info of the current node is not queried, cannot publish the topic message")
+	if cbft.NeedGroup() {
+		groupID, _, err := cbft.getGroupByValidatorID(cbft.state.Epoch(), cbft.Node().ID())
+		if err != nil {
+			return fmt.Errorf("the group info of the current node is not queried, cannot publish the topic message")
+		}
+		network.MeteredWriteRGMsg(protocols.MessageType(msg), msg)
+		topic := cbfttypes.ConsensusGroupTopicName(cbft.state.Epoch(), groupID)
+		return cbft.pubSub.Publish(topic, protocols.MessageType(msg), msg)
+	} else {
+		cbft.network.Broadcast(msg)
+		return nil
 	}
-	network.MeteredWriteRGMsg(protocols.MessageType(msg), msg)
-	topic := cbfttypes.ConsensusGroupTopicName(cbft.state.Epoch(), groupID)
-	return cbft.pubSub.Publish(topic, protocols.MessageType(msg), msg)
 }
 
 func (cbft *Cbft) trySendRGBlockQuorumCert() {
+	if !cbft.NeedGroup() {
+		return
+	}
 	// Check timeout
 	if cbft.state.IsDeadline() {
 		cbft.log.Debug("Current view had timeout, refuse to send RGBlockQuorumCert")
@@ -716,6 +724,10 @@ func (cbft *Cbft) trySendRGBlockQuorumCert() {
 }
 
 func (cbft *Cbft) trySendRGViewChangeQuorumCert() {
+	if !cbft.NeedGroup() {
+		return
+	}
+
 	groupID, _, err := cbft.getGroupByValidatorID(cbft.state.Epoch(), cbft.Node().ID())
 	if err != nil {
 		cbft.log.Debug("Current node is not validator, no need to send RGViewChangeQuorumCert")
@@ -816,6 +828,9 @@ func (cbft *Cbft) findExecutableBlock() {
 }
 
 func (cbft *Cbft) mergeVoteToQuorumCerts(node *cbfttypes.ValidateNode, vote *protocols.PrepareVote) {
+	if !cbft.NeedGroup() {
+		return
+	}
 	// Query which group the PrepareVote belongs to according to the information of the node sending the PrepareVote message
 	groupID, _, err := cbft.getGroupByValidatorID(vote.EpochNum(), node.NodeID)
 	if err != nil {
@@ -837,6 +852,9 @@ func (cbft *Cbft) richBlockQuorumCert(epoch uint64, blockIndex, groupID uint32, 
 }
 
 func (cbft *Cbft) mergeViewChangeToViewChangeQuorumCerts(node *cbfttypes.ValidateNode, vc *protocols.ViewChange) {
+	if !cbft.NeedGroup() {
+		return
+	}
 	// Query which group the ViewChange belongs to according to the information of the node sending the ViewChange message
 	groupID, _, err := cbft.getGroupByValidatorID(vc.EpochNum(), node.NodeID)
 	if err != nil {
@@ -950,6 +968,9 @@ func (cbft *Cbft) findQCBlock() {
 	}
 
 	enoughRGQuorumCerts := func() bool {
+		if !cbft.NeedGroup() {
+			return false
+		}
 		rgqcs := cbft.state.FindMaxRGQuorumCerts(next)
 		size := 0
 		if len(rgqcs) > 0 {
@@ -966,6 +987,9 @@ func (cbft *Cbft) findQCBlock() {
 	}
 
 	enoughCombine := func() bool {
+		if !cbft.NeedGroup() {
+			return false
+		}
 		knownIndexes := cbft.KnownVoteIndexes(next)
 		if len(knownIndexes) >= threshold {
 			rgqcs := cbft.state.FindMaxRGQuorumCerts(next)
@@ -1131,6 +1155,9 @@ func (cbft *Cbft) tryChangeView() {
 	}
 
 	enoughRGQuorumCerts := func() bool {
+		if !cbft.NeedGroup() {
+			return false
+		}
 		viewChangeQCs := cbft.state.FindMaxRGViewChangeQuorumCerts()
 		size := 0
 		if len(viewChangeQCs) > 0 {
@@ -1147,6 +1174,9 @@ func (cbft *Cbft) tryChangeView() {
 	}
 
 	enoughCombine := func() bool {
+		if !cbft.NeedGroup() {
+			return false
+		}
 		knownIndexes := cbft.KnownViewChangeIndexes()
 		if len(knownIndexes) >= threshold {
 			viewChangeQCs := cbft.state.FindMaxRGViewChangeQuorumCerts()
@@ -1283,7 +1313,7 @@ func (cbft *Cbft) generateViewChange(qc *ctypes.QuorumCert) (*protocols.ViewChan
 		ViewNumber:     cbft.state.ViewNumber(),
 		BlockHash:      qc.BlockHash,
 		BlockNumber:    qc.BlockNumber,
-		ValidatorIndex: uint32(node.Index),
+		ValidatorIndex: node.Index,
 		PrepareQC:      qc,
 	}
 	if err := cbft.signMsgByBls(v); err != nil {

@@ -428,7 +428,7 @@ func (cbft *Cbft) recoveryMsg(msg interface{}) error {
 			if err != nil {
 				return err
 			}
-			cbft.state.AddViewChange(uint32(node.Index), m.ViewChange)
+			cbft.state.AddViewChange(node.Index, m.ViewChange)
 		}
 
 	case *protocols.SendPrepareBlock:
@@ -476,7 +476,7 @@ func (cbft *Cbft) recoveryMsg(msg interface{}) error {
 
 			cbft.state.HadSendPrepareVote().Push(m.Vote)
 			node, _ := cbft.validatorPool.GetValidatorByNodeID(m.Vote.Epoch, cbft.config.Option.Node.ID())
-			cbft.state.AddPrepareVote(uint32(node.Index), m.Vote)
+			cbft.state.AddPrepareVote(node.Index, m.Vote)
 		}
 
 	case *protocols.SendRGBlockQuorumCert:
@@ -486,7 +486,7 @@ func (cbft *Cbft) recoveryMsg(msg interface{}) error {
 		}
 
 	case *protocols.SendRGViewChangeQuorumCert:
-		cbft.log.Debug("Load journal message from wal", "msgType", reflect.TypeOf(msg), "SendRGViewChangeQuorumCert", m.String())
+		cbft.log.Debug("Load journal message from wal", "msgType", reflect.TypeOf(msg), "sendRGViewChangeQuorumCert", m.String())
 		if cbft.equalViewState(m) {
 			cbft.state.AddSendRGViewChangeQuorumCerts(m.ViewNumber())
 		}

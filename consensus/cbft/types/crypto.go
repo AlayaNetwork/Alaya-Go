@@ -508,6 +508,9 @@ func (unKnowns *UnKnownGroups) UnKnownSize() int {
 }
 
 func (unKnowns *UnKnownGroups) String() string {
+	if unKnowns == nil || len(unKnowns.UnKnown) <= 0 {
+		return ""
+	}
 	if b, err := json.Marshal(unKnowns); err == nil {
 		return string(b)
 	}

@@ -53,11 +53,11 @@ type Cbft interface {
 	// Return the highest commit block number of the current node.
 	HighestCommitBlockBn() (uint64, common.Hash)
 
-	// Returns the node ID of the missing vote.
-	MissingViewChangeNodes() (*protocols.GetViewChange, error)
-
 	// Returns the missing vote.
-	MissingPrepareVote() (*protocols.GetPrepareVote, error)
+	MissingPrepareVote() (types.Message, error)
+
+	// Returns the node ID of the missing vote.
+	MissingViewChangeNodes() (types.Message, error)
 
 	// Returns latest status.
 	LatestStatus() *protocols.GetLatestStatus
@@ -67,6 +67,9 @@ type Cbft interface {
 
 	// BlockExists determines if a block exists.
 	BlockExists(blockNumber uint64, blockHash common.Hash) error
+
+	// NeedGroup indicates whether grouped consensus will be used
+	NeedGroup() bool
 
 	// TODO just for log
 	GetGroupByValidatorID(nodeID enode.ID) (uint32, uint32, error)
