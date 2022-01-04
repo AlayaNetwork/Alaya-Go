@@ -92,7 +92,6 @@ var (
 		utils.MaxPeersFlag,
 		utils.MaxConsensusPeersFlag,
 		utils.MaxPendingPeersFlag,
-		utils.MinimumPeersInTopicSearch,
 		utils.MinimumPeersPerTopic,
 		utils.MinerGasTargetFlag,
 		//utils.MinerGasLimitFlag,
