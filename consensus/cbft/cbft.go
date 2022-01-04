@@ -329,6 +329,11 @@ func (cbft *Cbft) Start(chain consensus.ChainReader, blockCache consensus.BlockC
 	return nil
 }
 
+// NeedGroup indicates whether grouped consensus will be used
+func (cbft *Cbft) NeedGroup() bool {
+	return cbft.validatorPool.NeedGroup()
+}
+
 // ReceiveMessage Entrance: The messages related to the consensus are entered from here.
 // The message sent from the peer node is sent to the CBFT message queue and
 // there is a loop that will distribute the incoming message.
@@ -631,8 +636,14 @@ func (cbft *Cbft) handleSyncMsg(info *ctypes.MsgInfo) error {
 		case *protocols.GetPrepareVote:
 			err = cbft.OnGetPrepareVote(id, msg)
 
+		case *protocols.GetPrepareVoteV2:
+			err = cbft.OnGetPrepareVoteV2(id, msg)
+
 		case *protocols.PrepareVotes:
 			err = cbft.OnPrepareVotes(id, msg)
+
+		case *protocols.PrepareVotesV2:
+			err = cbft.OnPrepareVotesV2(id, msg)
 
 		case *protocols.GetQCBlockList:
 			err = cbft.OnGetQCBlockList(id, msg)
@@ -649,11 +660,17 @@ func (cbft *Cbft) handleSyncMsg(info *ctypes.MsgInfo) error {
 		case *protocols.GetViewChange:
 			err = cbft.OnGetViewChange(id, msg)
 
+		case *protocols.GetViewChangeV2:
+			err = cbft.OnGetViewChangeV2(id, msg)
+
 		case *protocols.ViewChangeQuorumCert:
 			err = cbft.OnViewChangeQuorumCert(id, msg)
 
 		case *protocols.ViewChanges:
 			err = cbft.OnViewChanges(id, msg)
+
+		case *protocols.ViewChangesV2:
+			err = cbft.OnViewChangesV2(id, msg)
 		}
 	}
 	return err

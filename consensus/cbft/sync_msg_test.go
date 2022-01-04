@@ -353,38 +353,6 @@ func (suit *SyncMsgTestSuite) TestOnGetQCBlockListDifNumber() {
 }
 
 // normal
-//func (suit *SyncMsgTestSuite) TestOnGetPrepareVote() {
-//	votes := make([]*protocols.PrepareVote, 0)
-//	for _, node := range suit.view.allCbft {
-//		index, err := node.validatorPool.GetIndexByNodeID(suit.epoch, node.config.Option.Node.ID())
-//		if err != nil {
-//			panic(err.Error())
-//		}
-//		vote := mockPrepareVote(node.config.Option.BlsPriKey, suit.epoch, suit.oldViewNumber,
-//			0, index, suit.blockOne.Hash(), suit.blockOne.NumberU64(), nil)
-//		votes = append(votes, vote)
-//		suit.view.firstProposer().state.AddPrepareVote(index, vote)
-//	}
-//	unKnownSet := utils.NewBitArray(uint32(len(suit.view.allCbft)))
-//	for i := uint32(0); i < unKnownSet.Size(); i++ {
-//		unKnownSet.SetIndex(i, true)
-//	}
-//	getPrepareVote := &protocols.GetPrepareVote{
-//		Epoch:      suit.epoch,
-//		ViewNumber: suit.oldViewNumber,
-//		BlockIndex: 0,
-//		UnKnownSet: unKnownSet,
-//	}
-//	cleanCh(suit.msgCh)
-//	suit.view.firstProposer().OnGetPrepareVote("", getPrepareVote)
-//	select {
-//	case <-suit.msgCh:
-//	case <-time.After(time.Millisecond * 10):
-//		suit.T().Fatal("timeout")
-//	}
-//}
-
-// normal
 func (suit *SyncMsgTestSuite) TestOnPrepareVotes() {
 	pb := mockPrepareBlock(suit.view.firstProposerBlsKey(), suit.epoch, suit.oldViewNumber, 0, suit.view.firstProposerIndex(), suit.blockOne, nil, nil)
 	suit.view.firstProposer().state.AddPrepareBlock(pb)

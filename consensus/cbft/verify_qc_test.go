@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
-
 package cbft
 
 import (
@@ -97,7 +96,7 @@ func (cbft *Cbft) mockGenerateViewChangeQuorumCertWithViewNumber(qc *ctypes.Quor
 		ViewNumber:     qc.ViewNumber,
 		BlockHash:      qc.BlockHash,
 		BlockNumber:    qc.BlockNumber,
-		ValidatorIndex: uint32(node.Index),
+		ValidatorIndex: node.Index,
 		PrepareQC:      qc,
 	}
 	if err := cbft.signMsgByBls(v); err != nil {

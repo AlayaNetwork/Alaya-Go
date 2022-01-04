@@ -444,6 +444,9 @@ func (h *EngineManager) handler(p *p2p.Peer, rw p2p.MsgReadWriter) error {
 }
 
 func (h *EngineManager) HandleRGMsg(p *peer, msg *p2p.Msg) error {
+	if !h.engine.NeedGroup() {
+		return nil
+	}
 	// TODO just for log
 	logVerbosity := debug.GetLogVerbosity()
 	if logVerbosity == log.LvlTrace {
@@ -526,7 +529,32 @@ func (h *EngineManager) handleMsg(p *peer) error {
 		// Message transfer to cbft message queue.
 		return h.engine.ReceiveMessage(types.NewMsgInfo(&request, p.PeerID()))
 
+	case msg.Code == protocols.PrepareVoteMsg:
+		if h.engine.NeedGroup() {
+			return nil
+		}
+		var request protocols.PrepareVote
+		if err := msg.Decode(&request); err != nil {
+			return types.ErrResp(types.ErrDecode, "%v: %v", msg, err)
+		}
+		p.MarkMessageHash((&request).MsgHash())
+		return h.engine.ReceiveMessage(types.NewMsgInfo(&request, p.PeerID()))
+
+	case msg.Code == protocols.ViewChangeMsg:
+		if h.engine.NeedGroup() {
+			return nil
+		}
+		var request protocols.ViewChange
+		if err := msg.Decode(&request); err != nil {
+			return types.ErrResp(types.ErrDecode, "%v: %v", msg, err)
+		}
+		p.MarkMessageHash((&request).MsgHash())
+		return h.engine.ReceiveMessage(types.NewMsgInfo(&request, p.PeerID()))
+
 	case msg.Code == protocols.RGBlockQuorumCertMsg:
+		if !h.engine.NeedGroup() {
+			return nil
+		}
 		var request protocols.RGBlockQuorumCert
 		if err := msg.Decode(&request); err != nil {
 			return types.ErrResp(types.ErrDecode, "%v: %v", msg, err)
@@ -535,6 +563,9 @@ func (h *EngineManager) handleMsg(p *peer) error {
 		return h.engine.ReceiveMessage(types.NewMsgInfo(&request, p.PeerID()))
 
 	case msg.Code == protocols.RGViewChangeQuorumCertMsg:
+		if !h.engine.NeedGroup() {
+			return nil
+		}
 		var request protocols.RGViewChangeQuorumCert
 		if err := msg.Decode(&request); err != nil {
 			return types.ErrResp(types.ErrDecode, "%v: %v", msg, err)
@@ -573,10 +604,15 @@ func (h *EngineManager) handleMsg(p *peer) error {
 
 	case msg.Code == protocols.GetPrepareVoteMsg:
 		var request protocols.GetPrepareVote
-		if err := msg.Decode(&request); err != nil {
+		if err := msg.Decode(&request); err == nil {
+			return h.engine.ReceiveSyncMsg(types.NewMsgInfo(&request, p.PeerID()))
+		}
+		var requestV2 protocols.GetPrepareVoteV2
+		if err := msg.Decode(&requestV2); err == nil {
+			return h.engine.ReceiveSyncMsg(types.NewMsgInfo(&requestV2, p.PeerID()))
+		} else {
 			return types.ErrResp(types.ErrDecode, "%v: %v", msg, err)
 		}
-		return h.engine.ReceiveSyncMsg(types.NewMsgInfo(&request, p.PeerID()))
 
 	case msg.Code == protocols.PrepareBlockHashMsg:
 		var request protocols.PrepareBlockHash
@@ -588,10 +624,15 @@ func (h *EngineManager) handleMsg(p *peer) error {
 
 	case msg.Code == protocols.PrepareVotesMsg:
 		var request protocols.PrepareVotes
-		if err := msg.Decode(&request); err != nil {
+		if err := msg.Decode(&request); err == nil {
+			return h.engine.ReceiveSyncMsg(types.NewMsgInfo(&request, p.PeerID()))
+		}
+		var requestV2 protocols.PrepareVotesV2
+		if err := msg.Decode(&requestV2); err == nil {
+			return h.engine.ReceiveSyncMsg(types.NewMsgInfo(&requestV2, p.PeerID()))
+		} else {
 			return types.ErrResp(types.ErrDecode, "%v: %v", msg, err)
 		}
-		return h.engine.ReceiveSyncMsg(types.NewMsgInfo(&request, p.PeerID()))
 
 	case msg.Code == protocols.QCBlockListMsg:
 		var request protocols.QCBlockList
@@ -616,10 +657,15 @@ func (h *EngineManager) handleMsg(p *peer) error {
 
 	case msg.Code == protocols.GetViewChangeMsg:
 		var request protocols.GetViewChange
-		if err := msg.Decode(&request); err != nil {
+		if err := msg.Decode(&request); err == nil {
+			return h.engine.ReceiveSyncMsg(types.NewMsgInfo(&request, p.PeerID()))
+		}
+		var requestV2 protocols.GetViewChangeV2
+		if err := msg.Decode(&requestV2); err == nil {
+			return h.engine.ReceiveSyncMsg(types.NewMsgInfo(&requestV2, p.PeerID()))
+		} else {
 			return types.ErrResp(types.ErrDecode, "%v: %v", msg, err)
 		}
-		return h.engine.ReceiveSyncMsg(types.NewMsgInfo(&request, p.PeerID()))
 
 	case msg.Code == protocols.PingMsg:
 		var pingTime protocols.Ping
@@ -672,10 +718,15 @@ func (h *EngineManager) handleMsg(p *peer) error {
 		return h.engine.ReceiveSyncMsg(types.NewMsgInfo(&request, p.PeerID()))
 	case msg.Code == protocols.ViewChangesMsg:
 		var request protocols.ViewChanges
-		if err := msg.Decode(&request); err != nil {
+		if err := msg.Decode(&request); err == nil {
+			return h.engine.ReceiveSyncMsg(types.NewMsgInfo(&request, p.PeerID()))
+		}
+		var requestV2 protocols.ViewChangesV2
+		if err := msg.Decode(&requestV2); err == nil {
+			return h.engine.ReceiveSyncMsg(types.NewMsgInfo(&requestV2, p.PeerID()))
+		} else {
 			return types.ErrResp(types.ErrDecode, "%v: %v", msg, err)
 		}
-		return h.engine.ReceiveSyncMsg(types.NewMsgInfo(&request, p.PeerID()))
 
 	default:
 		return types.ErrResp(types.ErrInvalidMsgCode, "%v", msg.Code)

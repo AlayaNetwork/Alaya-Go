@@ -81,11 +81,11 @@ func MessageType(msg interface{}) uint64 {
 		return BlockQuorumCertMsg
 	case *GetQCBlockList:
 		return GetQCBlockListMsg
-	case *GetPrepareVote:
+	case *GetPrepareVote, *GetPrepareVoteV2:
 		return GetPrepareVoteMsg
 	case *PrepareBlockHash:
 		return PrepareBlockHashMsg
-	case *PrepareVotes:
+	case *PrepareVotes, *PrepareVotesV2:
 		return PrepareVotesMsg
 	case *QCBlockList:
 		return QCBlockListMsg
@@ -93,7 +93,7 @@ func MessageType(msg interface{}) uint64 {
 		return GetLatestStatusMsg
 	case *LatestStatus:
 		return LatestStatusMsg
-	case *GetViewChange:
+	case *GetViewChange, *GetViewChangeV2:
 		return GetViewChangeMsg
 	case *Ping:
 		return PingMsg
@@ -101,7 +101,7 @@ func MessageType(msg interface{}) uint64 {
 		return PongMsg
 	case *ViewChangeQuorumCert:
 		return ViewChangeQuorumCertMsg
-	case *ViewChanges:
+	case *ViewChanges, *ViewChangesV2:
 		return ViewChangesMsg
 	case *RGBlockQuorumCert:
 		return RGBlockQuorumCertMsg
@@ -365,17 +365,16 @@ func (vc *ViewChange) SetSign(sign []byte) {
 }
 
 type ViewChanges struct {
-	VCs                     []*ViewChange
-	RGViewChangeQuorumCerts []*RGViewChangeQuorumCert
-	messageHash             atomic.Value `rlp:"-"`
+	VCs         []*ViewChange
+	messageHash atomic.Value `rlp:"-"`
 }
 
 func (v ViewChanges) String() string {
 	if len(v.VCs) != 0 {
 		epoch, viewNumber := v.VCs[0].Epoch, v.VCs[0].ViewNumber
-		return fmt.Sprintf("{Epoch:%d,ViewNumber:%d,VCsLen:%d,,RGLen:%d}", epoch, viewNumber, len(v.VCs), len(v.RGViewChangeQuorumCerts))
+		return fmt.Sprintf("{Epoch:%d,ViewNumber:%d,Len:%d}", epoch, viewNumber, len(v.VCs))
 	}
-	return ""
+	return fmt.Sprintf("{Len:%d}", len(v.VCs))
 }
 
 func (v ViewChanges) MsgHash() common.Hash {
@@ -394,7 +393,41 @@ func (v ViewChanges) MsgHash() common.Hash {
 	return mv
 }
 
-func (ViewChanges) BHash() common.Hash {
+func (v ViewChanges) BHash() common.Hash {
+	return common.Hash{}
+}
+
+type ViewChangesV2 struct {
+	VCs                     []*ViewChange
+	RGViewChangeQuorumCerts []*RGViewChangeQuorumCert
+	messageHash             atomic.Value `rlp:"-"`
+}
+
+func (v ViewChangesV2) String() string {
+	if len(v.VCs) != 0 {
+		epoch, viewNumber := v.VCs[0].Epoch, v.VCs[0].ViewNumber
+		return fmt.Sprintf("{Epoch:%d,ViewNumber:%d,VCsLen:%d,,RGLen:%d}", epoch, viewNumber, len(v.VCs), len(v.RGViewChangeQuorumCerts))
+	}
+	return ""
+}
+
+func (v ViewChangesV2) MsgHash() common.Hash {
+	if mhash := v.messageHash.Load(); mhash != nil {
+		return mhash.(common.Hash)
+	}
+	var mv common.Hash
+	if len(v.VCs) != 0 {
+		epoch, viewNumber := v.VCs[0].Epoch, v.VCs[0].ViewNumber
+		mv = utils.BuildHash(ViewChangesMsg, utils.MergeBytes(common.Uint64ToBytes(epoch),
+			common.Uint64ToBytes(viewNumber)))
+	} else {
+		mv = utils.BuildHash(ViewChangesMsg, common.Hash{}.Bytes())
+	}
+	v.messageHash.Store(mv)
+	return mv
+}
+
+func (v ViewChangesV2) BHash() common.Hash {
 	return common.Hash{}
 }
 
@@ -536,12 +569,12 @@ type GetPrepareVote struct {
 	Epoch       uint64
 	ViewNumber  uint64
 	BlockIndex  uint32
-	UnKnownSet  *ctypes.UnKnownGroups
+	UnKnownSet  *utils.BitArray
 	messageHash atomic.Value `json:"-" rlp:"-"`
 }
 
 func (s *GetPrepareVote) String() string {
-	return fmt.Sprintf("{Epoch:%d,ViewNumber:%d,BlockIndex:%d,UnKnownSetLen:%d,UnKnownSet:%s}", s.Epoch, s.ViewNumber, s.BlockIndex, s.UnKnownSet.UnKnownSize(), s.UnKnownSet.String())
+	return fmt.Sprintf("{Epoch:%d,ViewNumber:%d,BlockIndex:%d,UnKnownSet:%s}", s.Epoch, s.ViewNumber, s.BlockIndex, s.UnKnownSet.String())
 }
 
 func (s *GetPrepareVote) MsgHash() common.Hash {
@@ -558,18 +591,44 @@ func (s *GetPrepareVote) BHash() common.Hash {
 	return common.Hash{}
 }
 
+// Message used to get block voting.
+type GetPrepareVoteV2 struct {
+	Epoch         uint64
+	ViewNumber    uint64
+	BlockIndex    uint32
+	UnKnownGroups *ctypes.UnKnownGroups
+	messageHash   atomic.Value `json:"-" rlp:"-"`
+}
+
+func (s *GetPrepareVoteV2) String() string {
+	return fmt.Sprintf("{Epoch:%d,ViewNumber:%d,BlockIndex:%d,UnKnownSetLen:%d,UnKnownGroups:%s}", s.Epoch, s.ViewNumber, s.BlockIndex, s.UnKnownGroups.UnKnownSize(), s.UnKnownGroups.String())
+}
+
+func (s *GetPrepareVoteV2) MsgHash() common.Hash {
+	if mhash := s.messageHash.Load(); mhash != nil {
+		return mhash.(common.Hash)
+	}
+	v := utils.BuildHash(GetPrepareVoteMsg, utils.MergeBytes(common.Uint64ToBytes(s.Epoch), common.Uint64ToBytes(s.ViewNumber),
+		common.Uint32ToBytes(s.BlockIndex)))
+	s.messageHash.Store(v)
+	return v
+}
+
+func (s *GetPrepareVoteV2) BHash() common.Hash {
+	return common.Hash{}
+}
+
 // Message used to respond to the number of block votes.
 type PrepareVotes struct {
-	Epoch              uint64
-	ViewNumber         uint64
-	BlockIndex         uint32
-	Votes              []*PrepareVote // Block voting set.
-	RGBlockQuorumCerts []*RGBlockQuorumCert
-	messageHash        atomic.Value `json:"-" rlp:"-"`
+	Epoch       uint64
+	ViewNumber  uint64
+	BlockIndex  uint32
+	Votes       []*PrepareVote // Block voting set.
+	messageHash atomic.Value   `json:"-" rlp:"-"`
 }
 
 func (s *PrepareVotes) String() string {
-	return fmt.Sprintf("{Epoch:%d,ViewNumber:%d,BlockIndex:%d,VotesLen:%d,RGLen:%d}", s.Epoch, s.ViewNumber, s.BlockIndex, len(s.Votes), len(s.RGBlockQuorumCerts))
+	return fmt.Sprintf("{Epoch:%d,ViewNumber:%d,BlockIndex:%d}", s.Epoch, s.ViewNumber, s.BlockIndex)
 }
 
 func (s *PrepareVotes) MsgHash() common.Hash {
@@ -582,6 +641,33 @@ func (s *PrepareVotes) MsgHash() common.Hash {
 }
 
 func (s *PrepareVotes) BHash() common.Hash {
+	return common.Hash{}
+}
+
+// Message used to respond to the number of block votes.
+type PrepareVotesV2 struct {
+	Epoch              uint64
+	ViewNumber         uint64
+	BlockIndex         uint32
+	Votes              []*PrepareVote // Block voting set.
+	RGBlockQuorumCerts []*RGBlockQuorumCert
+	messageHash        atomic.Value `json:"-" rlp:"-"`
+}
+
+func (s *PrepareVotesV2) String() string {
+	return fmt.Sprintf("{Epoch:%d,ViewNumber:%d,BlockIndex:%d,VotesLen:%d,RGLen:%d}", s.Epoch, s.ViewNumber, s.BlockIndex, len(s.Votes), len(s.RGBlockQuorumCerts))
+}
+
+func (s *PrepareVotesV2) MsgHash() common.Hash {
+	if mhash := s.messageHash.Load(); mhash != nil {
+		return mhash.(common.Hash)
+	}
+	v := utils.BuildHash(PrepareVotesMsg, utils.MergeBytes(common.Uint64ToBytes(s.Epoch), common.Uint64ToBytes(s.ViewNumber), common.Uint32ToBytes(s.BlockIndex)))
+	s.messageHash.Store(v)
+	return v
+}
+
+func (s *PrepareVotesV2) BHash() common.Hash {
 	return common.Hash{}
 }
 
@@ -746,14 +832,14 @@ func (s *LatestStatus) BHash() common.Hash {
 
 // Used to actively request to get viewChange.
 type GetViewChange struct {
-	Epoch       uint64                `json:"epoch"`
-	ViewNumber  uint64                `json:"viewNumber"`
-	UnKnownSet  *ctypes.UnKnownGroups `json:"unKnownSet"`
-	messageHash atomic.Value          `rlp:"-"`
+	Epoch          uint64          `json:"epoch"`
+	ViewNumber     uint64          `json:"viewNumber"`
+	ViewChangeBits *utils.BitArray `json:"nodeIndexes"`
+	messageHash    atomic.Value    `rlp:"-"`
 }
 
 func (s *GetViewChange) String() string {
-	return fmt.Sprintf("{Epoch:%d,ViewNumber:%d,UnKnownSetLen:%d,UnKnownSet:%s}", s.Epoch, s.ViewNumber, s.UnKnownSet.UnKnownSize(), s.UnKnownSet.String())
+	return fmt.Sprintf("{Epoch:%d,ViewNumber:%d,NodeIndexesLen:%s}", s.Epoch, s.ViewNumber, s.ViewChangeBits.String())
 }
 
 func (s *GetViewChange) MsgHash() common.Hash {
@@ -767,6 +853,32 @@ func (s *GetViewChange) MsgHash() common.Hash {
 }
 
 func (s *GetViewChange) BHash() common.Hash {
+	return common.Hash{}
+}
+
+// Used to actively request to get viewChange.
+type GetViewChangeV2 struct {
+	Epoch         uint64                `json:"epoch"`
+	ViewNumber    uint64                `json:"viewNumber"`
+	UnKnownGroups *ctypes.UnKnownGroups `json:"unKnownSet"`
+	messageHash   atomic.Value          `rlp:"-"`
+}
+
+func (s *GetViewChangeV2) String() string {
+	return fmt.Sprintf("{Epoch:%d,ViewNumber:%d,UnKnownSetLen:%d,UnKnownGroups:%s}", s.Epoch, s.ViewNumber, s.UnKnownGroups.UnKnownSize(), s.UnKnownGroups.String())
+}
+
+func (s *GetViewChangeV2) MsgHash() common.Hash {
+	if mhash := s.messageHash.Load(); mhash != nil {
+		return mhash.(common.Hash)
+	}
+	v := utils.BuildHash(GetViewChangeMsg,
+		utils.MergeBytes(common.Uint64ToBytes(s.Epoch), common.Uint64ToBytes(s.ViewNumber)))
+	s.messageHash.Store(v)
+	return v
+}
+
+func (s *GetViewChangeV2) BHash() common.Hash {
 	return common.Hash{}
 }
 
