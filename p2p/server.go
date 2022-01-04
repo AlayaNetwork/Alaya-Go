@@ -988,12 +988,13 @@ func (srv *Server) postHandshakeChecks(peers map[enode.ID]*Peer, inboundCount in
 						}
 					}
 				}
-
-				for id, p := range peers {
-					if srv.ConsensusPeers[id] == reducedTopic && !p.rw.is(trustedConn|staticDialedConn) {
-						log.Debug("Disconnect over limit consensus connection", "peer", p.ID(), "flags", p.rw.flags, "peers", len(peers), "topic", reducedTopic)
-						p.Disconnect(DiscRequested)
-						break
+				if reducedTopic != "" {
+					for id, p := range peers {
+						if srv.ConsensusPeers[id] == reducedTopic && !p.rw.is(trustedConn|staticDialedConn) {
+							log.Debug("Disconnect over limit consensus connection", "peer", p.ID(), "flags", p.rw.flags, "peers", len(peers), "topic", reducedTopic)
+							p.Disconnect(DiscRequested)
+							break
+						}
 					}
 				}
 			}
