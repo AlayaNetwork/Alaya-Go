@@ -1004,6 +1004,9 @@ func (srv *Server) postHandshakeChecks(peers map[enode.ID]*Peer, inboundCount in
 						if referencedNum > nodeReferenced[node] {
 							referencedNum = nodeReferenced[node]
 							reducedNode = node
+							if referencedNum == 1 {
+								break
+							}
 						}
 					}
 					if peer, ok := peers[reducedNode]; ok {
