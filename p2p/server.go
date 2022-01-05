@@ -1027,6 +1027,7 @@ func (srv *Server) postHandshakeChecks(peers map[enode.ID]*Peer, inboundCount in
 
 	switch {
 	case c.is(consensusDialedConn) && numConsensusPeer-disconnectConsensus >= srv.MaxConsensusPeers:
+		log.Trace("fail to dial for connect Too many consensus peers", "peers", numConsensusPeer, "disconnectConsensus", disconnectConsensus, "maxConsensusPeers", srv.MaxConsensusPeers)
 		return DiscTooManyConsensusPeers
 	case !srv.consensus && c.is(consensusDialedConn) && len(peers) >= srv.MaxPeers:
 		return DiscTooManyPeers
