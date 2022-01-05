@@ -959,9 +959,10 @@ running:
 func (srv *Server) postHandshakeChecks(peers map[enode.ID]*Peer, inboundCount int, c *conn) error {
 	// Disconnect over limit non-consensus node.
 	//	log.Trace("postHandshakeChecks server status", "consensus", srv.consensus, "peers", len(peers), "MaxPeers", srv.MaxPeers, "consensusDialedConn", c.is(consensusDialedConn), "MaxConsensusPeers", srv.MaxConsensusPeers, "numConsensusPeer", srv.numConsensusPeer(peers))
-	if srv.consensus && len(peers) >= srv.MaxPeers && c.is(consensusDialedConn) && srv.numConsensusPeer(peers) < srv.MaxConsensusPeers {
+	numConsensusPeer := srv.numConsensusPeer(peers)
+
+	if srv.consensus && len(peers) >= srv.MaxPeers && c.is(consensusDialedConn) && numConsensusPeer < srv.MaxConsensusPeers {
 		for _, p := range peers {
-			//			log.Trace("postHandshakeChecks peer status", "peer", p.ID(), "status", p.rw.String())
 			if p.rw.is(inboundConn|dynDialedConn) && !p.rw.is(trustedConn|staticDialedConn|consensusDialedConn) {
 				log.Debug("Disconnect over limit connection", "peer", p.ID(), "flags", p.rw.flags, "peers", len(peers))
 				p.Disconnect(DiscRequested)
@@ -969,7 +970,8 @@ func (srv *Server) postHandshakeChecks(peers map[enode.ID]*Peer, inboundCount in
 			}
 		}
 	}
-	if srv.consensus && c.is(consensusDialedConn) && srv.numConsensusPeer(peers) >= srv.MaxConsensusPeers {
+	disconnectConsensus := 0
+	if srv.consensus && c.is(consensusDialedConn) && numConsensusPeer >= srv.MaxConsensusPeers {
 		srv.topicSubscriberMu.RLock()
 		for _, connTopic := range srv.getPeersTopics(c.node.ID()) {
 			if len(srv.pubSubServer.PubSub().ListPeers(connTopic)) < srv.MinimumPeersPerTopic {
@@ -1011,22 +1013,20 @@ func (srv *Server) postHandshakeChecks(peers map[enode.ID]*Peer, inboundCount in
 					}
 					if peer, ok := peers[reducedNode]; ok {
 						if !peer.rw.is(trustedConn | staticDialedConn) {
-							log.Debug("Disconnect over limit consensus connection", "peer", peer.ID(), "flags", peer.rw.flags, "peers", len(peers), "topic", reducedTopic)
+							log.Debug("Disconnect over limit consensus connection", "peer", peer.ID(), "flags", peer.rw.flags, "peers", len(peers), "topic", reducedTopic, "referencedNum", referencedNum, "maxConsensusPeers", srv.MaxConsensusPeers)
 							peer.Disconnect(DiscRequested)
+							disconnectConsensus++
 							break
 						}
 					}
-
 				}
-
 			}
-
 		}
 		srv.topicSubscriberMu.RUnlock()
 	}
 
 	switch {
-	case c.is(consensusDialedConn) && srv.numConsensusPeer(peers) >= srv.MaxConsensusPeers:
+	case c.is(consensusDialedConn) && numConsensusPeer-disconnectConsensus >= srv.MaxConsensusPeers:
 		return DiscTooManyConsensusPeers
 	case !srv.consensus && c.is(consensusDialedConn) && len(peers) >= srv.MaxPeers:
 		return DiscTooManyPeers
@@ -1439,7 +1439,6 @@ func (srv *Server) getPeersTopics(id enode.ID) []string {
 		for _, node := range nodes {
 			if node == id {
 				topics = append(topics, topic)
-				break
 			}
 		}
 	}
