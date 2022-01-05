@@ -288,6 +288,10 @@ func (t *UDPv4) RandomNodes() enode.Iterator {
 	return newLookupIterator(t.closeCtx, t.newRandomLookup)
 }
 
+func (t *UDPv4) SelfNodes() enode.Iterator {
+	return newLookupIterator(t.closeCtx, t.newSelfLookup)
+}
+
 // lookupRandom implements transport.
 func (t *UDPv4) lookupRandom() []*enode.Node {
 	return t.newRandomLookup(t.closeCtx).run()
@@ -296,6 +300,11 @@ func (t *UDPv4) lookupRandom() []*enode.Node {
 // lookupSelf implements transport.
 func (t *UDPv4) lookupSelf() []*enode.Node {
 	return t.newLookup(t.closeCtx, encodePubkey(&t.priv.PublicKey)).run()
+}
+
+func (t *UDPv4) newSelfLookup(ctx context.Context) *lookup {
+	target := encodePubkey(&t.priv.PublicKey)
+	return t.newLookup(ctx, target)
 }
 
 func (t *UDPv4) newRandomLookup(ctx context.Context) *lookup {

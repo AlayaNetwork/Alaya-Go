@@ -15,6 +15,8 @@ func (srv *Server) DiscoverTopic(ctx context.Context, topic string) {
 
 	ticker := time.NewTicker(time.Second * 1)
 
+	var mainIterator enode.Iterator
+
 	go func() {
 		for {
 			select {
@@ -34,8 +36,22 @@ func (srv *Server) DiscoverTopic(ctx context.Context, topic string) {
 					if !ok {
 						continue
 					}
-					log.Debug("No peers found subscribed  gossip topic . Searching network for peers subscribed to the topic.", "topic", topic)
-					if err := srv.FindPeersWithTopic(ctx, topic, nodes, srv.Config.MinimumPeersPerTopic); err != nil {
+
+					if srv.ntab == nil {
+						// return if discovery isn't set
+						continue
+					}
+					if mainIterator == nil {
+						// There is only one instance of the main iterator.
+						// Ensuring continuous in-depth discovery.
+						// target: local[1 -> 2 -> 3] -> remote
+						mainIterator = srv.ntab.SelfNodes()
+						log.Trace("initialize DiscoverTopic", "topic", topic)
+					}
+					iterator := filterNodes(ctx, mainIterator, srv.filterPeerForTopic(nodes))
+
+					log.Debug("No peers found subscribed  gossip topic . Searching network for peers subscribed to the topic.", "topic", topic, "nodeLength", len(nodes))
+					if err := srv.FindPeersWithTopic(ctx, topic, iterator, srv.Config.MinimumPeersPerTopic); err != nil {
 						log.Debug("Could not search for peers", "err", err)
 						return
 					}
@@ -56,15 +72,7 @@ func (srv *Server) validPeersExist(subnetTopic string) bool {
 // subscribed to a particular subnet. Then we try to connect
 // with those peers. This method will block until the required amount of
 // peers are found, the method only exits in the event of context timeouts.
-func (srv *Server) FindPeersWithTopic(ctx context.Context, topic string, nodes []enode.ID, threshold int) error {
-
-	if srv.ntab == nil {
-		// return if discovery isn't set
-		return nil
-	}
-
-	iterator := srv.ntab.RandomNodes()
-	iterator = filterNodes(ctx, iterator, srv.filterPeerForTopic(nodes))
+func (srv *Server) FindPeersWithTopic(ctx context.Context, topic string, iterator enode.Iterator, threshold int) error {
 
 	currNum := len(srv.pubSubServer.PubSub().ListPeers(topic))
 	wg := new(sync.WaitGroup)
