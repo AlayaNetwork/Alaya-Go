@@ -78,7 +78,7 @@ func (srv *Server) FindPeersWithTopic(ctx context.Context, topic string, nodes [
 		if try >= 3 || currNum >= threshold {
 			break
 		}
-		nodes := enode.ReadNodes(iterator, int(srv.Config.MinimumPeersInTopicSearch))
+		nodes := enode.ReadNodes(iterator, srv.Config.MinimumPeersPerTopic*2)
 
 		for i, _ := range nodes {
 			wg.Add(1)
