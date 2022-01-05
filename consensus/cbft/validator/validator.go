@@ -888,7 +888,7 @@ func (vp *ValidatorPool) GetGroupByValidatorID(epoch uint64, nodeID enode.ID) (u
 		validators = vp.currentValidators
 	}
 	gvs, err := validators.GetGroupValidators(nodeID)
-	if nil != err {
+	if nil != err || gvs == nil {
 		return 0, 0, err
 	}
 	unitID, err := validators.UnitID(nodeID)

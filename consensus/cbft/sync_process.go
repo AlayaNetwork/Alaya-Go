@@ -399,7 +399,7 @@ func (cbft *Cbft) OnGetPrepareVoteV2(id string, msg *protocols.GetPrepareVoteV2)
 
 			if len(votes) > 0 || len(RGBlockQuorumCerts) > 0 {
 				cbft.network.Send(id, &protocols.PrepareVotesV2{Epoch: msg.Epoch, ViewNumber: msg.ViewNumber, BlockIndex: msg.BlockIndex, Votes: votes, RGBlockQuorumCerts: RGBlockQuorumCerts})
-				cbft.log.Debug("Send PrepareVotes", "peer", id, "blockIndex", msg.BlockIndex, "votes length", len(votes), "RGBlockQuorumCerts length", len(RGBlockQuorumCerts))
+				cbft.log.Debug("Send PrepareVotesV2", "peer", id, "blockIndex", msg.BlockIndex, "votes length", len(votes), "RGBlockQuorumCerts length", len(RGBlockQuorumCerts))
 			}
 		}
 	}
@@ -410,7 +410,7 @@ func (cbft *Cbft) OnGetPrepareVoteV2(id string, msg *protocols.GetPrepareVoteV2)
 // of the GetPrepareVote message. It will synchronously return a
 // PrepareVotes message to the sender.
 func (cbft *Cbft) OnGetPrepareVote(id string, msg *protocols.GetPrepareVote) error {
-	cbft.log.Debug("Received message on OnGetPrepareVoteV2", "from", id, "msgHash", msg.MsgHash(), "message", msg.String())
+	cbft.log.Debug("Received message on OnGetPrepareVote", "from", id, "msgHash", msg.MsgHash(), "message", msg.String())
 	if msg.Epoch == cbft.state.Epoch() && msg.ViewNumber == cbft.state.ViewNumber() {
 		// If the block has already QC, that response QC instead of votes.
 		// Avoid the sender spent a lot of time to verifies PrepareVote msg.
@@ -465,7 +465,7 @@ func (cbft *Cbft) OnPrepareVotes(id string, msg *protocols.PrepareVotes) error {
 
 // OnPrepareVotes handling response from GetPrepareVote response.
 func (cbft *Cbft) OnPrepareVotesV2(id string, msg *protocols.PrepareVotesV2) error {
-	cbft.log.Debug("Received message on OnPrepareVotes", "from", id, "msgHash", msg.MsgHash(), "message", msg.String())
+	cbft.log.Debug("Received message on OnPrepareVotesV2", "from", id, "msgHash", msg.MsgHash(), "message", msg.String())
 	alreadyQC := func(hash common.Hash, number uint64) bool {
 		if _, qc := cbft.blockTree.FindBlockAndQC(hash, number); qc != nil {
 			return true
@@ -686,7 +686,7 @@ func (cbft *Cbft) OnGetViewChangeV2(id string, msg *protocols.GetViewChangeV2) e
 
 		if len(viewChanges) > 0 || len(RGViewChangeQuorumCerts) > 0 {
 			cbft.network.Send(id, &protocols.ViewChangesV2{VCs: viewChanges, RGViewChangeQuorumCerts: RGViewChangeQuorumCerts})
-			cbft.log.Debug("Send ViewChanges", "peer", id, "viewChanges length", len(viewChanges), "RGViewChangeQuorumCerts length", len(RGViewChangeQuorumCerts))
+			cbft.log.Debug("Send ViewChangesV2", "peer", id, "viewChanges length", len(viewChanges), "RGViewChangeQuorumCerts length", len(RGViewChangeQuorumCerts))
 		}
 		return nil
 	}
@@ -731,7 +731,7 @@ func (cbft *Cbft) OnGetViewChangeV2(id string, msg *protocols.GetViewChangeV2) e
 // The Epoch and viewNumber of viewChange must be consistent
 // with the state of the current node.
 func (cbft *Cbft) OnGetViewChange(id string, msg *protocols.GetViewChange) error {
-	cbft.log.Debug("Received message on OnGetViewChangeV2", "from", id, "msgHash", msg.MsgHash(), "message", msg.String(), "local", cbft.state.ViewString())
+	cbft.log.Debug("Received message on OnGetViewChange", "from", id, "msgHash", msg.MsgHash(), "message", msg.String(), "local", cbft.state.ViewString())
 
 	localEpoch, localViewNumber := cbft.state.Epoch(), cbft.state.ViewNumber()
 
@@ -867,7 +867,7 @@ func (cbft *Cbft) OnViewChanges(id string, msg *protocols.ViewChanges) error {
 
 // OnViewChanges handles the message type of ViewChangesMsg.
 func (cbft *Cbft) OnViewChangesV2(id string, msg *protocols.ViewChangesV2) error {
-	cbft.log.Debug("Received message on OnViewChanges", "from", id, "msgHash", msg.MsgHash(), "message", msg.String())
+	cbft.log.Debug("Received message on OnViewChangesV2", "from", id, "msgHash", msg.MsgHash(), "message", msg.String())
 
 	for _, rgqc := range msg.RGViewChangeQuorumCerts {
 		if !cbft.network.ContainsHistoryMessageHash(rgqc.MsgHash()) {

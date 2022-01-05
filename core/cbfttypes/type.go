@@ -323,7 +323,7 @@ func (vs *Validators) UnitID(nodeID enode.ID) (uint32, error) {
 	}
 
 	gvs, err := vs.GetGroupValidators(nodeID)
-	if err != nil {
+	if err != nil || gvs == nil {
 		return 0, err
 	}
 	return gvs.GetUnitID(nodeID)
