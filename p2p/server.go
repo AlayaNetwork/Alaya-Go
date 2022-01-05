@@ -1439,6 +1439,7 @@ func (srv *Server) getPeersTopics(id enode.ID) []string {
 		for _, node := range nodes {
 			if node == id {
 				topics = append(topics, topic)
+				break
 			}
 		}
 	}
