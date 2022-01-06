@@ -270,6 +270,7 @@ func (ia *InnerAgency) GetValidators(blockHash common.Hash, blockNumber uint64) 
 	}
 	var validators cbfttypes.Validators
 	validators.Nodes = make(cbfttypes.ValidateNodeMap, len(vds.ValidateNodes))
+
 	for _, node := range vds.ValidateNodes {
 		pubkey, _ := node.NodeID.Pubkey()
 		blsPubKey := node.BlsPubKey
@@ -278,7 +279,7 @@ func (ia *InnerAgency) GetValidators(blockHash common.Hash, blockNumber uint64) 
 			Index:     uint32(node.Index),
 			Address:   node.Address,
 			PubKey:    pubkey,
-			NodeID:    node.NodeID.ID(),
+			NodeID:    id,
 			BlsPubKey: &blsPubKey,
 		}
 	}
@@ -524,21 +525,21 @@ func (vp *ValidatorPool) dealWithOldVersionEvents(epoch uint64, eventMux *event.
 		// in the consensus stages. Also we are not needed
 		// to keep connect with old validators.
 		if isValidatorAfter {
-			for _, n := range vp.currentValidators.SortedNodes {
+			for _, n := range vp.currentValidators.SortedValidators.SortedNodes {
 				if node, _ := vp.prevValidators.FindNodeByID(n.NodeID); node == nil {
 					eventMux.Post(cbfttypes.AddValidatorEvent{Node: enode.NewV4(node.PubKey, nil, 0, 0)})
-					log.Trace("Post AddValidatorEvent", "node", node.String())
+					log.Trace("Post AddValidatorEvent", "node", n.String())
 				}
 			}
 
-			for _, n := range vp.prevValidators.SortedNodes {
+			for _, n := range vp.prevValidators.SortedValidators.SortedNodes {
 				if node, _ := vp.currentValidators.FindNodeByID(n.NodeID); node == nil {
 					eventMux.Post(cbfttypes.RemoveValidatorEvent{Node: enode.NewV4(node.PubKey, nil, 0, 0)})
-					log.Trace("Post RemoveValidatorEvent", "node", node.String())
+					log.Trace("Post RemoveValidatorEvent", "node", n.String())
 				}
 			}
 		} else {
-			for _, node := range vp.prevValidators.SortedNodes {
+			for _, node := range vp.prevValidators.SortedValidators.SortedNodes {
 				eventMux.Post(cbfttypes.RemoveValidatorEvent{Node: enode.NewV4(node.PubKey, nil, 0, 0)})
 				log.Trace("Post RemoveValidatorEvent", "nodeID", node.String())
 			}
@@ -549,7 +550,7 @@ func (vp *ValidatorPool) dealWithOldVersionEvents(epoch uint64, eventMux *event.
 		// consensus peers is because we need to keep connecting
 		// with other validators in the consensus stages.
 		if isValidatorAfter {
-			for _, node := range vp.currentValidators.SortedNodes {
+			for _, node := range vp.currentValidators.SortedValidators.SortedNodes {
 				eventMux.Post(cbfttypes.AddValidatorEvent{Node: enode.NewV4(node.PubKey, nil, 0, 0)})
 				log.Trace("Post AddValidatorEvent", "nodeID", node.String())
 			}
@@ -596,20 +597,20 @@ func (vp *ValidatorPool) GetValidatorByIndex(epoch uint64, index uint32) (*cbftt
 
 func (vp *ValidatorPool) getValidatorByIndex(epoch uint64, index uint32) (*cbfttypes.ValidateNode, error) {
 	if vp.epochToBlockNumber(epoch) <= vp.switchPoint {
-		return vp.prevValidators.FindNodeByIndex(int(index))
+		return vp.prevValidators.FindNodeByIndex(index)
 	}
-	return vp.currentValidators.FindNodeByIndex(int(index))
+	return vp.currentValidators.FindNodeByIndex(index)
 }
 
 // GetNodeIDByIndex get the node id by index.
-func (vp *ValidatorPool) GetNodeIDByIndex(epoch uint64, index int) enode.ID {
+func (vp *ValidatorPool) GetNodeIDByIndex(epoch uint64, index uint32) enode.ID {
 	vp.lock.RLock()
 	defer vp.lock.RUnlock()
 
 	return vp.getNodeIDByIndex(epoch, index)
 }
 
-func (vp *ValidatorPool) getNodeIDByIndex(epoch uint64, index int) enode.ID {
+func (vp *ValidatorPool) getNodeIDByIndex(epoch uint64, index uint32) enode.ID {
 	if vp.epochToBlockNumber(epoch) <= vp.switchPoint {
 		return vp.prevValidators.NodeID(index)
 	}
@@ -871,7 +872,7 @@ func (vp *ValidatorPool) GetCoordinatorIndexesByGroupID(epoch uint64, groupID ui
 	}
 
 	if groupID >= uint32(len(validators.GroupNodes)) {
-		return nil, fmt.Errorf("GetCoordinatorIndexesByGroupID: wrong groupid[%d]!", groupID)
+		return nil, fmt.Errorf("GetCoordinatorIndexesByGroupID: wrong groupid[%d]", groupID)
 	}
 	return validators.GroupNodes[groupID].Units, nil
 }

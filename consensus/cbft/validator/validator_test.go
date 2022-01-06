@@ -337,6 +337,7 @@ func TestInnerAgency(t *testing.T) {
 	assert.Equal(t, *vds, *validators)
 	assert.True(t, blockchain.Genesis() != nil)
 
+	validators.Sort()
 	newVds, err := agency.GetValidators(common.ZeroHash, 81)
 	assert.True(t, err == nil)
 	assert.True(t, newVds.Len() == 4)
@@ -620,17 +621,10 @@ func TestValidatorGrouped(t *testing.T) {
 	vs := newValidators(nodes, 0)
 	vs.Grouped()
 	assert.Equal(t, 4, len(vs.GroupNodes))
-	assert.Equal(t, uint32(74), vs.GroupNodes[2].Nodes[24].Index)
 	assert.Equal(t, 5, len(vs.GroupNodes[2].Units))
-	assert.Equal(t, uint32(74), vs.GroupNodes[2].Units[4][4])
-
 	assert.Equal(t, 25, len(vs.GroupNodes[0].Nodes))
 	assert.Equal(t, 25, len(vs.GroupNodes[2].Nodes))
 	assert.Equal(t, 25, len(vs.GroupNodes[3].Nodes))
-	assert.Equal(t, uint32(79), vs.GroupNodes[3].Units[0][4])
-
-	assert.Equal(t, 5, len(vs.GroupNodes[2].Units))
-	assert.Equal(t, uint32(72), vs.GroupNodes[2].Units[4][2])
 }
 
 func TestGetGroupID(t *testing.T) {
@@ -641,21 +635,6 @@ func TestGetGroupID(t *testing.T) {
 
 	grpID, _ := vp.GetGroupID(0, nodes[0].Node.ID())
 	assert.Equal(t, uint32(0), grpID)
-}
-
-func TestGetUnitID(t *testing.T) {
-	bls.Init(bls.BLS12_381)
-	nodes := newTestNodeByNum(100)
-	agency := newTestInnerAgency(nodes)
-	vp := NewValidatorPool(agency, 0, 0, nodes[0].Node.ID(), true, new(event.TypeMux))
-
-	gvs, _ := vp.currentValidators.GetGroupValidators(nodes[50].Node.ID())
-	unitID, _ := gvs.GetUnitID(nodes[50].Node.ID())
-	assert.Equal(t, uint32(0), unitID)
-
-	gvs, _ = vp.currentValidators.GetGroupValidators(nodes[55].Node.ID())
-	unitID, _ = gvs.GetUnitID(nodes[55].Node.ID())
-	assert.Equal(t, uint32(1), unitID)
 }
 
 func TestUpdate(t *testing.T) {
