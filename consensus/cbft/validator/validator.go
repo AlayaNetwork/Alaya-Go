@@ -527,14 +527,14 @@ func (vp *ValidatorPool) dealWithOldVersionEvents(epoch uint64, eventMux *event.
 		if isValidatorAfter {
 			for _, n := range vp.currentValidators.SortedValidators.SortedNodes {
 				if node, _ := vp.prevValidators.FindNodeByID(n.NodeID); node == nil {
-					eventMux.Post(cbfttypes.AddValidatorEvent{Node: enode.NewV4(node.PubKey, nil, 0, 0)})
+					eventMux.Post(cbfttypes.AddValidatorEvent{Node: enode.NewV4(n.PubKey, nil, 0, 0)})
 					log.Trace("Post AddValidatorEvent", "node", n.String())
 				}
 			}
 
 			for _, n := range vp.prevValidators.SortedValidators.SortedNodes {
 				if node, _ := vp.currentValidators.FindNodeByID(n.NodeID); node == nil {
-					eventMux.Post(cbfttypes.RemoveValidatorEvent{Node: enode.NewV4(node.PubKey, nil, 0, 0)})
+					eventMux.Post(cbfttypes.RemoveValidatorEvent{Node: enode.NewV4(n.PubKey, nil, 0, 0)})
 					log.Trace("Post RemoveValidatorEvent", "node", n.String())
 				}
 			}
