@@ -801,7 +801,7 @@ func (vp *ValidatorPool) GetGroupID(epoch uint64, nodeID enode.ID) (uint32, erro
 		validators = vp.currentValidators
 	}
 	gvs, err := validators.GetGroupValidators(nodeID)
-	if err != nil {
+	if err != nil || gvs == nil {
 		return 0, err
 	}
 	return gvs.GetGroupID(), nil
@@ -928,7 +928,7 @@ func (vp *ValidatorPool) organize(validators *cbfttypes.Validators, epoch uint64
 	}
 
 	gvs, err := validators.GetGroupValidators(vp.nodeID)
-	if nil != err {
+	if nil != err || gvs == nil {
 		// 当前节点不是共识节点
 		return err
 	}

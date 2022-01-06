@@ -25,6 +25,8 @@ import (
 	"math"
 	"sort"
 
+	"github.com/AlayaNetwork/Alaya-Go/crypto"
+
 	"github.com/AlayaNetwork/Alaya-Go/common/hexutil"
 	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
 	"github.com/AlayaNetwork/Alaya-Go/x/xcom"
@@ -99,7 +101,6 @@ type ValidateNodeMap map[enode.ID]*ValidateNode
 
 type SortedValidatorNodes struct {
 	target      enode.ID
-	sorted      bool
 	SortedNodes []*ValidateNode
 }
 
@@ -143,7 +144,7 @@ type Validators struct {
 	ValidBlockNumber uint64          `json:"validateBlockNumber"`
 
 	// Sorting based on distance
-	SortedValidators SortedValidatorNodes `json:"sortedNodes"`
+	SortedValidators *SortedValidatorNodes `json:"sortedNodes"`
 
 	//// Sorting based on node distance
 	// Node grouping info
@@ -223,7 +224,7 @@ func (vs *Validators) NodeListByIndexes(indexes []uint32) ([]*ValidateNode, erro
 }
 
 func (vs *Validators) NodeListByBitArray(vSet *utils.BitArray) ([]*ValidateNode, error) {
-	if !vs.SortedValidators.sorted {
+	if vs.SortedValidators == nil {
 		vs.Sort()
 	}
 	l := make([]*ValidateNode, 0)
@@ -233,7 +234,11 @@ func (vs *Validators) NodeListByBitArray(vSet *utils.BitArray) ([]*ValidateNode,
 			if int(index) >= len(vs.SortedValidators.SortedNodes) {
 				return nil, errors.New("invalid index")
 			}
-			l = append(l, vs.SortedValidators.SortedNodes[int(index)])
+			node, err := vs.FindNodeByIndex(index)
+			if err != nil {
+				return nil, err
+			}
+			l = append(l, node)
 		}
 	}
 	return l, nil
@@ -300,33 +305,26 @@ func (vs *Validators) Equal(rsh *Validators) bool {
 
 func (vs *Validators) Sort() {
 	if targetNode, err := vs.FindNodeByIndex(0); err == nil {
-		vs.SortedValidators = SortedValidatorNodes{
-			target:      targetNode.NodeID,
-			sorted:      false,
-			SortedNodes: make([]*ValidateNode, 0),
-		}
+		vs.SortedValidators = new(SortedValidatorNodes)
+		vs.SortedValidators.target = enode.ID(crypto.Keccak256Hash(targetNode.NodeID[:]))
+		vs.SortedValidators.SortedNodes = make([]*ValidateNode, 0)
+
 		for _, node := range vs.Nodes {
 			vs.SortedValidators.SortedNodes = append(vs.SortedValidators.SortedNodes, node)
 		}
 		sort.Sort(vs.SortedValidators)
-		vs.SortedValidators.sorted = true
 	}
 }
 
 func (vs *Validators) GetGroupValidators(nodeID enode.ID) (*GroupValidators, error) {
-	if !vs.SortedValidators.sorted {
+	if vs.SortedValidators == nil {
 		vs.Sort()
-	}
-
-	idx, err := vs.Index(nodeID)
-	if err != nil {
-		return nil, err
 	}
 
 	var ret *GroupValidators
 	for _, gvs := range vs.GroupNodes {
-		groupLen := len(gvs.Nodes)
-		if idx <= gvs.Nodes[groupLen-1].Index {
+		_, err := gvs.GetUnitID(nodeID)
+		if err == nil {
 			ret = gvs
 			break
 		}
@@ -335,13 +333,13 @@ func (vs *Validators) GetGroupValidators(nodeID enode.ID) (*GroupValidators, err
 }
 
 func (vs *Validators) UnitID(nodeID enode.ID) (uint32, error) {
-	if !vs.SortedValidators.sorted {
+	if vs.SortedValidators == nil {
 		vs.Sort()
 	}
 
-	idx, err := vs.Index(nodeID)
+	_, err := vs.Index(nodeID)
 	if err != nil {
-		return idx, err
+		return math.MaxUint32, err
 	}
 
 	gvs, err := vs.GetGroupValidators(nodeID)
@@ -399,12 +397,13 @@ func (gvs *GroupValidators) NodeList() []enode.ID {
 // [50,25] = 25,25;[43,25] = 22,21; [101,25] = 21,20,20,20,20
 func (vs *Validators) Grouped() error {
 	// sort SortedValidators by distance
-	if !vs.SortedValidators.sorted {
+	if vs.SortedValidators == nil {
 		vs.Sort()
+		if vs.SortedValidators == nil {
+			return errors.New("no validators")
+		}
 	}
-	if uint32(len(vs.SortedValidators.SortedNodes)) <= xcom.MaxGroupValidators() {
-		return errors.New("no need grouped")
-	}
+
 	validatorCount := uint32(vs.SortedValidators.Len())
 	groupNum := validatorCount / xcom.MaxGroupValidators()
 	mod := validatorCount % xcom.MaxGroupValidators()
