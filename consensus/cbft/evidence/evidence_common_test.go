@@ -66,13 +66,15 @@ func GenerateKeys(num int) ([]*ecdsa.PrivateKey, []*bls.SecretKey) {
 func createValidateNode(num int) ([]*cbfttypes.ValidateNode, []*bls.SecretKey) {
 	pk, sk := GenerateKeys(num)
 	nodes := make([]*cbfttypes.ValidateNode, num)
+
 	for i := 0; i < num; i++ {
 
+		id := enode.PubkeyToIDV4(&pk[i].PublicKey)
 		nodes[i] = &cbfttypes.ValidateNode{
 			Index:   uint32(i),
 			Address: crypto.PubkeyToNodeAddress(pk[i].PublicKey),
 			PubKey:  &pk[i].PublicKey,
-			NodeID:  enode.PubkeyToIDV4(&pk[i].PublicKey),
+			NodeID:  id,
 		}
 		nodes[i].BlsPubKey = sk[i].GetPublicKey()
 

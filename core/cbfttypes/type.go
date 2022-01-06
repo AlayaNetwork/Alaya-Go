@@ -97,11 +97,29 @@ type ValidateNode struct {
 
 type ValidateNodeMap map[enode.ID]*ValidateNode
 
-type SortedIndexValidatorNode []*ValidateNode
+type SortedValidatorNodes struct {
+	target      enode.ID
+	sorted      bool
+	SortedNodes []*ValidateNode
+}
 
-func (sv SortedIndexValidatorNode) Len() int           { return len(sv) }
-func (sv SortedIndexValidatorNode) Swap(i, j int)      { sv[i], sv[j] = sv[j], sv[i] }
-func (sv SortedIndexValidatorNode) Less(i, j int) bool { return sv[i].Index < sv[j].Index }
+func (sdv SortedValidatorNodes) Len() int { return len(sdv.SortedNodes) }
+func (sdv SortedValidatorNodes) Swap(i, j int) {
+	sdv.SortedNodes[i], sdv.SortedNodes[j] = sdv.SortedNodes[j], sdv.SortedNodes[i]
+}
+func (sdv SortedValidatorNodes) Less(i, j int) bool {
+	a, b := sdv.SortedNodes[i], sdv.SortedNodes[j]
+	for k := range sdv.target {
+		da := a.NodeID[k] ^ sdv.target[k]
+		db := b.NodeID[k] ^ sdv.target[k]
+		if da > db {
+			return true
+		} else if da < db {
+			return false
+		}
+	}
+	return a.Index < b.Index
+}
 
 type GroupCoordinate struct {
 	groupID uint32
@@ -124,10 +142,10 @@ type Validators struct {
 	Nodes            ValidateNodeMap `json:"validateNodes"`
 	ValidBlockNumber uint64          `json:"validateBlockNumber"`
 
-	// Sorting based on node index
-	SortedNodes SortedIndexValidatorNode `json:"sortedNodes"`
+	// Sorting based on distance
+	SortedValidators SortedValidatorNodes `json:"sortedNodes"`
 
-	//// Sorting based on node index
+	//// Sorting based on node distance
 	// Node grouping info
 	GroupNodes []*GroupValidators `json:"groupNodes"`
 }
@@ -190,31 +208,32 @@ func (vs *Validators) GetValidatorIndexes(groupid uint32) ([]uint32, error) {
 }
 
 func (vs *Validators) NodeListByIndexes(indexes []uint32) ([]*ValidateNode, error) {
-	if len(vs.SortedNodes) == 0 {
-		vs.Sort()
-	}
 	l := make([]*ValidateNode, 0)
 	for _, index := range indexes {
-		if int(index) >= len(vs.SortedNodes) {
+		if int(index) >= len(vs.Nodes) {
 			return nil, errors.New("invalid index")
 		}
-		l = append(l, vs.SortedNodes[int(index)])
+		node, err := vs.FindNodeByIndex(index)
+		if err != nil {
+			return nil, err
+		}
+		l = append(l, node)
 	}
 	return l, nil
 }
 
 func (vs *Validators) NodeListByBitArray(vSet *utils.BitArray) ([]*ValidateNode, error) {
-	if len(vs.SortedNodes) == 0 {
+	if !vs.SortedValidators.sorted {
 		vs.Sort()
 	}
 	l := make([]*ValidateNode, 0)
 
 	for index := uint32(0); index < vSet.Size(); index++ {
 		if vSet.GetIndex(index) {
-			if int(index) >= len(vs.SortedNodes) {
+			if int(index) >= len(vs.SortedValidators.SortedNodes) {
 				return nil, errors.New("invalid index")
 			}
-			l = append(l, vs.SortedNodes[int(index)])
+			l = append(l, vs.SortedValidators.SortedNodes[int(index)])
 		}
 	}
 	return l, nil
@@ -228,15 +247,13 @@ func (vs *Validators) FindNodeByID(id enode.ID) (*ValidateNode, error) {
 	return nil, errors.New("not found the node")
 }
 
-func (vs *Validators) FindNodeByIndex(index int) (*ValidateNode, error) {
-	if len(vs.SortedNodes) == 0 {
-		vs.Sort()
+func (vs *Validators) FindNodeByIndex(index uint32) (*ValidateNode, error) {
+	for _, node := range vs.Nodes {
+		if index == node.Index {
+			return node, nil
+		}
 	}
-	if index >= len(vs.SortedNodes) {
-		return nil, errors.New("not found the specified validator")
-	} else {
-		return vs.SortedNodes[index], nil
-	}
+	return nil, errors.New("not found the specified validator")
 }
 
 func (vs *Validators) FindNodeByAddress(addr common.NodeAddress) (*ValidateNode, error) {
@@ -248,14 +265,11 @@ func (vs *Validators) FindNodeByAddress(addr common.NodeAddress) (*ValidateNode,
 	return nil, errors.New("invalid address")
 }
 
-func (vs *Validators) NodeID(idx int) enode.ID {
-	if len(vs.SortedNodes) == 0 {
-		vs.Sort()
+func (vs *Validators) NodeID(idx uint32) enode.ID {
+	if node, err := vs.FindNodeByIndex(idx); err == nil {
+		return node.NodeID
 	}
-	if idx >= vs.SortedNodes.Len() {
-		return enode.ID{}
-	}
-	return vs.SortedNodes[idx].NodeID
+	return enode.ID{}
 }
 
 func (vs *Validators) Index(nodeID enode.ID) (uint32, error) {
@@ -285,14 +299,22 @@ func (vs *Validators) Equal(rsh *Validators) bool {
 }
 
 func (vs *Validators) Sort() {
-	for _, node := range vs.Nodes {
-		vs.SortedNodes = append(vs.SortedNodes, node)
+	if targetNode, err := vs.FindNodeByIndex(0); err == nil {
+		vs.SortedValidators = SortedValidatorNodes{
+			target:      targetNode.NodeID,
+			sorted:      false,
+			SortedNodes: make([]*ValidateNode, 0),
+		}
+		for _, node := range vs.Nodes {
+			vs.SortedValidators.SortedNodes = append(vs.SortedValidators.SortedNodes, node)
+		}
+		sort.Sort(vs.SortedValidators)
+		vs.SortedValidators.sorted = true
 	}
-	sort.Sort(vs.SortedNodes)
 }
 
 func (vs *Validators) GetGroupValidators(nodeID enode.ID) (*GroupValidators, error) {
-	if len(vs.SortedNodes) == 0 {
+	if !vs.SortedValidators.sorted {
 		vs.Sort()
 	}
 
@@ -313,7 +335,7 @@ func (vs *Validators) GetGroupValidators(nodeID enode.ID) (*GroupValidators, err
 }
 
 func (vs *Validators) UnitID(nodeID enode.ID) (uint32, error) {
-	if len(vs.SortedNodes) == 0 {
+	if !vs.SortedValidators.sorted {
 		vs.Sort()
 	}
 
@@ -376,14 +398,14 @@ func (gvs *GroupValidators) NodeList() []enode.ID {
 // eg: [validatorCount,groupValidatorsLimit]=
 // [50,25] = 25,25;[43,25] = 22,21; [101,25] = 21,20,20,20,20
 func (vs *Validators) Grouped() error {
-	// sort nodes by index
-	if len(vs.SortedNodes) == 0 {
+	// sort SortedValidators by distance
+	if !vs.SortedValidators.sorted {
 		vs.Sort()
 	}
-	if uint32(len(vs.SortedNodes)) <= xcom.MaxGroupValidators() {
+	if uint32(len(vs.SortedValidators.SortedNodes)) <= xcom.MaxGroupValidators() {
 		return errors.New("no need grouped")
 	}
-	validatorCount := uint32(vs.SortedNodes.Len())
+	validatorCount := uint32(vs.SortedValidators.Len())
 	groupNum := validatorCount / xcom.MaxGroupValidators()
 	mod := validatorCount % xcom.MaxGroupValidators()
 	if mod > 0 {
@@ -407,7 +429,7 @@ func (vs *Validators) Grouped() error {
 			end = validatorCount
 		}
 		groupValidators := new(GroupValidators)
-		groupValidators.Nodes = vs.SortedNodes[begin:end]
+		groupValidators.Nodes = vs.SortedValidators.SortedNodes[begin:end]
 		groupValidators.groupID = i
 		vs.GroupNodes[i] = groupValidators
 	}

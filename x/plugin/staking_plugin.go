@@ -2748,17 +2748,16 @@ label:
 
 func buildCbftValidators(start uint64, arr staking.ValidatorQueue) *cbfttypes.Validators {
 	valMap := make(cbfttypes.ValidateNodeMap, len(arr))
-
 	for i, v := range arr {
-
 		pubKey, _ := v.NodeId.Pubkey()
 		blsPk, _ := v.BlsPubKey.ParseBlsPubKey()
+		id := enode.PubkeyToIDV4(pubKey)
 
 		vn := &cbfttypes.ValidateNode{
 			Index:     uint32(i),
 			Address:   v.NodeAddress,
 			PubKey:    pubKey,
-			NodeID:    enode.PubkeyToIDV4(pubKey),
+			NodeID:    id,
 			BlsPubKey: blsPk,
 		}
 
