@@ -91,7 +91,7 @@ func (srv *Server) FindPeersWithTopic(ctx context.Context, topic string, nodes [
 		currNum = len(srv.pubSubServer.PubSub().ListPeers(topic))
 		try++
 	}
-	log.Trace(" Searching network for peers subscribed to the topic done.", "topic", topic, "peers", currNum, "try", try)
+	log.Trace("Searching network for peers subscribed to the topic done.", "topic", topic, "peers", currNum, "try", try)
 
 	return nil
 }
