@@ -2,6 +2,7 @@ package p2p
 
 import (
 	"context"
+	"math/rand"
 	"sync"
 	"time"
 
@@ -30,12 +31,14 @@ func (srv *Server) DiscoverTopic(ctx context.Context, topic string) {
 				if !srv.validPeersExist(topic) {
 					srv.topicSubscriberMu.RLock()
 					nodes, ok := srv.topicSubscriber[topic]
+					copyNodes := make([]*enode.Node, len(nodes))
+					copy(copyNodes, nodes)
 					srv.topicSubscriberMu.RUnlock()
 					if !ok {
 						continue
 					}
 					log.Debug("No peers found subscribed  gossip topic . Searching network for peers subscribed to the topic.", "topic", topic)
-					if err := srv.FindPeersWithTopic(ctx, topic, nodes, srv.Config.MinimumPeersPerTopic); err != nil {
+					if err := srv.FindPeersWithTopic(ctx, topic, copyNodes, srv.Config.MinimumPeersPerTopic); err != nil {
 						log.Debug("Could not search for peers", "err", err)
 						return
 					}
@@ -56,33 +59,46 @@ func (srv *Server) validPeersExist(subnetTopic string) bool {
 // subscribed to a particular subnet. Then we try to connect
 // with those peers. This method will block until the required amount of
 // peers are found, the method only exits in the event of context timeouts.
-func (srv *Server) FindPeersWithTopic(ctx context.Context, topic string, nodes []enode.ID, threshold int) error {
+func (srv *Server) FindPeersWithTopic(ctx context.Context, topic string, nodes []*enode.Node, threshold int) error {
 
 	if srv.ntab == nil {
 		// return if discovery isn't set
 		return nil
 	}
 
-	iterator := srv.ntab.RandomNodes()
-	iterator = filterNodes(ctx, iterator, srv.filterPeerForTopic(nodes))
-
 	currNum := len(srv.pubSubServer.PubSub().ListPeers(topic))
 	wg := new(sync.WaitGroup)
 
+	topicRand := rand.New(rand.NewSource(time.Now().UnixNano()))
+	topicRand.Shuffle(len(nodes), func(i, j int) {
+		nodes[i], nodes[j] = nodes[j], nodes[i]
+	})
+
+	sel := threshold + (threshold / 2)
 	try := 0
 	for {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
 		// Retry at most 3 times
-		if try >= 3 || currNum >= threshold {
+		if try >= 3 || currNum >= threshold || len(nodes) == 0 {
 			break
 		}
-		nodes := enode.ReadNodes(iterator, srv.Config.MinimumPeersPerTopic*2)
 
-		for i, _ := range nodes {
+		tempNodes := nodes[:]
+		if sel >= len(nodes) {
+			tempNodes = nodes[:sel]
+			nodes = nodes[sel:]
+		} else {
+			nodes = make([]*enode.Node, 0)
+		}
+
+		for _, toNode := range tempNodes {
+			if toNode.ID() == srv.localnode.ID() {
+				continue
+			}
 			wg.Add(1)
-			srv.AddConsensusPeerWithDone(nodes[i], func() {
+			srv.AddConsensusPeerWithDone(toNode, func() {
 				wg.Done()
 			})
 		}
@@ -91,7 +107,7 @@ func (srv *Server) FindPeersWithTopic(ctx context.Context, topic string, nodes [
 		currNum = len(srv.pubSubServer.PubSub().ListPeers(topic))
 		try++
 	}
-	log.Trace("Searching network for peers subscribed to the topic done.", "topic", topic, "peers", currNum, "try", try)
+	log.Trace("Searching network for peers subscribed to the topic done.", "topic", topic, "peers", currNum, "try", try, "remainNodes", len(nodes))
 
 	return nil
 }
