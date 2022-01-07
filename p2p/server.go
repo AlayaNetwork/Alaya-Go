@@ -975,50 +975,47 @@ func (srv *Server) postHandshakeChecks(peers map[enode.ID]*Peer, inboundCount in
 		srv.topicSubscriberMu.RLock()
 		for _, connTopic := range srv.getPeersTopics(c.node.ID()) {
 			if len(srv.pubSubServer.PubSub().ListPeers(connTopic)) < srv.MinimumPeersPerTopic {
-				reducedTopicPeerLength := 0
-				reducedTopic := ""
-				//找到节点数最多的主题
-				for topic, _ := range srv.topicSubscriber {
-					if topic != connTopic {
-						num := len(srv.pubSubServer.PubSub().ListPeers(topic))
-						if num > reducedTopicPeerLength {
-							reducedTopicPeerLength = num
-							reducedTopic = topic
+				//获取每个节点所拥有的主题的数量
+				var (
+					topicsCountSort = make([]int, 0)
+					nodeTopicsCount = make(map[enode.ID]int)
+				)
+
+				for topic, nodes := range srv.topicSubscriber {
+					if topic == connTopic {
+						continue
+					}
+					for _, node := range nodes {
+						if _, ok := peers[node]; ok {
+							if num, ok := nodeTopicsCount[node]; ok {
+								nodeTopicsCount[node] = num + 1
+							} else {
+								nodeTopicsCount[node] = 1
+							}
 						}
 					}
 				}
-				if reducedTopic != "" {
-					//获取每个节点所拥有的主题的数量
-					nodeReferenced := make(map[enode.ID]int)
-					for _, nodes := range srv.topicSubscriber {
-						for _, node := range nodes {
-							if num, ok := nodeReferenced[node]; ok {
-								nodeReferenced[node] = num + 1
-							} else {
-								nodeReferenced[node] = 1
+
+				//找到引用最小的节点
+				for _, i := range nodeTopicsCount {
+					topicsCountSort = append(topicsCountSort, i)
+				}
+				sort.Ints(topicsCountSort)
+
+			loop:
+				for _, i := range topicsCountSort {
+					for node, count := range nodeTopicsCount {
+						if count == i {
+							peer := peers[node]
+							if !peer.rw.is(trustedConn | staticDialedConn) {
+								log.Debug("Disconnect over limit consensus connection", "peer", peer.ID(), "flags", peer.rw.flags, "peers", len(peers), "topic", srv.getPeersTopics(peer.ID()), "referencedNum", i, "maxConsensusPeers", srv.MaxConsensusPeers)
+								peer.Disconnect(DiscRequested)
+								disconnectConsensus++
+								break loop
 							}
 						}
 					}
-					var reducedNode enode.ID
-					var referencedNum int = 10000
-					//找到该主题下拥有主题最少的节点
-					for _, node := range srv.topicSubscriber[reducedTopic] {
-						if referencedNum > nodeReferenced[node] {
-							referencedNum = nodeReferenced[node]
-							reducedNode = node
-							if referencedNum == 1 {
-								break
-							}
-						}
-					}
-					if peer, ok := peers[reducedNode]; ok {
-						if !peer.rw.is(trustedConn | staticDialedConn) {
-							log.Debug("Disconnect over limit consensus connection", "peer", peer.ID(), "flags", peer.rw.flags, "peers", len(peers), "topic", reducedTopic, "referencedNum", referencedNum, "maxConsensusPeers", srv.MaxConsensusPeers)
-							peer.Disconnect(DiscRequested)
-							disconnectConsensus++
-							break
-						}
-					}
+
 				}
 			}
 		}
