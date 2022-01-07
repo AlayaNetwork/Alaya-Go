@@ -642,9 +642,9 @@ func (vp *ValidatorPool) ValidatorList(epoch uint64) []enode.ID {
 
 func (vp *ValidatorPool) validatorList(epoch uint64) []enode.ID {
 	if vp.epochToBlockNumber(epoch) <= vp.switchPoint {
-		return vp.prevValidators.NodeList()
+		return vp.prevValidators.NodeIdList()
 	}
-	return vp.currentValidators.NodeList()
+	return vp.currentValidators.NodeIdList()
 }
 
 func (vp *ValidatorPool) Validators(epoch uint64) *cbfttypes.Validators {
@@ -934,13 +934,13 @@ func (vp *ValidatorPool) organize(validators *cbfttypes.Validators, epoch uint64
 	}
 	log.Debug("ValidatorPool organized OK!", "epoch", epoch, "validators", validators.String())
 
-	consensusNodeIDs := validators.NodeList()
-	groupNodeIDs := gvs.NodeList()
+	consensusNodes := validators.NodeList()
+	groupNodes := gvs.NodeList()
 	consensusTopic := cbfttypes.ConsensusTopicName(epoch)
 	groupTopic := cbfttypes.ConsensusGroupTopicName(epoch, gvs.GetGroupID())
 
-	eventMux.Post(cbfttypes.NewTopicEvent{Topic: consensusTopic, Nodes: consensusNodeIDs})
-	eventMux.Post(cbfttypes.NewTopicEvent{Topic: groupTopic, Nodes: groupNodeIDs})
+	eventMux.Post(cbfttypes.NewTopicEvent{Topic: consensusTopic, Nodes: consensusNodes})
+	eventMux.Post(cbfttypes.NewTopicEvent{Topic: groupTopic, Nodes: groupNodes})
 	eventMux.Post(cbfttypes.GroupTopicEvent{Topic: groupTopic})
 	return nil
 }
