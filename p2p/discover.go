@@ -2,7 +2,6 @@ package p2p
 
 import (
 	"context"
-	"github.com/AlayaNetwork/Alaya-Go/p2p/enr"
 	"math/rand"
 	"sync"
 	"time"
@@ -32,7 +31,7 @@ func (srv *Server) DiscoverTopic(ctx context.Context, topic string) {
 				if !srv.validPeersExist(topic) {
 					srv.topicSubscriberMu.RLock()
 					nodes, ok := srv.topicSubscriber[topic]
-					copyNodes := make([]enode.ID, len(nodes))
+					copyNodes := make([]*enode.Node, len(nodes))
 					copy(copyNodes, nodes)
 					srv.topicSubscriberMu.RUnlock()
 					if !ok {
@@ -60,7 +59,7 @@ func (srv *Server) validPeersExist(subnetTopic string) bool {
 // subscribed to a particular subnet. Then we try to connect
 // with those peers. This method will block until the required amount of
 // peers are found, the method only exits in the event of context timeouts.
-func (srv *Server) FindPeersWithTopic(ctx context.Context, topic string, nodes []enode.ID, threshold int) error {
+func (srv *Server) FindPeersWithTopic(ctx context.Context, topic string, nodes []*enode.Node, threshold int) error {
 
 	if srv.ntab == nil {
 		// return if discovery isn't set
@@ -91,15 +90,15 @@ func (srv *Server) FindPeersWithTopic(ctx context.Context, topic string, nodes [
 			tempNodes = nodes[:sel]
 			nodes = nodes[sel:]
 		} else {
-			nodes = make([]enode.ID, 0)
+			nodes = make([]*enode.Node, 0)
 		}
 
-		for _, toNodeId := range tempNodes {
-			if toNodeId == srv.localnode.ID() {
+		for _, toNode := range tempNodes {
+			if toNode.ID() == srv.localnode.ID() {
 				continue
 			}
 			wg.Add(1)
-			srv.AddConsensusPeerWithDone(enode.SignNull(new(enr.Record), toNodeId), func() {
+			srv.AddConsensusPeerWithDone(toNode, func() {
 				wg.Done()
 			})
 		}

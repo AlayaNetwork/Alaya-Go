@@ -176,7 +176,7 @@ func TestValidators(t *testing.T) {
 	assert.True(t, err == nil, "get index by address fail")
 	assert.Equal(t, validator.Index, idxN1.Index)
 
-	nl := vds.NodeList()
+	nl := vds.NodeIdList()
 	assert.True(t, len(nl) == vds.Len())
 
 	emptyNodeID := enode.ID{}

@@ -73,7 +73,7 @@ type RemoveValidatorEvent struct {
 // NewTopicEvent use for p2p,Nodes under this topic will be discovered
 type NewTopicEvent struct {
 	Topic string
-	Nodes []enode.ID
+	Nodes []*enode.Node
 }
 
 // ExpiredTopicEvent use for p2p,Nodes under this topic may be disconnected
@@ -182,10 +182,18 @@ func (vs *Validators) String() string {
 	return string(b)
 }
 
-func (vs *Validators) NodeList() []enode.ID {
+func (vs *Validators) NodeIdList() []enode.ID {
 	nodeList := make([]enode.ID, 0)
 	for id := range vs.Nodes {
 		nodeList = append(nodeList, id)
+	}
+	return nodeList
+}
+
+func (vs *Validators) NodeList() []*enode.Node {
+	nodeList := make([]*enode.Node, 0)
+	for _, vnode := range vs.Nodes {
+		nodeList = append(nodeList, enode.NewV4(vnode.PubKey, nil, 0, 0))
 	}
 	return nodeList
 }
@@ -383,10 +391,18 @@ func (gvs *GroupValidators) GetGroupID() uint32 {
 }
 
 // return all NodeIDs in the group
-func (gvs *GroupValidators) NodeList() []enode.ID {
+func (gvs *GroupValidators) NodeIdList() []enode.ID {
 	nodeList := make([]enode.ID, 0)
 	for _, id := range gvs.Nodes {
 		nodeList = append(nodeList, id.NodeID)
+	}
+	return nodeList
+}
+
+func (gvs *GroupValidators) NodeList() []*enode.Node {
+	nodeList := make([]*enode.Node, 0)
+	for _, vnode := range gvs.Nodes {
+		nodeList = append(nodeList, enode.NewV4(vnode.PubKey, nil, 0, 0))
 	}
 	return nodeList
 }
