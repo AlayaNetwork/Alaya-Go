@@ -74,7 +74,7 @@ func (srv *Server) FindPeersWithTopic(ctx context.Context, topic string, nodes [
 		nodes[i], nodes[j] = nodes[j], nodes[i]
 	})
 
-	sel := srv.Config.MinimumPeersPerTopic * 2
+	sel := threshold + (threshold / 2)
 	try := 0
 	for {
 		if err := ctx.Err(); err != nil {
