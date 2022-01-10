@@ -234,6 +234,9 @@ func (vs *Validators) NodeListByIndexes(indexes []uint32) ([]*ValidateNode, erro
 func (vs *Validators) NodeListByBitArray(vSet *utils.BitArray) ([]*ValidateNode, error) {
 	if vs.SortedValidators == nil {
 		vs.Sort()
+		if vs.SortedValidators == nil {
+			return nil, errors.New("no sorted validators")
+		}
 	}
 	l := make([]*ValidateNode, 0)
 
@@ -327,6 +330,9 @@ func (vs *Validators) Sort() {
 func (vs *Validators) GetGroupValidators(nodeID enode.ID) (*GroupValidators, error) {
 	if vs.SortedValidators == nil {
 		vs.Sort()
+		if vs.SortedValidators == nil {
+			return nil, errors.New("no sorted validators")
+		}
 	}
 
 	var ret *GroupValidators
@@ -343,6 +349,9 @@ func (vs *Validators) GetGroupValidators(nodeID enode.ID) (*GroupValidators, err
 func (vs *Validators) UnitID(nodeID enode.ID) (uint32, error) {
 	if vs.SortedValidators == nil {
 		vs.Sort()
+		if vs.SortedValidators == nil {
+			return math.MaxUint32, errors.New("no sorted validators")
+		}
 	}
 
 	_, err := vs.Index(nodeID)
