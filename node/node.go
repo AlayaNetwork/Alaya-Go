@@ -461,7 +461,7 @@ func (n *Node) RegisterAPIs(apis []rpc.API) {
 }
 
 func (n *Node) stopSnapshotDB() {
-	snapshotdb.Instance().Close()
+	snapshotdb.Close()
 }
 
 // RegisterHandler mounts a handler on the given path on the canonical HTTP server.
