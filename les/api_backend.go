@@ -278,3 +278,7 @@ func (b *LesApiBackend) ServiceFilter(ctx context.Context, session *bloombits.Ma
 func (b *LesApiBackend) WasmType() string {
 	return ""
 }
+
+func (b *LesApiBackend) CurrentHeader() *types.Header {
+	return b.eth.blockchain.CurrentHeader()
+}

@@ -97,7 +97,7 @@ var graphiql = []byte(`
 		<script>
 			function fetchGQL(params) {
                 post = "/alaya/graphql"
-                if (window.location.pathname == "/"){
+                if (window.location.pathname == "/graphql/ui"){
 					post = "/graphql"
 				}
 				return fetch(post, {

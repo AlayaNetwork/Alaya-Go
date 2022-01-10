@@ -26,6 +26,8 @@ import (
 	"reflect"
 	"unicode"
 
+	"github.com/AlayaNetwork/Alaya-Go/internal/ethapi"
+
 	cli "gopkg.in/urfave/cli.v1"
 
 	"github.com/AlayaNetwork/Alaya-Go/core/snapshotdb"
@@ -175,41 +177,24 @@ func makeConfigNode(ctx *cli.Context) (*node.Node, platonConfig) {
 	return stack, cfg
 }
 
-func makeFullNode(ctx *cli.Context) *node.Node {
+func makeFullNode(ctx *cli.Context) (*node.Node, ethapi.Backend) {
 
 	stack, cfg := makeConfigNode(ctx)
 
 	snapshotdb.SetDBPathWithNode(stack.ResolvePath(snapshotdb.DBPath))
 
-	utils.RegisterEthService(stack, &cfg.Eth)
+	backend := utils.RegisterEthService(stack, &cfg.Eth)
 
 	// Configure GraphQL if requested
 	if ctx.GlobalIsSet(utils.GraphQLEnabledFlag.Name) {
-		utils.RegisterGraphQLService(stack, cfg.Node.GraphQLEndpoint(), cfg.Node.GraphQLCors, cfg.Node.GraphQLVirtualHosts, cfg.Node.HTTPTimeouts)
+		utils.RegisterGraphQLService(stack, backend, cfg.Node)
 	}
 
 	// Add the Ethereum Stats daemon if requested.
 	if cfg.Ethstats.URL != "" {
-		utils.RegisterEthStatsService(stack, cfg.Ethstats.URL)
+		utils.RegisterEthStatsService(stack, backend, cfg.Ethstats.URL)
 	}
-	return stack
-}
-
-func makeFullNodeForCBFT(ctx *cli.Context) (*node.Node, platonConfig) {
-	stack, cfg := makeConfigNode(ctx)
-	snapshotdb.SetDBPathWithNode(stack.ResolvePath(snapshotdb.DBPath))
-
-	utils.RegisterEthService(stack, &cfg.Eth)
-	// Configure GraphQL if requested
-	if ctx.GlobalIsSet(utils.GraphQLEnabledFlag.Name) {
-		utils.RegisterGraphQLService(stack, cfg.Node.GraphQLEndpoint(), cfg.Node.GraphQLCors, cfg.Node.GraphQLVirtualHosts, cfg.Node.HTTPTimeouts)
-	}
-
-	// Add the Ethereum Stats daemon if requested.
-	if cfg.Ethstats.URL != "" {
-		utils.RegisterEthStatsService(stack, cfg.Ethstats.URL)
-	}
-	return stack, cfg
+	return stack, backend
 }
 
 // dumpConfig is the dumpconfig command.
