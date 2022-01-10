@@ -45,13 +45,14 @@ import (
 	"strings"
 	"text/tabwriter"
 
+	"gopkg.in/urfave/cli.v1"
+
 	"github.com/AlayaNetwork/Alaya-Go/crypto"
 	"github.com/AlayaNetwork/Alaya-Go/p2p"
 	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
 	"github.com/AlayaNetwork/Alaya-Go/p2p/simulations"
 	"github.com/AlayaNetwork/Alaya-Go/p2p/simulations/adapters"
 	"github.com/AlayaNetwork/Alaya-Go/rpc"
-	"gopkg.in/urfave/cli.v1"
 )
 
 var client *simulations.Client
@@ -289,7 +290,7 @@ func createNode(ctx *cli.Context) error {
 		config.PrivateKey = privKey
 	}
 	if services := ctx.String("services"); services != "" {
-		config.Services = strings.Split(services, ",")
+		config.Lifecycles = strings.Split(services, ",")
 	}
 	node, err := client.CreateNode(config)
 	if err != nil {
