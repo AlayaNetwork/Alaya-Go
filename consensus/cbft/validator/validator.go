@@ -525,21 +525,21 @@ func (vp *ValidatorPool) dealWithOldVersionEvents(epoch uint64, eventMux *event.
 		// in the consensus stages. Also we are not needed
 		// to keep connect with old validators.
 		if isValidatorAfter {
-			for _, n := range vp.currentValidators.SortedValidators.SortedNodes {
+			for _, n := range vp.currentValidators.Nodes {
 				if node, _ := vp.prevValidators.FindNodeByID(n.NodeID); node == nil {
 					eventMux.Post(cbfttypes.AddValidatorEvent{Node: enode.NewV4(n.PubKey, nil, 0, 0)})
 					log.Trace("Post AddValidatorEvent", "node", n.String())
 				}
 			}
 
-			for _, n := range vp.prevValidators.SortedValidators.SortedNodes {
+			for _, n := range vp.prevValidators.Nodes {
 				if node, _ := vp.currentValidators.FindNodeByID(n.NodeID); node == nil {
 					eventMux.Post(cbfttypes.RemoveValidatorEvent{Node: enode.NewV4(n.PubKey, nil, 0, 0)})
 					log.Trace("Post RemoveValidatorEvent", "node", n.String())
 				}
 			}
 		} else {
-			for _, node := range vp.prevValidators.SortedValidators.SortedNodes {
+			for _, node := range vp.prevValidators.Nodes {
 				eventMux.Post(cbfttypes.RemoveValidatorEvent{Node: enode.NewV4(node.PubKey, nil, 0, 0)})
 				log.Trace("Post RemoveValidatorEvent", "nodeID", node.String())
 			}
@@ -550,7 +550,7 @@ func (vp *ValidatorPool) dealWithOldVersionEvents(epoch uint64, eventMux *event.
 		// consensus peers is because we need to keep connecting
 		// with other validators in the consensus stages.
 		if isValidatorAfter {
-			for _, node := range vp.currentValidators.SortedValidators.SortedNodes {
+			for _, node := range vp.currentValidators.Nodes {
 				eventMux.Post(cbfttypes.AddValidatorEvent{Node: enode.NewV4(node.PubKey, nil, 0, 0)})
 				log.Trace("Post AddValidatorEvent", "nodeID", node.String())
 			}
