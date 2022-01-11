@@ -86,7 +86,7 @@ func (srv *Server) FindPeersWithTopic(ctx context.Context, topic string, nodes [
 		}
 
 		tempNodes := nodes[:]
-		if sel >= len(nodes) {
+		if len(nodes) > sel {
 			tempNodes = nodes[:sel]
 			nodes = nodes[sel:]
 		} else {
