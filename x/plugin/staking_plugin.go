@@ -3760,7 +3760,7 @@ func (sk *StakingPlugin) Adjust0170RoundValidators(blockHash common.Hash, blockN
 	// 根据新ConsensusSize更新index和RoundValList
 	newQueue := &staking.ValidatorArray{
 		Start: oldIndex.Start,
-		End:   oldIndex.Start + xcom.ConsensusSize(params.FORKVERSION_0_17_0),
+		End:   oldIndex.Start - 1 + xcom.ConsensusSize(params.FORKVERSION_0_17_0),
 		Arr:   queue,
 	}
 
