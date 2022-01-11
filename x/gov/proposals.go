@@ -220,7 +220,7 @@ func (vp *VersionProposal) GetNewVersion() uint32 {
 
 func (vp *VersionProposal) GetActiveBlock(version uint32) uint64 {
 	if vp.NewVersion == params.FORKVERSION_0_17_0 {
-		return xutil.CalculateEpoch(vp.ActiveBlock, version)*xcom.EpochSize(version) + 1
+		return xutil.CalculateEpoch(vp.ActiveBlock, version)*xutil.CalcBlocksEachEpoch(version) + 1
 	}
 	return vp.ActiveBlock
 }
