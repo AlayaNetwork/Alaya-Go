@@ -3747,7 +3747,7 @@ func (sk *StakingPlugin) HasStake(blockHash common.Hash, addr common.Address) (b
 func (sk *StakingPlugin) Adjust0170RoundValidators(blockHash common.Hash, blockNumber uint64) error {
 	oldIndex := &staking.ValArrIndex{
 		Start: blockNumber,
-		End:   blockNumber + xcom.ConsensusSize(params.FORKVERSION_0_16_0),
+		End:   (blockNumber - 1) + xcom.ConsensusSize(params.FORKVERSION_0_16_0),
 	}
 	//获取旧ValidatorQueue
 	queue, err := sk.db.GetRoundValListByIrr(oldIndex.Start, oldIndex.End)
@@ -3763,16 +3763,18 @@ func (sk *StakingPlugin) Adjust0170RoundValidators(blockHash common.Hash, blockN
 		End:   oldIndex.Start + xcom.ConsensusSize(params.FORKVERSION_0_17_0),
 		Arr:   queue,
 	}
-	if err := sk.setRoundValListAndIndex(blockNumber, blockHash, newQueue); nil != err {
-		log.Error("Failed to SetNextValidatorList on Election", "blockNumber", blockNumber,
-			"blockHash", blockHash.Hex(), "err", err)
-		return err
-	}
+
 	// 删除旧ValidatorQueue
 	if err := sk.db.DelRoundValListByBlockHash(blockHash, oldIndex.Start, oldIndex.End); nil != err {
 		log.Error("Adjust0170RoundValidators: delete oldIndex validators failed",
 			"oldIndex start", oldIndex.Start, "oldIndex end", oldIndex.End,
 			"blockNumber", blockNumber, "blockHash", blockHash.Hex(), "err", err)
+		return err
+	}
+
+	if err := sk.setRoundValListAndIndex(blockNumber, blockHash, newQueue); nil != err {
+		log.Error("Failed to SetNextValidatorList on Election", "blockNumber", blockNumber,
+			"blockHash", blockHash.Hex(), "err", err)
 		return err
 	}
 	log.Debug("Adjust0170RoundValidators OK!", "queue", queue.String(),
