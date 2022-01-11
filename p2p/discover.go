@@ -28,15 +28,16 @@ func (srv *Server) DiscoverTopic(ctx context.Context, topic string) {
 				}
 
 				// Check   there are enough peers
-				if !srv.validPeersExist(topic) {
+				numOfPeers := srv.pubSubServer.PubSub().ListPeers(topic)
+				if len(numOfPeers) < srv.Config.MinimumPeersPerTopic {
 					srv.topicSubscriberMu.RLock()
 					nodes, ok := srv.topicSubscriber[topic]
 					srv.topicSubscriberMu.RUnlock()
 					if !ok {
 						continue
 					}
-					log.Debug("No peers found subscribed  gossip topic . Searching network for peers subscribed to the topic.", "topic", topic)
-					if err := srv.FindPeersWithTopic(ctx, topic, nodes, srv.Config.MinimumPeersPerTopic); err != nil {
+					log.Debug("No peers found subscribed  gossip topic . Searching network for peers subscribed to the topic.", "topic", topic, "peers", numOfPeers)
+					if err := srv.FindPeersWithTopic(ctx, topic, nodes, srv.Config.MinimumPeersPerTopic-len(numOfPeers)); err != nil {
 						log.Debug("Could not search for peers", "err", err)
 						return
 					}
@@ -45,12 +46,6 @@ func (srv *Server) DiscoverTopic(ctx context.Context, topic string) {
 			}
 		}
 	}()
-}
-
-// find if we have peers who are subscribed to the same subnet
-func (srv *Server) validPeersExist(subnetTopic string) bool {
-	numOfPeers := srv.pubSubServer.PubSub().ListPeers(subnetTopic)
-	return len(numOfPeers) >= srv.Config.MinimumPeersPerTopic
 }
 
 // FindPeersWithTopic performs a network search for peers
@@ -71,7 +66,7 @@ func (srv *Server) FindPeersWithTopic(ctx context.Context, topic string, nodes [
 
 	indexs := rand.New(rand.NewSource(time.Now().UnixNano())).Perm(len(nodes))
 
-	sel := threshold / 3
+	sel := threshold / 2
 	if sel == 0 {
 		sel = 1
 	}
