@@ -3764,6 +3764,27 @@ func (sk *StakingPlugin) Adjust0170RoundValidators(blockHash common.Hash, blockN
 		Arr:   queue,
 	}
 
+	// 更新index
+	indexs, err := sk.db.GetRoundValIndexByBlockHash(blockHash)
+	if nil != err {
+		log.Error("Adjust0170RoundValidators: Query round valIndex is failed",
+			"blockNumber", blockNumber, "blockHash", blockHash.Hex(), "err", err)
+		return err
+	}
+	for i, index := range indexs {
+		if index.Start == oldIndex.Start {
+			index.End = newQueue.End
+			log.Debug("Adjust0170RoundValidators: new indexs' ", "i", i, "End", index.End)
+			break
+		}
+	}
+	// update index Arr
+	if err := sk.db.SetRoundValIndex(blockHash, indexs); nil != err {
+		log.Error("Adjust0170RoundValidators: store round validators new indexArr is failed",
+			"blockNumber", blockNumber, "blockHash", blockHash.Hex(), "indexs length", len(indexs), "err", err)
+		return err
+	}
+
 	// 删除旧ValidatorQueue
 	if err := sk.db.DelRoundValListByBlockHash(blockHash, oldIndex.Start, oldIndex.End); nil != err {
 		log.Error("Adjust0170RoundValidators: delete oldIndex validators failed",
@@ -3772,11 +3793,14 @@ func (sk *StakingPlugin) Adjust0170RoundValidators(blockHash common.Hash, blockN
 		return err
 	}
 
-	if err := sk.setRoundValListAndIndex(blockNumber, blockHash, newQueue); nil != err {
-		log.Error("Failed to SetNextValidatorList on Election", "blockNumber", blockNumber,
-			"blockHash", blockHash.Hex(), "err", err)
+	// Store new round validator Item
+	if err := sk.db.SetRoundValList(blockHash, newQueue.Start, newQueue.End, newQueue.Arr); nil != err {
+		log.Error("Failed to setRoundValListAndIndex: store new round validators is failed",
+			"blockNumber", blockNumber, "blockHash", blockHash.Hex(),
+			"start", newQueue.Start, "end", newQueue.End, "val arr length", len(newQueue.Arr), "err", err)
 		return err
 	}
+
 	log.Debug("Adjust0170RoundValidators OK!", "queue", queue.String(),
 		"oldIndex.Start", oldIndex.Start, "oldIndex.End", oldIndex.End, "newQueue.Start", newQueue.Start, "newQueue.End", newQueue.End)
 	return nil
