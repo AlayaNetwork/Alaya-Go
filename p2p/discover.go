@@ -31,14 +31,12 @@ func (srv *Server) DiscoverTopic(ctx context.Context, topic string) {
 				if !srv.validPeersExist(topic) {
 					srv.topicSubscriberMu.RLock()
 					nodes, ok := srv.topicSubscriber[topic]
-					copyNodes := make([]*enode.Node, len(nodes))
-					copy(copyNodes, nodes)
 					srv.topicSubscriberMu.RUnlock()
 					if !ok {
 						continue
 					}
 					log.Debug("No peers found subscribed  gossip topic . Searching network for peers subscribed to the topic.", "topic", topic)
-					if err := srv.FindPeersWithTopic(ctx, topic, copyNodes, srv.Config.MinimumPeersPerTopic); err != nil {
+					if err := srv.FindPeersWithTopic(ctx, topic, nodes, srv.Config.MinimumPeersPerTopic); err != nil {
 						log.Debug("Could not search for peers", "err", err)
 						return
 					}
@@ -65,49 +63,38 @@ func (srv *Server) FindPeersWithTopic(ctx context.Context, topic string, nodes [
 		// return if discovery isn't set
 		return nil
 	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 
-	currNum := len(srv.pubSubServer.PubSub().ListPeers(topic))
 	wg := new(sync.WaitGroup)
 
-	topicRand := rand.New(rand.NewSource(time.Now().UnixNano()))
-	topicRand.Shuffle(len(nodes), func(i, j int) {
-		nodes[i], nodes[j] = nodes[j], nodes[i]
-	})
+	indexs := rand.New(rand.NewSource(time.Now().UnixNano())).Perm(len(nodes))
 
-	sel := threshold + (threshold / 2)
-	try := 0
-	for {
-		if err := ctx.Err(); err != nil {
-			return err
+	sel := threshold / 3
+	if sel == 0 {
+		sel = 1
+	}
+
+	for i := 0; i < len(indexs); i++ {
+		if nodes[indexs[i]].ID() == srv.localnode.ID() {
+			continue
 		}
-		// Retry at most 3 times
-		if try >= 3 || currNum >= threshold || len(nodes) == 0 {
+		wg.Add(1)
+		srv.AddConsensusPeerWithDone(nodes[indexs[i]], func() {
+			wg.Done()
+		})
+		sel--
+		if sel == 0 {
 			break
 		}
-
-		tempNodes := nodes[:]
-		if sel >= len(nodes) {
-			tempNodes = nodes[:sel]
-			nodes = nodes[sel:]
-		} else {
-			nodes = make([]*enode.Node, 0)
-		}
-
-		for _, toNode := range tempNodes {
-			if toNode.ID() == srv.localnode.ID() {
-				continue
-			}
-			wg.Add(1)
-			srv.AddConsensusPeerWithDone(toNode, func() {
-				wg.Done()
-			})
-		}
-		// Wait for all dials to be completed.
-		wg.Wait()
-		currNum = len(srv.pubSubServer.PubSub().ListPeers(topic))
-		try++
 	}
-	log.Trace("Searching network for peers subscribed to the topic done.", "topic", topic, "peers", currNum, "try", try, "remainNodes", len(nodes))
+
+	// Wait for all dials to be completed.
+	wg.Wait()
+	currNum := len(srv.pubSubServer.PubSub().ListPeers(topic))
+
+	log.Trace("Searching network for peers subscribed to the topic done.", "topic", topic, "peers", currNum)
 
 	return nil
 }
