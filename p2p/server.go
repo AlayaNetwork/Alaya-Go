@@ -975,7 +975,7 @@ func (srv *Server) postHandshakeChecks(peers map[enode.ID]*Peer, inboundCount in
 		srv.topicSubscriberMu.RLock()
 		for _, connTopic := range srv.getPeersTopics(c.node.ID()) {
 			if len(srv.pubSubServer.PubSub().ListPeers(connTopic)) < srv.MinimumPeersPerTopic {
-				//获取每个节点所拥有的主题的数量
+				// 获取每个节点所拥有的主题的数量
 				var (
 					topicsCountSort = make([]int, 0)
 					nodeTopicsCount = make(map[enode.ID]int)
@@ -993,6 +993,12 @@ func (srv *Server) postHandshakeChecks(peers map[enode.ID]*Peer, inboundCount in
 								nodeTopicsCount[node.ID()] = 1
 							}
 						}
+					}
+				}
+				// 去掉拥有当前主题的节点
+				for _, node := range srv.topicSubscriber[connTopic] {
+					if _, ok := nodeTopicsCount[node.ID()]; ok {
+						delete(nodeTopicsCount, node.ID())
 					}
 				}
 
