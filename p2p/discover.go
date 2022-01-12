@@ -42,7 +42,7 @@ func (srv *Server) DiscoverTopic(ctx context.Context, topic string) {
 
 					currentConnectPeer := make(map[enode.ID]struct{})
 					srv.doPeerOp(func(m map[enode.ID]*Peer) {
-						for id, _ := range currentConnectPeer {
+						for id, _ := range m {
 							currentConnectPeer[id] = struct{}{}
 						}
 					})
@@ -120,7 +120,7 @@ func (srv *Server) FindPeersWithTopic(ctx context.Context, topic string, nodes [
 	}
 	currNum := len(srv.pubSubServer.PubSub().ListPeers(topic))
 
-	log.Trace("Searching network for peers subscribed to the topic done.", "topic", topic, "peers", currNum, "dialShouldReTry", dialShouldReTry)
+	log.Trace("Searching network for peers subscribed to the topic done.", "topic", topic, "peers", currNum, "dialShouldReTry", threshold)
 
 	return nil
 }
