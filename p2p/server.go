@@ -805,7 +805,7 @@ running:
 		case task := <-srv.addconsensus:
 			// This channel is used by AddConsensusNode to add an enode
 			// to the consensus node set.
-			srv.log.Trace("Adding consensus node", "node", task.dest)
+			srv.log.Trace("Adding consensus node", "node", task.dest.ID())
 			id := task.dest.ID()
 			if bytes.Equal(crypto.Keccak256(srv.ourHandshake.ID), id[:]) {
 				srv.log.Debug("We are become an consensus node")
@@ -816,10 +816,16 @@ running:
 			} else {
 				consensusNodes[id] = true
 				if p, ok := peers[id]; ok {
-					srv.log.Debug("Add consensus flag", "peer", id)
-					p.rw.set(consensusDialedConn, true)
-					if task.doneHook != nil {
-						task.doneHook(errAlreadyConnected)
+					if !p.rw.is(consensusDialedConn) {
+						srv.log.Debug("Add consensus flag", "peer", id)
+						p.rw.set(consensusDialedConn, true)
+						if task.doneHook != nil {
+							task.doneHook(nil)
+						}
+					} else {
+						if task.doneHook != nil {
+							task.doneHook(errAlreadyConnected)
+						}
 					}
 				} else {
 					srv.dialsched.addConsensus(task)
