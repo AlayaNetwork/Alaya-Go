@@ -113,8 +113,9 @@ func (srv *Server) FindPeersWithTopic(ctx context.Context, topic string, nodes [
 			if dialShouldReTry > 0 {
 				threshold += dialShouldReTry
 				dialShouldReTry = 0
+			} else {
+				break
 			}
-			break
 		}
 	}
 	currNum := len(srv.pubSubServer.PubSub().ListPeers(topic))
