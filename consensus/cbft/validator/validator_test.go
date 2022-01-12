@@ -657,7 +657,7 @@ func TestUpdate(t *testing.T) {
 	assert.Equal(t, vp.epoch, uint64(0))
 
 	vp.InitComingValidators(common.ZeroHash, 980, eventMux)
-	assert.True(t, vp.NeedGroup())
+	assert.False(t, vp.NeedGroup())
 	assert.Equal(t, vp.epoch, uint64(0))
 
 	nextNodes := newTestNodeByNum(100)
