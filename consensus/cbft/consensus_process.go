@@ -396,13 +396,11 @@ func (cbft *Cbft) OnViewTimeout() {
 		cbft.bridge.SendViewChange(viewChange)
 	}
 
+	cbft.state.AddViewChange(node.Index, viewChange)
 	// send viewChange use pubsub
 	if err := cbft.publishTopicMsg(viewChange); err != nil {
 		cbft.log.Error("Publish viewChange failed", "err", err.Error(), "view", cbft.state.ViewString(), "viewChange", viewChange.String())
-		return
 	}
-
-	cbft.state.AddViewChange(node.Index, viewChange)
 	//cbft.network.Broadcast(viewChange)
 	cbft.log.Info("Local add viewChange", "index", node.Index, "viewChange", viewChange.String(), "total", cbft.state.ViewChangeLen())
 
@@ -610,6 +608,12 @@ func (cbft *Cbft) trySendPrepareVote() {
 		}
 		if b, qc := cbft.blockTree.FindBlockAndQC(block.ParentHash(), block.NumberU64()-1); b != nil || block.NumberU64() == 0 {
 			p.ParentQC = qc
+			hadSend.Push(p)
+			//Determine if the current consensus node is
+			node, _ := cbft.isCurrentValidator()
+			cbft.log.Info("Add local prepareVote", "vote", p.String())
+			cbft.state.AddPrepareVote(node.Index, p)
+			pending.Pop()
 
 			// write sendPrepareVote info to wal
 			if !cbft.isLoading() {
@@ -619,15 +623,7 @@ func (cbft *Cbft) trySendPrepareVote() {
 			// send prepareVote use pubsub
 			if err := cbft.publishTopicMsg(p); err != nil {
 				cbft.log.Error("Publish PrepareVote failed", "err", err.Error(), "view", cbft.state.ViewString(), "vote", p.String())
-				break
 			}
-			hadSend.Push(p)
-			//Determine if the current consensus node is
-			node, _ := cbft.isCurrentValidator()
-			cbft.log.Info("Add local prepareVote", "vote", p.String())
-			cbft.state.AddPrepareVote(node.Index, p)
-			pending.Pop()
-
 			//cbft.network.Broadcast(p)
 		} else {
 			break
