@@ -816,10 +816,16 @@ running:
 			} else {
 				consensusNodes[id] = true
 				if p, ok := peers[id]; ok {
-					srv.log.Debug("Add consensus flag", "peer", id)
-					p.rw.set(consensusDialedConn, true)
-					if task.doneHook != nil {
-						task.doneHook(nil)
+					if !p.rw.is(consensusDialedConn) {
+						srv.log.Debug("Add consensus flag", "peer", id)
+						p.rw.set(consensusDialedConn, true)
+						if task.doneHook != nil {
+							task.doneHook(nil)
+						}
+					} else {
+						if task.doneHook != nil {
+							task.doneHook(errAlreadyConnected)
+						}
 					}
 				} else {
 					srv.dialsched.addConsensus(task)
