@@ -3747,7 +3747,7 @@ func (sk *StakingPlugin) HasStake(blockHash common.Hash, addr common.Address) (b
 func (sk *StakingPlugin) Adjust0170RoundValidators(blockHash common.Hash, blockNumber uint64) error {
 	oldIndex := &staking.ValArrIndex{
 		Start: blockNumber,
-		End:   blockNumber + xcom.ConsensusSize(params.FORKVERSION_0_16_0),
+		End:   (blockNumber - 1) + xcom.ConsensusSize(params.FORKVERSION_0_16_0),
 	}
 	//获取旧ValidatorQueue
 	queue, err := sk.db.GetRoundValListByIrr(oldIndex.Start, oldIndex.End)
@@ -3760,14 +3760,31 @@ func (sk *StakingPlugin) Adjust0170RoundValidators(blockHash common.Hash, blockN
 	// 根据新ConsensusSize更新index和RoundValList
 	newQueue := &staking.ValidatorArray{
 		Start: oldIndex.Start,
-		End:   oldIndex.Start + xcom.ConsensusSize(params.FORKVERSION_0_17_0),
+		End:   oldIndex.Start - 1 + xcom.ConsensusSize(params.FORKVERSION_0_17_0),
 		Arr:   queue,
 	}
-	if err := sk.setRoundValListAndIndex(blockNumber, blockHash, newQueue); nil != err {
-		log.Error("Failed to SetNextValidatorList on Election", "blockNumber", blockNumber,
-			"blockHash", blockHash.Hex(), "err", err)
+
+	// 更新index
+	indexs, err := sk.db.GetRoundValIndexByBlockHash(blockHash)
+	if nil != err {
+		log.Error("Adjust0170RoundValidators: Query round valIndex is failed",
+			"blockNumber", blockNumber, "blockHash", blockHash.Hex(), "err", err)
 		return err
 	}
+	for i, index := range indexs {
+		if index.Start == oldIndex.Start {
+			index.End = newQueue.End
+			log.Debug("Adjust0170RoundValidators: new indexs' ", "i", i, "End", index.End)
+			break
+		}
+	}
+	// update index Arr
+	if err := sk.db.SetRoundValIndex(blockHash, indexs); nil != err {
+		log.Error("Adjust0170RoundValidators: store round validators new indexArr is failed",
+			"blockNumber", blockNumber, "blockHash", blockHash.Hex(), "indexs length", len(indexs), "err", err)
+		return err
+	}
+
 	// 删除旧ValidatorQueue
 	if err := sk.db.DelRoundValListByBlockHash(blockHash, oldIndex.Start, oldIndex.End); nil != err {
 		log.Error("Adjust0170RoundValidators: delete oldIndex validators failed",
@@ -3775,6 +3792,15 @@ func (sk *StakingPlugin) Adjust0170RoundValidators(blockHash common.Hash, blockN
 			"blockNumber", blockNumber, "blockHash", blockHash.Hex(), "err", err)
 		return err
 	}
+
+	// Store new round validator Item
+	if err := sk.db.SetRoundValList(blockHash, newQueue.Start, newQueue.End, newQueue.Arr); nil != err {
+		log.Error("Failed to setRoundValListAndIndex: store new round validators is failed",
+			"blockNumber", blockNumber, "blockHash", blockHash.Hex(),
+			"start", newQueue.Start, "end", newQueue.End, "val arr length", len(newQueue.Arr), "err", err)
+		return err
+	}
+
 	log.Debug("Adjust0170RoundValidators OK!", "queue", queue.String(),
 		"oldIndex.Start", oldIndex.Start, "oldIndex.End", oldIndex.End, "newQueue.Start", newQueue.Start, "newQueue.End", newQueue.End)
 	return nil
