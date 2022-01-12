@@ -274,7 +274,7 @@ loop:
 			if err := d.checkDial(task.dest); err != nil {
 				d.log.Trace("Discarding dial consensus node", "id", task.dest.ID(), "ip", task.dest.IP(), "reason", err)
 				if task.doneHook != nil {
-					task.doneHook()
+					task.doneHook(err)
 				}
 			} else {
 				d.startDial(task)
@@ -292,7 +292,7 @@ loop:
 			d.updateStaticPool(id)
 			d.doneSinceLastLog++
 			if task.doneHook != nil {
-				task.doneHook()
+				task.doneHook(nil)
 			}
 
 		case c := <-d.addPeerCh:
@@ -511,10 +511,10 @@ type dialTask struct {
 	dest         *enode.Node
 	lastResolved mclock.AbsTime
 	resolveDelay time.Duration
-	doneHook     func()
+	doneHook     func(err error)
 }
 
-func newDialTask(dest *enode.Node, flags connFlag, done func()) *dialTask {
+func newDialTask(dest *enode.Node, flags connFlag, done func(err error)) *dialTask {
 	return &dialTask{dest: dest, flags: flags, staticPoolIndex: -1, doneHook: done}
 }
 

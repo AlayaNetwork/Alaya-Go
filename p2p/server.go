@@ -399,7 +399,7 @@ func (srv *Server) AddConsensusPeer(node *enode.Node) {
 	}
 }
 
-func (srv *Server) AddConsensusPeerWithDone(node *enode.Node, done func()) {
+func (srv *Server) AddConsensusPeerWithDone(node *enode.Node, done func(err error)) {
 	select {
 	case srv.addconsensus <- newDialTask(node, consensusDialedConn, done):
 	case <-srv.quit:
@@ -811,7 +811,7 @@ running:
 				srv.log.Debug("We are become an consensus node")
 				srv.consensus = true
 				if task.doneHook != nil {
-					task.doneHook()
+					task.doneHook(errSelf)
 				}
 			} else {
 				consensusNodes[id] = true
@@ -819,7 +819,7 @@ running:
 					srv.log.Debug("Add consensus flag", "peer", id)
 					p.rw.set(consensusDialedConn, true)
 					if task.doneHook != nil {
-						task.doneHook()
+						task.doneHook(errAlreadyConnected)
 					}
 				} else {
 					srv.dialsched.addConsensus(task)

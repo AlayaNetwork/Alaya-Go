@@ -26,33 +26,54 @@ func (srv *Server) DiscoverTopic(ctx context.Context, topic string) {
 				if !srv.running {
 					continue
 				}
-
 				// Check   there are enough peers
-				if !srv.validPeersExist(topic) {
+				peers := srv.pubSubServer.PubSub().ListPeers(topic)
+				peerNeedFind := srv.Config.MinimumPeersPerTopic - len(peers)
+				if peerNeedFind > 0 {
 					srv.topicSubscriberMu.RLock()
 					nodes, ok := srv.topicSubscriber[topic]
+					if !ok {
+						srv.topicSubscriberMu.RUnlock()
+						continue
+					}
 					copyNodes := make([]*enode.Node, len(nodes))
 					copy(copyNodes, nodes)
 					srv.topicSubscriberMu.RUnlock()
-					if !ok {
+
+					currentConnectPeer := make(map[enode.ID]struct{})
+					srv.doPeerOp(func(m map[enode.ID]*Peer) {
+						for id, _ := range currentConnectPeer {
+							currentConnectPeer[id] = struct{}{}
+						}
+					})
+					// 找到没有连接的节点
+					for i := 0; i < len(copyNodes); {
+						if copyNodes[i].ID() == srv.localnode.ID() {
+							copyNodes = append(copyNodes[:i], copyNodes[i+1:]...)
+							continue
+						}
+						if _, ok := currentConnectPeer[copyNodes[i].ID()]; ok {
+							copyNodes = append(copyNodes[:i], copyNodes[i+1:]...)
+							continue
+						}
+						i++
+					}
+					if len(copyNodes) == 0 {
+						log.Debug("all peers are found,no need searching network", "topic", topic, "peers", len(peers))
 						continue
 					}
-					log.Debug("No peers found subscribed  gossip topic . Searching network for peers subscribed to the topic.", "topic", topic)
-					if err := srv.FindPeersWithTopic(ctx, topic, copyNodes, srv.Config.MinimumPeersPerTopic); err != nil {
+					if peerNeedFind > len(copyNodes) {
+						peerNeedFind = len(copyNodes)
+					}
+					log.Debug("not enough nodes in this topic,searching network", "topic", topic, "peers", len(peers), "peerNeedFind", peerNeedFind, "minimumPeersPerTopic", srv.Config.MinimumPeersPerTopic)
+					if err := srv.FindPeersWithTopic(ctx, topic, copyNodes, peerNeedFind); err != nil {
 						log.Debug("Could not search for peers", "err", err)
 						return
 					}
 				}
-
 			}
 		}
 	}()
-}
-
-// find if we have peers who are subscribed to the same subnet
-func (srv *Server) validPeersExist(subnetTopic string) bool {
-	numOfPeers := srv.pubSubServer.PubSub().ListPeers(subnetTopic)
-	return len(numOfPeers) >= srv.Config.MinimumPeersPerTopic
 }
 
 // FindPeersWithTopic performs a network search for peers
@@ -65,49 +86,40 @@ func (srv *Server) FindPeersWithTopic(ctx context.Context, topic string, nodes [
 		// return if discovery isn't set
 		return nil
 	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 
-	currNum := len(srv.pubSubServer.PubSub().ListPeers(topic))
 	wg := new(sync.WaitGroup)
+	indexs := rand.New(rand.NewSource(time.Now().UnixNano())).Perm(len(nodes))
 
-	topicRand := rand.New(rand.NewSource(time.Now().UnixNano()))
-	topicRand.Shuffle(len(nodes), func(i, j int) {
-		nodes[i], nodes[j] = nodes[j], nodes[i]
-	})
+	if threshold > 6 {
+		threshold = threshold / 2
+	}
+	var dialShouldReTry int
 
-	sel := threshold + (threshold / 2)
-	try := 0
-	for {
-		if err := ctx.Err(); err != nil {
-			return err
-		}
-		// Retry at most 3 times
-		if try >= 3 || currNum >= threshold || len(nodes) == 0 {
+	//持续发现节点,并且过滤掉dial失败的节点
+	for i := 0; i < len(indexs); i++ {
+		wg.Add(1)
+		srv.AddConsensusPeerWithDone(nodes[indexs[i]], func(err error) {
+			if err != nil {
+				dialShouldReTry++
+			}
+			wg.Done()
+		})
+		threshold--
+		if threshold == 0 {
+			wg.Wait()
+			if dialShouldReTry > 0 {
+				threshold += dialShouldReTry
+				dialShouldReTry = 0
+			}
 			break
 		}
-
-		tempNodes := nodes[:]
-		if len(nodes) > sel {
-			tempNodes = nodes[:sel]
-			nodes = nodes[sel:]
-		} else {
-			nodes = make([]*enode.Node, 0)
-		}
-
-		for _, toNode := range tempNodes {
-			if toNode.ID() == srv.localnode.ID() {
-				continue
-			}
-			wg.Add(1)
-			srv.AddConsensusPeerWithDone(toNode, func() {
-				wg.Done()
-			})
-		}
-		// Wait for all dials to be completed.
-		wg.Wait()
-		currNum = len(srv.pubSubServer.PubSub().ListPeers(topic))
-		try++
 	}
-	log.Trace("Searching network for peers subscribed to the topic done.", "topic", topic, "peers", currNum, "try", try, "remainNodes", len(nodes))
+	currNum := len(srv.pubSubServer.PubSub().ListPeers(topic))
+
+	log.Trace("Searching network for peers subscribed to the topic done.", "topic", topic, "peers", currNum, "dialShouldReTry", dialShouldReTry)
 
 	return nil
 }
