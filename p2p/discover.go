@@ -46,7 +46,7 @@ func (srv *Server) DiscoverTopic(ctx context.Context, topic string) {
 							currentConnectPeer[id] = struct{}{}
 						}
 					})
-
+					// 找到没有连接的节点
 					for i := 0; i < len(copyNodes); {
 						if copyNodes[i].ID() == srv.localnode.ID() {
 							copyNodes = append(copyNodes[:i], copyNodes[i+1:]...)
@@ -96,23 +96,30 @@ func (srv *Server) FindPeersWithTopic(ctx context.Context, topic string, nodes [
 	if threshold > 6 {
 		threshold = threshold / 2
 	}
+	var dialShouldReTry int
 
+	//持续发现节点,并且过滤掉dial失败的节点
 	for i := 0; i < len(indexs); i++ {
 		wg.Add(1)
-		srv.AddConsensusPeerWithDone(nodes[indexs[i]], func() {
+		srv.AddConsensusPeerWithDone(nodes[indexs[i]], func(err error) {
+			if err != nil {
+				dialShouldReTry++
+			}
 			wg.Done()
 		})
 		threshold--
 		if threshold == 0 {
+			wg.Wait()
+			if dialShouldReTry > 0 {
+				threshold += dialShouldReTry
+				dialShouldReTry = 0
+			}
 			break
 		}
 	}
-
-	// Wait for all dials to be completed.
-	wg.Wait()
 	currNum := len(srv.pubSubServer.PubSub().ListPeers(topic))
 
-	log.Trace("Searching network for peers subscribed to the topic done.", "topic", topic, "peers", currNum)
+	log.Trace("Searching network for peers subscribed to the topic done.", "topic", topic, "peers", currNum, "dialShouldReTry", dialShouldReTry)
 
 	return nil
 }
