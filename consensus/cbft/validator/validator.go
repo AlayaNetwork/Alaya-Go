@@ -368,7 +368,7 @@ func NewValidatorPool(agency consensus.Agency, blockNumber, epoch uint64, nodeID
 			}
 		}
 	}
-	log.Debug("Update validator", "validators", pool.currentValidators.String(), "switchpoint", pool.switchPoint, "epoch", pool.epoch, "lastNumber", pool.lastNumber)
+	log.Debug("NewValidatorPool:", "validators", pool.currentValidators.String(), "switchpoint", pool.switchPoint, "epoch", pool.epoch, "lastNumber", pool.lastNumber)
 	return pool
 }
 
@@ -479,6 +479,7 @@ func (vp *ValidatorPool) Update(blockHash common.Hash, blockNumber uint64, epoch
 	vp.nextValidators = nil
 
 	//切换共识轮时需要将上一轮分组的topic取消订阅
+	// TODO 考虑到区块尚未QC，此时断开链接不太事宜，待改进
 	vp.dissolve(currEpoch, eventMux)
 	//旧版本（非分组共识）需要发events断开落选的共识节点
 	if !vp.grouped {
@@ -495,20 +496,23 @@ func (vp *ValidatorPool) InitComingValidators(blockHash common.Hash, blockNumber
 
 	//分组提案生效后第一个共识round到ElectionPoint时初始化分组信息
 	if !vp.grouped {
-		vp.grouped = true
 		vp.groupValidatorsLimit = xcom.MaxGroupValidators()
 		vp.coordinatorLimit = xcom.CoordinatorsLimit()
+		// 提案生效后第一个选举块，此时因ConsensusSize更新到新值（215）需要更新vp.lastNumber
+		vp.lastNumber = vp.agency.GetLastNumber(blockNumber)
 	}
 
 	// 提前更新nextValidators，为了p2p早一步订阅分组事件以便建链接
 	nds, err := vp.agency.GetValidators(blockHash, blockNumber+xcom.ElectionDistance()+1)
 	if err != nil {
-		log.Error("Get validators error", "blockNumber", blockNumber, "err", err)
+		log.Info("InitComingValidators：Get validators error", "blockNumber", blockNumber, "err", err)
+		//如果没查到，说明是提案生效后首次走选举块逻辑，不是真正的选举块，此时还没真正选举，所以查不到
 		return err
 	}
+	// 如果是提案生效后第一个选举块，只有新ConsensusSize和旧ConsensusSize一样才会走下面的逻辑
 	vp.nextValidators = nds
 	vp.organize(vp.nextValidators, vp.epoch+1, eventMux)
-	log.Debug("Update nextValidators OK", "blockNumber", blockNumber, "epoch", vp.epoch+1)
+	log.Debug("InitComingValidators：Update nextValidators OK", "blockNumber", blockNumber, "epoch", vp.epoch+1)
 	return nil
 }
 
