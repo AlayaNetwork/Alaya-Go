@@ -65,7 +65,7 @@ func (srv *Server) DiscoverTopic(ctx context.Context, topic string) {
 					if peerNeedFind > len(copyNodes) {
 						peerNeedFind = len(copyNodes)
 					}
-					log.Debug("not enough nodes in this topic,searching network", "topic", topic, "peers", len(peers), "peerNeedFind", peerNeedFind, "minimumPeersPerTopic", srv.Config.MinimumPeersPerTopic)
+					log.Debug("not enough nodes in this topic,searching network", "topic", topic, "peers", len(peers), "remainNodes", len(copyNodes), "peerNeedFind", peerNeedFind, "minimumPeersPerTopic", srv.Config.MinimumPeersPerTopic)
 					if err := srv.FindPeersWithTopic(ctx, topic, copyNodes, peerNeedFind); err != nil {
 						log.Debug("Could not search for peers", "err", err)
 						return
@@ -113,8 +113,9 @@ func (srv *Server) FindPeersWithTopic(ctx context.Context, topic string, nodes [
 			if dialShouldReTry > 0 {
 				threshold += dialShouldReTry
 				dialShouldReTry = 0
+			} else {
+				break
 			}
-			break
 		}
 	}
 	currNum := len(srv.pubSubServer.PubSub().ListPeers(topic))
