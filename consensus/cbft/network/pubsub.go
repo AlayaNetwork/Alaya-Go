@@ -21,9 +21,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
+
 	"github.com/AlayaNetwork/Alaya-Go/core/cbfttypes"
 	"github.com/AlayaNetwork/Alaya-Go/event"
-	"sync"
 
 	"github.com/AlayaNetwork/Alaya-Go/common"
 	ctypes "github.com/AlayaNetwork/Alaya-Go/consensus/cbft/types"
@@ -152,7 +153,12 @@ func (ps *PubSub) watching(eventMux *event.TypeMux) {
 			switch data := ev.Data.(type) {
 			case cbfttypes.GroupTopicEvent:
 				log.Trace("Received GroupTopicEvent", "topic", data.Topic)
-				ps.Subscribe(data.Topic)
+				// 需要订阅主题（发现节点并接收topic消息）
+				if data.PubSub {
+					ps.Subscribe(data.Topic)
+				} else { // 只需要发现节点，不需要接收对应topic消息
+					ps.DiscoverTopic(data.Topic)
+				}
 			case cbfttypes.ExpiredGroupTopicEvent:
 				log.Trace("Received ExpiredGroupTopicEvent", "topic", data.Topic)
 				ps.Cancel(data.Topic)
@@ -189,6 +195,21 @@ func (ps *PubSub) Subscribe(topic string) error {
 	ps.topicCancel[topic] = cancel
 
 	go ps.listen(subscription)
+	return nil
+}
+
+// 发现topic对应的节点
+func (ps *PubSub) DiscoverTopic(topic string) error {
+	ps.Lock()
+	defer ps.Unlock()
+	if _, ok := ps.topicCtx[topic]; ok {
+		return ErrExistsTopic
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	ps.pss.DiscoverTopic(ctx, topic)
+
+	ps.topicCtx[topic] = ctx
+	ps.topicCancel[topic] = cancel
 	return nil
 }
 
