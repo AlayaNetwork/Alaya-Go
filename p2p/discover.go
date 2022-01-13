@@ -83,7 +83,7 @@ func (srv *Server) DiscoverTopic(ctx context.Context, topic string) {
 	}()
 }
 
-func (srv *Server) topicWithPubsub(topic string) bool {
+func (srv *Server) topicWithPubSub(topic string) bool {
 	topics := srv.pubSubServer.PubSub().GetTopics()
 	for _, s := range topics {
 		if s == topic {
