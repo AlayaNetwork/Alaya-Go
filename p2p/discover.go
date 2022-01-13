@@ -28,7 +28,7 @@ func (srv *Server) DiscoverTopic(ctx context.Context, topic string) {
 					continue
 				}
 				// Check   there are enough peers
-				if srv.topicWithPubsub(topic) {
+				if srv.topicWithPubSub(topic) {
 					peers := srv.pubSubServer.PubSub().ListPeers(topic)
 					peerNeedFind := srv.Config.MinimumPeersPerTopic - len(peers)
 					if peerNeedFind <= 0 {
