@@ -82,7 +82,8 @@ type ExpiredTopicEvent struct {
 }
 
 type GroupTopicEvent struct {
-	Topic string // consensus:{epoch}:{groupID}
+	Topic  string // consensus:{epoch}:{groupID}
+	PubSub bool   //是否需要pubsub
 }
 
 type ExpiredGroupTopicEvent ExpiredTopicEvent // consensus:{epoch}:{groupID}
@@ -392,6 +393,14 @@ func (gvs *GroupValidators) GetUnitID(id enode.ID) (uint32, error) {
 		return pos.unitID, nil
 	}
 	return uint32(0), errors.New("not found the specified validator")
+}
+
+func (gvs *GroupValidators) IsOurs(id enode.ID) bool {
+	_, ok := gvs.nodesMap[id]
+	if ok {
+		return true
+	}
+	return false
 }
 
 // return groupID
