@@ -2,6 +2,7 @@ package p2p
 
 import (
 	"context"
+	"fmt"
 	"math/rand"
 	"sync"
 	"time"
@@ -27,37 +28,18 @@ func (srv *Server) DiscoverTopic(ctx context.Context, topic string) {
 					continue
 				}
 				// Check   there are enough peers
-				peers := srv.pubSubServer.PubSub().ListPeers(topic)
-				peerNeedFind := srv.Config.MinimumPeersPerTopic - len(peers)
-				if peerNeedFind > 0 {
-					srv.topicSubscriberMu.RLock()
-					nodes, ok := srv.topicSubscriber[topic]
-					if !ok {
-						srv.topicSubscriberMu.RUnlock()
+				if srv.topicWithPubSub(topic) {
+					peers := srv.pubSubServer.PubSub().ListPeers(topic)
+					peerNeedFind := srv.Config.MinimumPeersPerTopic - len(peers)
+					if peerNeedFind <= 0 {
 						continue
 					}
-					copyNodes := make([]*enode.Node, len(nodes))
-					copy(copyNodes, nodes)
-					srv.topicSubscriberMu.RUnlock()
-
-					currentConnectPeer := make(map[enode.ID]struct{})
-					srv.doPeerOp(func(m map[enode.ID]*Peer) {
-						for id, _ := range currentConnectPeer {
-							currentConnectPeer[id] = struct{}{}
-						}
-					})
-					// 找到没有连接的节点
-					for i := 0; i < len(copyNodes); {
-						if copyNodes[i].ID() == srv.localnode.ID() {
-							copyNodes = append(copyNodes[:i], copyNodes[i+1:]...)
-							continue
-						}
-						if _, ok := currentConnectPeer[copyNodes[i].ID()]; ok {
-							copyNodes = append(copyNodes[:i], copyNodes[i+1:]...)
-							continue
-						}
-						i++
+					copyNodes, err := srv.getNotConnectNode(topic)
+					if err != nil {
+						log.Error("discover topic fail", "err", err)
+						return
 					}
+
 					if len(copyNodes) == 0 {
 						log.Debug("all peers are found,no need searching network", "topic", topic, "peers", len(peers))
 						continue
@@ -65,7 +47,32 @@ func (srv *Server) DiscoverTopic(ctx context.Context, topic string) {
 					if peerNeedFind > len(copyNodes) {
 						peerNeedFind = len(copyNodes)
 					}
-					log.Debug("not enough nodes in this topic,searching network", "topic", topic, "peers", len(peers), "peerNeedFind", peerNeedFind, "minimumPeersPerTopic", srv.Config.MinimumPeersPerTopic)
+					log.Debug("not enough nodes in this topic,searching network", "topic", topic, "peers", len(peers), "remainNodes", len(copyNodes), "peerNeedFind", peerNeedFind, "minimumPeersPerTopic", srv.Config.MinimumPeersPerTopic)
+					if err := srv.FindPeersWithTopic(ctx, topic, copyNodes, peerNeedFind); err != nil {
+						log.Debug("Could not search for peers", "err", err)
+						return
+					}
+				} else {
+					copyNodes, err := srv.getNotConnectNode(topic)
+					if err != nil {
+						log.Error("discover topic fail", "err", err)
+						return
+					}
+					if len(copyNodes) == 0 {
+						log.Debug("all peers are found,no need searching network", "topic", topic)
+						continue
+					}
+					srv.topicSubscriberMu.RLock()
+					nodes := srv.topicSubscriber[topic]
+					srv.topicSubscriberMu.RUnlock()
+					peerNeedFind := srv.MinimumPeersPerTopic - len(nodes) + len(copyNodes)
+					if peerNeedFind <= 0 {
+						continue
+					}
+					if peerNeedFind > len(copyNodes) {
+						peerNeedFind = len(copyNodes)
+					}
+					log.Debug("not enough nodes in this topic,searching network", "topic", topic, "remainNodes", len(copyNodes), "peerNeedFind", peerNeedFind, "minimumPeersPerTopic", srv.Config.MinimumPeersPerTopic)
 					if err := srv.FindPeersWithTopic(ctx, topic, copyNodes, peerNeedFind); err != nil {
 						log.Debug("Could not search for peers", "err", err)
 						return
@@ -74,6 +81,48 @@ func (srv *Server) DiscoverTopic(ctx context.Context, topic string) {
 			}
 		}
 	}()
+}
+
+func (srv *Server) topicWithPubSub(topic string) bool {
+	topics := srv.pubSubServer.PubSub().GetTopics()
+	for _, s := range topics {
+		if s == topic {
+			return true
+		}
+	}
+	return false
+}
+
+func (srv *Server) getNotConnectNode(topic string) ([]*enode.Node, error) {
+	srv.topicSubscriberMu.RLock()
+	nodes, ok := srv.topicSubscriber[topic]
+	if !ok {
+		srv.topicSubscriberMu.RUnlock()
+		return nil, fmt.Errorf("the topic %s should discover can't find", topic)
+	}
+	copyNodes := make([]*enode.Node, len(nodes))
+	copy(copyNodes, nodes)
+	srv.topicSubscriberMu.RUnlock()
+
+	currentConnectPeer := make(map[enode.ID]struct{})
+	srv.doPeerOp(func(m map[enode.ID]*Peer) {
+		for id, _ := range m {
+			currentConnectPeer[id] = struct{}{}
+		}
+	})
+	// 找到没有连接的节点
+	for i := 0; i < len(copyNodes); {
+		if copyNodes[i].ID() == srv.localnode.ID() {
+			copyNodes = append(copyNodes[:i], copyNodes[i+1:]...)
+			continue
+		}
+		if _, ok := currentConnectPeer[copyNodes[i].ID()]; ok {
+			copyNodes = append(copyNodes[:i], copyNodes[i+1:]...)
+			continue
+		}
+		i++
+	}
+	return copyNodes, nil
 }
 
 // FindPeersWithTopic performs a network search for peers
@@ -113,13 +162,14 @@ func (srv *Server) FindPeersWithTopic(ctx context.Context, topic string, nodes [
 			if dialShouldReTry > 0 {
 				threshold += dialShouldReTry
 				dialShouldReTry = 0
+			} else {
+				break
 			}
-			break
 		}
 	}
 	currNum := len(srv.pubSubServer.PubSub().ListPeers(topic))
 
-	log.Trace("Searching network for peers subscribed to the topic done.", "topic", topic, "peers", currNum, "dialShouldReTry", dialShouldReTry)
+	log.Trace("Searching network for peers subscribed to the topic done.", "topic", topic, "peers", currNum, "dialShouldReTry", threshold)
 
 	return nil
 }
