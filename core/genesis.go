@@ -297,6 +297,9 @@ func (g *Genesis) UnmarshalEconomicConfigExtend(file *os.File) error {
 			Reward      xcom.RewardConfigExtend      `json:"reward"`
 			Restricting xcom.RestrictingConfigExtend `json:"restricting"`
 		} `json:"economicModel"`
+		Config *struct {
+			GenesisVersion uint32 `json:"genesisVersion"`
+		} `json:"config"`
 	}
 	file.Seek(0, io.SeekStart)
 	if err := json.NewDecoder(file).Decode(&genesisEcConfig); err != nil {
@@ -312,33 +315,37 @@ func (g *Genesis) UnmarshalEconomicConfigExtend(file *os.File) error {
 			newEce.Restricting.MinimumRelease = genesisEcConfig.EconomicModel.Restricting.MinimumRelease
 		}
 	}
-
-	file.Seek(0, io.SeekStart)
-	var genesis0170EcConfig struct {
-		EconomicModel *xcom.EconomicModel0170Extend `json:"economicModel"`
+	if nil == genesisEcConfig.Config {
+		return errors.New("genesis configuration is missed")
 	}
-	if err := json.NewDecoder(file).Decode(&genesis0170EcConfig); err != nil {
-		return fmt.Errorf("invalid genesis file for  genesis0170EcConfig: %v", err)
-	}
-	if genesis0170EcConfig.EconomicModel != nil {
-		if genesis0170EcConfig.EconomicModel.Common.MaxGroupValidators != 0 {
-			newEce.Extend0170.Common.MaxGroupValidators = genesis0170EcConfig.EconomicModel.Common.MaxGroupValidators
+	if genesisEcConfig.Config.GenesisVersion >= params.FORKVERSION_0_17_0 {
+		file.Seek(0, io.SeekStart)
+		var genesis0170EcConfig struct {
+			EconomicModel *xcom.EconomicModel0170Extend `json:"economicModel"`
 		}
-		if genesis0170EcConfig.EconomicModel.Common.CoordinatorsLimit != 0 {
-			newEce.Extend0170.Common.CoordinatorsLimit = genesis0170EcConfig.EconomicModel.Common.CoordinatorsLimit
+		if err := json.NewDecoder(file).Decode(&genesis0170EcConfig); err != nil {
+			return fmt.Errorf("invalid genesis file for  genesis0170EcConfig: %v", err)
 		}
-		if genesis0170EcConfig.EconomicModel.Common.MaxConsensusVals != 0 {
-			newEce.Extend0170.Common.MaxConsensusVals = genesis0170EcConfig.EconomicModel.Common.MaxConsensusVals
-		}
+		if genesis0170EcConfig.EconomicModel != nil {
+			if genesis0170EcConfig.EconomicModel.Common.MaxGroupValidators != 0 {
+				newEce.Extend0170.Common.MaxGroupValidators = genesis0170EcConfig.EconomicModel.Common.MaxGroupValidators
+			}
+			if genesis0170EcConfig.EconomicModel.Common.CoordinatorsLimit != 0 {
+				newEce.Extend0170.Common.CoordinatorsLimit = genesis0170EcConfig.EconomicModel.Common.CoordinatorsLimit
+			}
+			if genesis0170EcConfig.EconomicModel.Common.MaxConsensusVals != 0 {
+				newEce.Extend0170.Common.MaxConsensusVals = genesis0170EcConfig.EconomicModel.Common.MaxConsensusVals
+			}
 
-		if genesis0170EcConfig.EconomicModel.Staking.MaxValidators != 0 {
-			newEce.Extend0170.Staking.MaxValidators = genesis0170EcConfig.EconomicModel.Staking.MaxValidators
-		}
+			if genesis0170EcConfig.EconomicModel.Staking.MaxValidators != 0 {
+				newEce.Extend0170.Staking.MaxValidators = genesis0170EcConfig.EconomicModel.Staking.MaxValidators
+			}
 
-		if genesis0170EcConfig.EconomicModel.Slashing.ZeroProduceCumulativeTime != 0 {
-			newEce.Extend0170.Slashing.ZeroProduceCumulativeTime = genesis0170EcConfig.EconomicModel.Slashing.ZeroProduceCumulativeTime
-		}
+			if genesis0170EcConfig.EconomicModel.Slashing.ZeroProduceCumulativeTime != 0 {
+				newEce.Extend0170.Slashing.ZeroProduceCumulativeTime = genesis0170EcConfig.EconomicModel.Slashing.ZeroProduceCumulativeTime
+			}
 
+		}
 	}
 
 	xcom.ResetEconomicExtendConfig(newEce)
