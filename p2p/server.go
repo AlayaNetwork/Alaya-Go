@@ -970,7 +970,7 @@ func (srv *Server) postHandshakeChecks(peers map[enode.ID]*Peer, inboundCount in
 	if srv.consensus && len(peers) >= srv.MaxPeers && c.is(consensusDialedConn) && numConsensusPeer < srv.MaxConsensusPeers {
 		for _, p := range peers {
 			if p.rw.is(inboundConn|dynDialedConn) && !p.rw.is(trustedConn|staticDialedConn|consensusDialedConn) {
-				log.Debug("Disconnect over limit connection", "peer", p.ID(), "flags", p.rw.flags, "peers", len(peers))
+				srv.log.Debug("Disconnect over limit connection", "peer", p.ID(), "flags", p.rw.flags, "peers", len(peers))
 				p.Disconnect(DiscRequested)
 				break
 			}
@@ -1020,7 +1020,7 @@ func (srv *Server) postHandshakeChecks(peers map[enode.ID]*Peer, inboundCount in
 						if count == i {
 							peer := peers[node]
 							if !peer.rw.is(trustedConn | staticDialedConn) {
-								log.Debug("Disconnect over limit consensus connection", "peer", peer.ID(), "flags", peer.rw.flags, "peers", len(peers), "topic", srv.getPeersTopics(peer.ID()), "referencedNum", i, "maxConsensusPeers", srv.MaxConsensusPeers)
+								srv.log.Debug("Disconnect over limit consensus connection", "peer", peer.ID(), "flags", peer.rw.flags, "peers", len(peers), "topic", srv.getPeersTopics(peer.ID()), "referencedNum", i, "maxConsensusPeers", srv.MaxConsensusPeers)
 								peer.Disconnect(DiscRequested)
 								disconnectConsensus++
 								break loop
@@ -1036,7 +1036,7 @@ func (srv *Server) postHandshakeChecks(peers map[enode.ID]*Peer, inboundCount in
 
 	switch {
 	case c.is(consensusDialedConn) && numConsensusPeer-disconnectConsensus >= srv.MaxConsensusPeers:
-		log.Trace("fail to dial for connect Too many consensus peers", "peers", numConsensusPeer, "disconnectConsensus", disconnectConsensus, "maxConsensusPeers", srv.MaxConsensusPeers)
+		srv.log.Trace("fail to dial for connect Too many consensus peers", "peers", numConsensusPeer, "disconnectConsensus", disconnectConsensus, "maxConsensusPeers", srv.MaxConsensusPeers)
 		return DiscTooManyConsensusPeers
 	case !srv.consensus && c.is(consensusDialedConn) && len(peers) >= srv.MaxPeers:
 		return DiscTooManyPeers
@@ -1389,10 +1389,10 @@ func (srv *Server) watching() {
 			}
 			switch data := ev.Data.(type) {
 			case cbfttypes.AddValidatorEvent:
-				log.Trace("Received AddValidatorEvent", "nodeID", data.Node.ID().String())
+				srv.log.Trace("Received AddValidatorEvent", "nodeID", data.Node.ID().String())
 				srv.AddConsensusPeer(data.Node)
 			case cbfttypes.RemoveValidatorEvent:
-				log.Trace("Received RemoveValidatorEvent", "nodeID", data.Node.ID().String())
+				srv.log.Trace("Received RemoveValidatorEvent", "nodeID", data.Node.ID().String())
 				srv.RemoveConsensusPeer(data.Node)
 			case cbfttypes.NewTopicEvent:
 				srv.topicSubscriberMu.Lock()
@@ -1412,7 +1412,7 @@ func (srv *Server) watching() {
 					srv.consensus = true
 				}
 				srv.updateConsensusStatus <- consensusPeers
-				log.Trace("Received NewTopicEvent", "consensusPeers", consensusPeers)
+				srv.log.Trace("Received NewTopicEvent", "consensusPeers", consensusPeers)
 				srv.topicSubscriberMu.Unlock()
 			case cbfttypes.ExpiredTopicEvent:
 				srv.topicSubscriberMu.Lock()
@@ -1427,10 +1427,10 @@ func (srv *Server) watching() {
 					srv.consensus = false
 				}
 				srv.updateConsensusStatus <- consensusPeers
-				log.Trace("Received ExpiredTopicEvent", "consensusPeers", consensusPeers)
+				srv.log.Trace("Received ExpiredTopicEvent", "consensusPeers", consensusPeers)
 				srv.topicSubscriberMu.Unlock()
 			default:
-				log.Error("Received unexcepted event")
+				srv.log.Error("Received unexcepted event")
 			}
 		case <-srv.quit:
 			return
