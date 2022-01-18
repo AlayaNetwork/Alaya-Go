@@ -36,18 +36,18 @@ func (srv *Server) DiscoverTopic(ctx context.Context, topic string) {
 					}
 					copyNodes, err := srv.getNotConnectNode(topic)
 					if err != nil {
-						log.Error("discover topic fail", "err", err)
+						srv.log.Error("discover topic fail", "err", err)
 						return
 					}
 
 					if len(copyNodes) == 0 {
-						log.Debug("all peers are found,no need searching network", "topic", topic, "peers", len(peers))
+						srv.log.Debug("all peers are found,no need searching network", "topic", topic, "peers", len(peers))
 						continue
 					}
 					if peerNeedFind > len(copyNodes) {
 						peerNeedFind = len(copyNodes)
 					}
-					log.Debug("not enough nodes in this topic,searching network", "topic", topic, "peers", len(peers), "remainNodes", len(copyNodes), "peerNeedFind", peerNeedFind, "minimumPeersPerTopic", srv.Config.MinimumPeersPerTopic)
+					srv.log.Debug("not enough nodes in this topic,searching network", "topic", topic, "peers", len(peers), "remainNodes", len(copyNodes), "peerNeedFind", peerNeedFind, "minimumPeersPerTopic", srv.Config.MinimumPeersPerTopic)
 					if err := srv.FindPeersWithTopic(ctx, topic, copyNodes, peerNeedFind); err != nil {
 						log.Debug("Could not search for peers", "err", err)
 						return
@@ -55,11 +55,11 @@ func (srv *Server) DiscoverTopic(ctx context.Context, topic string) {
 				} else {
 					copyNodes, err := srv.getNotConnectNode(topic)
 					if err != nil {
-						log.Error("discover topic fail", "err", err)
+						srv.log.Error("discover topic fail", "err", err)
 						return
 					}
 					if len(copyNodes) == 0 {
-						log.Debug("all peers are found,no need searching network", "topic", topic)
+						srv.log.Debug("all peers are found,no need searching network", "topic", topic)
 						continue
 					}
 					srv.topicSubscriberMu.RLock()
@@ -72,9 +72,9 @@ func (srv *Server) DiscoverTopic(ctx context.Context, topic string) {
 					if peerNeedFind > len(copyNodes) {
 						peerNeedFind = len(copyNodes)
 					}
-					log.Debug("not enough nodes in this topic,searching network", "topic", topic, "remainNodes", len(copyNodes), "peerNeedFind", peerNeedFind, "minimumPeersPerTopic", srv.Config.MinimumPeersPerTopic)
+					srv.log.Debug("not enough nodes in this topic,searching network", "topic", topic, "remainNodes", len(copyNodes), "peerNeedFind", peerNeedFind, "minimumPeersPerTopic", srv.Config.MinimumPeersPerTopic)
 					if err := srv.FindPeersWithTopic(ctx, topic, copyNodes, peerNeedFind); err != nil {
-						log.Debug("Could not search for peers", "err", err)
+						srv.log.Debug("Could not search for peers", "err", err)
 						return
 					}
 				}
@@ -169,7 +169,7 @@ func (srv *Server) FindPeersWithTopic(ctx context.Context, topic string, nodes [
 	}
 	currNum := len(srv.pubSubServer.PubSub().ListPeers(topic))
 
-	log.Trace("Searching network for peers subscribed to the topic done.", "topic", topic, "peers", currNum, "dialShouldReTry", threshold)
+	srv.log.Trace("Searching network for peers subscribed to the topic done.", "topic", topic, "peers", currNum, "dialShouldReTry", threshold)
 
 	return nil
 }

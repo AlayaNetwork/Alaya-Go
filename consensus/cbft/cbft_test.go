@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/AlayaNetwork/Alaya-Go/x/xcom"
 	"math/big"
 	"testing"
 	"time"
@@ -55,6 +56,7 @@ var (
 
 func init() {
 	bls.Init(bls.BLS12_381)
+	xcom.GetEc(xcom.DefaultUnitTestNet)
 }
 func TestThreshold(t *testing.T) {
 	f := &Cbft{}

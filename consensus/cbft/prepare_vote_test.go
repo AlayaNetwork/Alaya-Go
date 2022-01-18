@@ -18,7 +18,9 @@ package cbft
 
 import (
 	"fmt"
+	"github.com/stretchr/testify/assert"
 	"regexp"
+	"strings"
 	"testing"
 	"time"
 
@@ -436,13 +438,13 @@ func (suit *PrepareVoteTestSuite) TestPrepareVoteWithTimeout() {
 	}
 }
 
-// The data just meets the 2f+1 prepareQC message
-// Verification pass
+// The data just meets the 2f+1 prepareQC message,But there aren't enough validatorsets
+// Verification not pass
 func (suit *PrepareVoteTestSuite) TestPrepareVote2fAndOne() {
 	qc := mockBlockQC(suit.view.allNode[0:3], suit.blockOne, 0, nil)
-	if err := suit.view.secondProposer().verifyPrepareQC(suit.blockOne.NumberU64(), suit.blockOne.Hash(), qc.BlockQC); err != nil {
-		suit.T().Fatal(err.Error())
-	}
+	err := suit.view.secondProposer().verifyPrepareQC(suit.blockOne.NumberU64(), suit.blockOne.Hash(), qc.BlockQC)
+	assert.NotNil(suit.T(), err)
+	assert.True(suit.T(), strings.HasPrefix(err.Error(), "verify prepare qc failed: verify QuorumCert failed,mismatched validator size"))
 }
 
 func (cbft *Cbft) generateErrPrepareQC(votes map[uint32]*protocols.PrepareVote) *ctypes.QuorumCert {

@@ -344,7 +344,6 @@ func (g *Genesis) UnmarshalEconomicConfigExtend(file *os.File) error {
 			if genesis0170EcConfig.EconomicModel.Slashing.ZeroProduceCumulativeTime != 0 {
 				newEce.Extend0170.Slashing.ZeroProduceCumulativeTime = genesis0170EcConfig.EconomicModel.Slashing.ZeroProduceCumulativeTime
 			}
-
 		}
 	}
 
