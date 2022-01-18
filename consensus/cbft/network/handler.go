@@ -279,16 +279,32 @@ func (h *EngineManager) Forwarding(nodeID string, msg types.Message) error {
 		return nil
 	}
 	// PrepareBlockMsg does not forward, the message will be forwarded using PrepareBlockHash.
-	switch msgType {
-	case protocols.PrepareBlockMsg, protocols.RGBlockQuorumCertMsg, protocols.RGViewChangeQuorumCertMsg:
-		err := forward()
-		if err != nil {
-			messageGossipMeter.Mark(1)
+	if h.engine.NeedGroup() {
+		switch msgType {
+		// Grouping consensus does not require the forwarding of PrepareVoteMsg and ViewChangeMsg
+		// which are uniformly managed by PubSub and automatically forwarded to nodes subscribing to messages on related topics
+		case protocols.PrepareBlockMsg, protocols.RGBlockQuorumCertMsg, protocols.RGViewChangeQuorumCertMsg:
+			err := forward()
+			if err != nil {
+				messageGossipMeter.Mark(1)
+			}
+			return err
+		default:
+			log.Trace("Unmatched message type, need not to be forwarded", "type", reflect.TypeOf(msg), "msgHash", msgHash.TerminalString(), "BHash", msg.BHash().TerminalString())
 		}
-		return err
-	default:
-		log.Trace("Unmatched message type, need not to be forwarded", "type", reflect.TypeOf(msg), "msgHash", msgHash.TerminalString(), "BHash", msg.BHash().TerminalString())
+	} else {
+		switch msgType {
+		case protocols.PrepareBlockMsg, protocols.PrepareVoteMsg, protocols.ViewChangeMsg:
+			err := forward()
+			if err != nil {
+				messageGossipMeter.Mark(1)
+			}
+			return err
+		default:
+			log.Trace("Unmatched message type, need not to be forwarded", "type", reflect.TypeOf(msg), "msgHash", msgHash.TerminalString(), "BHash", msg.BHash().TerminalString())
+		}
 	}
+
 	return nil
 }
 

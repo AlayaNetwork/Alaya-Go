@@ -106,14 +106,14 @@ func (s *fakeCbft) HighestCommitBlockBn() (uint64, common.Hash) {
 	return s.localPeer.CommitBn(), common.Hash{}
 }
 
-func (s *fakeCbft) MissingViewChangeNodes() (*protocols.GetViewChange, error) {
+func (s *fakeCbft) MissingViewChangeNodes() (types.Message, error) {
 	return &protocols.GetViewChange{
 		Epoch:      1,
 		ViewNumber: 1,
 	}, nil
 }
 
-func (s *fakeCbft) MissingPrepareVote() (*protocols.GetPrepareVote, error) {
+func (s *fakeCbft) MissingPrepareVote() (types.Message, error) {
 	return &protocols.GetPrepareVote{
 		Epoch:      1,
 		ViewNumber: 1,
@@ -139,6 +139,10 @@ func (s *fakeCbft) OnPong(nodeID string, netLatency int64) error {
 
 func (s *fakeCbft) BlockExists(blockNumber uint64, blockHash common.Hash) error {
 	return nil
+}
+
+func (s *fakeCbft) NeedGroup() bool {
+	return false
 }
 
 func (s *fakeCbft) GetGroupByValidatorID(nodeID enode.ID) (uint32, uint32, error) {

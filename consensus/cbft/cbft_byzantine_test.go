@@ -53,14 +53,15 @@ import (
 )
 
 const (
-	fetchPrepare        = "previous index block not exists"
-	noBaseMaxBlock      = "prepareBlock is not based on viewChangeQC maxBlock"
-	errorViewChangeQC   = "verify viewchange qc failed"
-	MismatchedPrepareQC = "verify prepare qc failed,not the corresponding qc"
-	missingViewChangeQC = "prepareBlock need ViewChangeQC"
-	dupBlockHash        = "has duplicated blockHash"
-	errorSignature      = "bls verifies signature fail"
-	enableVerifyEpoch   = "enable verify epoch"
+	fetchPrepare           = "previous index block not exists"
+	noBaseMaxBlock         = "prepareBlock is not based on viewChangeQC maxBlock"
+	errorViewChangeQC      = "verify viewchange qc failed"
+	MismatchedPrepareQC    = "verify prepare qc failed,not the corresponding qc"
+	missingViewChangeQC    = "prepareBlock need ViewChangeQC"
+	dupBlockHash           = "has duplicated blockHash"
+	dupViewChangeQCSigners = "viewchangeQC has duplicate signers"
+	errorSignature         = "verify consensus sign failed: bls verifies signature fail"
+	enableVerifyEpoch      = "unable verify epoch"
 )
 
 func MockNodes(t *testing.T, num int) []*TestCBFT {
@@ -385,7 +386,7 @@ func TestPB08(t *testing.T) {
 	err := nodes[0].engine.OnPrepareBlock("id", p)
 
 	assert.NotNil(t, err)
-	assert.True(t, strings.HasPrefix(err.Error(), dupBlockHash))
+	assert.True(t, strings.HasPrefix(err.Error(), dupViewChangeQCSigners))
 }
 
 func TestPB09(t *testing.T) {
