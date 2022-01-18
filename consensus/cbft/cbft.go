@@ -1396,6 +1396,14 @@ func (cbft *Cbft) commitBlock(commitBlock *types.Block, commitQC *ctypes.QuorumC
 			cbft.validatorPool.InitComingValidators(cpy.Hash(), cpy.NumberU64(), cbft.eventMux)
 		}
 	}
+
+	// 是否需要更新vp.lastNumber
+	shouldUpdateLastNumber := func() bool {
+		return !cbft.validatorPool.NeedGroup() && activeVersion >= params.FORKVERSION_0_17_0 && xutil.IsBeginOfConsensus(cpy.NumberU64(), activeVersion)
+	}
+	if shouldUpdateLastNumber() {
+		cbft.validatorPool.UpdateLastNumber(cpy.NumberU64())
+	}
 }
 
 // Evidences implements functions in API.

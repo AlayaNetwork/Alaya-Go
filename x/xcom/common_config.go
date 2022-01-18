@@ -705,12 +705,17 @@ func SetPerRoundBlocks(amount uint64) {
 	}
 }
 
+//出块间隔
 func Interval() uint64 {
 	return ec.Common.NodeBlockTimeWindow / ec.Common.PerRoundBlocks
 }
+
+//每个轮值提议人单次出块数
 func BlocksWillCreate() uint64 {
 	return ec.Common.PerRoundBlocks
 }
+
+// 每个共识周期内出块的验证人数
 func MaxConsensusVals(version uint32) uint64 {
 	if version >= params.FORKVERSION_0_17_0 {
 		return ece.Extend0170.Common.MaxConsensusVals
@@ -722,10 +727,12 @@ func AdditionalCycleTime() uint64 {
 	return ec.Common.AdditionalCycleTime
 }
 
+// 共识周期内区块数
 func ConsensusSize(version uint32) uint64 {
 	return BlocksWillCreate() * MaxConsensusVals(version)
 }
 
+// 结算周期内的共识周期数
 func EpochSize(version uint32) uint64 {
 	consensusSize := ConsensusSize(version)
 	em := MaxEpochMinutes()
