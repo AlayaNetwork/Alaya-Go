@@ -353,6 +353,18 @@ web3._extend({
 			call: 'debug_getWaitSlashingNodeList',
 		}),
 		new web3._extend.Method({
+			name: 'getConsensusNodeList',
+			call: 'debug_getConsensusNodeList',
+		}),
+		new web3._extend.Method({
+			name: 'getValidatorList',
+			call: 'debug_getValidatorList',
+		}),
+		new web3._extend.Method({
+			name: 'getCandidateList',
+			call: 'debug_getCandidateList',
+		}),
+		new web3._extend.Method({
 			name: 'enableDBGC',
 			call: 'debug_enableDBGC',
 		}),
