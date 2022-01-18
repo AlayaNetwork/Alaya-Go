@@ -48,7 +48,7 @@ var DefaultConfig = Config{
 		MaxPeers:             60,
 		NAT:                  nat.Any(),
 		MaxConsensusPeers:    40,
-		MinimumPeersPerTopic: 5,
+		MinimumPeersPerTopic: 6,
 	},
 }
 
