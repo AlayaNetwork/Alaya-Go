@@ -1187,7 +1187,12 @@ func TestGovPlugin_versionProposalActive(t *testing.T) {
 
 	acversion := gov.GetCurrentActiveVersion(stateDB)
 	endVotingBlock := xutil.CalEndVotingBlock(1, xutil.EstimateConsensusRoundsForGov(xcom.VersionProposalVote_DurationSeconds(), acversion), acversion)
-	actvieBlock := xutil.CalActiveBlock(endVotingBlock)
+	currVersion := gov.GetCurrentActiveVersion(stateDB)
+	tempVP := &gov.VersionProposal{
+		NewVersion:  promoteVersion,
+		ActiveBlock: xutil.CalActiveBlock(endVotingBlock),
+	}
+	activeBlock := tempVP.GetActiveBlock(currVersion)
 
 	buildBlockNoCommit(2)
 	//voting
@@ -1204,21 +1209,26 @@ func TestGovPlugin_versionProposalActive(t *testing.T) {
 	sndb.SetCurrent(lastBlockHash, *big.NewInt(int64(lastBlockNumber)), *big.NewInt(int64(lastBlockNumber)))
 
 	build_staking_data_more(endVotingBlock)
-
+	buildStakingTestData(activeBlock)
 	//tally result
 	endBlock(t)
 	sndb.Commit(lastBlockHash)
 	sndb.Compaction()
-	lastBlockNumber = uint64(actvieBlock - 1)
+	lastBlockNumber = uint64(activeBlock - 1)
 	lastHeader = types.Header{
 		Number: big.NewInt(int64(lastBlockNumber)),
 	}
 	lastBlockHash = lastHeader.Hash()
 	sndb.SetCurrent(lastBlockHash, *big.NewInt(int64(lastBlockNumber)), *big.NewInt(int64(lastBlockNumber)))
 
-	//buildBlockNoCommit(23480)
-	build_staking_data_more(actvieBlock)
 	//active
+	header := types.Header{
+		Number: big.NewInt(int64(activeBlock)),
+	}
+	sndb.NewBlock(big.NewInt(int64(activeBlock)), lastBlockHash, header.Hash())
+	lastBlockHash = header.Hash()
+	lastBlockNumber = header.Number.Uint64()
+	lastHeader = header
 	beginBlock(t)
 	sndb.Commit(lastBlockHash)
 
