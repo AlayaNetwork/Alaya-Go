@@ -75,6 +75,6 @@ func (pss *PubSubServer) GetAllPubSubStatus() *pubsub.Status {
 	return pss.pubSub.GetAllPubSubStatus()
 }
 
-func (pss *PubSubServer) GetPeerInfo(nodeId enode.ID) interface{} {
+func (pss *PubSubServer) GetPeerInfo(nodeId enode.ID) *pubsub.PeerInfo {
 	return pss.pubSub.GetPeerInfo(nodeId)
 }

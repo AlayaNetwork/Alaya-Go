@@ -1427,8 +1427,8 @@ type PeerInfo struct {
 	Topics []string
 }
 
-func (p *PubSub) GetPeerInfo(nodeId enode.ID) interface{} {
-	result := make(chan interface{}, 1)
+func (p *PubSub) GetPeerInfo(nodeId enode.ID) *PeerInfo {
+	result := make(chan *PeerInfo, 1)
 	getInfo := func() {
 		peerInfo := &PeerInfo{}
 		topics := make([]string, 0)
