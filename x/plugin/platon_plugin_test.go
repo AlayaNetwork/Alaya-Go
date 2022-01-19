@@ -469,6 +469,151 @@ func build_staking_data_more(block uint64) {
 	lastHeader = header
 }
 
+func buildStakingTestData(block uint64) {
+	stakingDB := staking.NewStakingDB()
+	validatorArr := make(staking.ValidatorQueue, 0)
+
+	// build  more data
+	for i := 0; i < 1000; i++ {
+
+		var index int
+		if i >= len(balanceStr) {
+			index = i % (len(balanceStr) - 1)
+		}
+
+		balance, _ := new(big.Int).SetString(balanceStr[index], 10)
+
+		rand.Seed(time.Now().UnixNano())
+
+		weight := rand.Intn(1000000000)
+
+		ii := rand.Intn(len(chaList))
+
+		balance = new(big.Int).Add(balance, big.NewInt(int64(weight)))
+
+		randBuildFunc := func() (enode.IDv0, common.Address, error) {
+			privateKey, err := crypto.GenerateKey()
+			if nil != err {
+				fmt.Printf("Failed to generate random NodeId private key: %v", err)
+				return enode.IDv0{}, common.ZeroAddr, err
+			}
+
+			nodeId := enode.PublicKeyToIDv0(&privateKey.PublicKey)
+
+			privateKey, err = crypto.GenerateKey()
+			if nil != err {
+				fmt.Printf("Failed to generate random Address private key: %v", err)
+				return enode.IDv0{}, common.ZeroAddr, err
+			}
+
+			addr := crypto.PubkeyToAddress(privateKey.PublicKey)
+
+			return nodeId, addr, nil
+		}
+
+		var nodeId enode.IDv0
+		var addr common.Address
+
+		if i < 25 {
+			nodeId = nodeIdArr[i]
+			ar, _ := xutil.NodeId2Addr(nodeId)
+			addr = common.Address(ar)
+		} else {
+			id, ar, err := randBuildFunc()
+			if nil != err {
+				return
+			}
+			nodeId = id
+			addr = ar
+		}
+
+		var blsKey bls.SecretKey
+		blsKey.SetByCSPRNG()
+		canTmp := &staking.Candidate{}
+
+		var blsKeyHex bls.PublicKeyHex
+		b, _ := blsKey.GetPublicKey().MarshalText()
+		if err := blsKeyHex.UnmarshalText(b); nil != err {
+			log.Error("Failed to blsKeyHex.UnmarshalText", "err", err)
+			return
+		}
+
+		canBase := &staking.CandidateBase{
+			NodeId:          nodeId,
+			BlsPubKey:       blsKeyHex,
+			StakingAddress:  sender,
+			BenefitAddress:  addr,
+			StakingBlockNum: uint64(1),
+			StakingTxIndex:  uint32(i + 1),
+			ProgramVersion:  xutil.CalcVersion(initProgramVersion),
+
+			Description: staking.Description{
+				NodeName:   nodeNameArr[index] + "_" + fmt.Sprint(i),
+				ExternalId: nodeNameArr[index] + chaList[(len(chaList)-1)%(index+ii+1)] + "balabalala" + chaList[index],
+				Website:    "www." + nodeNameArr[index] + "_" + fmt.Sprint(i) + ".org",
+				Details:    "This is " + nodeNameArr[index] + "_" + fmt.Sprint(i) + " Super Node",
+			},
+		}
+
+		canMutable := &staking.CandidateMutable{
+			Shares: balance,
+			// Prevent null pointer initialization
+			Released:           common.Big0,
+			ReleasedHes:        common.Big0,
+			RestrictingPlan:    common.Big0,
+			RestrictingPlanHes: common.Big0,
+		}
+
+		canTmp.CandidateBase = canBase
+		canTmp.CandidateMutable = canMutable
+
+		canAddr, _ := xutil.NodeId2Addr(canTmp.NodeId)
+
+		stakingDB.SetCanPowerStore(lastBlockHash, canAddr, canTmp)
+		stakingDB.SetCandidateStore(lastBlockHash, canAddr, canTmp)
+
+		v := &staking.Validator{
+			NodeAddress:     canAddr,
+			NodeId:          canTmp.NodeId,
+			BlsPubKey:       canTmp.BlsPubKey,
+			ProgramVersion:  xutil.CalcVersion(initProgramVersion),
+			Shares:          canTmp.Shares,
+			StakingBlockNum: canTmp.StakingBlockNum,
+			StakingTxIndex:  canTmp.StakingTxIndex,
+			ValidatorTerm:   0,
+		}
+		validatorArr = append(validatorArr, v)
+	}
+
+	queue := validatorArr[:25]
+
+	epoch_Arr := &staking.ValidatorArray{
+		//Start: ((block-1)/22000)*22000 + 1,
+		//End:   ((block-1)/22000)*22000 + 22000,
+		Start: ((block-1)/uint64(xutil.CalcBlocksEachEpoch(currentTestGenesisVersion)))*uint64(xutil.CalcBlocksEachEpoch(currentTestGenesisVersion)) + 1,
+		End:   ((block-1)/uint64(xutil.CalcBlocksEachEpoch(currentTestGenesisVersion)))*uint64(xutil.CalcBlocksEachEpoch(currentTestGenesisVersion)) + uint64(xutil.CalcBlocksEachEpoch(currentTestGenesisVersion)),
+		Arr:   queue,
+	}
+
+	pre_Arr := &staking.ValidatorArray{
+		Start: 0,
+		End:   0,
+		Arr:   queue,
+	}
+
+	curr_Arr := &staking.ValidatorArray{
+		//Start: ((block-1)/250)*250 + 1,
+		//End:   ((block-1)/250)*250 + 250,
+		Start: ((block-1)/uint64(xcom.ConsensusSize(currentTestGenesisVersion)))*uint64(xcom.ConsensusSize(currentTestGenesisVersion)) + 1,
+		End:   ((block-1)/uint64(xcom.ConsensusSize(currentTestGenesisVersion)))*uint64(xcom.ConsensusSize(currentTestGenesisVersion)) + uint64(xcom.ConsensusSize(currentTestGenesisVersion)),
+		Arr:   queue,
+	}
+
+	setVerifierList(lastBlockHash, epoch_Arr)
+	setRoundValList(lastBlockHash, pre_Arr)
+	setRoundValList(lastBlockHash, curr_Arr)
+}
+
 func build_staking_data(genesisHash common.Hash) {
 	stakingDB := staking.NewStakingDB()
 	sndb.NewBlock(big.NewInt(1), genesisHash, blockHash)

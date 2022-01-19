@@ -443,7 +443,7 @@ func (s *Ethereum) APIs() []rpc.API {
 		}, {
 			Namespace: "debug",
 			Version:   "1.0",
-			Service:   xplugin.NewPublicPPOSAPI(),
+			Service:   xplugin.NewPublicPPOSAPI(s.APIBackend),
 		}, {
 			Namespace: "net",
 			Version:   "1.0",
