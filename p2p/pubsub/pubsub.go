@@ -1422,3 +1422,30 @@ func (p *PubSub) GetAllPubSubStatus() *Status {
 	}
 	return <-result
 }
+
+type PeerInfo struct {
+	Topics []string
+}
+
+func (p *PubSub) GetPeerInfo(nodeId enode.ID) interface{} {
+	result := make(chan interface{}, 1)
+	getInfo := func() {
+		peerInfo := &PeerInfo{}
+		topics := make([]string, 0)
+		for t, ids := range p.topics {
+			for nid := range ids {
+				if nid == nodeId {
+					topics = append(topics, t)
+					break
+				}
+			}
+		}
+		peerInfo.Topics = topics
+		result <- peerInfo
+	}
+	select {
+	case p.eval <- getInfo:
+	case <-p.ctx.Done():
+	}
+	return <-result
+}
