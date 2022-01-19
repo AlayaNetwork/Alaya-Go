@@ -56,7 +56,7 @@ func init() {
 	bls.Init(bls.BLS12_381)
 }
 
-var currentTestGenesisVersion = params.FORKVERSION_0_16_0
+var currentTestGenesisVersion = params.FORKVERSION_0_17_0
 
 var (
 	nodeIdArr = []enode.IDv0{
@@ -441,8 +441,8 @@ func build_staking_data_more(block uint64) {
 	epoch_Arr := &staking.ValidatorArray{
 		//Start: ((block-1)/22000)*22000 + 1,
 		//End:   ((block-1)/22000)*22000 + 22000,
-		Start: ((block-1)/uint64(xutil.CalcBlocksEachEpoch(currentTestGenesisVersion)))*uint64(xutil.CalcBlocksEachEpoch(currentTestGenesisVersion)) + 1,
-		End:   ((block-1)/uint64(xutil.CalcBlocksEachEpoch(currentTestGenesisVersion)))*uint64(xutil.CalcBlocksEachEpoch(currentTestGenesisVersion)) + uint64(xutil.CalcBlocksEachEpoch(currentTestGenesisVersion)),
+		Start: ((block-1)/xutil.CalcBlocksEachEpoch(currentTestGenesisVersion))*xutil.CalcBlocksEachEpoch(currentTestGenesisVersion) + 1,
+		End:   ((block-1)/xutil.CalcBlocksEachEpoch(currentTestGenesisVersion))*xutil.CalcBlocksEachEpoch(currentTestGenesisVersion) + xutil.CalcBlocksEachEpoch(currentTestGenesisVersion),
 		Arr:   queue,
 	}
 
@@ -455,8 +455,8 @@ func build_staking_data_more(block uint64) {
 	curr_Arr := &staking.ValidatorArray{
 		//Start: ((block-1)/250)*250 + 1,
 		//End:   ((block-1)/250)*250 + 250,
-		Start: ((block-1)/uint64(xcom.ConsensusSize(currentTestGenesisVersion)))*uint64(xcom.ConsensusSize(currentTestGenesisVersion)) + 1,
-		End:   ((block-1)/uint64(xcom.ConsensusSize(currentTestGenesisVersion)))*uint64(xcom.ConsensusSize(currentTestGenesisVersion)) + uint64(xcom.ConsensusSize(currentTestGenesisVersion)),
+		Start: ((block-1)/xcom.ConsensusSize(currentTestGenesisVersion))*xcom.ConsensusSize(currentTestGenesisVersion) + 1,
+		End:   ((block-1)/xcom.ConsensusSize(currentTestGenesisVersion))*xcom.ConsensusSize(currentTestGenesisVersion) + xcom.ConsensusSize(currentTestGenesisVersion),
 		Arr:   queue,
 	}
 
