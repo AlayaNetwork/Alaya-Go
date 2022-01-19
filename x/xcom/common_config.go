@@ -306,7 +306,7 @@ func getDefaultEMConfig(netId int8) *EconomicModel {
 					MaxConsensusVals:   215,
 				},
 				Staking: EconomicModel0170StakingConfig{
-					MaxValidators: 215,
+					MaxValidators: 500,
 				},
 				Slashing: EconomicModel0170SlashingConfig{
 					ZeroProduceCumulativeTime: 4,
