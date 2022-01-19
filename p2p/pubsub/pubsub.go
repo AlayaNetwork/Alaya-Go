@@ -1362,10 +1362,10 @@ type addRelayReq struct {
 }
 
 type Status struct {
-	Peers   map[enode.ID]ProtocolID `json:"peers"`
-	Mesh    map[string][]enode.ID   `json:"mesh"`
-	OutMesh map[string][]enode.ID   `json:"outMesh"`
-	Topics  []string                `json:"topics"`
+	Peers   []enode.ID            `json:"peers"`
+	Mesh    map[string][]enode.ID `json:"mesh"`
+	OutMesh map[string][]enode.ID `json:"outMesh"`
+	Topics  []string              `json:"topics"`
 }
 
 func (p *PubSub) GetAllPubSubStatus() *Status {
@@ -1376,8 +1376,10 @@ func (p *PubSub) GetAllPubSubStatus() *Status {
 		if !ok {
 			return
 		}
-		newPeers := gsr.peers
-		status.Peers = newPeers
+		status.Peers = make([]enode.ID, len(gsr.peers))
+		for pid := range gsr.peers {
+			status.Peers = append(status.Peers, pid)
+		}
 
 		newMesh := make(map[string][]enode.ID, len(gsr.mesh))
 		for topic, nodeIdMap := range gsr.mesh {

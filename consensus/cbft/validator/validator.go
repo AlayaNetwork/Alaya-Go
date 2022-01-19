@@ -391,7 +391,7 @@ func (vp *ValidatorPool) Reset(blockNumber uint64, epoch uint64, eventMux *event
 	if vp.grouped {
 		vp.organize(vp.currentValidators, epoch, eventMux)
 	}
-	log.Debug("Update validator", "validators", vp.currentValidators.String(), "switchpoint", vp.switchPoint, "epoch", vp.epoch, "lastNumber", vp.lastNumber)
+	log.Debug("Reset validator", "validators", vp.currentValidators.String(), "switchpoint", vp.switchPoint, "epoch", vp.epoch, "lastNumber", vp.lastNumber)
 }
 
 // ShouldSwitch check if should switch validators at the moment.
@@ -449,19 +449,6 @@ func (vp *ValidatorPool) Update(blockHash common.Hash, blockNumber uint64, epoch
 			log.Error("Get validator error", "blockNumber", blockNumber, "err", err)
 			return err
 		}
-		if needGroup {
-			//生效后第一个共识周期的switchpoint是旧值，此时不能切换
-			//判断依据是新validators和current完全相同且nextValidators为空
-			if vp.currentValidators.Equal(nds) {
-				vp.currentValidators = nds
-				vp.switchPoint = nds.ValidBlockNumber - 1
-				vp.lastNumber = vp.agency.GetLastNumber(blockNumber)
-				//不切换，所以epoch不增
-				vp.grouped = false
-				log.Debug("update currentValidators success!", "lastNumber", vp.lastNumber, "grouped", vp.grouped, "switchPoint", vp.switchPoint)
-				return nil
-			}
-		}
 
 		// 节点中间重启过， nextValidators没有赋值
 		vp.nextValidators = nds
@@ -494,14 +481,6 @@ func (vp *ValidatorPool) InitComingValidators(blockHash common.Hash, blockNumber
 	vp.lock.Lock()
 	defer vp.lock.Unlock()
 
-	//分组提案生效后第一个共识round到ElectionPoint时初始化分组信息
-	if !vp.grouped {
-		vp.groupValidatorsLimit = xcom.MaxGroupValidators()
-		vp.coordinatorLimit = xcom.CoordinatorsLimit()
-		// 提案生效后第一个选举块，此时因ConsensusSize更新到新值（215）需要更新vp.lastNumber
-		vp.lastNumber = vp.agency.GetLastNumber(blockNumber)
-	}
-
 	// 提前更新nextValidators，为了p2p早一步订阅分组事件以便建链接
 	nds, err := vp.agency.GetValidators(blockHash, blockNumber+xcom.ElectionDistance()+1)
 	if err != nil {
@@ -514,6 +493,20 @@ func (vp *ValidatorPool) InitComingValidators(blockHash common.Hash, blockNumber
 	vp.organize(vp.nextValidators, vp.epoch+1, eventMux)
 	log.Debug("InitComingValidators：Update nextValidators OK", "blockNumber", blockNumber, "epoch", vp.epoch+1)
 	return nil
+}
+
+// 分组共识提案生效后首个共识轮的lastnumber在StakingInstance().Adjust0170RoundValidators更新了
+// 按正常逻辑，第一个共识轮时vp.lastnumber还是旧值，需要择机更新
+func (vp *ValidatorPool) UpdateLastNumber(blockNumber uint64) {
+	vp.lock.Lock()
+	defer vp.lock.Unlock()
+
+	if !vp.grouped {
+		// 提案生效后第一个选举块，此时因ConsensusSize更新到新值（215）需要更新vp.lastNumber
+		vp.lastNumber = vp.agency.GetLastNumber(blockNumber)
+	}
+
+	log.Debug("UpdateLastNumber：vp.lastNumber updated", "blockNumber", blockNumber, "epoch", vp.epoch)
 }
 
 // dealWithOldVersionEvents process version <= 0.16.0 logics
@@ -976,6 +969,6 @@ func (vp *ValidatorPool) dissolve(epoch uint64, eventMux *event.TypeMux) {
 
 	eventMux.Post(cbfttypes.ExpiredTopicEvent{Topic: consensusTopic})      // for p2p
 	eventMux.Post(cbfttypes.ExpiredTopicEvent{Topic: groupTopic})          // for p2p
-	eventMux.Post(cbfttypes.ExpiredGroupTopicEvent{Topic: groupTopic})     // for cbft
-	eventMux.Post(cbfttypes.ExpiredGroupTopicEvent{Topic: consensusTopic}) // for cbft
+	eventMux.Post(cbfttypes.ExpiredGroupTopicEvent{Topic: groupTopic})     // for pubsub
+	eventMux.Post(cbfttypes.ExpiredGroupTopicEvent{Topic: consensusTopic}) // for pubsub
 }
