@@ -6,7 +6,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/AlayaNetwork/Alaya-Go/common/json"
 	"github.com/libp2p/go-libp2p-core/discovery"
 	"math/rand"
 	"sync"
@@ -1425,26 +1424,23 @@ func (p *PubSub) GetAllPubSubStatus() *Status {
 }
 
 type PeerInfo struct {
-	Topics string
+	Topics string `json:"topics"`
 }
 
 func (p *PubSub) GetPeerInfo(nodeId enode.ID) *PeerInfo {
 	result := make(chan *PeerInfo, 1)
 	getInfo := func() {
 		peerInfo := &PeerInfo{}
-		topics := make([]string, 0)
 		for t, ids := range p.topics {
 			for nid := range ids {
 				if nid == nodeId {
-					topics = append(topics, t)
+					if peerInfo.Topics != "" {
+						peerInfo.Topics += ", " + t
+					} else {
+						peerInfo.Topics += t
+					}
 					break
 				}
-			}
-		}
-		if len(topics) > 0 {
-			enVal, err := json.Marshal(topics)
-			if err == nil && enVal != nil {
-				peerInfo.Topics = string(enVal)
 			}
 		}
 		result <- peerInfo
