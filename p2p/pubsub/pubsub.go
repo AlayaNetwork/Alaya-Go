@@ -1376,7 +1376,7 @@ func (p *PubSub) GetAllPubSubStatus() *Status {
 		if !ok {
 			return
 		}
-		status.Peers = make([]enode.ID, len(gsr.peers))
+		status.Peers = make([]enode.ID, 0, len(gsr.peers))
 		for pid := range gsr.peers {
 			status.Peers = append(status.Peers, pid)
 		}
