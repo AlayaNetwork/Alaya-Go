@@ -20,7 +20,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"fmt"
 	"sync"
 
 	"github.com/AlayaNetwork/Alaya-Go/core/cbfttypes"
@@ -112,10 +111,7 @@ func (ps *PubSub) Protocols() []p2p.Protocol {
 				return ps.NodeInfo()
 			},
 			PeerInfo: func(id enode.ID) interface{} {
-				if p, err := ps.getPeerById(fmt.Sprintf("%x", id[:8])); err == nil {
-					return p.Info()
-				}
-				return nil
+				return ps.pss.GetPeerInfo(id)
 			},
 		},
 	}

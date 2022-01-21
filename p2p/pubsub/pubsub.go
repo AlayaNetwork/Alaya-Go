@@ -1376,7 +1376,7 @@ func (p *PubSub) GetAllPubSubStatus() *Status {
 		if !ok {
 			return
 		}
-		status.Peers = make([]enode.ID, len(gsr.peers))
+		status.Peers = make([]enode.ID, 0, len(gsr.peers))
 		for pid := range gsr.peers {
 			status.Peers = append(status.Peers, pid)
 		}
@@ -1416,6 +1416,35 @@ func (p *PubSub) GetAllPubSubStatus() *Status {
 		result <- status
 	}
 
+	select {
+	case p.eval <- getInfo:
+	case <-p.ctx.Done():
+	}
+	return <-result
+}
+
+type PeerInfo struct {
+	Topics string `json:"topics"`
+}
+
+func (p *PubSub) GetPeerInfo(nodeId enode.ID) *PeerInfo {
+	result := make(chan *PeerInfo, 1)
+	getInfo := func() {
+		peerInfo := &PeerInfo{}
+		for t, ids := range p.topics {
+			for nid := range ids {
+				if nid == nodeId {
+					if peerInfo.Topics != "" {
+						peerInfo.Topics += ", " + t
+					} else {
+						peerInfo.Topics += t
+					}
+					break
+				}
+			}
+		}
+		result <- peerInfo
+	}
 	select {
 	case p.eval <- getInfo:
 	case <-p.ctx.Done():
