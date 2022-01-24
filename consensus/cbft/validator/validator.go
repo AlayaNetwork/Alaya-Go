@@ -102,6 +102,10 @@ func (d *StaticAgency) GetLastNumber(blockNumber uint64) uint64 {
 	return 0
 }
 
+func (d *StaticAgency) GetLastNumberByHash(blockHash common.Hash, blockNumber uint64) uint64 {
+	return 0
+}
+
 func (d *StaticAgency) GetValidators(blockHash common.Hash, blockNumber uint64) (*cbfttypes.Validators, error) {
 	return d.validators, nil
 }
@@ -147,6 +151,10 @@ func (d *MockAgency) GetLastNumber(blockNumber uint64) uint64 {
 	if blockNumber%d.interval == 1 {
 		return blockNumber + d.interval - 1
 	}
+	return 0
+}
+
+func (d *MockAgency) GetLastNumberByHash(blockHash common.Hash, blockNumber uint64) uint64 {
 	return 0
 }
 
@@ -233,6 +241,10 @@ func (ia *InnerAgency) GetLastNumber(blockNumber uint64) uint64 {
 	}
 	//log.Debug("Get last block number", "blockNumber", blockNumber, "lastBlockNumber", lastBlockNumber)
 	return lastBlockNumber
+}
+
+func (ia *InnerAgency) GetLastNumberByHash(blockHash common.Hash, blockNumber uint64) uint64 {
+	return 0
 }
 
 func (ia *InnerAgency) GetValidators(blockHash common.Hash, blockNumber uint64) (v *cbfttypes.Validators, err error) {
@@ -497,16 +509,16 @@ func (vp *ValidatorPool) InitComingValidators(blockHash common.Hash, blockNumber
 
 // 分组共识提案生效后首个共识轮的lastnumber在StakingInstance().Adjust0170RoundValidators更新了
 // 按正常逻辑，第一个共识轮时vp.lastnumber还是旧值，需要择机更新
-func (vp *ValidatorPool) UpdateLastNumber(blockNumber uint64) {
+func (vp *ValidatorPool) UpdateLastNumber(blockHash common.Hash, blockNumber uint64) {
 	vp.lock.Lock()
 	defer vp.lock.Unlock()
 
 	if !vp.grouped {
 		// 提案生效后第一个选举块，此时因ConsensusSize更新到新值（215）需要更新vp.lastNumber
-		vp.lastNumber = vp.agency.GetLastNumber(blockNumber)
+		vp.lastNumber = vp.agency.GetLastNumberByHash(blockHash, blockNumber)
 	}
 
-	log.Debug("UpdateLastNumber：vp.lastNumber updated", "blockNumber", blockNumber, "epoch", vp.epoch)
+	log.Debug("UpdateLastNumber：vp.lastNumber updated", "blockHash", blockHash.TerminalString(), "blockNumber", blockNumber, "epoch", vp.epoch, "grouped", vp.grouped)
 }
 
 // dealWithOldVersionEvents process version <= 0.16.0 logics

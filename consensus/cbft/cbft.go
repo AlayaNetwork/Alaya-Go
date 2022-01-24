@@ -1402,7 +1402,7 @@ func (cbft *Cbft) commitBlock(commitBlock *types.Block, commitQC *ctypes.QuorumC
 		return !cbft.validatorPool.NeedGroup() && activeVersion >= params.FORKVERSION_0_17_0 && xutil.IsBeginOfConsensus(cpy.NumberU64(), activeVersion)
 	}
 	if shouldUpdateLastNumber() {
-		cbft.validatorPool.UpdateLastNumber(cpy.NumberU64())
+		cbft.validatorPool.UpdateLastNumber(cpy.Hash(), cpy.NumberU64())
 	}
 }
 
