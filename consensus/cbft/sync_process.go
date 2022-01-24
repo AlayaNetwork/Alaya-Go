@@ -896,6 +896,8 @@ func (cbft *Cbft) OnViewChangesV2(id string, msg *protocols.ViewChangesV2) error
 func (cbft *Cbft) KnownVoteIndexes(blockIndex uint32) []uint32 {
 	groupNodes := cbft.getGroupIndexes(cbft.state.Epoch())
 	allVotes := cbft.state.AllPrepareVoteByIndex(blockIndex)
+	cbft.log.Trace("KnownVoteIndexes", "blockIndex", blockIndex, "groupNodes", len(groupNodes), "allVotes", len(allVotes))
+
 	known := make([]uint32, 0)
 	for groupID, indexes := range groupNodes {
 		qc, _ := cbft.state.FindMaxGroupRGQuorumCert(blockIndex, groupID)
@@ -913,6 +915,8 @@ func (cbft *Cbft) KnownVoteIndexes(blockIndex uint32) []uint32 {
 func (cbft *Cbft) KnownViewChangeIndexes() []uint32 {
 	groupNodes := cbft.getGroupIndexes(cbft.state.Epoch())
 	allViewChanges := cbft.state.AllViewChange()
+	cbft.log.Trace("KnownViewChangeIndexes", "groupNodes", len(groupNodes), "allViewChanges", len(allViewChanges))
+
 	known := make([]uint32, 0)
 	for groupID, indexes := range groupNodes {
 		qc, _ := cbft.state.FindMaxGroupRGViewChangeQuorumCert(groupID)
@@ -932,6 +936,8 @@ func (cbft *Cbft) MissGroupVotes(blockIndex uint32) *ctypes.UnKnownGroups {
 	allVotes := cbft.state.AllPrepareVoteByIndex(blockIndex)
 
 	validatorLen := cbft.currentValidatorLen()
+	cbft.log.Trace("MissGroupVotes", "groupNodes", len(groupNodes), "allVotes", len(allVotes), "validatorLen", validatorLen)
+
 	unKnowns := &ctypes.UnKnownGroups{UnKnown: make([]*ctypes.UnKnownGroup, 0)}
 
 	// just for record metrics
@@ -976,9 +982,11 @@ func (cbft *Cbft) MissGroupVotes(blockIndex uint32) *ctypes.UnKnownGroups {
 
 func (cbft *Cbft) MissGroupViewChanges() *ctypes.UnKnownGroups {
 	groupNodes := cbft.getGroupIndexes(cbft.state.Epoch())
-	allViewChange := cbft.state.AllViewChange()
+	allViewChanges := cbft.state.AllViewChange()
 
 	validatorLen := cbft.currentValidatorLen()
+	cbft.log.Trace("MissGroupViewChanges", "groupNodes", len(groupNodes), "allViewChanges", len(allViewChanges), "validatorLen", validatorLen)
+
 	unKnowns := &ctypes.UnKnownGroups{UnKnown: make([]*ctypes.UnKnownGroup, 0)}
 
 	// just for record metrics
@@ -996,7 +1004,7 @@ func (cbft *Cbft) MissGroupViewChanges() *ctypes.UnKnownGroups {
 		if qc.Len() < groupLen {
 			unKnownSet := utils.NewBitArray(uint32(validatorLen))
 			for _, index := range indexes {
-				if _, ok := allViewChange[index]; !ok && !qc.HasSign(index) {
+				if _, ok := allViewChanges[index]; !ok && !qc.HasSign(index) {
 					unKnownSet.SetIndex(index, true)
 				}
 			}
@@ -1030,6 +1038,7 @@ func (cbft *Cbft) MissingPrepareVote() (v ctypes.Message, err error) {
 		begin := cbft.state.MaxQCIndex() + 1
 		end := cbft.state.NextViewBlockIndex()
 		threshold := cbft.threshold(cbft.currentValidatorLen())
+		cbft.log.Trace("Synchronize votes by grouped channel", "threshold", threshold)
 
 		block := cbft.state.HighestQCBlock()
 		blockTime := common.MillisToTime(int64(block.Time()))
@@ -1044,6 +1053,7 @@ func (cbft *Cbft) MissingPrepareVote() (v ctypes.Message, err error) {
 			// We need sync prepare votes when a long time not arrived QC.
 			if size < threshold { // need sync prepare votes
 				unKnownGroups := cbft.MissGroupVotes(index)
+				cbft.log.Trace("Synchronize votes by grouped channel,missGroupVotes", "blockIndex", index, "threshold", threshold, "size", size, "unKnownGroups", unKnownGroups.String())
 				if len(unKnownGroups.UnKnown) > 0 {
 					v, err = &protocols.GetPrepareVoteV2{
 						Epoch:         cbft.state.Epoch(),
@@ -1051,7 +1061,7 @@ func (cbft *Cbft) MissingPrepareVote() (v ctypes.Message, err error) {
 						BlockIndex:    index,
 						UnKnownGroups: unKnownGroups,
 					}, nil
-					cbft.log.Debug("MissingPrepareVote", "blockIndex", index, "known", size, "threshold", threshold, "request", v.String())
+					cbft.log.Debug("Synchronize votes by grouped channel,missingPrepareVote", "blockIndex", index, "known", size, "threshold", threshold, "request", v.String())
 					break
 				}
 			}
@@ -1064,12 +1074,13 @@ func (cbft *Cbft) MissingPrepareVote() (v ctypes.Message, err error) {
 	return
 }
 
-// MissingViewChangeNodes returns the node ID of the missing vote.
+// MissingViewChangeNodes returns the node ID of the missing viewChanges.
 // Use the channel to complete serial execution to prevent concurrency.
 func (cbft *Cbft) MissingViewChangeNodes() (v ctypes.Message, err error) {
 	if !cbft.NeedGroup() {
 		return cbft.MissingViewChangeNodesV1()
 	}
+
 	result := make(chan struct{})
 
 	cbft.asyncCallCh <- func() {
@@ -1082,16 +1093,18 @@ func (cbft *Cbft) MissingViewChangeNodes() (v ctypes.Message, err error) {
 
 		threshold := cbft.threshold(cbft.currentValidatorLen())
 		size := len(cbft.KnownViewChangeIndexes())
+		cbft.log.Trace("Synchronize viewChanges by grouped channel", "threshold", threshold, "size", size)
 
 		if size < threshold {
 			unKnownGroups := cbft.MissGroupViewChanges()
+			cbft.log.Trace("Synchronize viewChanges by grouped channel,missGroupViewChanges", "threshold", threshold, "size", size, "unKnownGroups", unKnownGroups.String())
 			if len(unKnownGroups.UnKnown) > 0 {
 				v, err = &protocols.GetViewChangeV2{
 					Epoch:         cbft.state.Epoch(),
 					ViewNumber:    cbft.state.ViewNumber(),
 					UnKnownGroups: unKnownGroups,
 				}, nil
-				cbft.log.Debug("MissingViewChangeNodes", "known", size, "threshold", threshold, "request", v.String())
+				cbft.log.Debug("Synchronize viewChanges by grouped channel,missingViewChangeNodes", "known", size, "threshold", threshold, "request", v.String())
 			}
 		}
 		if v == nil {

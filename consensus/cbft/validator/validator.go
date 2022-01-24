@@ -518,7 +518,7 @@ func (vp *ValidatorPool) UpdateLastNumber(blockHash common.Hash, blockNumber uin
 		vp.lastNumber = vp.agency.GetLastNumberByHash(blockHash, blockNumber)
 	}
 
-	log.Debug("UpdateLastNumber：vp.lastNumber updated", "blockHash", blockHash.TerminalString(), "blockNumber", blockNumber, "epoch", vp.epoch, "grouped", vp.grouped)
+	log.Debug("UpdateLastNumber：vp.lastNumber updated", "blockHash", blockHash.TerminalString(), "blockNumber", blockNumber, "epoch", vp.epoch, "lastNumber", vp.lastNumber, "grouped", vp.grouped)
 }
 
 // dealWithOldVersionEvents process version <= 0.16.0 logics
