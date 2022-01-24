@@ -591,6 +591,10 @@ func (m *mockAgency) VerifyHeader(*types.Header, *state.StateDB) error { return 
 
 func (m *mockAgency) GetLastNumber(blockNumber uint64) uint64 { return m.lastNumber }
 
+func (m *mockAgency) GetLastNumberByHash(blockHash common.Hash, blockNumber uint64) uint64 {
+	return 0
+}
+
 func (m *mockAgency) GetValidators(blockHash common.Hash, blockNumber uint64) (*cbfttypes.Validators, error) {
 	return &cbfttypes.Validators{
 		ValidBlockNumber: blockNumber,
