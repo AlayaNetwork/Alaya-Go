@@ -506,7 +506,7 @@ func (vp *ValidatorPool) UpdateLastNumber(blockNumber uint64) {
 		vp.lastNumber = vp.agency.GetLastNumber(blockNumber)
 	}
 
-	log.Debug("UpdateLastNumber：vp.lastNumber updated", "blockNumber", blockNumber, "epoch", vp.epoch, "lastNumber", vp.lastNumber)
+	log.Debug("UpdateLastNumber：vp.lastNumber updated", "blockNumber", blockNumber, "epoch", vp.epoch, "lastNumber", vp.lastNumber, "grouped", vp.grouped)
 }
 
 // dealWithOldVersionEvents process version <= 0.16.0 logics
