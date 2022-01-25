@@ -1396,10 +1396,8 @@ func (srv *Server) watching() {
 				srv.RemoveConsensusPeer(data.Node)
 			case cbfttypes.NewTopicEvent:
 				srv.topicSubscriberMu.Lock()
-				topicSubscriber := make([]*enode.Node, 0)
-				for _, node := range data.Nodes {
-					topicSubscriber = append(topicSubscriber, node)
-				}
+				topicSubscriber := make([]*enode.Node, len(data.Nodes))
+				copy(topicSubscriber, data.Nodes)
 				srv.topicSubscriber[data.Topic] = topicSubscriber
 
 				consensusPeers := make(map[enode.ID]struct{})
