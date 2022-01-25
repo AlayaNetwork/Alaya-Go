@@ -2696,6 +2696,20 @@ func (sk *StakingPlugin) GetLastNumber(blockNumber uint64) uint64 {
 	return 0
 }
 
+func (sk *StakingPlugin) GetLastNumberByHash(blockHash common.Hash, blockNumber uint64) uint64 {
+
+	valIndex, err := sk.getCurrValIndex(blockHash, blockNumber, QueryStartNotIrr)
+	if nil != err {
+		log.Error("Failed to GetLastNumber", "blockNumber", blockNumber, "err", err)
+		return 0
+	}
+
+	if nil == err && nil != valIndex {
+		return valIndex.End
+	}
+	return 0
+}
+
 func (sk *StakingPlugin) GetValidators(blockHash common.Hash, blockNumber uint64) (*cbfttypes.Validators, error) {
 	// validatorpool 在选举块更新nextValidators，触发条件是选举块commit完成，此时block已经实际上不可逆
 	// 不从QueryStartIrr查询的原因是此时blockchain_reactor订阅的cbftResult还没处理完，snapshotdb还没有更新最高不可逆区块，查不到
