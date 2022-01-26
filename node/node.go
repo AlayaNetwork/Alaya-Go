@@ -200,6 +200,9 @@ func (n *Node) Start() error {
 	}
 	return err
 }
+func (n *Node) SetP2pChainID(ChainID *big.Int) {
+	n.server.ChainID = ChainID
+}
 
 // Close stops the Node and releases resources acquired in
 // Node constructor New.

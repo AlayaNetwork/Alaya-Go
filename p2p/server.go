@@ -20,13 +20,14 @@ package p2p
 import (
 	"crypto/ecdsa"
 	"errors"
-	"golang.org/x/crypto/sha3"
 	"math/big"
 	"math/rand"
 	"net"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"golang.org/x/crypto/sha3"
 
 	"github.com/AlayaNetwork/Alaya-Go/common"
 	"github.com/AlayaNetwork/Alaya-Go/common/mclock"
