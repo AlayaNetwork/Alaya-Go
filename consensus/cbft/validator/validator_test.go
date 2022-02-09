@@ -649,31 +649,29 @@ func TestUpdate(t *testing.T) {
 	eventMux := new(event.TypeMux)
 	blockNum := uint64(0)
 	lastNumber := agency.GetLastNumber(blockNum)
-	vp := NewValidatorPool(agency, 0, 0, nodes[0].Node.ID(), true, eventMux)
+	vp := NewValidatorPool(agency, 0, 0, nodes[0].Node.ID(), false, eventMux)
 
-	assert.Equal(t, true, vp.NeedGroup())
+	assert.False(t, vp.NeedGroup())
 	assert.Equal(t, lastNumber, vp.lastNumber)
 	assert.Equal(t, vp.prevValidators, vp.currentValidators)
-
-	vp.Update(common.ZeroHash, 250, 0, 4352, eventMux)
-	assert.Nil(t, vp.nextValidators)
-	assert.False(t, vp.NeedGroup())
-	assert.Equal(t, vp.epoch, uint64(0))
 
 	vp.InitComingValidators(common.ZeroHash, 980, eventMux)
 	assert.False(t, vp.NeedGroup())
 	assert.Equal(t, vp.epoch, uint64(0))
 
+	vp.Update(common.ZeroHash, 1000, 0, 4352, eventMux)
+	assert.Nil(t, vp.nextValidators)
+	assert.True(t, vp.NeedGroup())
+	assert.Equal(t, vp.epoch, uint64(0))
+
 	nextNodes := newTestNodeByNum(100)
 	nextAgency := newTestInnerAgency(nextNodes)
 	next, err := nextAgency.GetValidators(common.ZeroHash, lastNumber+1)
-	if err != nil {
-		t.Log("agency.GetValidators", "err", err)
+	if err != nil || next == nil {
+		t.Error("agency.GetValidators", "err", err)
 	}
 	next.Grouped()
 	assert.NotEqual(t, vp.currentValidators, next)
-	assert.False(t, vp.nextValidators.Equal(next))
-	vp.nextValidators = next
 	vp.Update(common.ZeroHash, vp.lastNumber+1, 1, 4352, eventMux)
 	assert.True(t, vp.NeedGroup())
 	assert.Equal(t, vp.epoch, uint64(1))

@@ -344,8 +344,9 @@ func NewValidatorPool(agency consensus.Agency, blockNumber, epoch uint64, nodeID
 		groupValidatorsLimit: xcom.MaxGroupValidators(),
 		coordinatorLimit:     xcom.CoordinatorsLimit(),
 	}
+	lastNumber := agency.GetLastNumber(blockNumber)
 	// FIXME: Check `GetValidators` return error
-	if agency.GetLastNumber(blockNumber) == blockNumber {
+	if lastNumber == blockNumber {
 		pool.prevValidators, _ = agency.GetValidators(common.ZeroHash, blockNumber)
 		pool.currentValidators, _ = agency.GetValidators(common.ZeroHash, NextRound(blockNumber))
 		pool.lastNumber = agency.GetLastNumber(NextRound(blockNumber))
@@ -355,7 +356,7 @@ func NewValidatorPool(agency consensus.Agency, blockNumber, epoch uint64, nodeID
 	} else {
 		pool.currentValidators, _ = agency.GetValidators(common.ZeroHash, blockNumber)
 		pool.prevValidators = pool.currentValidators
-		pool.lastNumber = agency.GetLastNumber(blockNumber)
+		pool.lastNumber = lastNumber
 	}
 	// When validator mode is `static`, the `ValidatorBlockNumber` always 0,
 	// means we are using static validators. Otherwise, represent use current
@@ -368,13 +369,14 @@ func NewValidatorPool(agency consensus.Agency, blockNumber, epoch uint64, nodeID
 		if err := pool.organize(pool.currentValidators, epoch, eventMux); err != nil {
 			log.Error("ValidatorPool organized failed!", "error", err)
 		}
-		if pool.nextValidators == nil {
-			nds, err := pool.agency.GetValidators(common.ZeroHash, NextRound(pool.currentValidators.ValidBlockNumber))
+		blockDif := lastNumber - blockNumber
+		if blockDif > 0 && blockDif < xcom.ElectionDistance() {
+			nds, err := pool.agency.GetValidators(common.ZeroHash, NextRound(lastNumber))
 			if err != nil {
 				log.Debug("Get nextValidators error", "blockNumber", blockNumber, "err", err)
 				return pool
 			}
-			if nds != nil && !pool.currentValidators.Equal(nds) {
+			if nds != nil {
 				pool.nextValidators = nds
 				pool.organize(pool.nextValidators, epoch+1, eventMux)
 			}
@@ -455,6 +457,7 @@ func (vp *ValidatorPool) Update(blockHash common.Hash, blockNumber uint64, epoch
 
 	var err error
 	var nds *cbfttypes.Validators
+	// 节点中间重启过， nextValidators没有赋值
 	if vp.nextValidators == nil {
 		nds, err = vp.agency.GetValidators(blockHash, NextRound(blockNumber))
 		if err != nil {
@@ -462,7 +465,6 @@ func (vp *ValidatorPool) Update(blockHash common.Hash, blockNumber uint64, epoch
 			return err
 		}
 
-		// 节点中间重启过， nextValidators没有赋值
 		vp.nextValidators = nds
 		if vp.grouped {
 			vp.organize(vp.nextValidators, epoch, eventMux)
