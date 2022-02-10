@@ -25,11 +25,16 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/p2p"
 	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
 	"github.com/AlayaNetwork/Alaya-Go/params"
+	"github.com/AlayaNetwork/Alaya-Go/x/xcom"
 	"github.com/stretchr/testify/assert"
 	"sync"
 	"testing"
 	"time"
 )
+
+func init() {
+	xcom.GetEc(xcom.DefaultUnitTestNet)
+}
 
 func makePubSub(handlerMsg func(p *peer, msg *p2p.Msg) error) (*PubSub, *p2p.Server) {
 	sk, err := crypto.GenerateKey()
@@ -49,7 +54,7 @@ func makePubSub(handlerMsg func(p *peer, msg *p2p.Msg) error) (*PubSub, *p2p.Ser
 	p2pServer.SetPubSubServer(psServer, cancel)
 	pubSub := NewPubSub(psServer)
 	pubSub.Start(ctypes.Config{Sys: params.AlayaChainConfig.Cbft, Option: nil}, func(id string) (p *peer, err error) {
-		return nil, nil
+		return newPeer(CbftPubSubProtocolVersion, p2p.NewPeer(localNode.ID(), "", nil), nil), nil
 	}, handlerMsg, new(event.TypeMux))
 	return pubSub, p2pServer
 }
@@ -132,7 +137,7 @@ func TestPubSubPublish(t *testing.T) {
 			t.Fatal(err)
 		}
 	}()
-	time.Sleep(time.Millisecond * 6)
+	time.Sleep(time.Millisecond * 800)
 
 	// Topics of interest for node registration.
 	// Send messages between nodes
@@ -141,14 +146,14 @@ func TestPubSubPublish(t *testing.T) {
 		if err := pubSub1.Subscribe(topic); err != nil {
 			t.Fatal(err)
 		}
-		time.Sleep(time.Millisecond * 3)
+		time.Sleep(time.Millisecond * 800)
 		pubSub1.Publish(topic, uint64(1), expect[0])
 	}()
 	go func() {
 		if err := pubSub2.Subscribe(topic); err != nil {
 			t.Fatal(err)
 		}
-		time.Sleep(time.Millisecond * 3)
+		time.Sleep(time.Millisecond * 800)
 		pubSub2.Publish(topic, uint64(2), expect[1])
 	}()
 	wg.Wait()
@@ -255,7 +260,7 @@ func TestPubSubPublish_DifferentTopics(t *testing.T) {
 			t.Fatal(err)
 		}
 	}()
-	time.Sleep(time.Millisecond * 6)
+	time.Sleep(time.Millisecond * 800)
 
 	topic1 := "test1"
 	topic2 := "test2"
@@ -266,21 +271,21 @@ func TestPubSubPublish_DifferentTopics(t *testing.T) {
 		if err := pubSub1.Subscribe(topic2); err != nil {
 			t.Fatal(err)
 		}
-		time.Sleep(time.Millisecond * 3)
+		time.Sleep(time.Millisecond * 800)
 		pubSub1.Publish(topic1, uint64(1), expect[0])
 	}()
 	go func() {
 		if err := pubSub2.Subscribe(topic1); err != nil {
 			t.Fatal(err)
 		}
-		time.Sleep(time.Millisecond * 3)
+		time.Sleep(time.Millisecond * 800)
 		pubSub2.Publish(topic1, uint64(2), expect[1])
 	}()
 	go func() {
 		if err := pubSub3.Subscribe(topic2); err != nil {
 			t.Fatal(err)
 		}
-		time.Sleep(time.Millisecond * 3)
+		time.Sleep(time.Millisecond * 800)
 		pubSub3.Publish(topic2, uint64(3), expect[2])
 	}()
 	wg.Wait()
@@ -393,28 +398,28 @@ func TestPubSubPublish_ForwardMessage(t *testing.T) {
 			t.Fatal(err)
 		}
 	}()
-	time.Sleep(time.Millisecond * 6)
+	time.Sleep(time.Millisecond * 800)
 
 	topic := "test"
 	go func() {
 		if err := pubSub1.Subscribe(topic); err != nil {
 			t.Fatal(err)
 		}
-		time.Sleep(time.Millisecond * 3)
+		time.Sleep(time.Millisecond * 800)
 		pubSub1.Publish(topic, uint64(1), expect[0])
 	}()
 	go func() {
 		if err := pubSub2.Subscribe(topic); err != nil {
 			t.Fatal(err)
 		}
-		time.Sleep(time.Millisecond * 3)
+		time.Sleep(time.Millisecond * 800)
 		pubSub2.Publish(topic, uint64(2), expect[1])
 	}()
 	go func() {
 		if err := pubSub3.Subscribe(topic); err != nil {
 			t.Fatal(err)
 		}
-		time.Sleep(time.Millisecond * 3)
+		time.Sleep(time.Millisecond * 800)
 		pubSub3.Publish(topic, uint64(3), expect[2])
 	}()
 	wg.Wait()
