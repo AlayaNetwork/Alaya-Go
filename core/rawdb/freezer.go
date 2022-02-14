@@ -22,15 +22,17 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/prometheus/tsdb/fileutil"
 
 	"github.com/AlayaNetwork/Alaya-Go/common"
 	"github.com/AlayaNetwork/Alaya-Go/ethdb"
 	"github.com/AlayaNetwork/Alaya-Go/log"
 	"github.com/AlayaNetwork/Alaya-Go/metrics"
 	"github.com/AlayaNetwork/Alaya-Go/params"
-	"github.com/prometheus/tsdb/fileutil"
 )
 
 var (
@@ -74,6 +76,7 @@ type freezer struct {
 	tables       map[string]*freezerTable // Data tables for storing everything
 	instanceLock fileutil.Releaser        // File-system lock to prevent double opens
 	quit         chan struct{}
+	closeOnce    sync.Once
 }
 
 // newFreezer creates a chain freezer that moves ancient chain data into
@@ -128,16 +131,18 @@ func newFreezer(datadir string, namespace string) (*freezer, error) {
 
 // Close terminates the chain freezer, unmapping all the data files.
 func (f *freezer) Close() error {
-	f.quit <- struct{}{}
 	var errs []error
-	for _, table := range f.tables {
-		if err := table.Close(); err != nil {
+	f.closeOnce.Do(func() {
+		f.quit <- struct{}{}
+		for _, table := range f.tables {
+			if err := table.Close(); err != nil {
+				errs = append(errs, err)
+			}
+		}
+		if err := f.instanceLock.Release(); err != nil {
 			errs = append(errs, err)
 		}
-	}
-	if err := f.instanceLock.Release(); err != nil {
-		errs = append(errs, err)
-	}
+	})
 	if errs != nil {
 		return fmt.Errorf("%v", errs)
 	}
@@ -210,8 +215,8 @@ func (f *freezer) AppendAncient(number uint64, hash, header, body, receipts []by
 		return err
 	}
 	if err := f.tables[freezerReceiptTable].Append(f.frozen, receipts); err != nil {
-			log.Error("Failed to append ancient receipts", "number", f.frozen, "hash", hash, "err", err)
-			return err
+		log.Error("Failed to append ancient receipts", "number", f.frozen, "hash", hash, "err", err)
+		return err
 	}
 
 	atomic.AddUint64(&f.frozen, 1) // Only modify atomically

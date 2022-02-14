@@ -74,7 +74,7 @@ func StartNode(stack *node.Node) {
 		<-sigc
 		log.Info("Got interrupt, shutting down...")
 		go func() {
-			stack.Stop()
+			stack.Close()
 		}()
 		for i := 10; i > 0; i-- {
 			<-sigc
@@ -274,13 +274,13 @@ func ImportPreimages(db ethdb.Database, fn string) error {
 		// Accumulate the preimages and flush when enough ws gathered
 		preimages[crypto.Keccak256Hash(blob)] = common.CopyBytes(blob)
 		if len(preimages) > 1024 {
-			rawdb.WritePreimages(db,  preimages)
+			rawdb.WritePreimages(db, preimages)
 			preimages = make(map[common.Hash][]byte)
 		}
 	}
 	// Flush the last batch preimage data
 	if len(preimages) > 0 {
-		rawdb.WritePreimages(db,  preimages)
+		rawdb.WritePreimages(db, preimages)
 	}
 	return nil
 }
