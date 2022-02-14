@@ -146,9 +146,9 @@ func CreateCBFT(pk *ecdsa.PrivateKey, sk *bls.SecretKey, period uint64, amount u
 		BlacklistDeadline: 1,
 	}
 
-	ctx := node.NewServiceContext(&node.Config{DataDir: ""}, nil, new(event.TypeMux), nil)
+	node, _ := node.New(&node.Config{})
 
-	return New(sysConfig, optConfig, ctx.EventMux, ctx)
+	return New(sysConfig, optConfig, node.EventMux(), node)
 }
 
 func CreateGenesis(db ethdb.Database) (core.Genesis, *types.Block) {

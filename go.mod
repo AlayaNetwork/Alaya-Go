@@ -3,6 +3,7 @@ module github.com/AlayaNetwork/Alaya-Go
 go 1.16
 
 require (
+	github.com/AlayaNetwork/graphql-go v1.2.1-0.20211227063951-8d66eefcb4e3 // indirect
 	github.com/Azure/azure-pipeline-go v0.0.0-20180607212504-7571e8eb0876 // indirect
 	github.com/Azure/azure-storage-blob-go v0.0.0-20180712005634-eaae161d9d5e
 	github.com/PlatONnetwork/wagon v0.6.1-0.20201026015350-67507c2a7b96
@@ -26,6 +27,7 @@ require (
 	github.com/golang/protobuf v1.5.2
 	github.com/golang/snappy v0.0.1
 	github.com/gorilla/websocket v1.4.2
+	github.com/graph-gophers/graphql-go v1.2.0 // indirect
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/herumi/bls v0.0.0-20211018080255-87e98a0e7697
 	github.com/holiman/uint256 v1.1.1
@@ -51,6 +53,7 @@ require (
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/onsi/ginkgo v1.10.3 // indirect
 	github.com/onsi/gomega v1.7.1 // indirect
+	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/panjf2000/ants/v2 v2.4.1
 	github.com/pborman/uuid v0.0.0-20170112150404-1b00554d8222
 	github.com/peterh/liner v1.0.1-0.20170902204657-a37ad3984311

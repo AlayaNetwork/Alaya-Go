@@ -21,13 +21,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/AlayaNetwork/Alaya-Go/common/vm"
-	"github.com/AlayaNetwork/Alaya-Go/params"
-	"github.com/AlayaNetwork/Alaya-Go/x/gov"
 	"math/big"
 	"sort"
 	"sync"
 	"time"
+
+	"github.com/AlayaNetwork/Alaya-Go/common/vm"
+	"github.com/AlayaNetwork/Alaya-Go/params"
+	"github.com/AlayaNetwork/Alaya-Go/x/gov"
 
 	"github.com/AlayaNetwork/Alaya-Go/common"
 	"github.com/AlayaNetwork/Alaya-Go/core/types"
@@ -487,6 +488,15 @@ func (self *StateDB) SetState(address common.Address, key, value []byte) {
 		}
 	}
 	self.lock.Unlock()
+}
+
+// SetStorage replaces the entire storage for the specified account with given
+// storage. This function should only be used for debugging.
+func (self *StateDB) SetStorage(addr common.Address, storage map[common.Hash]common.Hash) {
+	stateObject := self.GetOrNewStateObject(addr)
+	if stateObject != nil {
+		stateObject.SetStorage(storage)
+	}
 }
 
 func (self *StateDB) Gte0140VersionState() bool {

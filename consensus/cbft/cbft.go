@@ -165,7 +165,7 @@ type Cbft struct {
 	csPool *ctypes.CSMsgPool
 
 	// wal
-	nodeServiceContext *node.ServiceContext
+	nodeServiceContext *node.Node
 	wal                wal.Wal
 	bridge             Bridge
 
@@ -196,7 +196,7 @@ type Cbft struct {
 }
 
 // New returns a new CBFT.
-func New(sysConfig *params.CbftConfig, optConfig *ctypes.OptionsConfig, eventMux *event.TypeMux, ctx *node.ServiceContext) *Cbft {
+func New(sysConfig *params.CbftConfig, optConfig *ctypes.OptionsConfig, eventMux *event.TypeMux, ctx *node.Node) *Cbft {
 	cbft := &Cbft{
 		config:             ctypes.Config{Sys: sysConfig, Option: optConfig},
 		eventMux:           eventMux,
@@ -220,7 +220,7 @@ func New(sysConfig *params.CbftConfig, optConfig *ctypes.OptionsConfig, eventMux
 		pubSub:             network.NewPubSub(ctx.PubSubServer()),
 	}
 
-	if evPool, err := evidence.NewEvidencePool(ctx, optConfig.EvidenceDir); err == nil {
+	if evPool, err := evidence.NewEvidencePool(ctx.ResolvePath, optConfig.EvidenceDir); err == nil {
 		cbft.evPool = evPool
 	} else {
 		return nil
@@ -274,10 +274,10 @@ func (cbft *Cbft) Start(chain consensus.ChainReader, blockCache consensus.BlockC
 	// Data required to initialize pubsub
 	cbft.pubSub.Start(cbft.config, cbft.network.GetPeer, cbft.network.HandleRGMsg, cbft.eventMux)
 
-	if cbft.config.Option.Node == nil {
+	if cbft.config.Option.NodePriKey == nil {
 		cbft.config.Option.Node = enode.NewV4(&cbft.nodeServiceContext.NodePriKey().PublicKey, nil, 0, 0)
 		cbft.config.Option.NodeID = cbft.config.Option.Node.IDv0()
-		cbft.config.Option.NodePriKey = cbft.nodeServiceContext.NodePriKey()
+		cbft.config.Option.NodePriKey = cbft.nodeServiceContext.Config().NodePriKey()
 	}
 
 	version, err := blockCache.GetActiveVersion(block.Header())
@@ -492,7 +492,7 @@ func (cbft *Cbft) ReceiveSyncMsg(msg *ctypes.MsgInfo) error {
 // LoadWal tries to recover consensus state and view msg from the wal.
 func (cbft *Cbft) LoadWal() (err error) {
 	// init wal and load wal state
-	var context *node.ServiceContext
+	var context *node.Node
 	if cbft.config.Option.WalMode {
 		context = cbft.nodeServiceContext
 	}
