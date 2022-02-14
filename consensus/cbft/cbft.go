@@ -647,7 +647,7 @@ func (cbft *Cbft) handleSyncMsg(info *ctypes.MsgInfo) error {
 			err = cbft.OnGetPrepareVote(id, msg)
 
 		case *protocols.GetPrepareVoteV2:
-			err = cbft.OnGetPrepareVoteV2(id, msg)
+			_, err = cbft.OnGetPrepareVoteV2(id, msg)
 
 		case *protocols.PrepareVotes:
 			err = cbft.OnPrepareVotes(id, msg)
@@ -671,7 +671,7 @@ func (cbft *Cbft) handleSyncMsg(info *ctypes.MsgInfo) error {
 			err = cbft.OnGetViewChange(id, msg)
 
 		case *protocols.GetViewChangeV2:
-			err = cbft.OnGetViewChangeV2(id, msg)
+			_, err = cbft.OnGetViewChangeV2(id, msg)
 
 		case *protocols.ViewChangeQuorumCert:
 			err = cbft.OnViewChangeQuorumCert(id, msg)
