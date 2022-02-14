@@ -17,10 +17,13 @@
 package cbft
 
 import (
+	"context"
 	"crypto/ecdsa"
 	"math/big"
 	"net"
 	"time"
+
+	"github.com/AlayaNetwork/Alaya-Go/p2p"
 
 	"github.com/AlayaNetwork/Alaya-Go/node"
 
@@ -145,7 +148,11 @@ func CreateCBFT(pk *ecdsa.PrivateKey, sk *bls.SecretKey, period uint64, amount u
 		BlacklistDeadline: 1,
 	}
 
+	running := &p2p.Server{}
+	ctx, _ := context.WithCancel(context.Background())
+	pubSubServer := p2p.NewPubSubServer(ctx, pnode, running)
 	node, _ := node.New(&node.Config{})
+	node.SetPubSubServer(pubSubServer)
 
 	return New(sysConfig, optConfig, node.EventMux(), node)
 }

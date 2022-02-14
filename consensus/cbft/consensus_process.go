@@ -293,6 +293,7 @@ func (cbft *Cbft) AllowRGQuorumCert(msg ctypes.ConsensusMsg) error {
 		groupID = rg.GroupID
 		//signsTotal = rg.ViewChangeQC.Len()
 		signsTotal = rg.ViewChangeQC.HasLength()
+		validatorSet = rg.ViewChangeQC.ValidatorSet()
 	}
 
 	if !cbft.enoughSigns(epoch, groupID, signsTotal) {

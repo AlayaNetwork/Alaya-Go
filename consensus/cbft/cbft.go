@@ -193,6 +193,8 @@ type Cbft struct {
 	insertBlockQCHook  func(block *types.Block, qc *ctypes.QuorumCert)
 	executeFinishHook  func(index uint32)
 	consensusNodesMock func() ([]enode.ID, error)
+
+	mockActiveVersion uint32
 }
 
 // New returns a new CBFT.
@@ -275,15 +277,18 @@ func (cbft *Cbft) Start(chain consensus.ChainReader, blockCache consensus.BlockC
 	cbft.pubSub.Start(cbft.config, cbft.network.GetPeer, cbft.network.HandleRGMsg, cbft.eventMux)
 
 	if cbft.config.Option.NodePriKey == nil {
-		cbft.config.Option.Node = enode.NewV4(&cbft.nodeServiceContext.NodePriKey().PublicKey, nil, 0, 0)
+		cbft.config.Option.Node = enode.NewV4(&cbft.nodeServiceContext.Config().NodeKey().PublicKey, nil, 0, 0)
 		cbft.config.Option.NodeID = cbft.config.Option.Node.IDv0()
-		cbft.config.Option.NodePriKey = cbft.nodeServiceContext.Config().NodePriKey()
+		cbft.config.Option.NodePriKey = cbft.nodeServiceContext.Config().NodeKey()
 	}
 
 	version, err := blockCache.GetActiveVersion(block.Header())
 	if err != nil {
 		log.Error("GetActiveVersion failed during startup of cbft", "err", err)
 		return err
+	}
+	if cbft.mockActiveVersion != 0 {
+		version = cbft.mockActiveVersion
 	}
 	needGroup := version >= params.FORKVERSION_0_17_0
 	if isGenesis() {
@@ -327,6 +332,11 @@ func (cbft *Cbft) Start(chain consensus.ChainReader, blockCache consensus.BlockC
 	utils.SetTrue(&cbft.start)
 	cbft.log.Info("Cbft engine start")
 	return nil
+}
+
+// MockActiveVersion for UT
+func (cbft *Cbft) MockActiveVersion(mockActiveVersion uint32) {
+	cbft.mockActiveVersion = mockActiveVersion
 }
 
 // NeedGroup indicates whether grouped consensus will be used

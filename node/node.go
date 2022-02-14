@@ -67,6 +67,7 @@ type Node struct {
 
 	databases map[*closeTrackingDB]struct{} // All open databases
 
+	pubSubServer *p2p.PubSubServer
 }
 
 const (
@@ -185,6 +186,7 @@ func (n *Node) Start() error {
 	ctx, cancel := context.WithCancel(context.Background())
 	pubSubServer := p2p.NewPubSubServer(ctx, localNode, n.server)
 	n.server.SetPubSubServer(pubSubServer, cancel)
+	n.pubSubServer = pubSubServer
 
 	// Check if networking startup failed.
 	if err != nil {
@@ -208,6 +210,14 @@ func (n *Node) Start() error {
 }
 func (n *Node) SetP2pChainID(ChainID *big.Int) {
 	n.server.ChainID = ChainID
+}
+
+func (n *Node) SetPubSubServer(server *p2p.PubSubServer) {
+	n.pubSubServer = server
+}
+
+func (n *Node) PubSubServer() *p2p.PubSubServer {
+	return n.pubSubServer
 }
 
 // Close stops the Node and releases resources acquired in
