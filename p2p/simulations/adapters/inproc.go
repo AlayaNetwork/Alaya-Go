@@ -38,9 +38,9 @@ import (
 // SimAdapter is a NodeAdapter which creates in-memory simulation nodes and
 // connects them using net.Pipe
 type SimAdapter struct {
-	pipe     func() (net.Conn, net.Conn, error)
-	mtx      sync.RWMutex
-	nodes    map[enode.ID]*SimNode
+	pipe       func() (net.Conn, net.Conn, error)
+	mtx        sync.RWMutex
+	nodes      map[enode.ID]*SimNode
 	lifecycles LifecycleConstructors
 }
 
@@ -50,8 +50,8 @@ type SimAdapter struct {
 // the adapter uses a net.Pipe for in-memory simulated network connections
 func NewSimAdapter(services LifecycleConstructors) *SimAdapter {
 	return &SimAdapter{
-		pipe:     pipes.NetPipe,
-		nodes:    make(map[enode.ID]*SimNode),
+		pipe:       pipes.NetPipe,
+		nodes:      make(map[enode.ID]*SimNode),
 		lifecycles: services,
 	}
 }

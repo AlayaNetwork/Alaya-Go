@@ -181,12 +181,10 @@ func (n *Node) Start() error {
 	copy(lifecycles, n.lifecycles)
 	n.lock.Unlock()
 
-	running := &p2p.Server{Config: n.serverConfig}
-	localNode := enode.NewV4(&n.serverConfig.PrivateKey.PublicKey, nil, 0, 0)
+	localNode := enode.NewV4(&n.server.Config.PrivateKey.PublicKey, nil, 0, 0)
 	ctx, cancel := context.WithCancel(context.Background())
-	pubSubServer := p2p.NewPubSubServer(ctx, localNode, running)
-	running.SetPubSubServer(pubSubServer, cancel)
-	n.log.Info("Starting peer-to-peer node", "instance", n.serverConfig.Name)
+	pubSubServer := p2p.NewPubSubServer(ctx, localNode, n.server)
+	n.server.SetPubSubServer(pubSubServer, cancel)
 
 	// Check if networking startup failed.
 	if err != nil {
@@ -319,11 +317,6 @@ func (n *Node) stopServices(running []Lifecycle) error {
 		return failure
 	}
 	return nil
-}
-
-// Config returns the configuration of node.
-func (n *Node) Config() *Config {
-	return n.config
 }
 
 func (n *Node) openDataDir() error {

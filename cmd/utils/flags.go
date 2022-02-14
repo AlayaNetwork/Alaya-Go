@@ -1131,17 +1131,18 @@ func SetCbft(ctx *cli.Context, cfg *types.OptionsConfig, nodeCfg *node.Config) {
 func RegisterEthService(stack *node.Node, cfg *eth.Config) ethapi.Backend {
 	if cfg.SyncMode == downloader.LightSync {
 		Fatalf("Failed to register the Alaya-Go service: %v", "not support LightSync")
+		return nil
 	} else {
 		backend, err := eth.New(stack, cfg)
 		if err != nil {
 			Fatalf("Failed to register the Ethereum service: %v", err)
 		}
-		if cfg.LightServ > 0 {
+		/*	if cfg.LightServ > 0 {
 			_, err := les.NewLesServer(stack, backend, cfg)
 			if err != nil {
 				Fatalf("Failed to create the LES server: %v", err)
 			}
-		}
+		}*/
 		return backend.APIBackend
 	}
 }
