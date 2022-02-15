@@ -41,6 +41,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
+
 	"golang.org/x/net/websocket"
 
 	"github.com/AlayaNetwork/Alaya-Go/accounts"
@@ -51,13 +53,9 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/eth"
 	"github.com/AlayaNetwork/Alaya-Go/eth/downloader"
 	"github.com/AlayaNetwork/Alaya-Go/ethclient"
-	"github.com/AlayaNetwork/Alaya-Go/ethstats"
-	"github.com/AlayaNetwork/Alaya-Go/les"
 	"github.com/AlayaNetwork/Alaya-Go/log"
 	"github.com/AlayaNetwork/Alaya-Go/node"
 	"github.com/AlayaNetwork/Alaya-Go/p2p"
-	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
-	"github.com/AlayaNetwork/Alaya-Go/p2p/discv5"
 	"github.com/AlayaNetwork/Alaya-Go/p2p/nat"
 	"github.com/AlayaNetwork/Alaya-Go/params"
 )
@@ -157,9 +155,9 @@ func main() {
 		log.Crit("Failed to parse genesis block json", "err", err)
 	}
 	// Convert the bootnodes to internal enode representations
-	var enodes []*discv5.Node
+	var enodes []*enode.Node
 	for _, boot := range strings.Split(*bootFlag, ",") {
-		if url, err := discv5.ParseNode(boot); err == nil {
+		if url, err := enode.ParseV4(boot); err == nil {
 			enodes = append(enodes, url)
 		} else {
 			log.Error("Failed to parse bootnode URL", "url", boot, "err", err)
@@ -224,7 +222,7 @@ type faucet struct {
 	lock sync.RWMutex // Lock protecting the faucet's internals
 }
 
-func newFaucet(genesis *core.Genesis, port int, enodes []*discv5.Node, network uint64, stats string, ks *keystore.KeyStore, index []byte) (*faucet, error) {
+func newFaucet(genesis *core.Genesis, port int, enodes []*enode.Node, network uint64, stats string, ks *keystore.KeyStore, index []byte) (*faucet, error) {
 	// Assemble the raw devp2p protocol stack
 	stack, err := node.New(&node.Config{
 		Name:    "platon",
@@ -248,7 +246,7 @@ func newFaucet(genesis *core.Genesis, port int, enodes []*discv5.Node, network u
 	cfg.SyncMode = downloader.LightSync
 	cfg.NetworkId = network
 	cfg.Genesis = genesis
-	lesBackend, err := les.New(stack, &cfg)
+	/*lesBackend, err := les.New(stack, &cfg)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to register the Ethereum service: %w", err)
 	}
@@ -258,14 +256,16 @@ func newFaucet(genesis *core.Genesis, port int, enodes []*discv5.Node, network u
 		if err := ethstats.New(stack, lesBackend.ApiBackend, lesBackend.Engine(), stats); err != nil {
 			return nil, err
 		}
-	}
+	}*/
 	// Boot up the client and ensure it connects to bootnodes
 	if err := stack.Start(); err != nil {
 		return nil, err
 	}
 	for _, boot := range enodes {
-		old, _ := discover.ParseNode(boot.String())
-		stack.Server().AddPeer(old)
+		old, err := enode.Parse(enode.ValidSchemes, boot.String())
+		if err != nil {
+			stack.Server().AddPeer(old)
+		}
 	}
 	// Attach to the client and retrieve and interesting metadatas
 	api, err := stack.Attach()
