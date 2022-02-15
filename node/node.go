@@ -28,8 +28,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
-
 	"github.com/AlayaNetwork/Alaya-Go/core/rawdb"
 
 	"github.com/AlayaNetwork/Alaya-Go/core/snapshotdb"
@@ -182,9 +180,8 @@ func (n *Node) Start() error {
 	copy(lifecycles, n.lifecycles)
 	n.lock.Unlock()
 
-	localNode := enode.NewV4(&n.server.Config.PrivateKey.PublicKey, nil, 0, 0)
 	ctx, cancel := context.WithCancel(context.Background())
-	pubSubServer := p2p.NewPubSubServer(ctx, localNode, n.server)
+	pubSubServer := p2p.NewPubSubServer(ctx, n.server.LocalNode().Node(), n.server)
 	n.server.SetPubSubServer(pubSubServer, cancel)
 	n.pubSubServer = pubSubServer
 
