@@ -914,25 +914,7 @@ func CDFBalance() *big.Int {
 
 func EconomicString() string {
 	if nil != ec {
-		type rewardConfigJson struct {
-			rewardConfig
-			rewardConfigExtend
-		}
-		type EconomicModelJson struct {
-			EconomicModel
-			Reward      rewardConfigJson        `json:"reward"`
-			Restricting restrictingConfigExtend `json:"restricting"`
-		}
-
-		emJson := &EconomicModelJson{
-			EconomicModel: *ec,
-			Reward: rewardConfigJson{
-				rewardConfig:       ec.Reward,
-				rewardConfigExtend: ece.Reward,
-			},
-			Restricting: ece.Restricting,
-		}
-		ecByte, _ := json.Marshal(emJson)
+		ecByte, _ := json.Marshal(ec)
 		return string(ecByte)
 	} else {
 		return ""
