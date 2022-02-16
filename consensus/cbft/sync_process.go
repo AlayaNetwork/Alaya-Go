@@ -337,16 +337,17 @@ func (cbft *Cbft) OnGetQCBlockList(id string, msg *protocols.GetQCBlockList) err
 // OnGetPrepareVoteV2 is responsible for processing the business logic
 // of the GetPrepareVote message. It will synchronously return a
 // PrepareVotes message to the sender.
-func (cbft *Cbft) OnGetPrepareVoteV2(id string, msg *protocols.GetPrepareVoteV2) error {
+func (cbft *Cbft) OnGetPrepareVoteV2(id string, msg *protocols.GetPrepareVoteV2) (ctypes.Message, error) {
 	cbft.log.Debug("Received message on OnGetPrepareVoteV2", "from", id, "msgHash", msg.MsgHash(), "message", msg.String())
 	if msg.Epoch == cbft.state.Epoch() && msg.ViewNumber == cbft.state.ViewNumber() {
 		// If the block has already QC, that response QC instead of votes.
 		// Avoid the sender spent a lot of time to verifies PrepareVote msg.
 		_, qc := cbft.state.ViewBlockAndQC(msg.BlockIndex)
 		if qc != nil {
+			blockQuorumCert := &protocols.BlockQuorumCert{BlockQC: qc}
 			cbft.network.Send(id, &protocols.BlockQuorumCert{BlockQC: qc})
 			cbft.log.Debug("Send BlockQuorumCert", "peer", id, "qc", qc.String())
-			return nil
+			return blockQuorumCert, nil
 		}
 
 		if len(msg.UnKnownGroups.UnKnown) > 0 {
@@ -369,15 +370,20 @@ func (cbft *Cbft) OnGetPrepareVoteV2(id string, msg *protocols.GetPrepareVoteV2)
 				if remain <= 0 {
 					break
 				}
+				groupLen := cbft.groupLen(cbft.state.Epoch(), un.GroupID)
 				groupThreshold := cbft.groupThreshold(cbft.state.Epoch(), un.GroupID)
 				// the other party has not reached a group consensus, and directly returns the group aggregation signature (if it exists locally)
 				var rgqc *protocols.RGBlockQuorumCert
-				if un.UnKnownSet.HasLength() < groupThreshold {
+				if groupLen-un.UnKnownSet.HasLength() < groupThreshold {
 					rgqc = cbft.state.FindMaxGroupRGBlockQuorumCert(msg.BlockIndex, un.GroupID)
 					if rgqc != nil {
 						RGBlockQuorumCerts = append(RGBlockQuorumCerts, rgqc)
 						matched := rgqc.BlockQC.ValidatorSet.And(un.UnKnownSet).HasLength()
 						remain -= matched
+					}
+					// Limit response votes
+					if remain <= 0 {
+						break
 					}
 				}
 				if len(prepareVoteMap) > 0 {
@@ -398,12 +404,14 @@ func (cbft *Cbft) OnGetPrepareVoteV2(id string, msg *protocols.GetPrepareVoteV2)
 			}
 
 			if len(votes) > 0 || len(RGBlockQuorumCerts) > 0 {
-				cbft.network.Send(id, &protocols.PrepareVotesV2{Epoch: msg.Epoch, ViewNumber: msg.ViewNumber, BlockIndex: msg.BlockIndex, Votes: votes, RGBlockQuorumCerts: RGBlockQuorumCerts})
+				prepareVotesV2 := &protocols.PrepareVotesV2{Epoch: msg.Epoch, ViewNumber: msg.ViewNumber, BlockIndex: msg.BlockIndex, Votes: votes, RGBlockQuorumCerts: RGBlockQuorumCerts}
+				cbft.network.Send(id, prepareVotesV2)
 				cbft.log.Debug("Send PrepareVotesV2", "peer", id, "blockIndex", msg.BlockIndex, "votes length", len(votes), "RGBlockQuorumCerts length", len(RGBlockQuorumCerts))
+				return prepareVotesV2, nil
 			}
 		}
 	}
-	return nil
+	return nil, nil
 }
 
 // OnGetPrepareVoteV2 is responsible for processing the business logic
@@ -620,7 +628,7 @@ func (cbft *Cbft) OnPrepareBlockHash(id string, msg *protocols.PrepareBlockHash)
 // OnGetViewChangeV2 responds to nodes that require viewChange.
 // The Epoch and viewNumber of viewChange must be consistent
 // with the state of the current node.
-func (cbft *Cbft) OnGetViewChangeV2(id string, msg *protocols.GetViewChangeV2) error {
+func (cbft *Cbft) OnGetViewChangeV2(id string, msg *protocols.GetViewChangeV2) (ctypes.Message, error) {
 	cbft.log.Debug("Received message on OnGetViewChangeV2", "from", id, "msgHash", msg.MsgHash(), "message", msg.String(), "local", cbft.state.ViewString())
 
 	localEpoch, localViewNumber := cbft.state.Epoch(), cbft.state.ViewNumber()
@@ -656,15 +664,20 @@ func (cbft *Cbft) OnGetViewChangeV2(id string, msg *protocols.GetViewChangeV2) e
 			if remain <= 0 {
 				break
 			}
+			groupLen := cbft.groupLen(cbft.state.Epoch(), un.GroupID)
 			groupThreshold := cbft.groupThreshold(cbft.state.Epoch(), un.GroupID)
 			// the other party has not reached a group consensus, and directly returns the group aggregation signature (if it exists locally)
 			var rgqc *protocols.RGViewChangeQuorumCert
-			if un.UnKnownSet.HasLength() < groupThreshold {
+			if groupLen-un.UnKnownSet.HasLength() < groupThreshold {
 				rgqc = cbft.state.FindMaxRGViewChangeQuorumCert(un.GroupID)
 				if rgqc != nil {
 					RGViewChangeQuorumCerts = append(RGViewChangeQuorumCerts, rgqc)
 					matched := rgqc.ViewChangeQC.ValidatorSet().And(un.UnKnownSet).HasLength()
 					remain -= matched
+				}
+				// Limit response votes
+				if remain <= 0 {
+					break
 				}
 			}
 			if len(viewChangeMap) > 0 {
@@ -685,27 +698,29 @@ func (cbft *Cbft) OnGetViewChangeV2(id string, msg *protocols.GetViewChangeV2) e
 		}
 
 		if len(viewChanges) > 0 || len(RGViewChangeQuorumCerts) > 0 {
-			cbft.network.Send(id, &protocols.ViewChangesV2{VCs: viewChanges, RGViewChangeQuorumCerts: RGViewChangeQuorumCerts})
+			viewChangesV2 := &protocols.ViewChangesV2{VCs: viewChanges, RGViewChangeQuorumCerts: RGViewChangeQuorumCerts}
+			cbft.network.Send(id, viewChangesV2)
 			cbft.log.Debug("Send ViewChangesV2", "peer", id, "viewChanges length", len(viewChanges), "RGViewChangeQuorumCerts length", len(RGViewChangeQuorumCerts))
+			return viewChangesV2, nil
 		}
-		return nil
+		return nil, nil
 	}
 	// Return view QC in the case of less than 1.
 	if isLastView() {
 		lastViewChangeQC := cbft.state.LastViewChangeQC()
 		if lastViewChangeQC == nil {
 			cbft.log.Info("Not found lastViewChangeQC")
-			return nil
+			return nil, nil
 		}
 		err := lastViewChangeQC.EqualAll(msg.Epoch, msg.ViewNumber)
 		if err != nil {
 			cbft.log.Error("Last view change is not equal msg.viewNumber", "err", err)
-			return err
+			return nil, err
 		}
 		cbft.network.Send(id, &protocols.ViewChangeQuorumCert{
 			ViewChangeQC: lastViewChangeQC,
 		})
-		return nil
+		return nil, nil
 	}
 	// get previous viewChangeQC from wal db
 	if isPreviousView() {
@@ -720,11 +735,11 @@ func (cbft *Cbft) OnGetViewChangeV2(id string, msg *protocols.GetViewChangeV2) e
 			}
 			cbft.log.Debug("Send previous viewChange quorumCert", "viewChangeQuorumCert", viewChangeQuorumCert.String())
 			cbft.network.Send(id, viewChangeQuorumCert)
-			return nil
+			return nil, nil
 		}
 	}
 
-	return fmt.Errorf("request is not match local view, local:%s,msg:%s", cbft.state.ViewString(), msg.String())
+	return nil, fmt.Errorf("request is not match local view, local:%s,msg:%s", cbft.state.ViewString(), msg.String())
 }
 
 // OnGetViewChangeV2 responds to nodes that require viewChange.
