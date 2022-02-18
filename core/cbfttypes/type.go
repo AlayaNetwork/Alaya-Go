@@ -141,8 +141,10 @@ type GroupValidators struct {
 }
 
 type Validators struct {
-	Nodes            ValidateNodeMap `json:"validateNodes"`
-	ValidBlockNumber uint64          `json:"validateBlockNumber"`
+	Nodes ValidateNodeMap `json:"validateNodes"`
+
+	// the round start blockNumber
+	ValidBlockNumber uint64 `json:"validateBlockNumber"`
 
 	// Sorting based on distance
 	SortedValidators *SortedValidatorNodes `json:"sortedNodes"`

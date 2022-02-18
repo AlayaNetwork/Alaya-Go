@@ -19,10 +19,11 @@ package cbft
 import (
 	"context"
 	"crypto/ecdsa"
-	"github.com/AlayaNetwork/Alaya-Go/p2p"
 	"math/big"
 	"net"
 	"time"
+
+	"github.com/AlayaNetwork/Alaya-Go/p2p"
 
 	"github.com/AlayaNetwork/Alaya-Go/node"
 
@@ -48,7 +49,6 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/core/vm"
 	"github.com/AlayaNetwork/Alaya-Go/crypto"
 	"github.com/AlayaNetwork/Alaya-Go/crypto/bls"
-	"github.com/AlayaNetwork/Alaya-Go/event"
 	"github.com/AlayaNetwork/Alaya-Go/params"
 )
 
@@ -151,9 +151,10 @@ func CreateCBFT(pk *ecdsa.PrivateKey, sk *bls.SecretKey, period uint64, amount u
 	running := &p2p.Server{}
 	ctx, _ := context.WithCancel(context.Background())
 	pubSubServer := p2p.NewPubSubServer(ctx, pnode, running)
-	serviceContext := node.NewServiceContextWithPubSubServer(&node.Config{DataDir: ""}, nil, new(event.TypeMux), nil, pubSubServer)
+	node, _ := node.New(&node.Config{})
+	node.SetPubSubServer(pubSubServer)
 
-	return New(sysConfig, optConfig, serviceContext.EventMux, serviceContext)
+	return New(sysConfig, optConfig, node.EventMux(), node)
 }
 
 func CreateGenesis(db ethdb.Database) (core.Genesis, *types.Block) {
