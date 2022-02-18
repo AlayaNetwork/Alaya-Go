@@ -99,11 +99,11 @@ type Config struct {
 	// a simple file name, it is placed inside the data directory (or on the root
 	// pipe path on Windows), whereas if it's a resolvable path name (absolute or
 	// relative), then that specific path is enforced. An empty path disables IPC.
-	IPCPath string `toml:",omitempty"`
+	IPCPath string
 
 	// HTTPHost is the host interface on which to start the HTTP RPC server. If this
 	// field is empty, no HTTP API endpoint will be started.
-	HTTPHost string `toml:",omitempty"`
+	HTTPHost string
 
 	// HTTPPort is the TCP port number on which to start the HTTP RPC server. The
 	// default zero value is/ valid and will pick a port number randomly (useful
@@ -127,7 +127,7 @@ type Config struct {
 	// HTTPModules is a list of API modules to expose via the HTTP RPC interface.
 	// If the module list is empty, all RPC API endpoints designated public will be
 	// exposed.
-	HTTPModules []string `toml:",omitempty"`
+	HTTPModules []string
 
 	// HTTPTimeouts allows for customization of the timeout values used by the HTTP RPC
 	// interface.
@@ -135,7 +135,7 @@ type Config struct {
 
 	// WSHost is the host interface on which to start the websocket RPC server. If
 	// this field is empty, no websocket API endpoint will be started.
-	WSHost string `toml:",omitempty"`
+	WSHost string
 
 	// WSPort is the TCP port number on which to start the websocket RPC server. The
 	// default zero value is/ valid and will pick a port number randomly (useful for
@@ -150,7 +150,7 @@ type Config struct {
 	// WSModules is a list of API modules to expose via the websocket RPC interface.
 	// If the module list is empty, all RPC API endpoints designated public will be
 	// exposed.
-	WSModules []string `toml:",omitempty"`
+	WSModules []string
 
 	// WSExposeAll exposes all API modules via the WebSocket RPC interface rather
 	// than just the public ones.
@@ -158,15 +158,6 @@ type Config struct {
 	// *WARNING* Only set this if the node is running in a trusted network, exposing
 	// private APIs to untrusted users is a major security risk.
 	WSExposeAll bool `toml:",omitempty"`
-
-	// GraphQLHost is the host interface on which to start the GraphQL server. If this
-	// field is empty, no GraphQL API endpoint will be started.
-	GraphQLHost string `toml:",omitempty"`
-
-	// GraphQLPort is the TCP port number on which to start the GraphQL server. The
-	// default zero value is/ valid and will pick a port number randomly (useful
-	// for ephemeral nodes).
-	GraphQLPort int `toml:",omitempty"`
 
 	// GraphQLCors is the Cross-Origin Resource Sharing header to send to requesting
 	// clients. Please be aware that CORS is a browser enforced security, it's fully
@@ -268,7 +259,7 @@ func DefaultWSEndpoint() string {
 // ExtRPCEnabled returns the indicator whether node enables the external
 // RPC(http, ws or graphql).
 func (c *Config) ExtRPCEnabled() bool {
-	return c.HTTPHost != "" || c.WSHost != "" || c.GraphQLHost != ""
+	return c.HTTPHost != "" || c.WSHost != ""
 }
 
 // NodeName returns the devp2p node identifier.
@@ -310,6 +301,17 @@ var isOldPlatONResource = map[string]bool{
 
 func (c *Config) GenesisPath() string {
 	return c.ResolvePath(datadirGenesis)
+}
+
+func (c *Config) ResolveFreezerPath(name string, freezer string) string {
+	root := c.ResolvePath(name)
+	switch {
+	case freezer == "":
+		freezer = filepath.Join(root, "ancient")
+	case !filepath.IsAbs(freezer):
+		freezer = c.ResolvePath(freezer)
+	}
+	return freezer
 }
 
 // ResolvePath resolves path in the instance directory.

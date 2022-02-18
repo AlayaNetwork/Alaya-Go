@@ -50,7 +50,7 @@ func (t *NoopService) APIs() []rpc.API {
 	return []rpc.API{}
 }
 
-func (t *NoopService) Start(server *p2p.Server) error {
+func (t *NoopService) Start() error {
 	return nil
 }
 

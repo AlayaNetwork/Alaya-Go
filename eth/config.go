@@ -17,9 +17,10 @@
 package eth
 
 import (
-	"github.com/AlayaNetwork/Alaya-Go/miner"
 	"math/big"
 	"time"
+
+	"github.com/AlayaNetwork/Alaya-Go/miner"
 
 	"github.com/AlayaNetwork/Alaya-Go/params"
 
@@ -42,12 +43,12 @@ var DefaultConfig = Config{
 		Period:            20000,
 		Amount:            10,
 	},
-	NetworkId:     1,
-	LightPeers:    100,
-	DatabaseCache: 768,
-	TrieCache:     32,
-	TrieTimeout:   60 * time.Minute,
-	TrieDBCache:   512,
+	NetworkId: 1,
+	//LightPeers:        100,
+	DatabaseCache:     768,
+	TrieCache:         32,
+	TrieTimeout:       60 * time.Minute,
+	TrieDBCache:       512,
 	DBDisabledGC:      false,
 	DBGCInterval:      86400,
 	DBGCTimeout:       time.Minute,
@@ -105,8 +106,8 @@ type Config struct {
 	NoPruning bool
 
 	// Light client options
-	LightServ  int `toml:",omitempty"` // Maximum percentage of time allowed for serving LES requests
-	LightPeers int `toml:",omitempty"` // Maximum number of LES client peers
+	//LightServ  int `toml:",omitempty"` // Maximum percentage of time allowed for serving LES requests
+	//LightPeers int `toml:",omitempty"` // Maximum number of LES client peers
 
 	// Database options
 	SkipBcVersionCheck bool `toml:"-"`
@@ -128,7 +129,7 @@ type Config struct {
 	VmTimeoutDuration uint64
 
 	// Mining options
-	Miner	miner.Config
+	Miner miner.Config
 	// minning conig
 	MiningLogAtDepth       uint          // miningLogAtDepth is the number of confirmations before logging successful mining.
 	TxChanSize             int           // txChanSize is the size of channel listening to NewTxsEvent.The number is referenced from the size of tx pool.
