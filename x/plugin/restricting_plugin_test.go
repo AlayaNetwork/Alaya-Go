@@ -114,13 +114,13 @@ func TestRestrictingPlugin_AddRestrictingRecord(t *testing.T) {
 		}
 		var largePlans, largeMountPlans, notEnough []restricting.RestrictingPlan
 		for i := 0; i < 40; i++ {
-			largePlans = append(largePlans, restricting.RestrictingPlan{1, big.NewInt(1e15)})
+			largePlans = append(largePlans, restricting.RestrictingPlan{Epoch: 1, Amount: big.NewInt(1e15)})
 		}
 		for i := 0; i < 4; i++ {
-			largeMountPlans = append(largeMountPlans, restricting.RestrictingPlan{1, big.NewInt(1e18)})
+			largeMountPlans = append(largeMountPlans, restricting.RestrictingPlan{Epoch: 1, Amount: big.NewInt(1e18)})
 		}
 		for i := 0; i < 4; i++ {
-			notEnough = append(notEnough, restricting.RestrictingPlan{1, big.NewInt(1e16)})
+			notEnough = append(notEnough, restricting.RestrictingPlan{Epoch: 1, Amount: big.NewInt(1e16)})
 		}
 		x := []testtmp{
 			{
@@ -134,12 +134,12 @@ func TestRestrictingPlugin_AddRestrictingRecord(t *testing.T) {
 				des:    "nil plan",
 			},
 			{
-				input:  []restricting.RestrictingPlan{{0, big.NewInt(1e15)}},
+				input:  []restricting.RestrictingPlan{{Epoch: 0, Amount: big.NewInt(1e15)}},
 				expect: restricting.ErrParamEpochInvalid,
 				des:    "epoch is zero",
 			},
 			{
-				input:  []restricting.RestrictingPlan{{1, big.NewInt(0)}},
+				input:  []restricting.RestrictingPlan{{Epoch: 1, Amount: big.NewInt(0)}},
 				expect: restricting.ErrCreatePlanAmountLessThanZero,
 				des:    "amount is 0",
 			},
@@ -164,9 +164,9 @@ func TestRestrictingPlugin_AddRestrictingRecord(t *testing.T) {
 		mockDB := buildStateDB(t)
 		mockDB.AddBalance(from, big.NewInt(8e18))
 		plans := make([]restricting.RestrictingPlan, 0)
-		plans = append(plans, restricting.RestrictingPlan{1, big.NewInt(1e17)})
-		plans = append(plans, restricting.RestrictingPlan{1, big.NewInt(1e17)})
-		plans = append(plans, restricting.RestrictingPlan{2, big.NewInt(1e18)})
+		plans = append(plans, restricting.RestrictingPlan{Epoch: 1, Amount: big.NewInt(1e17)})
+		plans = append(plans, restricting.RestrictingPlan{Epoch: 1, Amount: big.NewInt(1e17)})
+		plans = append(plans, restricting.RestrictingPlan{Epoch: 2, Amount: big.NewInt(1e18)})
 
 		if err := plugin.AddRestrictingRecord(from, to, xutil.CalcBlocksEachEpoch(gov.GetCurrentActiveVersion(mockDB))-10, common.ZeroHash, plans, mockDB, RestrictingTxHash); err != nil {
 			t.Error(err)
@@ -217,10 +217,10 @@ func TestRestrictingPlugin_AddRestrictingRecord(t *testing.T) {
 		mockDB.AddBalance(vm.RestrictingContractAddr, big.NewInt(2e18))
 
 		plans := make([]restricting.RestrictingPlan, 0)
-		plans = append(plans, restricting.RestrictingPlan{1, big.NewInt(1e17)})
-		plans = append(plans, restricting.RestrictingPlan{1, big.NewInt(1e17)})
-		plans = append(plans, restricting.RestrictingPlan{2, big.NewInt(1e18)})
-		plans = append(plans, restricting.RestrictingPlan{3, big.NewInt(1e18)})
+		plans = append(plans, restricting.RestrictingPlan{Epoch: 1, Amount: big.NewInt(1e17)})
+		plans = append(plans, restricting.RestrictingPlan{Epoch: 1, Amount: big.NewInt(1e17)})
+		plans = append(plans, restricting.RestrictingPlan{Epoch: 2, Amount: big.NewInt(1e18)})
+		plans = append(plans, restricting.RestrictingPlan{Epoch: 3, Amount: big.NewInt(1e18)})
 		if err := plugin.AddRestrictingRecord(from, to, xutil.CalcBlocksEachEpoch(gov.GetCurrentActiveVersion(mockDB))-10, common.ZeroHash, plans, mockDB, RestrictingTxHash); err != nil {
 			t.Error(err)
 		}
@@ -271,7 +271,7 @@ func NewTestRestrictingPlugin() *TestRestrictingPlugin {
 func TestRestrictingPlugin_Compose3(t *testing.T) {
 	plugin := NewTestRestrictingPlugin()
 	plans := make([]restricting.RestrictingPlan, 0)
-	plans = append(plans, restricting.RestrictingPlan{1, big.NewInt(1e18)})
+	plans = append(plans, restricting.RestrictingPlan{Epoch: 1, Amount: big.NewInt(1e18)})
 	if err := plugin.AddRestrictingRecord(plugin.from, plugin.to, xutil.CalcBlocksEachEpoch(gov.GetCurrentActiveVersion(plugin.mockDB))-10, common.ZeroHash, plans, plugin.mockDB, RestrictingTxHash); err != nil {
 		t.Error(err)
 	}
@@ -302,8 +302,8 @@ func TestRestrictingPlugin_Compose2(t *testing.T) {
 	mockDB := buildStateDB(t)
 	mockDB.AddBalance(from, big.NewInt(9e18))
 	plans := make([]restricting.RestrictingPlan, 0)
-	plans = append(plans, restricting.RestrictingPlan{1, big.NewInt(1e18)})
-	plans = append(plans, restricting.RestrictingPlan{1, big.NewInt(1e18)})
+	plans = append(plans, restricting.RestrictingPlan{Epoch: 1, Amount: big.NewInt(1e18)})
+	plans = append(plans, restricting.RestrictingPlan{Epoch: 1, Amount: big.NewInt(1e18)})
 	if err := plugin.AddRestrictingRecord(from, to, xutil.CalcBlocksEachEpoch(gov.GetCurrentActiveVersion(mockDB))-10, common.ZeroHash, plans, mockDB, RestrictingTxHash); err != nil {
 		t.Error(err)
 	}
@@ -314,7 +314,7 @@ func TestRestrictingPlugin_Compose2(t *testing.T) {
 		t.Error(err)
 	}
 
-	plans2 := []restricting.RestrictingPlan{restricting.RestrictingPlan{1, big.NewInt(3e18)}}
+	plans2 := []restricting.RestrictingPlan{restricting.RestrictingPlan{Epoch: 1, Amount: big.NewInt(3e18)}}
 	if err := plugin.AddRestrictingRecord(from, to, xutil.CalcBlocksEachEpoch(gov.GetCurrentActiveVersion(mockDB))+10, common.ZeroHash, plans2, mockDB, RestrictingTxHash); err != nil {
 		t.Error(err)
 	}
@@ -355,8 +355,8 @@ func TestRestrictingPlugin_Compose(t *testing.T) {
 	}
 	mockDB.AddBalance(from, big.NewInt(9e18))
 	plans := make([]restricting.RestrictingPlan, 0)
-	plans = append(plans, restricting.RestrictingPlan{1, big.NewInt(1e18)})
-	plans = append(plans, restricting.RestrictingPlan{1, big.NewInt(1e18)})
+	plans = append(plans, restricting.RestrictingPlan{Epoch: 1, Amount: big.NewInt(1e18)})
+	plans = append(plans, restricting.RestrictingPlan{Epoch: 1, Amount: big.NewInt(1e18)})
 
 	if err := plugin.AddRestrictingRecord(from, to, xutil.CalcBlocksEachEpoch(gov.GetCurrentActiveVersion(mockDB))-10, common.ZeroHash, plans, mockDB, RestrictingTxHash); err != nil {
 		t.Error(err)
@@ -382,7 +382,7 @@ func TestRestrictingPlugin_Compose(t *testing.T) {
 	assert.Equal(t, mockDB.GetBalance(vm.StakingContractAddr), big.NewInt(2e18))
 	infoAssertF(big.NewInt(2e18), []uint64{}, big.NewInt(2e18), big.NewInt(2e18))
 
-	plans2 := []restricting.RestrictingPlan{restricting.RestrictingPlan{1, big.NewInt(1e18)}}
+	plans2 := []restricting.RestrictingPlan{restricting.RestrictingPlan{Epoch: 1, Amount: big.NewInt(1e18)}}
 	if err := plugin.AddRestrictingRecord(from, to, xutil.CalcBlocksEachEpoch(gov.GetCurrentActiveVersion(mockDB))+10, common.ZeroHash, plans2, mockDB, RestrictingTxHash); err != nil {
 		t.Error(err)
 	}
@@ -409,9 +409,9 @@ func TestRestrictingPlugin_GetRestrictingInfo(t *testing.T) {
 		chain.StateDB.AddBalance(addrArr[1], big.NewInt(8e18))
 
 		plans := make([]restricting.RestrictingPlan, 0)
-		plans = append(plans, restricting.RestrictingPlan{1, big.NewInt(1e18)})
-		plans = append(plans, restricting.RestrictingPlan{1, big.NewInt(1e18)})
-		plans = append(plans, restricting.RestrictingPlan{2, big.NewInt(1e18)})
+		plans = append(plans, restricting.RestrictingPlan{Epoch: 1, Amount: big.NewInt(1e18)})
+		plans = append(plans, restricting.RestrictingPlan{Epoch: 1, Amount: big.NewInt(1e18)})
+		plans = append(plans, restricting.RestrictingPlan{Epoch: 2, Amount: big.NewInt(1e18)})
 		total := new(big.Int)
 		for _, value := range plans {
 			total.Add(total, value.Amount)
@@ -460,9 +460,9 @@ func TestRestrictingInstance(t *testing.T) {
 	from, to := addrArr[0], addrArr[1]
 	mockDB.AddBalance(from, big.NewInt(9e18).Add(big.NewInt(9e18), big.NewInt(9e18)))
 	plans := make([]restricting.RestrictingPlan, 0)
-	plans = append(plans, restricting.RestrictingPlan{1, big.NewInt(3e18)})
-	plans = append(plans, restricting.RestrictingPlan{2, big.NewInt(4e18)})
-	plans = append(plans, restricting.RestrictingPlan{3, big.NewInt(2e18)})
+	plans = append(plans, restricting.RestrictingPlan{Epoch: 1, Amount: big.NewInt(3e18)})
+	plans = append(plans, restricting.RestrictingPlan{Epoch: 2, Amount: big.NewInt(4e18)})
+	plans = append(plans, restricting.RestrictingPlan{Epoch: 3, Amount: big.NewInt(2e18)})
 	if err := plugin.AddRestrictingRecord(from, to, xutil.CalcBlocksEachEpoch(gov.GetCurrentActiveVersion(mockDB))-10, common.ZeroHash, plans, mockDB, RestrictingTxHash); err != nil {
 		t.Error(err)
 	}
@@ -482,7 +482,7 @@ func TestRestrictingInstance(t *testing.T) {
 	}
 	//	SetLatestEpoch(mockDB, 3)
 	plans2 := make([]restricting.RestrictingPlan, 0)
-	plans2 = append(plans2, restricting.RestrictingPlan{1, big.NewInt(1e18)})
+	plans2 = append(plans2, restricting.RestrictingPlan{Epoch: 1, Amount: big.NewInt(1e18)})
 
 	if err := plugin.AddRestrictingRecord(from, to, xutil.CalcBlocksEachEpoch(gov.GetCurrentActiveVersion(mockDB))*3+10, common.ZeroHash, plans2, mockDB, RestrictingTxHash); err != nil {
 		t.Error(err)
@@ -590,7 +590,7 @@ func TestRestrictingInstanceWithSlashing(t *testing.T) {
 	}
 
 	plans2 := make([]restricting.RestrictingPlan, 0)
-	plans2 = append(plans2, restricting.RestrictingPlan{1, big.NewInt(1e18)})
+	plans2 = append(plans2, restricting.RestrictingPlan{Epoch: 1, Amount: big.NewInt(1e18)})
 	if err := plugin.AddRestrictingRecord(from, to, xutil.CalcBlocksEachEpoch(gov.GetCurrentActiveVersion(mockDB))*3+10, common.ZeroHash, plans2, mockDB, RestrictingTxHash); err != nil {
 		t.Error(err)
 	}
@@ -626,8 +626,8 @@ func TestRestrictingGetRestrictingInfo(t *testing.T) {
 	from, to := addrArr[0], addrArr[1]
 	mockDB.AddBalance(from, big.NewInt(9e18).Add(big.NewInt(9e18), big.NewInt(9e18)))
 	plans := make([]restricting.RestrictingPlan, 0)
-	plans = append(plans, restricting.RestrictingPlan{1, big.NewInt(3e18)})
-	plans = append(plans, restricting.RestrictingPlan{1, big.NewInt(3e18)})
+	plans = append(plans, restricting.RestrictingPlan{Epoch: 1, Amount: big.NewInt(3e18)})
+	plans = append(plans, restricting.RestrictingPlan{Epoch: 1, Amount: big.NewInt(3e18)})
 
 	if err := plugin.AddRestrictingRecord(from, to, xutil.CalcBlocksEachEpoch(gov.GetCurrentActiveVersion(mockDB))-10, common.ZeroHash, plans, mockDB, RestrictingTxHash); err != nil {
 		t.Error(err)
@@ -660,8 +660,8 @@ func TestRestrictingReturnLockFunds(t *testing.T) {
 		}
 
 		plans := make([]restricting.RestrictingPlan, 0)
-		plans = append(plans, restricting.RestrictingPlan{1, big.NewInt(3e18)})
-		plans = append(plans, restricting.RestrictingPlan{20, big.NewInt(3e18)})
+		plans = append(plans, restricting.RestrictingPlan{Epoch: 1, Amount: big.NewInt(3e18)})
+		plans = append(plans, restricting.RestrictingPlan{Epoch: 20, Amount: big.NewInt(3e18)})
 		if err := plugin.AddRestrictingRecord(from, to, header.Number.Uint64(), hash, plans, chain.StateDB, header.Hash()); err != nil {
 			return err
 		}
@@ -749,8 +749,8 @@ func TestRestrictingForkAdvanceLockedFunds(t *testing.T) {
 		}
 
 		plans := make([]restricting.RestrictingPlan, 0)
-		plans = append(plans, restricting.RestrictingPlan{1, big.NewInt(3e18)})
-		plans = append(plans, restricting.RestrictingPlan{20, big.NewInt(3e18)})
+		plans = append(plans, restricting.RestrictingPlan{Epoch: 1, Amount: big.NewInt(3e18)})
+		plans = append(plans, restricting.RestrictingPlan{Epoch: 20, Amount: big.NewInt(3e18)})
 		if err := plugin.AddRestrictingRecord(from, to, header.Number.Uint64(), hash, plans, chain.StateDB, header.Hash()); err != nil {
 			return err
 		}
@@ -840,10 +840,10 @@ func TestRestrictingSlashingRelease(t *testing.T) {
 		}
 
 		plans := make([]restricting.RestrictingPlan, 0)
-		plans = append(plans, restricting.RestrictingPlan{1, big.NewInt(3e18)})
-		plans = append(plans, restricting.RestrictingPlan{2, big.NewInt(3e18)})
-		plans = append(plans, restricting.RestrictingPlan{3, big.NewInt(3e18)})
-		plans = append(plans, restricting.RestrictingPlan{4, big.NewInt(3e18)})
+		plans = append(plans, restricting.RestrictingPlan{Epoch: 1, Amount: big.NewInt(3e18)})
+		plans = append(plans, restricting.RestrictingPlan{Epoch: 2, Amount: big.NewInt(3e18)})
+		plans = append(plans, restricting.RestrictingPlan{Epoch: 3, Amount: big.NewInt(3e18)})
+		plans = append(plans, restricting.RestrictingPlan{Epoch: 4, Amount: big.NewInt(3e18)})
 
 		if err := plugin.AddRestrictingRecord(from, to, header.Number.Uint64(), hash, plans, chain.StateDB, header.Hash()); err != nil {
 			return err
@@ -914,7 +914,7 @@ func TestRestrictingSlashingRelease(t *testing.T) {
 	if err := chain.AddBlockWithSnapDB(true, func(hash common.Hash, header *types.Header, sdb snapshotdb.DB) error {
 
 		plans := make([]restricting.RestrictingPlan, 0)
-		plans = append(plans, restricting.RestrictingPlan{5, big.NewInt(1e18)})
+		plans = append(plans, restricting.RestrictingPlan{Epoch: 5, Amount: big.NewInt(1e18)})
 		if err := plugin.AddRestrictingRecord(from, to, header.Number.Uint64(), hash, plans, chain.StateDB, header.Hash()); err != nil {
 			return err
 		}

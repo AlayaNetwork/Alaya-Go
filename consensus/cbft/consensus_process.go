@@ -504,7 +504,6 @@ func (cbft *Cbft) insertPrepareQC(qc *ctypes.QuorumCert) {
 				blockIndex, finish := cbft.state.Executing()
 				return blockIndex != math.MaxUint32 && (qc.BlockIndex < blockIndex || (qc.BlockIndex == blockIndex && finish)) && linked(qc.BlockNumber)
 			}
-			return false
 		}
 		if block != nil && hasExecuted() {
 			cbft.log.Trace("Insert prepareQC", "qc", qc.String())
@@ -1025,7 +1024,6 @@ func (cbft *Cbft) findQCBlock() {
 			executingIndex, finish := cbft.state.Executing()
 			return blockIndex != math.MaxUint32 && (blockIndex < executingIndex || (executingIndex == blockIndex && finish)) && linked(blockIndex)
 		}
-		return false
 	}
 
 	alreadyQC := func() bool {

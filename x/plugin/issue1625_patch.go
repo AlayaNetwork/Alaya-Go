@@ -209,7 +209,7 @@ func (a *FixIssue1625Plugin) rollBackStaking(hash common.Hash, blockNumber *big.
 				return err
 			}
 			candidate := staking.Candidate{
-				&canbase, canmu,
+				CandidateBase: &canbase, CandidateMutable: canmu,
 			}
 			//如果该质押没有用锁仓，无需回滚
 			if candidate.IsNotEmpty() {
