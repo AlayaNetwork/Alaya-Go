@@ -95,7 +95,9 @@ func (bm *BftMock) InsertChain(block *types.Block) error {
 	bm.blockIndexs[block.Hash()] = len(bm.Blocks) - 1
 	bm.Current = block
 	bm.Base = block
-	rawdb.WriteBlock(bm.database, block)
+	if bm.database != nil {
+		rawdb.WriteBlock(bm.database, block)
+	}
 	return nil
 }
 
