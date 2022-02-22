@@ -62,9 +62,7 @@ func (srv *Server) DiscoverTopic(ctx context.Context, topic string) {
 						srv.log.Debug("all peers are found,no need searching network", "topic", topic)
 						continue
 					}
-					srv.topicSubscriberMu.RLock()
-					nodes := srv.topicSubscriber[topic]
-					srv.topicSubscriberMu.RUnlock()
+					nodes := srv.getPeers(topic)
 					peerNeedFind := srv.MinimumPeersPerTopic - len(nodes) + len(copyNodes)
 					if peerNeedFind <= 0 {
 						continue
@@ -94,16 +92,10 @@ func (srv *Server) topicWithPubSub(topic string) bool {
 }
 
 func (srv *Server) getNotConnectNode(topic string) ([]*enode.Node, error) {
-	srv.topicSubscriberMu.RLock()
-	nodes, ok := srv.topicSubscriber[topic]
-	if !ok {
-		srv.topicSubscriberMu.RUnlock()
+	nodes := srv.getPeers(topic)
+	if len(nodes) == 0 {
 		return nil, fmt.Errorf("the topic %s should discover can't find", topic)
 	}
-	copyNodes := make([]*enode.Node, len(nodes))
-	copy(copyNodes, nodes)
-	srv.topicSubscriberMu.RUnlock()
-
 	currentConnectPeer := make(map[enode.ID]struct{})
 	srv.doPeerOp(func(m map[enode.ID]*Peer) {
 		for id, _ := range m {
@@ -111,18 +103,18 @@ func (srv *Server) getNotConnectNode(topic string) ([]*enode.Node, error) {
 		}
 	})
 	// 找到没有连接的节点
-	for i := 0; i < len(copyNodes); {
-		if copyNodes[i].ID() == srv.localnode.ID() {
-			copyNodes = append(copyNodes[:i], copyNodes[i+1:]...)
+	for i := 0; i < len(nodes); {
+		if nodes[i].ID() == srv.localnode.ID() {
+			nodes = append(nodes[:i], nodes[i+1:]...)
 			continue
 		}
-		if _, ok := currentConnectPeer[copyNodes[i].ID()]; ok {
-			copyNodes = append(copyNodes[:i], copyNodes[i+1:]...)
+		if _, ok := currentConnectPeer[nodes[i].ID()]; ok {
+			nodes = append(nodes[:i], nodes[i+1:]...)
 			continue
 		}
 		i++
 	}
-	return copyNodes, nil
+	return nodes, nil
 }
 
 // FindPeersWithTopic performs a network search for peers
