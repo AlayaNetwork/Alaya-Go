@@ -175,15 +175,16 @@ func (n *Node) Start() error {
 		return ErrNodeStopped
 	}
 	n.state = runningState
-	err := n.startNetworking()
-	lifecycles := make([]Lifecycle, len(n.lifecycles))
-	copy(lifecycles, n.lifecycles)
-	n.lock.Unlock()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	pubSubServer := p2p.NewPubSubServer(ctx, n.server.LocalNode().Node(), n.server)
 	n.server.SetPubSubServer(pubSubServer, cancel)
 	n.pubSubServer = pubSubServer
+
+	err := n.startNetworking()
+	lifecycles := make([]Lifecycle, len(n.lifecycles))
+	copy(lifecycles, n.lifecycles)
+	n.lock.Unlock()
 
 	// Check if networking startup failed.
 	if err != nil {
