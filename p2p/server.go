@@ -901,11 +901,9 @@ running:
 			if consensusNodes[c.node.ID()] {
 				c.set(consensusDialedConn, true)
 			}
-			srv.topicSubscriberMu.RLock()
 			if len(srv.getPeersTopics(c.node.ID())) > 0 {
 				c.set(consensusDialedConn, true)
 			}
-			srv.topicSubscriberMu.RUnlock()
 
 			// TODO: track in-progress inbound node IDs (pre-Peer) to avoid dialing them.
 			c.cont <- srv.postHandshakeChecks(peers, inboundCount, c)
@@ -978,7 +976,7 @@ func (srv *Server) postHandshakeChecks(peers map[enode.ID]*Peer, inboundCount in
 	}
 	disconnectConsensus := 0
 	if srv.consensus && c.is(consensusDialedConn) && numConsensusPeer >= srv.MaxConsensusPeers {
-		srv.topicSubscriberMu.RLock()
+		topicPeers := srv.getAllPeers()
 		for _, connTopic := range srv.getPeersTopics(c.node.ID()) {
 			if len(srv.pubSubServer.PubSub().ListPeers(connTopic)) < srv.MinimumPeersPerTopic {
 				// 获取每个节点所拥有的主题的数量
@@ -987,7 +985,7 @@ func (srv *Server) postHandshakeChecks(peers map[enode.ID]*Peer, inboundCount in
 					nodeTopicsCount = make(map[enode.ID]int)
 				)
 
-				for topic, nodes := range srv.topicSubscriber {
+				for topic, nodes := range topicPeers {
 					if topic == connTopic {
 						continue
 					}
@@ -1002,7 +1000,7 @@ func (srv *Server) postHandshakeChecks(peers map[enode.ID]*Peer, inboundCount in
 					}
 				}
 				// 去掉拥有当前主题的节点
-				for _, node := range srv.topicSubscriber[connTopic] {
+				for _, node := range topicPeers[connTopic] {
 					if _, ok := nodeTopicsCount[node.ID()]; ok {
 						delete(nodeTopicsCount, node.ID())
 					}
@@ -1031,7 +1029,6 @@ func (srv *Server) postHandshakeChecks(peers map[enode.ID]*Peer, inboundCount in
 				}
 			}
 		}
-		srv.topicSubscriberMu.RUnlock()
 	}
 
 	switch {
@@ -1395,13 +1392,9 @@ func (srv *Server) watching() {
 				srv.log.Trace("Received RemoveValidatorEvent", "nodeID", data.Node.ID().String())
 				srv.RemoveConsensusPeer(data.Node)
 			case cbfttypes.NewTopicEvent:
-				srv.topicSubscriberMu.Lock()
-				topicSubscriber := make([]*enode.Node, len(data.Nodes))
-				copy(topicSubscriber, data.Nodes)
-				srv.topicSubscriber[data.Topic] = topicSubscriber
-
+				srv.setPeers(data.Topic, data.Nodes)
 				consensusPeers := make(map[enode.ID]struct{})
-				for _, nodes := range srv.topicSubscriber {
+				for _, nodes := range srv.getAllPeers() {
 					for _, node := range nodes {
 						consensusPeers[node.ID()] = struct{}{}
 					}
@@ -1411,12 +1404,10 @@ func (srv *Server) watching() {
 				}
 				srv.updateConsensusStatus <- consensusPeers
 				srv.log.Trace("Received NewTopicEvent", "consensusPeers", consensusPeers)
-				srv.topicSubscriberMu.Unlock()
 			case cbfttypes.ExpiredTopicEvent:
-				srv.topicSubscriberMu.Lock()
-				delete(srv.topicSubscriber, data.Topic)
+				srv.removePeers(data.Topic)
 				consensusPeers := make(map[enode.ID]struct{})
-				for _, peers := range srv.topicSubscriber {
+				for _, peers := range srv.getAllPeers() {
 					for _, peer := range peers {
 						consensusPeers[peer.ID()] = struct{}{}
 					}
@@ -1426,7 +1417,6 @@ func (srv *Server) watching() {
 				}
 				srv.updateConsensusStatus <- consensusPeers
 				srv.log.Trace("Received ExpiredTopicEvent", "consensusPeers", consensusPeers)
-				srv.topicSubscriberMu.Unlock()
 			default:
 				srv.log.Error("Received unexcepted event")
 			}
@@ -1442,6 +1432,8 @@ func (srv *Server) SetPubSubServer(pss *PubSubServer, cancel context.CancelFunc)
 }
 
 func (srv *Server) getPeersTopics(id enode.ID) []string {
+	srv.topicSubscriberMu.RLock()
+	defer srv.topicSubscriberMu.RUnlock()
 	topics := make([]string, 0)
 	for topic, nodes := range srv.topicSubscriber {
 		for _, node := range nodes {
@@ -1452,4 +1444,39 @@ func (srv *Server) getPeersTopics(id enode.ID) []string {
 		}
 	}
 	return topics
+}
+
+func (srv *Server) getPeers(topic string) []*enode.Node {
+	srv.topicSubscriberMu.RLock()
+	defer srv.topicSubscriberMu.RUnlock()
+	peers := srv.topicSubscriber[topic]
+	copyPeers := make([]*enode.Node, len(peers))
+	copy(copyPeers, peers)
+	return copyPeers
+}
+
+func (srv *Server) setPeers(topic string, peers []*enode.Node) {
+	srv.topicSubscriberMu.Lock()
+	defer srv.topicSubscriberMu.Unlock()
+	copyPeers := make([]*enode.Node, len(peers))
+	copy(copyPeers, peers)
+	srv.topicSubscriber[topic] = copyPeers
+}
+
+func (srv *Server) removePeers(topic string) {
+	srv.topicSubscriberMu.Lock()
+	defer srv.topicSubscriberMu.Unlock()
+	delete(srv.topicSubscriber, topic)
+}
+
+func (srv *Server) getAllPeers() map[string][]*enode.Node {
+	srv.topicSubscriberMu.RLock()
+	defer srv.topicSubscriberMu.RUnlock()
+	allPeers := make(map[string][]*enode.Node)
+	for topic, nodes := range srv.topicSubscriber {
+		peers := make([]*enode.Node, len(nodes))
+		copy(peers, nodes)
+		allPeers[topic] = peers
+	}
+	return allPeers
 }
