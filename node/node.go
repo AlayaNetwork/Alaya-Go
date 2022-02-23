@@ -158,6 +158,12 @@ func New(conf *Config) (*Node, error) {
 	node.ws = newHTTPServer(node.log, rpc.DefaultHTTPTimeouts)
 	node.ipc = newIPCServer(node.log, conf.IPCEndpoint())
 
+	ctx, cancel := context.WithCancel(context.Background())
+	localNode := enode.NewV4(&node.server.Config.PrivateKey.PublicKey, nil, 0, 0)
+	pubSubServer := p2p.NewPubSubServer(ctx, localNode, node.server)
+	node.server.SetPubSubServer(pubSubServer, cancel)
+	node.pubSubServer = pubSubServer
+
 	return node, nil
 }
 
@@ -178,12 +184,6 @@ func (n *Node) Start() error {
 	}
 	n.state = runningState
 
-	ctx, cancel := context.WithCancel(context.Background())
-	localNode := enode.NewV4(&n.server.Config.PrivateKey.PublicKey, nil, 0, 0)
-	pubSubServer := p2p.NewPubSubServer(ctx, localNode, n.server)
-	n.server.SetPubSubServer(pubSubServer, cancel)
-	n.pubSubServer = pubSubServer
-
 	err := n.startNetworking()
 	lifecycles := make([]Lifecycle, len(n.lifecycles))
 	copy(lifecycles, n.lifecycles)
@@ -202,6 +202,8 @@ func (n *Node) Start() error {
 		}
 		started = append(started, lifecycle)
 	}
+	log.Debug("cccccccccccc", "c", n.pubSubServer.Host())
+
 	// Check if any lifecycle failed to start.
 	if err != nil {
 		n.stopServices(started)
