@@ -125,7 +125,7 @@ func TestPubSubPublish(t *testing.T) {
 		newPeer := p2p.NewPeer(pubSub2.pss.Host().ID().ID(), "n2", nil)
 		t.Log("newPeer", "id", newPeer.ID().TerminalString(), "localId", pubSub1.pss.Host().ID().ID().TerminalString(), "name", "n1")
 		if err := pubSub1.handler(newPeer, trw1); err != nil {
-			t.Fatal(err)
+			t.Error(err)
 		}
 	}()
 
@@ -134,7 +134,7 @@ func TestPubSubPublish(t *testing.T) {
 		newPeer := p2p.NewPeer(pubSub1.pss.Host().ID().ID(), "n1", nil)
 		t.Log("newPeer", "id", newPeer.ID().TerminalString(), "localId", pubSub2.pss.Host().ID().ID().TerminalString(), "name", "n2")
 		if err := pubSub2.handler(newPeer, trw2); err != nil {
-			t.Fatal(err)
+			t.Error(err)
 		}
 	}()
 	time.Sleep(time.Millisecond * 800)
@@ -144,17 +144,19 @@ func TestPubSubPublish(t *testing.T) {
 	topic := "test"
 	go func() {
 		if err := pubSub1.Subscribe(topic); err != nil {
-			t.Fatal(err)
+			t.Error(err)
+		} else {
+			time.Sleep(time.Millisecond * 800)
+			pubSub1.Publish(topic, uint64(1), expect[0])
 		}
-		time.Sleep(time.Millisecond * 800)
-		pubSub1.Publish(topic, uint64(1), expect[0])
 	}()
 	go func() {
 		if err := pubSub2.Subscribe(topic); err != nil {
-			t.Fatal(err)
+			t.Error(err)
+		} else {
+			time.Sleep(time.Millisecond * 800)
+			pubSub2.Publish(topic, uint64(2), expect[1])
 		}
-		time.Sleep(time.Millisecond * 800)
-		pubSub2.Publish(topic, uint64(2), expect[1])
 	}()
 	wg.Wait()
 	pubSub1.Cancel(topic)
@@ -234,14 +236,14 @@ func TestPubSubPublish_DifferentTopics(t *testing.T) {
 		newPeer := p2p.NewPeer(pubSub2.pss.Host().ID().ID(), "n2", nil)
 		t.Log("newPeer", "id", newPeer.ID().TerminalString(), "localId", pubSub1.pss.Host().ID().ID().TerminalString())
 		if err := pubSub1.handler(newPeer, trw1); err != nil {
-			t.Fatal(err)
+			t.Error(err)
 		}
 	}()
 	go func() {
 		newPeer := p2p.NewPeer(pubSub1.pss.Host().ID().ID(), "n1", nil)
 		t.Log("newPeer", "id", newPeer.ID().TerminalString(), "localId", pubSub2.pss.Host().ID().ID().TerminalString())
 		if err := pubSub2.handler(newPeer, trw2); err != nil {
-			t.Fatal(err)
+			t.Error(err)
 		}
 	}()
 
@@ -250,14 +252,14 @@ func TestPubSubPublish_DifferentTopics(t *testing.T) {
 		newPeer := p2p.NewPeer(pubSub3.pss.Host().ID().ID(), "n3", nil)
 		t.Log("newPeer", "id", newPeer.ID().TerminalString(), "localId", pubSub1.pss.Host().ID().ID().TerminalString())
 		if err := pubSub1.handler(newPeer, trw1_3); err != nil {
-			t.Fatal(err)
+			t.Error(err)
 		}
 	}()
 	go func() {
 		newPeer := p2p.NewPeer(pubSub1.pss.Host().ID().ID(), "n1", nil)
 		t.Log("newPeer", "id", newPeer.ID().TerminalString(), "localId", pubSub3.pss.Host().ID().ID().TerminalString())
 		if err := pubSub3.handler(newPeer, trw3_1); err != nil {
-			t.Fatal(err)
+			t.Error(err)
 		}
 	}()
 	time.Sleep(time.Millisecond * 800)
@@ -266,27 +268,31 @@ func TestPubSubPublish_DifferentTopics(t *testing.T) {
 	topic2 := "test2"
 	go func() {
 		if err := pubSub1.Subscribe(topic1); err != nil {
-			t.Fatal(err)
+			t.Error(err)
+			return
 		}
 		if err := pubSub1.Subscribe(topic2); err != nil {
-			t.Fatal(err)
+			t.Error(err)
+			return
 		}
 		time.Sleep(time.Millisecond * 800)
 		pubSub1.Publish(topic1, uint64(1), expect[0])
 	}()
 	go func() {
 		if err := pubSub2.Subscribe(topic1); err != nil {
-			t.Fatal(err)
+			t.Error(err)
+		} else {
+			time.Sleep(time.Millisecond * 800)
+			pubSub2.Publish(topic1, uint64(2), expect[1])
 		}
-		time.Sleep(time.Millisecond * 800)
-		pubSub2.Publish(topic1, uint64(2), expect[1])
 	}()
 	go func() {
 		if err := pubSub3.Subscribe(topic2); err != nil {
-			t.Fatal(err)
+			t.Error(err)
+		} else {
+			time.Sleep(time.Millisecond * 800)
+			pubSub3.Publish(topic2, uint64(3), expect[2])
 		}
-		time.Sleep(time.Millisecond * 800)
-		pubSub3.Publish(topic2, uint64(3), expect[2])
 	}()
 	wg.Wait()
 	pubSub1.Cancel(topic1)
@@ -372,14 +378,14 @@ func TestPubSubPublish_ForwardMessage(t *testing.T) {
 		newPeer := p2p.NewPeer(pubSub2.pss.Host().ID().ID(), "n2", nil)
 		t.Log("newPeer", "id", newPeer.ID().TerminalString(), "localId", pubSub1.pss.Host().ID().ID().TerminalString(), "n1")
 		if err := pubSub1.handler(newPeer, trw1); err != nil {
-			t.Fatal(err)
+			t.Error(err)
 		}
 	}()
 	go func() {
 		newPeer := p2p.NewPeer(pubSub1.pss.Host().ID().ID(), "n1", nil)
 		t.Log("newPeer", "id", newPeer.ID().TerminalString(), "localId", pubSub2.pss.Host().ID().ID().TerminalString(), "n2")
 		if err := pubSub2.handler(newPeer, trw2); err != nil {
-			t.Fatal(err)
+			t.Error(err)
 		}
 	}()
 
@@ -388,14 +394,14 @@ func TestPubSubPublish_ForwardMessage(t *testing.T) {
 		newPeer := p2p.NewPeer(pubSub3.pss.Host().ID().ID(), "n3", nil)
 		t.Log("newPeer", "id", newPeer.ID().TerminalString(), "localId", pubSub2.pss.Host().ID().ID().TerminalString(), "n2")
 		if err := pubSub2.handler(newPeer, trw2_3); err != nil {
-			t.Fatal(err)
+			t.Error(err)
 		}
 	}()
 	go func() {
 		newPeer := p2p.NewPeer(pubSub2.pss.Host().ID().ID(), "n2", nil)
 		t.Log("newPeer", "id", newPeer.ID().TerminalString(), "localId", pubSub3.pss.Host().ID().ID().TerminalString(), "n3")
 		if err := pubSub3.handler(newPeer, trw3_2); err != nil {
-			t.Fatal(err)
+			t.Error(err)
 		}
 	}()
 	time.Sleep(time.Millisecond * 800)
@@ -403,24 +409,27 @@ func TestPubSubPublish_ForwardMessage(t *testing.T) {
 	topic := "test"
 	go func() {
 		if err := pubSub1.Subscribe(topic); err != nil {
-			t.Fatal(err)
+			t.Error(err)
+		} else {
+			time.Sleep(time.Millisecond * 800)
+			pubSub1.Publish(topic, uint64(1), expect[0])
 		}
-		time.Sleep(time.Millisecond * 800)
-		pubSub1.Publish(topic, uint64(1), expect[0])
 	}()
 	go func() {
 		if err := pubSub2.Subscribe(topic); err != nil {
-			t.Fatal(err)
+			t.Error(err)
+		} else {
+			time.Sleep(time.Millisecond * 800)
+			pubSub2.Publish(topic, uint64(2), expect[1])
 		}
-		time.Sleep(time.Millisecond * 800)
-		pubSub2.Publish(topic, uint64(2), expect[1])
 	}()
 	go func() {
 		if err := pubSub3.Subscribe(topic); err != nil {
-			t.Fatal(err)
+			t.Error(err)
+		} else {
+			time.Sleep(time.Millisecond * 800)
+			pubSub3.Publish(topic, uint64(3), expect[2])
 		}
-		time.Sleep(time.Millisecond * 800)
-		pubSub3.Publish(topic, uint64(3), expect[2])
 	}()
 	wg.Wait()
 	pubSub1.Cancel(topic)

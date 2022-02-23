@@ -214,8 +214,9 @@ func (n *Node) SetP2pChainID(ChainID *big.Int) {
 	n.server.ChainID = ChainID
 }
 
-func (n *Node) SetPubSubServer(server *p2p.PubSubServer) {
+func (n *Node) SetPubSubServer(server *p2p.PubSubServer, cancel context.CancelFunc) {
 	n.pubSubServer = server
+	n.server.SetPubSubServer(server, cancel)
 }
 
 func (n *Node) PubSubServer() *p2p.PubSubServer {

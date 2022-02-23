@@ -309,7 +309,7 @@ func goTool(subcmd string, args ...string) *exec.Cmd {
 
 func goToolArch(arch string, cc string, subcmd string, args ...string) *exec.Cmd {
 	cmd := build.GoTool(subcmd, args...)
-	cmd.Env = []string{"GOPATH=" + build.GOPATH()}
+	cmd.Env = make([]string, 0)
 	if arch == "" || arch == runtime.GOARCH {
 		cmd.Env = append(cmd.Env, "GOBIN="+GOBIN)
 	} else {
@@ -354,7 +354,7 @@ func doTest(cmdline []string) {
 	// and some tests run into timeouts under load.
 	gotest.Args = append(gotest.Args, "-p", "1")
 	if *coverage {
-		gotest.Args = append(gotest.Args, "-covermode=atomic", "-cover")
+		gotest.Args = append(gotest.Args, "-covermode=count", "-coverprofile=coverage.txt")
 	}
 	gotest.Args = append(gotest.Args, "-tags=test")
 	gotest.Args = append(gotest.Args, packages...)

@@ -1893,7 +1893,6 @@ func (iwe *iwantEverything) handleStream(s Stream) {
 		var rpc message.RPC
 		err := s.Read(&rpc)
 		if err != nil {
-			panic(err)
 			if err != io.EOF {
 				s.Close(err)
 			}

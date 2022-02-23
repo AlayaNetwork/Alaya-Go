@@ -653,9 +653,9 @@ func TestGovPlugin_VoteSuccess(t *testing.T) {
 
 	nodeIdx := 3
 	v := gov.VoteInfo{
-		txHashArr[0],
-		nodeIdArr[nodeIdx],
-		gov.Yes,
+		ProposalID: txHashArr[0],
+		VoteNodeID: nodeIdArr[nodeIdx],
+		VoteOption: gov.Yes,
 	}
 
 	chandler := node.GetCryptoHandler()
@@ -670,9 +670,9 @@ func TestGovPlugin_VoteSuccess(t *testing.T) {
 
 	nodeIdx = 1
 	v = gov.VoteInfo{
-		txHashArr[0],
-		nodeIdArr[nodeIdx],
-		gov.Yes,
+		ProposalID: txHashArr[0],
+		VoteNodeID: nodeIdArr[nodeIdx],
+		VoteOption: gov.Yes,
 	}
 
 	chandler = node.GetCryptoHandler()
@@ -710,9 +710,9 @@ func TestGovPlugin_Vote_Repeat(t *testing.T) {
 	buildBlockNoCommit(2)
 	nodeIdx := 3
 	v := gov.VoteInfo{
-		txHashArr[0],
-		nodeIdArr[nodeIdx],
-		gov.Yes,
+		ProposalID: txHashArr[0],
+		VoteNodeID: nodeIdArr[nodeIdx],
+		VoteOption: gov.Yes,
 	}
 
 	chandler := node.GetCryptoHandler()
@@ -726,9 +726,9 @@ func TestGovPlugin_Vote_Repeat(t *testing.T) {
 	}
 
 	v = gov.VoteInfo{
-		txHashArr[0],
-		nodeIdArr[nodeIdx], //repeated
-		gov.Yes,
+		ProposalID: txHashArr[0],
+		VoteNodeID: nodeIdArr[nodeIdx], //repeated
+		VoteOption: gov.Yes,
 	}
 
 	err = gov.Vote(sender, v, lastBlockHash, 2, promoteVersion, versionSign, stk, stateDB)
@@ -751,9 +751,9 @@ func TestGovPlugin_Vote_invalidSender(t *testing.T) {
 	buildBlockNoCommit(2)
 	nodeIdx := 3
 	v := gov.VoteInfo{
-		txHashArr[0],
-		nodeIdArr[nodeIdx],
-		gov.Yes,
+		ProposalID: txHashArr[0],
+		VoteNodeID: nodeIdArr[nodeIdx],
+		VoteOption: gov.Yes,
 	}
 
 	chandler := node.GetCryptoHandler()
@@ -865,9 +865,9 @@ func TestGovPlugin_VotedNew_DeclareOld(t *testing.T) {
 
 	nodeIdx := 3
 	v := gov.VoteInfo{
-		txHashArr[0],
-		nodeIdArr[nodeIdx],
-		gov.Yes,
+		ProposalID: txHashArr[0],
+		VoteNodeID: nodeIdArr[nodeIdx],
+		VoteOption: gov.Yes,
 	}
 
 	chandler := node.GetCryptoHandler()
@@ -882,9 +882,9 @@ func TestGovPlugin_VotedNew_DeclareOld(t *testing.T) {
 
 	nodeIdx = 1
 	v = gov.VoteInfo{
-		txHashArr[0],
-		nodeIdArr[nodeIdx],
-		gov.Yes,
+		ProposalID: txHashArr[0],
+		VoteNodeID: nodeIdArr[nodeIdx],
+		VoteOption: gov.Yes,
 	}
 
 	chandler = node.GetCryptoHandler()
