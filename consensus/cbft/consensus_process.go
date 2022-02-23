@@ -700,7 +700,7 @@ func (cbft *Cbft) trySendRGBlockQuorumCert() {
 
 	for index := uint32(0); index <= cbft.state.MaxViewBlockIndex(); index++ {
 		if cbft.state.HadSendRGBlockQuorumCerts(index) {
-			cbft.log.Debug("RGBlockQuorumCert has been sent, no need to send again", "blockIndex", index, "groupID", groupID)
+			cbft.log.Trace("RGBlockQuorumCert has been sent, no need to send again", "blockIndex", index, "groupID", groupID)
 			continue
 		}
 
@@ -762,7 +762,7 @@ func (cbft *Cbft) trySendRGViewChangeQuorumCert() {
 	}
 
 	if cbft.state.HadSendRGViewChangeQuorumCerts(cbft.state.ViewNumber()) {
-		cbft.log.Debug("RGViewChangeQuorumCert has been sent, no need to send again", "groupID", groupID)
+		cbft.log.Trace("RGViewChangeQuorumCert has been sent, no need to send again", "groupID", groupID)
 		return
 	}
 
