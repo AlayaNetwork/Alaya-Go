@@ -202,7 +202,6 @@ func (n *Node) Start() error {
 		}
 		started = append(started, lifecycle)
 	}
-	log.Debug("cccccccccccc", "c", n.pubSubServer.Host())
 
 	// Check if any lifecycle failed to start.
 	if err != nil {
