@@ -2036,14 +2036,14 @@ func TestUnmarshalSyntax(t *testing.T) {
 type unexportedFields struct {
 	Name string
 	m    map[string]interface{} `json:"-"`
-	m2   map[string]interface{} `json:"abcd"`
+	M2   string `json:"abcd"`
 
 	s []int `json:"-"`
 }
 
 func TestUnmarshalUnexported(t *testing.T) {
-	input := `{"Name": "Bob", "m": {"x": 123}, "m2": {"y": 456}, "abcd": {"z": 789}, "s": [2, 3]}`
-	want := &unexportedFields{Name: "Bob"}
+	input := `{"Name": "Bob", "m": {"x": 123}, "m2": {"y": 456}, "abcd": "z", "s": [2, 3]}`
+	want := &unexportedFields{Name: "Bob", M2: "z"}
 
 	out := &unexportedFields{}
 	err := Unmarshal([]byte(input), out)

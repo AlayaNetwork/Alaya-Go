@@ -178,13 +178,12 @@ func (ps *PubSub) Subscribe(topic string) error {
 	if err != nil {
 		return err
 	}
-	ctx, cancel := context.WithCancel(context.Background())
-	ps.pss.DiscoverTopic(ctx, topic)
-
 	subscription, err := t.Subscribe()
 	if err != nil {
 		return err
 	}
+	ctx, cancel := context.WithCancel(context.Background())
+	ps.pss.DiscoverTopic(ctx, topic)
 	ps.topics[topic] = t
 	ps.mySubs[topic] = subscription
 	ps.topicCtx[topic] = ctx

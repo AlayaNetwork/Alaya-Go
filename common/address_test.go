@@ -158,7 +158,7 @@ func TestJsonEncodeWithEIP55(t *testing.T) {
 func BenchmarkAddressString(b *testing.B) {
 	testAddr := MustBech32ToAddress("atp1x4w7852dxs69sy2mgf8w0s7tmvqx3cz2amt7l6")
 	for n := 0; n < b.N; n++ {
-		testAddr.String()
+		_ = testAddr.String()
 	}
 }
 

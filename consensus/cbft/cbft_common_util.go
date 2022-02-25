@@ -149,10 +149,10 @@ func CreateCBFT(pk *ecdsa.PrivateKey, sk *bls.SecretKey, period uint64, amount u
 	}
 
 	running := &p2p.Server{}
-	ctx, _ := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 	pubSubServer := p2p.NewPubSubServer(ctx, pnode, running)
 	node, _ := node.New(&node.Config{})
-	node.SetPubSubServer(pubSubServer)
+	node.SetPubSubServer(pubSubServer, cancel)
 
 	return New(sysConfig, optConfig, node.EventMux(), node)
 }
