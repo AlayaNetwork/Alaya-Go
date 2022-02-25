@@ -1043,6 +1043,7 @@ func (p *PubSub) handleIncomingRPC(rpc *RPC) {
 		for _, pmsg := range rpc.GetPublish() {
 			if !(p.subscribedToMsg(pmsg) || p.canRelayMsg(pmsg)) {
 				log.Debug("received message in topic we didn't subscribe to; ignoring message")
+				notSubscribeCounter.Inc(1)
 				continue
 			}
 
@@ -1099,6 +1100,7 @@ func (p *PubSub) pushMsg(msg *Message) {
 	id := p.msgID(msg.Message)
 	if p.seenMessage(id) {
 		p.tracer.DuplicateMessage(msg)
+		duplicateMessageCounter.Inc(1)
 		return
 	}
 
@@ -1108,6 +1110,7 @@ func (p *PubSub) pushMsg(msg *Message) {
 
 	if p.markSeen(id) {
 		p.publishMessage(msg)
+		messageCounter.Inc(1)
 	}
 }
 

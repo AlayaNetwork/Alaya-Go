@@ -59,6 +59,9 @@ var (
 	missRGBlockQuorumCertsGauage = metrics.NewRegisteredGauge("cbft/gauage/block/miss/rgqc", nil)
 	missVotesGauage              = metrics.NewRegisteredGauge("cbft/gauage/block/miss/vote", nil)
 
+	missVotesCounter     = metrics.NewRegisteredCounter("cbft/counter/block/miss/vote/count", nil)
+	responseVotesCounter = metrics.NewRegisteredCounter("cbft/counter/block/response/vote/count", nil)
+
 	// for rand-grouped-consensus viewChange
 	upgradeCoordinatorViewCounter = metrics.NewRegisteredCounter("cbft/counter/view/upgradeCoordinator/count", nil)
 
@@ -74,4 +77,7 @@ var (
 
 	missRGViewQuorumCertsGauage = metrics.NewRegisteredGauge("cbft/gauage/view/miss/rgqc", nil)
 	missVcsGauage               = metrics.NewRegisteredGauge("cbft/gauage/view/miss/vote", nil)
+
+	missVcsCounter     = metrics.NewRegisteredCounter("cbft/counter/view/miss/vcs/count", nil)
+	responseVcsCounter = metrics.NewRegisteredCounter("cbft/counter/view/response/vcs/count", nil)
 )

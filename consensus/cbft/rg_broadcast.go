@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	coordinatorWaitTimeout    = 200 * time.Millisecond
+	coordinatorWaitTimeout    = 800 * time.Millisecond
 	efficientCoordinatorRatio = 15 // TODO
 	defaultUnitID             = 0
 )
