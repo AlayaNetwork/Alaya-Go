@@ -1,10 +1,14 @@
 package pubsub
 
 import (
+	"compress/gzip"
+	"context"
 	"encoding/json"
 	"io"
+	"net"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/AlayaNetwork/Alaya-Go/p2p/pubsub/message"
 
@@ -173,20 +177,17 @@ func (t *PBTracer) doWrite() {
 
 var _ EventTracer = (*PBTracer)(nil)
 
-/*const RemoteTracerProtoID = ProtocolID("/libp2p/pubsub/tracer/1.0.0")
-
 // RemoteTracer is a tracer that sends trace events to a remote peer
 type RemoteTracer struct {
 	basicTracer
 	ctx  context.Context
-	host Host
-	peer enode.ID
+	dial *net.Dialer
+	remoteHost string
 }
 
 // NewRemoteTracer constructs a RemoteTracer, tracing to the peer identified by pi
-func NewRemoteTracer(ctx context.Context, host Host, pi enode.Node) (*RemoteTracer, error) {
-	tr := &RemoteTracer{ctx: ctx, host: host, peer: pi.ID(), basicTracer: basicTracer{ch: make(chan struct{}, 1), lossy: true}}
-	host.Peerstore().AddAddrs(pi.ID(), PermanentAddrTTL)
+func NewRemoteTracer(ctx context.Context, remoteHost string) (*RemoteTracer, error) {
+	tr := &RemoteTracer{ctx: ctx, dial: &net.Dialer{Timeout: 15 * time.Second}, remoteHost: remoteHost, basicTracer: basicTracer{ch: make(chan struct{}, 1), lossy: true}}
 	go tr.doWrite()
 	return tr, nil
 }
@@ -194,15 +195,15 @@ func NewRemoteTracer(ctx context.Context, host Host, pi enode.Node) (*RemoteTrac
 func (t *RemoteTracer) doWrite() {
 	var buf []*message.TraceEvent
 
-	s, err := t.openStream()
+	conn, err := t.openConn()
 	if err != nil {
-		log.Debugf("error opening remote tracer stream: %s", err.Error())
+		log.Error("Dial RemoteTracer failed", "error", err)
 		return
 	}
 
 	var batch message.TraceEventBatch
 
-	gzipW := gzip.NewWriter(s)
+	gzipW := gzip.NewWriter(conn)
 	w := protoio.NewDelimitedWriter(gzipW)
 
 	for {
@@ -231,13 +232,13 @@ func (t *RemoteTracer) doWrite() {
 
 		err = w.WriteMsg(&batch)
 		if err != nil {
-			log.Debugf("error writing trace event batch: %s", err)
+			log.Error("error writing trace event batch", "error", err)
 			goto end
 		}
 
 		err = gzipW.Flush()
 		if err != nil {
-			log.Debugf("error flushin gzip stream: %s", err)
+			log.Error("error flushin gzip stream", "error", err)
 			goto end
 		}
 
@@ -249,48 +250,27 @@ func (t *RemoteTracer) doWrite() {
 
 		if !ok {
 			if err != nil {
-				s.Reset()
 			} else {
 				gzipW.Close()
-				s.Close()
+				conn.Close()
 			}
 			return
 		}
 
 		if err != nil {
-			s.Reset()
-			s, err = t.openStream()
+			conn, err = t.openConn()
 			if err != nil {
-				log.Debugf("error opening remote tracer stream: %s", err.Error())
+				log.Error("error opening remote tracer stream", "error", err.Error())
 				return
 			}
 
-			gzipW.Reset(s)
+			gzipW.Reset(conn)
 		}
 	}
 }
 
-func (t *RemoteTracer) openStream() (Stream, error) {
-	for {
-		ctx, cancel := context.WithTimeout(t.ctx, time.Minute)
-		s, err := t.host.NewStream(ctx, t.peer, RemoteTracerProtoID)
-		cancel()
-		if err != nil {
-			if t.ctx.Err() != nil {
-				return nil, err
-			}
-
-			// wait a minute and try again, to account for transient server downtime
-			select {
-			case <-time.After(time.Minute):
-				continue
-			case <-t.ctx.Done():
-				return nil, t.ctx.Err()
-			}
-		}
-
-		return s, nil
-	}
+func (t *RemoteTracer) openConn() (net.Conn, error) {
+	return t.dial.DialContext(t.ctx, "tcp", t.remoteHost)
 }
 
-var _ EventTracer = (*RemoteTracer)(nil)*/
+var _ EventTracer = (*RemoteTracer)(nil)

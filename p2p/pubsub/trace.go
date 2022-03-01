@@ -78,7 +78,7 @@ func (t *pubsubTracer) PublishMessage(msg *Message) {
 	now := time.Now().UnixNano()
 	evt := &message.TraceEvent{
 		Type:      message.TraceEvent_PUBLISH_MESSAGE.Enum(),
-		PeerID:    t.pid,
+		PeerID:    t.pid.Bytes(),
 		Timestamp: &now,
 		PublishMessage: &message.TraceEvent_PublishMessage{
 			MessageID: []byte(t.msgID(msg.Message)),
@@ -119,11 +119,11 @@ func (t *pubsubTracer) RejectMessage(msg *Message, reason string) {
 	now := time.Now().UnixNano()
 	evt := &message.TraceEvent{
 		Type:      message.TraceEvent_REJECT_MESSAGE.Enum(),
-		PeerID:    t.pid,
+		PeerID:    t.pid.Bytes(),
 		Timestamp: &now,
 		RejectMessage: &message.TraceEvent_RejectMessage{
 			MessageID:    []byte(t.msgID(msg.Message)),
-			ReceivedFrom: msg.ReceivedFrom.ID(),
+			ReceivedFrom: msg.ReceivedFrom.ID().Bytes(),
 			Reason:       &reason,
 			Topic:        msg.Topic,
 		},
@@ -150,11 +150,11 @@ func (t *pubsubTracer) DuplicateMessage(msg *Message) {
 	now := time.Now().UnixNano()
 	evt := &message.TraceEvent{
 		Type:      message.TraceEvent_DUPLICATE_MESSAGE.Enum(),
-		PeerID:    t.pid,
+		PeerID:    t.pid.Bytes(),
 		Timestamp: &now,
 		DuplicateMessage: &message.TraceEvent_DuplicateMessage{
 			MessageID:    []byte(t.msgID(msg.Message)),
-			ReceivedFrom: msg.ReceivedFrom.ID(),
+			ReceivedFrom: msg.ReceivedFrom.ID().Bytes(),
 			Topic:        msg.Topic,
 		},
 	}
@@ -180,12 +180,12 @@ func (t *pubsubTracer) DeliverMessage(msg *Message) {
 	now := time.Now().UnixNano()
 	evt := &message.TraceEvent{
 		Type:      message.TraceEvent_DELIVER_MESSAGE.Enum(),
-		PeerID:    t.pid,
+		PeerID:    t.pid.Bytes(),
 		Timestamp: &now,
 		DeliverMessage: &message.TraceEvent_DeliverMessage{
 			MessageID:    []byte(t.msgID(msg.Message)),
 			Topic:        msg.Topic,
-			ReceivedFrom: msg.ReceivedFrom.ID(),
+			ReceivedFrom: msg.ReceivedFrom.ID().Bytes(),
 		},
 	}
 
@@ -209,10 +209,10 @@ func (t *pubsubTracer) AddPeer(p *enode.Node, proto ProtocolID) {
 	now := time.Now().UnixNano()
 	evt := &message.TraceEvent{
 		Type:      message.TraceEvent_ADD_PEER.Enum(),
-		PeerID:    t.pid,
+		PeerID:    t.pid.Bytes(),
 		Timestamp: &now,
 		AddPeer: &message.TraceEvent_AddPeer{
-			PeerID: p.ID(),
+			PeerID: p.ID().Bytes(),
 			Proto:  &protoStr,
 		},
 	}
@@ -236,10 +236,10 @@ func (t *pubsubTracer) RemovePeer(p enode.ID) {
 	now := time.Now().UnixNano()
 	evt := &message.TraceEvent{
 		Type:      message.TraceEvent_REMOVE_PEER.Enum(),
-		PeerID:    t.pid,
+		PeerID:    t.pid.Bytes(),
 		Timestamp: &now,
 		RemovePeer: &message.TraceEvent_RemovePeer{
-			PeerID: p,
+			PeerID: p.Bytes(),
 		},
 	}
 
@@ -262,10 +262,10 @@ func (t *pubsubTracer) RecvRPC(rpc *RPC) {
 	now := time.Now().UnixNano()
 	evt := &message.TraceEvent{
 		Type:      message.TraceEvent_RECV_RPC.Enum(),
-		PeerID:    t.pid,
+		PeerID:    t.pid.Bytes(),
 		Timestamp: &now,
 		RecvRPC: &message.TraceEvent_RecvRPC{
-			ReceivedFrom: rpc.from.ID(),
+			ReceivedFrom: rpc.from.ID().Bytes(),
 			Meta:         t.traceRPCMeta(rpc),
 		},
 	}
@@ -289,10 +289,10 @@ func (t *pubsubTracer) SendRPC(rpc *RPC, p enode.ID) {
 	now := time.Now().UnixNano()
 	evt := &message.TraceEvent{
 		Type:      message.TraceEvent_SEND_RPC.Enum(),
-		PeerID:    t.pid,
+		PeerID:    t.pid.Bytes(),
 		Timestamp: &now,
 		SendRPC: &message.TraceEvent_SendRPC{
-			SendTo: p,
+			SendTo: p.Bytes(),
 			Meta:   t.traceRPCMeta(rpc),
 		},
 	}
@@ -316,10 +316,10 @@ func (t *pubsubTracer) DropRPC(rpc *RPC, p enode.ID) {
 	now := time.Now().UnixNano()
 	evt := &message.TraceEvent{
 		Type:      message.TraceEvent_DROP_RPC.Enum(),
-		PeerID:    t.pid,
+		PeerID:    t.pid.Bytes(),
 		Timestamp: &now,
 		DropRPC: &message.TraceEvent_DropRPC{
-			SendTo: p,
+			SendTo: p.Bytes(),
 			Meta:   t.traceRPCMeta(rpc),
 		},
 	}
@@ -391,9 +391,9 @@ func (t *pubsubTracer) traceRPCMeta(rpc *RPC) *message.TraceEvent_RPCMeta {
 
 		var prune []*message.TraceEvent_ControlPruneMeta
 		for _, ctl := range rpc.Control.Prune {
-			peers := make([]enode.ID, 0, len(ctl.Peers))
+			peers := make([][]byte, 0, len(ctl.Peers))
 			for _, pi := range ctl.Peers {
-				peers = append(peers, pi.PeerID)
+				peers = append(peers, pi.PeerID.Bytes())
 			}
 			prune = append(prune, &message.TraceEvent_ControlPruneMeta{
 				Topic: ctl.TopicID,
@@ -428,7 +428,7 @@ func (t *pubsubTracer) Join(topic string) {
 	now := time.Now().UnixNano()
 	evt := &message.TraceEvent{
 		Type:      message.TraceEvent_JOIN.Enum(),
-		PeerID:    t.pid,
+		PeerID:    t.pid.Bytes(),
 		Timestamp: &now,
 		Join: &message.TraceEvent_Join{
 			Topic: &topic,
@@ -454,7 +454,7 @@ func (t *pubsubTracer) Leave(topic string) {
 	now := time.Now().UnixNano()
 	evt := &message.TraceEvent{
 		Type:      message.TraceEvent_LEAVE.Enum(),
-		PeerID:    t.pid,
+		PeerID:    t.pid.Bytes(),
 		Timestamp: &now,
 		Leave: &message.TraceEvent_Leave{
 			Topic: &topic,
@@ -480,10 +480,10 @@ func (t *pubsubTracer) Graft(p enode.ID, topic string) {
 	now := time.Now().UnixNano()
 	evt := &message.TraceEvent{
 		Type:      message.TraceEvent_GRAFT.Enum(),
-		PeerID:    t.pid,
+		PeerID:    t.pid.Bytes(),
 		Timestamp: &now,
 		Graft: &message.TraceEvent_Graft{
-			PeerID: p,
+			PeerID: p.Bytes(),
 			Topic:  &topic,
 		},
 	}
@@ -507,10 +507,10 @@ func (t *pubsubTracer) Prune(p enode.ID, topic string) {
 	now := time.Now().UnixNano()
 	evt := &message.TraceEvent{
 		Type:      message.TraceEvent_PRUNE.Enum(),
-		PeerID:    t.pid,
+		PeerID:    t.pid.Bytes(),
 		Timestamp: &now,
 		Prune: &message.TraceEvent_Prune{
-			PeerID: p,
+			PeerID: p.Bytes(),
 			Topic:  &topic,
 		},
 	}
