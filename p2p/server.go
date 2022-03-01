@@ -25,6 +25,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"math/rand"
 	"net"
 	"sort"
 	"sync"
@@ -977,55 +978,35 @@ func (srv *Server) postHandshakeChecks(peers map[enode.ID]*Peer, inboundCount in
 	disconnectConsensus := 0
 	if srv.consensus && c.is(consensusDialedConn) && numConsensusPeer >= srv.MaxConsensusPeers {
 		topicPeers := srv.getAllPeers()
-		for _, connTopic := range srv.getPeersTopics(c.node.ID()) {
-			if len(srv.pubSubServer.PubSub().ListPeers(connTopic)) < srv.MinimumPeersPerTopic {
-				// 获取每个节点所拥有的主题的数量
-				var (
-					topicsCountSort = make([]int, 0)
-					nodeTopicsCount = make(map[enode.ID]int)
-				)
-
-				for topic, nodes := range topicPeers {
-					if topic == connTopic {
-						continue
-					}
-					for _, node := range nodes {
-						if _, ok := peers[node.ID()]; ok {
-							if num, ok := nodeTopicsCount[node.ID()]; ok {
-								nodeTopicsCount[node.ID()] = num + 1
-							} else {
-								nodeTopicsCount[node.ID()] = 1
-							}
-						}
+		if len(topicPeers) > 0 {
+			maxPeersTopic := ""
+			maxPeers := 0
+			for s, nodes := range topicPeers {
+				count := 0
+				// 统计每个主题的连接数量
+				for _, node := range nodes {
+					if _, ok := peers[node.ID()]; ok {
+						count++
 					}
 				}
-				// 去掉拥有当前主题的节点
-				for _, node := range topicPeers[connTopic] {
-					if _, ok := nodeTopicsCount[node.ID()]; ok {
-						delete(nodeTopicsCount, node.ID())
-					}
+				// 找到拥有最多节点连接的主题
+				if count > maxPeers {
+					maxPeersTopic = s
+					maxPeers = count
 				}
+			}
 
-				//找到引用最小的节点
-				for _, i := range nodeTopicsCount {
-					topicsCountSort = append(topicsCountSort, i)
-				}
-				sort.Ints(topicsCountSort)
-
-			loop:
-				for _, i := range topicsCountSort {
-					for node, count := range nodeTopicsCount {
-						if count == i {
-							peer := peers[node]
-							if !peer.rw.is(trustedConn | staticDialedConn) {
-								srv.log.Debug("Disconnect over limit consensus connection", "peer", peer.ID(), "flags", peer.rw.flags, "peers", len(peers), "topic", srv.getPeersTopics(peer.ID()), "referencedNum", i, "maxConsensusPeers", srv.MaxConsensusPeers)
-								peer.Disconnect(DiscRequested)
-								disconnectConsensus++
-								break loop
-							}
-						}
+			// 选择该主题下的任意节点去断开连接
+			// 注: 由发现机制保证每个主题下的连接数不少于MinimumPeersPerTopic,因此各主题连接数保持动态平衡
+			indexs := rand.Perm(len(topicPeers[maxPeersTopic]))
+			for _, index := range indexs {
+				if peer, ok := peers[topicPeers[maxPeersTopic][index].ID()]; ok {
+					if !peer.rw.is(trustedConn | staticDialedConn) {
+						srv.log.Debug("Disconnect over limit consensus connection", "peer", peer.ID(), "numConsensusPeer", numConsensusPeer, "flags", peer.rw.flags, "peers", len(peers), "topic", srv.getPeersTopics(peer.ID()), "maxConsensusPeers", srv.MaxConsensusPeers)
+						peer.Disconnect(DiscRequested)
+						disconnectConsensus++
+						break
 					}
-
 				}
 			}
 		}
@@ -1367,6 +1348,19 @@ func (srv *Server) PeersInfo() []*PeerInfo {
 		}
 	}
 	return infos
+}
+
+func (srv *Server) GroupInfo() map[string][]string {
+	peers := srv.getAllPeers()
+	allPeers := make(map[string][]string)
+	for topic, nodes := range peers {
+		ps := make([]string, 0)
+		for _, node := range nodes {
+			ps = append(ps, node.ID().String())
+		}
+		allPeers[topic] = ps
+	}
+	return allPeers
 }
 
 func (srv *Server) StartWatching(eventMux *event.TypeMux) {
