@@ -1350,6 +1350,19 @@ func (srv *Server) PeersInfo() []*PeerInfo {
 	return infos
 }
 
+func (srv *Server) GroupInfo() map[string][]string {
+	peers := srv.getAllPeers()
+	allPeers := make(map[string][]string)
+	for topic, nodes := range peers {
+		ps := make([]string, 0)
+		for _, node := range nodes {
+			ps = append(ps, node.ID().String())
+		}
+		allPeers[topic] = ps
+	}
+	return allPeers
+}
+
 func (srv *Server) StartWatching(eventMux *event.TypeMux) {
 	srv.eventMux = eventMux
 	go srv.watching()
