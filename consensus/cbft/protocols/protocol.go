@@ -944,7 +944,7 @@ type RGBlockQuorumCert struct {
 }
 
 func (rgb *RGBlockQuorumCert) String() string {
-	return fmt.Sprintf("{GroupID:%d,Epoch:%d,ViewNumber:%d,BlockIndx:%d,Hash:%s,Number:%d,ValidatorIndex:%d,Signature:%s,ValidatorSetLen:%s}",
+	return fmt.Sprintf("{GroupID:%d,Epoch:%d,ViewNumber:%d,BlockIndx:%d,Hash:%s,Number:%d,ValidatorIndex:%d,Signature:%s,ValidatorSetLen:%d}",
 		rgb.GroupID, rgb.EpochNum(), rgb.ViewNum(), rgb.BlockIndx(), rgb.BHash().TerminalString(), rgb.BlockNum(), rgb.NodeIndex(), rgb.Signature.String(), rgb.BlockQC.ValidatorSet.HasLength())
 }
 

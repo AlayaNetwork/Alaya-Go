@@ -127,7 +127,7 @@ func (q *QuorumCert) String() string {
 	if q == nil {
 		return ""
 	}
-	return fmt.Sprintf("{Epoch:%d,ViewNumber:%d,Hash:%s,Number:%d,Index:%d,Signature:%s,ValidatorSetLen:%s}", q.Epoch, q.ViewNumber, q.BlockHash.TerminalString(), q.BlockNumber, q.BlockIndex, q.Signature.String(), q.ValidatorSet.HasLength())
+	return fmt.Sprintf("{Epoch:%d,ViewNumber:%d,Hash:%s,Number:%d,Index:%d,Signature:%s,ValidatorSetLen:%d}", q.Epoch, q.ViewNumber, q.BlockHash.TerminalString(), q.BlockNumber, q.BlockIndex, q.Signature.String(), q.ValidatorSet.HasLength())
 }
 
 // Add a new signature to the aggregate signature
@@ -256,7 +256,7 @@ func (q *ViewChangeQuorumCert) Len() int {
 }
 
 func (q ViewChangeQuorumCert) String() string {
-	return fmt.Sprintf("{Epoch:%d,ViewNumber:%d,Hash:%s,Number:%d,BlockEpoch:%d,BlockViewNumber:%d:ValidatorSetLen:%s}", q.Epoch, q.ViewNumber, q.BlockHash.TerminalString(), q.BlockNumber, q.BlockEpoch, q.BlockViewNumber, q.ValidatorSet.HasLength())
+	return fmt.Sprintf("{Epoch:%d,ViewNumber:%d,Hash:%s,Number:%d,BlockEpoch:%d,BlockViewNumber:%d:ValidatorSetLen:%d}", q.Epoch, q.ViewNumber, q.BlockHash.TerminalString(), q.BlockNumber, q.BlockEpoch, q.BlockViewNumber, q.ValidatorSet.HasLength())
 }
 
 // if the two quorumCert have the same blockNumber
@@ -489,6 +489,20 @@ type UnKnownGroups struct {
 type UnKnownGroup struct {
 	GroupID    uint32          `json:"groupID"`
 	UnKnownSet *utils.BitArray `json:"unKnownSet"`
+}
+
+func (unKnown *UnKnownGroup) MarshalJSON() ([]byte, error) {
+	type UnKnownGroup struct {
+		GroupID       uint32 `json:"groupID"`
+		UnKnownSetLen int    `json:"unKnownSetLen"`
+	}
+
+	un := &UnKnownGroup{
+		GroupID:       unKnown.GroupID,
+		UnKnownSetLen: unKnown.UnKnownSet.HasLength(),
+	}
+
+	return json.Marshal(un)
 }
 
 func (unKnowns *UnKnownGroups) UnKnownSize() int {
