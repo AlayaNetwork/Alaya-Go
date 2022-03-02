@@ -289,9 +289,9 @@ func (m *RGBroadcastManager) countCoordinator(unitID uint32, coordinatorIndexes 
 
 	c := 0
 	for i := 0; i < len(coordinatorIndexes); i++ {
-		if uint32(i) >= unitID {
-			break
-		}
+		//if uint32(i) >= unitID {
+		//	break
+		//}
 		for _, v := range coordinatorIndexes[i] {
 			if _, ok := receiveIndexesMap[v]; ok {
 				c++
