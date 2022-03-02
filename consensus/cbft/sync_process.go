@@ -992,8 +992,8 @@ func (cbft *Cbft) MissGroupVotes(blockIndex uint32) *ctypes.UnKnownGroups {
 		}
 	}
 	// just for record metrics
-	missRGBlockQuorumCertsGauage.Update(int64(missGroups))
-	missVotesGauage.Update(int64(missVotes))
+	missRGBlockQuorumCertsGauge.Update(int64(missGroups))
+	missVotesGauge.Update(int64(missVotes))
 	return unKnowns
 }
 
@@ -1037,8 +1037,8 @@ func (cbft *Cbft) MissGroupViewChanges() *ctypes.UnKnownGroups {
 		}
 	}
 	// just for record metrics
-	missRGViewQuorumCertsGauage.Update(int64(missGroups))
-	missVcsGauage.Update(int64(missViewChanges))
+	missRGViewQuorumCertsGauge.Update(int64(missGroups))
+	missVcsGauge.Update(int64(missViewChanges))
 	return unKnowns
 }
 

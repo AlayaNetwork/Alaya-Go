@@ -881,7 +881,7 @@ func (cbft *Cbft) OnSeal(block *types.Block, results chan<- *types.Block, stop <
 	minedCounter.Inc(1)
 	preBlock := cbft.blockTree.FindBlockByHash(block.ParentHash())
 	if preBlock != nil {
-		blockMinedGauage.Update(common.Millis(time.Now()) - int64(preBlock.Time()))
+		blockMinedGauge.Update(common.Millis(time.Now()) - int64(preBlock.Time()))
 	}
 	go func() {
 		select {
@@ -1254,8 +1254,8 @@ func (cbft *Cbft) OnShouldSeal(result chan error) {
 		return
 	}
 
-	proposerIndexGauage.Update(int64(currentProposer))
-	validatorCountGauage.Update(int64(numValidators))
+	proposerIndexGauge.Update(int64(currentProposer))
+	validatorCountGauge.Update(int64(numValidators))
 	result <- nil
 }
 

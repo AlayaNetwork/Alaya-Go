@@ -117,7 +117,7 @@ var (
 	messageGossipMeter = metrics.NewRegisteredMeter("cbft/meter/message/gossip", nil)
 	messageRepeatMeter = metrics.NewRegisteredMeter("cbft/meter/message/repeat", nil)
 
-	neighborPeerGauage = metrics.NewRegisteredGauge("cbft/gauage/peer/value", nil)
+	neighborPeerGauge = metrics.NewRegisteredGauge("cbft/gauge/peer/value", nil)
 )
 
 // meteredMsgReadWriter is a wrapper around a p2p.MsgReadWriter, capable of
