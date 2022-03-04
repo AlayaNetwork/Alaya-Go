@@ -591,7 +591,7 @@ func (ps *PeerSet) printPeers() {
 		case <-outTimer.C:
 			peers := ps.allPeers()
 			if peers != nil {
-				neighborPeerGauage.Update(int64(len(peers)))
+				neighborPeerGauge.Update(int64(len(peers)))
 			}
 			var bf bytes.Buffer
 			for idx, peer := range peers {

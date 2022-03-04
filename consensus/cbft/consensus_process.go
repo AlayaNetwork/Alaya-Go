@@ -1037,7 +1037,6 @@ func (cbft *Cbft) findQCBlock() {
 			cbft.insertQCBlock(block, qc)
 			cbft.network.Broadcast(&protocols.BlockQuorumCert{BlockQC: qc})
 			// metrics
-			blockQCCollectedGauage.Update(int64(block.Time()))
 			blockWholeQCTimer.UpdateSince(time.Unix(int64(block.Time()), 0))
 			cbft.trySendPrepareVote()
 		}
@@ -1068,12 +1067,6 @@ func (cbft *Cbft) tryCommitNewBlock(lock *types.Block, commit *types.Block, qc *
 		cbft.state.SetHighestCommitBlock(commit)
 		cbft.blockTree.PruneBlock(commit.Hash(), commit.NumberU64(), nil)
 		cbft.blockTree.NewRoot(commit)
-		// metrics
-		blockNumberGauage.Update(int64(commit.NumberU64()))
-		highestQCNumberGauage.Update(int64(highestqc.NumberU64()))
-		highestLockedNumberGauage.Update(int64(lock.NumberU64()))
-		highestCommitNumberGauage.Update(int64(commit.NumberU64()))
-		blockConfirmedMeter.Mark(1)
 	} else if oldCommit.NumberU64() == commit.NumberU64() && oldCommit.NumberU64() > 0 {
 		cbft.log.Info("Fork block", "number", highestqc.NumberU64(), "hash", highestqc.Hash())
 		lockBlock, lockQC := cbft.blockTree.FindBlockAndQC(lock.Hash(), lock.NumberU64())
@@ -1346,8 +1339,8 @@ func (cbft *Cbft) changeView(epoch, viewNumber uint64, block *types.Block, qc *c
 	cbft.state.SetLastViewChangeQC(viewChangeQC)
 
 	// record metrics
-	viewNumberGauage.Update(int64(viewNumber))
-	epochNumberGauage.Update(int64(epoch))
+	viewNumberGauge.Update(int64(viewNumber))
+	epochNumberGauge.Update(int64(epoch))
 	viewChangedTimer.UpdateSince(time.Unix(int64(block.Time()), 0))
 
 	// write confirmed viewChange info to wal
