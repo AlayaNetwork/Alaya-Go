@@ -292,6 +292,14 @@ func (api *publicAdminAPI) GetProgramVersion() (*params.ProgramVersion, error) {
 	return &params.ProgramVersion{Version: programVersion, Sign: hexutil.Encode(sig)}, nil
 }
 
+func (api *publicAdminAPI) GroupInfo() (map[string][]string, error) {
+	server := api.node.Server()
+	if server == nil {
+		return nil, ErrNodeStopped
+	}
+	return server.GroupInfo(), nil
+}
+
 // publicWeb3API offers helper utils
 type publicWeb3API struct {
 	stack *Node
