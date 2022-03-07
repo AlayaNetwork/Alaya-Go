@@ -32,7 +32,7 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/core/types"
 )
 
-var syncPrepareVotesInterval = 3 * time.Second
+var syncPrepareVotesInterval = 8 * time.Second
 
 // Get the block from the specified connection, get the block into the fetcher, and execute the block CBFT update state machine
 func (cbft *Cbft) fetchBlock(id string, hash common.Hash, number uint64, qc *ctypes.QuorumCert) {
@@ -339,6 +339,7 @@ func (cbft *Cbft) OnGetQCBlockList(id string, msg *protocols.GetQCBlockList) err
 // PrepareVotes message to the sender.
 func (cbft *Cbft) OnGetPrepareVoteV2(id string, msg *protocols.GetPrepareVoteV2) (ctypes.Message, error) {
 	cbft.log.Debug("Received message on OnGetPrepareVoteV2", "from", id, "msgHash", msg.MsgHash(), "message", msg.String())
+	responseVotesCounter.Inc(1)
 	if msg.Epoch == cbft.state.Epoch() && msg.ViewNumber == cbft.state.ViewNumber() {
 		// If the block has already QC, that response QC instead of votes.
 		// Avoid the sender spent a lot of time to verifies PrepareVote msg.
@@ -630,6 +631,7 @@ func (cbft *Cbft) OnPrepareBlockHash(id string, msg *protocols.PrepareBlockHash)
 // with the state of the current node.
 func (cbft *Cbft) OnGetViewChangeV2(id string, msg *protocols.GetViewChangeV2) (ctypes.Message, error) {
 	cbft.log.Debug("Received message on OnGetViewChangeV2", "from", id, "msgHash", msg.MsgHash(), "message", msg.String(), "local", cbft.state.ViewString())
+	responseVcsCounter.Inc(1)
 
 	localEpoch, localViewNumber := cbft.state.Epoch(), cbft.state.ViewNumber()
 
@@ -990,8 +992,8 @@ func (cbft *Cbft) MissGroupVotes(blockIndex uint32) *ctypes.UnKnownGroups {
 		}
 	}
 	// just for record metrics
-	missRGBlockQuorumCertsGauage.Update(int64(missGroups))
-	missVotesGauage.Update(int64(missVotes))
+	missRGBlockQuorumCertsGauge.Update(int64(missGroups))
+	missVotesGauge.Update(int64(missVotes))
 	return unKnowns
 }
 
@@ -1035,8 +1037,8 @@ func (cbft *Cbft) MissGroupViewChanges() *ctypes.UnKnownGroups {
 		}
 	}
 	// just for record metrics
-	missRGViewQuorumCertsGauage.Update(int64(missGroups))
-	missVcsGauage.Update(int64(missViewChanges))
+	missRGViewQuorumCertsGauge.Update(int64(missGroups))
+	missVcsGauge.Update(int64(missViewChanges))
 	return unKnowns
 }
 
@@ -1077,6 +1079,7 @@ func (cbft *Cbft) MissingPrepareVote() (v ctypes.Message, err error) {
 						UnKnownGroups: unKnownGroups,
 					}, nil
 					cbft.log.Debug("Synchronize votes by grouped channel,missingPrepareVote", "blockIndex", index, "known", size, "threshold", threshold, "request", v.String())
+					missVotesCounter.Inc(1)
 					break
 				}
 			}
@@ -1120,6 +1123,7 @@ func (cbft *Cbft) MissingViewChangeNodes() (v ctypes.Message, err error) {
 					UnKnownGroups: unKnownGroups,
 				}, nil
 				cbft.log.Debug("Synchronize viewChanges by grouped channel,missingViewChangeNodes", "known", size, "threshold", threshold, "request", v.String())
+				missVcsCounter.Inc(1)
 			}
 		}
 		if v == nil {

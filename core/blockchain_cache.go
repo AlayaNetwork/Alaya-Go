@@ -36,7 +36,7 @@ import (
 var (
 	errMakeStateDB = errors.New("make StateDB error")
 
-	blockExecutedGauage = metrics.NewRegisteredGauge("cbft/gauage/block/executed", nil)
+	blockExecutedGauge = metrics.NewRegisteredGauge("cbft/gauge/block/executed", nil)
 )
 
 type BlockChainCache struct {
@@ -309,7 +309,7 @@ func (bcc *BlockChainCache) Execute(block *types.Block, parent *types.Block) err
 	} else {
 		return fmt.Errorf("execute block error, err:%s", err.Error())
 	}
-	blockExecutedGauage.Update(common.Millis(time.Now()) - common.Millis(start))
+	blockExecutedGauge.Update(common.Millis(time.Now()) - common.Millis(start))
 	return nil
 }
 
