@@ -1386,7 +1386,7 @@ func (srv *Server) watching() {
 				srv.log.Trace("Received RemoveValidatorEvent", "nodeID", data.Node.ID().String())
 				srv.RemoveConsensusPeer(data.Node)
 			case cbfttypes.NewTopicEvent:
-				srv.setPeers(data.Topic, data.Nodes)
+				srv.SetPeers(data.Topic, data.Nodes)
 				consensusPeers := make(map[enode.ID]struct{})
 				for _, nodes := range srv.getAllPeers() {
 					for _, node := range nodes {
@@ -1449,7 +1449,7 @@ func (srv *Server) getPeers(topic string) []*enode.Node {
 	return copyPeers
 }
 
-func (srv *Server) setPeers(topic string, peers []*enode.Node) {
+func (srv *Server) SetPeers(topic string, peers []*enode.Node) {
 	srv.topicSubscriberMu.Lock()
 	defer srv.topicSubscriberMu.Unlock()
 	copyPeers := make([]*enode.Node, len(peers))

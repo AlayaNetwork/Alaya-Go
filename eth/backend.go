@@ -344,7 +344,7 @@ func New(stack *node.Node, config *Config) (*Ethereum, error) {
 			return nil, errors.New("Failed to init cbft consensus engine")
 		}
 	} else {
-		log.Crit("engin not good")
+		log.Crit("Unsupported consensus engine")
 	}
 
 	// Permit the downloader to use the trie cache allowance during fast sync
@@ -590,6 +590,11 @@ func (s *Ethereum) Start() error {
 			}
 		}
 		s.StartMining()
+		// Since the p2pServer has not been initialized, the topic event notification will be performed at this time.
+		event := cbftEngine.GetAwaitingTopicEvent()
+		for topic, nodes := range event {
+			s.p2pServer.SetPeers(topic, nodes)
+		}
 	}
 	s.p2pServer.StartWatching(s.eventMux)
 
