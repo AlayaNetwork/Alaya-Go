@@ -332,6 +332,8 @@ type ValidatorPool struct {
 	prevValidators    *cbfttypes.Validators // Previous round validators
 	currentValidators *cbfttypes.Validators // Current round validators
 	nextValidators    *cbfttypes.Validators // Next round validators, to Post Pub event
+
+	awaitingTopicEvent map[string][]*enode.Node
 }
 
 // NewValidatorPool new a validator pool.
@@ -343,6 +345,7 @@ func NewValidatorPool(agency consensus.Agency, blockNumber, epoch uint64, nodeID
 		grouped:              needGroup,
 		groupValidatorsLimit: xcom.MaxGroupValidators(),
 		coordinatorLimit:     xcom.CoordinatorsLimit(),
+		awaitingTopicEvent:   make(map[string][]*enode.Node),
 	}
 	lastNumber := agency.GetLastNumber(blockNumber)
 	// FIXME: Check `GetValidators` return error
@@ -366,7 +369,7 @@ func NewValidatorPool(agency consensus.Agency, blockNumber, epoch uint64, nodeID
 		pool.switchPoint = pool.currentValidators.ValidBlockNumber - 1
 	}
 	if needGroup {
-		if err := pool.organize(pool.currentValidators, epoch, eventMux); err != nil {
+		if err := pool.organize(pool.currentValidators, epoch, eventMux, true); err != nil {
 			log.Error("ValidatorPool organized failed!", "error", err)
 		}
 		blockDif := lastNumber - blockNumber
@@ -378,7 +381,7 @@ func NewValidatorPool(agency consensus.Agency, blockNumber, epoch uint64, nodeID
 			}
 			if nds != nil {
 				pool.nextValidators = nds
-				pool.organize(pool.nextValidators, epoch+1, eventMux)
+				pool.organize(pool.nextValidators, epoch+1, eventMux, true)
 			}
 		}
 	}
@@ -403,7 +406,7 @@ func (vp *ValidatorPool) Reset(blockNumber uint64, epoch uint64, eventMux *event
 		vp.switchPoint = vp.currentValidators.ValidBlockNumber - 1
 	}
 	if vp.grouped {
-		vp.organize(vp.currentValidators, epoch, eventMux)
+		vp.organize(vp.currentValidators, epoch, eventMux, false)
 	}
 	log.Debug("Reset validator", "validators", vp.currentValidators.String(), "switchpoint", vp.switchPoint, "epoch", vp.epoch, "lastNumber", vp.lastNumber)
 }
@@ -467,7 +470,7 @@ func (vp *ValidatorPool) Update(blockHash common.Hash, blockNumber uint64, epoch
 
 		vp.nextValidators = nds
 		if vp.grouped {
-			vp.organize(vp.nextValidators, epoch, eventMux)
+			vp.organize(vp.nextValidators, epoch, eventMux, false)
 		}
 	}
 
@@ -504,7 +507,7 @@ func (vp *ValidatorPool) InitComingValidators(blockHash common.Hash, blockNumber
 	}
 	// 如果是提案生效后第一个选举块，只有新ConsensusSize和旧ConsensusSize一样才会走下面的逻辑
 	vp.nextValidators = nds
-	vp.organize(vp.nextValidators, vp.epoch+1, eventMux)
+	vp.organize(vp.nextValidators, vp.epoch+1, eventMux, false)
 	log.Debug("InitComingValidators：Update nextValidators OK", "blockNumber", blockNumber, "epoch", vp.epoch+1)
 	return nil
 }
@@ -929,7 +932,7 @@ func (vp *ValidatorPool) GetGroupIndexes(epoch uint64) map[uint32][]uint32 {
 }
 
 // organize validators into groups
-func (vp *ValidatorPool) organize(validators *cbfttypes.Validators, epoch uint64, eventMux *event.TypeMux) error {
+func (vp *ValidatorPool) organize(validators *cbfttypes.Validators, epoch uint64, eventMux *event.TypeMux, init bool) error {
 	if validators == nil {
 		return errors.New("validators is nil")
 	}
@@ -960,8 +963,13 @@ func (vp *ValidatorPool) organize(validators *cbfttypes.Validators, epoch uint64
 	consensusTopic := cbfttypes.ConsensusTopicName(epoch)
 	groupTopic := cbfttypes.ConsensusGroupTopicName(epoch, gvs.GetGroupID())
 
-	eventMux.Post(cbfttypes.NewTopicEvent{Topic: consensusTopic, Nodes: otherConsensusNodes})
-	eventMux.Post(cbfttypes.NewTopicEvent{Topic: groupTopic, Nodes: groupNodes})
+	if init {
+		vp.awaitingTopicEvent[consensusTopic] = otherConsensusNodes
+		vp.awaitingTopicEvent[groupTopic] = groupNodes
+	} else {
+		eventMux.Post(cbfttypes.NewTopicEvent{Topic: consensusTopic, Nodes: otherConsensusNodes})
+		eventMux.Post(cbfttypes.NewTopicEvent{Topic: groupTopic, Nodes: groupNodes})
+	}
 	eventMux.Post(cbfttypes.GroupTopicEvent{Topic: groupTopic, PubSub: true})
 	eventMux.Post(cbfttypes.GroupTopicEvent{Topic: consensusTopic, PubSub: false})
 	return nil
@@ -985,4 +993,8 @@ func (vp *ValidatorPool) dissolve(epoch uint64, eventMux *event.TypeMux) {
 	eventMux.Post(cbfttypes.ExpiredTopicEvent{Topic: groupTopic})          // for p2p
 	eventMux.Post(cbfttypes.ExpiredGroupTopicEvent{Topic: groupTopic})     // for pubsub
 	eventMux.Post(cbfttypes.ExpiredGroupTopicEvent{Topic: consensusTopic}) // for pubsub
+}
+
+func (vp *ValidatorPool) GetAwaitingTopicEvent() map[string][]*enode.Node {
+	return vp.awaitingTopicEvent
 }
