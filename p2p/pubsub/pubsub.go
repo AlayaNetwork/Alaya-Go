@@ -1104,9 +1104,9 @@ func (p *PubSub) pushMsg(msg *Message) {
 		return
 	}
 
-	/*if !p.val.Push(src.ID(), msg) {
+	if !p.val.Push(src.ID(), msg) {
 		return
-	}*/
+	}
 
 	if p.markSeen(id) {
 		p.publishMessage(msg)
