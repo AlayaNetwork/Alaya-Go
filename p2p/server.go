@@ -176,7 +176,11 @@ type Config struct {
 
 	clock mclock.Clock
 
+	// The minimum number of connections to keep under each topic.
 	MinimumPeersPerTopic int
+
+	// Broker address for collecting pubSub trace messages
+	PubSubTraceHost	string
 }
 
 // Server manages all peer connections.

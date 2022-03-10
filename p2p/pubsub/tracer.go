@@ -260,7 +260,7 @@ func (t *RemoteTracer) doWrite() {
 		if err != nil {
 			conn, err = t.openConn()
 			if err != nil {
-				log.Error("error opening remote tracer stream", "error", err.Error())
+				log.Error("error opening remote tracer stream", "error", err)
 				return
 			}
 
@@ -270,7 +270,26 @@ func (t *RemoteTracer) doWrite() {
 }
 
 func (t *RemoteTracer) openConn() (net.Conn, error) {
-	return t.dial.DialContext(t.ctx, "tcp", t.remoteHost)
+	for {
+		ctx, cancel := context.WithTimeout(t.ctx, time.Minute)
+		conn, err := t.dial.DialContext(ctx, "tcp", t.remoteHost)
+		cancel()
+		if err != nil {
+			if t.ctx.Err() != nil {
+				return nil, err
+			}
+
+			// wait a minute and try again, to account for transient server downtime
+			select {
+			case <-time.After(time.Minute):
+				continue
+			case <-t.ctx.Done():
+				return nil, t.ctx.Err()
+			}
+		}
+
+		return conn, nil
+	}
 }
 
 var _ EventTracer = (*RemoteTracer)(nil)

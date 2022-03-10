@@ -32,7 +32,13 @@ type PubSubServer struct {
 func NewPubSubServer(ctx context.Context, localNode *enode.Node, p2pServer *Server) *PubSubServer {
 	network := NewNetwork(p2pServer.Peers)
 	host := NewHost(localNode, network)
-	gossipSub, err := pubsub.NewGossipSub(ctx, host)
+	// If the tracer proxy address is specified, the remote tracer function will be enabled.
+	tracers := make([]pubsub.Option, 0)
+	if p2pServer.PubSubTraceHost != "" {
+		remoteTracer, _ := pubsub.NewRemoteTracer(ctx, p2pServer.PubSubTraceHost)
+		tracers = append(tracers, pubsub.WithEventTracer(remoteTracer))
+	}
+	gossipSub, err := pubsub.NewGossipSub(ctx, host, tracers...)
 	if err != nil {
 		panic("Failed to NewGossipSub: " + err.Error())
 	}
