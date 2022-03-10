@@ -19,11 +19,12 @@ package consensus
 import (
 	"bytes"
 	"fmt"
+	"github.com/AlayaNetwork/Alaya-Go/core/rawdb"
 	"math/big"
 	"time"
 
 	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
-
+	"github.com/AlayaNetwork/Alaya-Go/ethdb"
 	"github.com/AlayaNetwork/Alaya-Go/event"
 
 	"github.com/AlayaNetwork/Alaya-Go/common/consensus"
@@ -43,6 +44,14 @@ func NewFaker() *BftMock {
 	c := new(BftMock)
 	c.Blocks = make([]*types.Block, 0)
 	c.blockIndexs = make(map[common.Hash]int, 0)
+	return c
+}
+
+func NewFakerWithDataBase(database ethdb.Database) *BftMock {
+	c := new(BftMock)
+	c.Blocks = make([]*types.Block, 0)
+	c.blockIndexs = make(map[common.Hash]int, 0)
+	c.database = database
 	return c
 }
 
@@ -67,7 +76,8 @@ type BftMock struct {
 	Next        uint32
 	Current     *types.Block
 	Base        *types.Block
-	fakeFail    uint64 // Block number which fails BFT check even in fake mode
+	fakeFail    uint64         // Block number which fails BFT check even in fake mode
+	database    ethdb.Database // In memory database to store our testing data
 	//fakeDelay time.Duration // Time delay to sleep for before returning from verify
 }
 
@@ -84,7 +94,9 @@ func (bm *BftMock) InsertChain(block *types.Block) error {
 	bm.blockIndexs[block.Hash()] = len(bm.Blocks) - 1
 	bm.Current = block
 	bm.Base = block
-
+	if bm.database != nil {
+		rawdb.WriteBlock(bm.database, block)
+	}
 	return nil
 }
 

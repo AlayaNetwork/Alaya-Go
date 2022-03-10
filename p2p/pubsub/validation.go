@@ -232,7 +232,7 @@ func (v *validation) PushLocal(msg *Message) error {
 func (v *validation) Push(src enode.ID, msg *Message) bool {
 	vals := v.getValidators(msg)
 
-	if len(vals) > 0 || msg.Signature != nil {
+	if len(vals) > 0 || len(msg.Signature) > 0 {
 		select {
 		case v.validateQ <- &validateReq{vals, src, msg}:
 		default:
