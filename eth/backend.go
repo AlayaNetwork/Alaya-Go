@@ -590,11 +590,6 @@ func (s *Ethereum) Start() error {
 			}
 		}
 		s.StartMining()
-		// Since the p2pServer has not been initialized, the topic event notification will be performed at this time.
-		event := cbftEngine.GetAwaitingTopicEvent()
-		for topic, nodes := range event {
-			s.p2pServer.SetPeers(topic, nodes)
-		}
 	}
 	s.p2pServer.StartWatching(s.eventMux)
 

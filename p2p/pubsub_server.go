@@ -78,3 +78,7 @@ func (pss *PubSubServer) GetAllPubSubStatus() *pubsub.Status {
 func (pss *PubSubServer) GetPeerInfo(nodeId enode.ID) *pubsub.PeerInfo {
 	return pss.pubSub.GetPeerInfo(nodeId)
 }
+
+func (pss *PubSubServer) SetPeers(topic string, peers []*enode.Node) {
+	pss.p2pServer.SetPeers(topic, peers)
+}

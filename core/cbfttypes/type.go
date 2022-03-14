@@ -84,6 +84,7 @@ type ExpiredTopicEvent struct {
 type GroupTopicEvent struct {
 	Topic  string // consensus:{epoch}:{groupID}
 	PubSub bool   //是否需要pubsub
+	Nodes  []*enode.Node
 }
 
 type ExpiredGroupTopicEvent ExpiredTopicEvent // consensus:{epoch}:{groupID}

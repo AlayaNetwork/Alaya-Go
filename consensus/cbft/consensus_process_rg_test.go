@@ -501,7 +501,7 @@ func TestRGViewChangeQuorumCert(t *testing.T) {
 	msg := &protocols.RGViewChangeQuorumCert{
 		GroupID:        groupID,
 		ViewChangeQC:   rgqc,
-		ValidatorIndex: uint32(validatorIndex),
+		ValidatorIndex: validatorIndex,
 		PrepareQCs: &ctypes.PrepareQCs{
 			QCs: []*ctypes.QuorumCert{qc},
 		},

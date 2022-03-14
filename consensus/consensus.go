@@ -201,6 +201,4 @@ type Bft interface {
 
 	// NodeID is temporary.
 	Node() *enode.Node
-
-	GetAwaitingTopicEvent() map[string][]*enode.Node
 }
