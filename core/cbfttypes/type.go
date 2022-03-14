@@ -346,7 +346,10 @@ func (vs *Validators) GetGroupValidators(nodeID enode.ID) (*GroupValidators, err
 			break
 		}
 	}
-	return ret, nil
+	if ret != nil {
+		return ret, nil
+	}
+	return nil, errors.New("not found the specified validators")
 }
 
 func (vs *Validators) UnitID(nodeID enode.ID) (uint32, error) {

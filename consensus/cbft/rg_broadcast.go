@@ -2,6 +2,7 @@ package cbft
 
 import (
 	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/protocols"
+	"github.com/AlayaNetwork/Alaya-Go/core/cbfttypes"
 	"reflect"
 	"sync"
 	"time"
@@ -218,20 +219,27 @@ func (m *RGBroadcastManager) allowRGQuorumCert(a awaiting) bool {
 	return true
 }
 
-func (m *RGBroadcastManager) upgradeCoordinator(a awaiting) bool {
-	// Check whether the current node is the first group member
+func (m *RGBroadcastManager) upgradeCoordinator(a awaiting) (bool, *cbfttypes.ValidateNode) {
+	// Check whether the current node is the validator
+	node, err := m.cbft.isCurrentValidator()
+	if err != nil || node == nil {
+		m.cbft.log.Debug("Current node is not validator, no need to send RGQuorumCert")
+		return false, nil
+	}
+
+	// Check whether the current node is the group member
 	groupID, unitID, err := m.cbft.getGroupByValidatorID(m.cbft.state.Epoch(), m.cbft.Node().ID())
 	if err != nil || groupID != a.GroupID() {
-		return false
+		return false, nil
 	}
-	if unitID == defaultUnitID { // the first echelon, Send by default
-		return true
-	}
+	//if unitID == defaultUnitID { // the first echelon, Send by default
+	//	return true
+	//}
 
 	coordinatorIndexes, err := m.cbft.validatorPool.GetCoordinatorIndexesByGroupID(m.cbft.state.Epoch(), groupID)
 	if err != nil || len(coordinatorIndexes) <= 0 {
 		m.cbft.log.Error("Get coordinator indexes by groupID error")
-		return false
+		return false, nil
 	}
 	m.cbft.log.Trace("CoordinatorIndexes", "groupID", groupID, "unitID", unitID, "coordinatorIndexes", coordinatorIndexes)
 
@@ -239,19 +247,32 @@ func (m *RGBroadcastManager) upgradeCoordinator(a awaiting) bool {
 
 	switch msg := a.(type) {
 	case *awaitingRGBlockQC:
+		// Query the QuorumCert with the largest number of signatures in the current group
+		blockQC, _ := m.cbft.state.FindMaxGroupRGQuorumCert(msg.blockIndex, msg.GroupID())
+		if blockQC == nil {
+			m.cbft.log.Error("Cannot find the RGBlockQuorumCert of the current group", "blockIndex", msg.blockIndex, "groupID", msg.GroupID())
+			return false, nil
+		}
+		// If the block is already QC, there is no need to continue sending RGBlockQuorumCert
+		if m.cbft.blockTree.FindBlockByHash(blockQC.BlockHash) != nil || blockQC.BlockNumber <= m.cbft.state.HighestLockBlock().NumberU64() {
+			m.cbft.log.Debug("The block is already QC, no need to send RGBlockQuorumCert", "blockIndex", msg.blockIndex, "blockNumber", blockQC.BlockNumber, "blockHash", blockQC.BlockHash, "groupID", msg.GroupID())
+			return false, nil
+		}
 		receiveIndexes = m.cbft.state.RGBlockQuorumCertsIndexes(msg.blockIndex, groupID)
 	case *awaitingRGViewQC:
 		receiveIndexes = m.cbft.state.RGViewChangeQuorumCertsIndexes(groupID)
 	default:
-		return false
+		return false, nil
 	}
 	if !m.enoughCoordinator(groupID, unitID, coordinatorIndexes, receiveIndexes) {
-		m.cbft.log.Warn("Upgrade the current node to Coordinator", "type", reflect.TypeOf(a), "groupID", groupID, "unitID", unitID, "blockIndex", a.Index(), "coordinatorIndexes", coordinatorIndexes, "receiveIndexes", receiveIndexes)
-		m.recordUpgradeCoordinatorMetrics(a)
-		return true
+		if unitID > defaultUnitID {
+			m.cbft.log.Warn("Upgrade the current node to coordinator", "type", reflect.TypeOf(a), "groupID", groupID, "unitID", unitID, "blockIndex", a.Index(), "nodeIndex", node.Index, "coordinatorIndexes", coordinatorIndexes, "receiveIndexes", receiveIndexes)
+			m.recordUpgradeCoordinatorMetrics(a)
+		}
+		return true, node
 	}
-	m.cbft.log.Debug("Enough Coordinator, no need to upgrade to Coordinator", "groupID", groupID, "unitID", unitID, "coordinatorIndexes", coordinatorIndexes, "receiveIndexes", receiveIndexes)
-	return false
+	m.cbft.log.Debug("Enough coordinator, no need to upgrade to coordinator", "type", reflect.TypeOf(a), "groupID", groupID, "unitID", unitID, "blockIndex", a.Index(), "nodeIndex", node.Index, "coordinatorIndexes", coordinatorIndexes, "receiveIndexes", receiveIndexes)
+	return false, nil
 }
 
 func (m *RGBroadcastManager) recordUpgradeCoordinatorMetrics(a awaiting) {
@@ -307,13 +328,8 @@ func (m *RGBroadcastManager) broadcastFunc(a awaiting) {
 		return
 	}
 
-	if !m.upgradeCoordinator(a) {
-		return
-	}
-
-	node, err := m.cbft.isCurrentValidator()
-	if err != nil || node == nil {
-		m.cbft.log.Debug("Current node is not validator, no need to send RGQuorumCert")
+	upgrade, node := m.upgradeCoordinator(a)
+	if !upgrade {
 		return
 	}
 

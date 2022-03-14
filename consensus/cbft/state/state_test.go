@@ -444,7 +444,7 @@ func TestViewRGViewChangeQuorumCerts(t *testing.T) {
 	assert.NotNil(t, rg)
 	assert.Equal(t, uint32(12), rg.ValidatorIndex)
 
-	assert.Equal(t, []uint32{22, 23}, v.RGViewChangeQuorumCertsIndexes(2))
+	assert.Equal(t, 2, len(v.RGViewChangeQuorumCertsIndexes(2)))
 	assert.Equal(t, 4, v.FindMaxRGViewChangeQuorumCert(2).ViewChangeQC.HasLength())
 }
 

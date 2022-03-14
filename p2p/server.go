@@ -980,7 +980,7 @@ func (srv *Server) postHandshakeChecks(peers map[enode.ID]*Peer, inboundCount in
 		}
 	}
 	disconnectConsensus := 0
-	if srv.consensus && c.is(consensusDialedConn) && numConsensusPeer >= srv.MaxConsensusPeers {
+	if srv.consensus && c.is(consensusDialedConn) && !c.is(inboundConn) && numConsensusPeer >= srv.MaxConsensusPeers {
 		topicPeers := srv.getAllPeers()
 		if len(topicPeers) > 0 {
 			maxPeersTopic := ""
