@@ -99,8 +99,9 @@ func TestRGBlockQuorumCert(t *testing.T) {
 		time.Sleep(5 * time.Second)
 
 		assert.NotNil(t, nodes[0].engine.state.FindRGBlockQuorumCerts(blockIndex, groupID, uint32(validatorIndex)))
-		assert.Equal(t, 2, nodes[0].engine.state.RGBlockQuorumCertsLen(blockIndex, groupID))
-		assert.Equal(t, 2, len(nodes[0].engine.state.RGBlockQuorumCertsIndexes(blockIndex, groupID)))
+		// The block is already QC, so node-0 need not to SendRGBlockQuorumCert
+		assert.Equal(t, 1, nodes[0].engine.state.RGBlockQuorumCertsLen(blockIndex, groupID))
+		assert.Equal(t, 1, len(nodes[0].engine.state.RGBlockQuorumCertsIndexes(blockIndex, groupID)))
 		assert.True(t, true, nodes[0].engine.state.HadSendRGBlockQuorumCerts(blockIndex))
 
 		assert.Equal(t, 1, nodes[0].engine.state.SelectRGQuorumCertsLen(blockIndex, groupID))
