@@ -596,7 +596,7 @@ func (s *Ethereum) Start() error {
 		for ev, _ := range event {
 			switch e := ev.(type) {
 			case cbfttypes.NewTopicEvent:
-				log.Debug("AwaitingTopicEvent, NewTopicEvent", "topic", e.Topic, "nodes", len(e.nodes))
+				log.Debug("AwaitingTopicEvent, NewTopicEvent", "topic", e.Topic, "nodes", len(e.Nodes))
 				s.eventMux.Post(e)
 			case cbfttypes.GroupTopicEvent:
 				log.Debug("AwaitingTopicEvent, GroupTopicEvent", "topic", e.Topic, "pubSub", e.PubSub)
