@@ -149,10 +149,6 @@ func (ps *PubSub) watching(eventMux *event.TypeMux) {
 			switch data := ev.Data.(type) {
 			case cbfttypes.GroupTopicEvent:
 				log.Trace("Received GroupTopicEvent", "topic", data.Topic)
-				// 需要通知 p2pServer topic 节点
-				if len(data.Nodes) > 0 {
-					ps.pss.SetPeers(data.Topic, data.Nodes)
-				}
 				// 需要订阅主题（发现节点并接收topic消息）
 				if data.PubSub {
 					ps.Subscribe(data.Topic)

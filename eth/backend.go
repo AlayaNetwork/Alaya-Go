@@ -20,6 +20,7 @@ package eth
 import (
 	"errors"
 	"fmt"
+	"github.com/AlayaNetwork/Alaya-Go/core/cbfttypes"
 	"math/big"
 	"os"
 	"sync"
@@ -590,6 +591,19 @@ func (s *Ethereum) Start() error {
 			}
 		}
 		s.StartMining()
+		// Since the p2pServer has not been initialized, the topic event notification will be performed at this time.
+		event := cbftEngine.GetAwaitingTopicEvent()
+		for ev, _ := range event {
+			switch e := ev.(type) {
+			case cbfttypes.NewTopicEvent:
+				log.Debug("AwaitingTopicEvent, NewTopicEvent", "topic", e.Topic, "nodes", len(e.nodes))
+				s.eventMux.Post(e)
+			case cbfttypes.GroupTopicEvent:
+				log.Debug("AwaitingTopicEvent, GroupTopicEvent", "topic", e.Topic, "pubSub", e.PubSub)
+				s.eventMux.Post(e)
+			default:
+			}
+		}
 	}
 	s.p2pServer.StartWatching(s.eventMux)
 

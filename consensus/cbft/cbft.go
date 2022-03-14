@@ -2116,6 +2116,10 @@ func (cbft *Cbft) Node() *enode.Node {
 	return cbft.config.Option.Node
 }
 
+func (cbft *Cbft) GetAwaitingTopicEvent() map[interface{}]interface{} {
+	return cbft.validatorPool.GetAwaitingTopicEvent()
+}
+
 func (cbft *Cbft) avgRTT() time.Duration {
 	produceInterval := time.Duration(cbft.config.Sys.Period/uint64(cbft.config.Sys.Amount)) * time.Millisecond
 	rtt := cbft.AvgLatency() * 2

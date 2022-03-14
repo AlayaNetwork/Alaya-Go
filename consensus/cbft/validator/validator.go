@@ -332,6 +332,8 @@ type ValidatorPool struct {
 	prevValidators    *cbfttypes.Validators // Previous round validators
 	currentValidators *cbfttypes.Validators // Current round validators
 	nextValidators    *cbfttypes.Validators // Next round validators, to Post Pub event
+
+	awaitingTopicEvent map[interface{}]interface{}
 }
 
 // NewValidatorPool new a validator pool.
@@ -343,6 +345,7 @@ func NewValidatorPool(agency consensus.Agency, blockNumber, epoch uint64, nodeID
 		grouped:              needGroup,
 		groupValidatorsLimit: xcom.MaxGroupValidators(),
 		coordinatorLimit:     xcom.CoordinatorsLimit(),
+		awaitingTopicEvent:   make(map[interface{}]interface{}),
 	}
 	lastNumber := agency.GetLastNumber(blockNumber)
 	// FIXME: Check `GetValidators` return error
@@ -961,8 +964,10 @@ func (vp *ValidatorPool) organize(validators *cbfttypes.Validators, epoch uint64
 	groupTopic := cbfttypes.ConsensusGroupTopicName(epoch, gvs.GetGroupID())
 
 	if init {
-		eventMux.Post(cbfttypes.GroupTopicEvent{Topic: groupTopic, PubSub: true, Nodes: groupNodes})
-		eventMux.Post(cbfttypes.GroupTopicEvent{Topic: consensusTopic, PubSub: false, Nodes: otherConsensusNodes})
+		vp.awaitingTopicEvent[cbfttypes.NewTopicEvent{Topic: consensusTopic, Nodes: otherConsensusNodes}] = struct{}{}
+		vp.awaitingTopicEvent[cbfttypes.NewTopicEvent{Topic: groupTopic, Nodes: groupNodes}] = struct{}{}
+		vp.awaitingTopicEvent[cbfttypes.GroupTopicEvent{Topic: groupTopic, PubSub: true}] = struct{}{}
+		vp.awaitingTopicEvent[cbfttypes.GroupTopicEvent{Topic: consensusTopic, PubSub: false}] = struct{}{}
 	} else {
 		eventMux.Post(cbfttypes.NewTopicEvent{Topic: consensusTopic, Nodes: otherConsensusNodes})
 		eventMux.Post(cbfttypes.NewTopicEvent{Topic: groupTopic, Nodes: groupNodes})
@@ -991,4 +996,8 @@ func (vp *ValidatorPool) dissolve(epoch uint64, eventMux *event.TypeMux) {
 	eventMux.Post(cbfttypes.ExpiredTopicEvent{Topic: groupTopic})          // for p2p
 	eventMux.Post(cbfttypes.ExpiredGroupTopicEvent{Topic: groupTopic})     // for pubsub
 	eventMux.Post(cbfttypes.ExpiredGroupTopicEvent{Topic: consensusTopic}) // for pubsub
+}
+
+func (vp *ValidatorPool) GetAwaitingTopicEvent() map[interface{}]interface{} {
+	return vp.awaitingTopicEvent
 }

@@ -23,9 +23,9 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
 	"github.com/AlayaNetwork/Alaya-Go/ethdb"
 	"github.com/AlayaNetwork/Alaya-Go/event"
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
 
 	"github.com/AlayaNetwork/Alaya-Go/common/consensus"
 	"github.com/AlayaNetwork/Alaya-Go/crypto"
@@ -156,6 +156,10 @@ func (bm *BftMock) Node() *enode.Node {
 		panic(fmt.Sprintf("Failed to generate random NodeId private key: %v", err))
 	}
 	return enode.NewV4(&privateKey.PublicKey, nil, 0, 0)
+}
+
+func (bm *BftMock) GetAwaitingTopicEvent() map[interface{}]interface{} {
+	return nil
 }
 
 // Author retrieves the Ethereum address of the account that minted the given
