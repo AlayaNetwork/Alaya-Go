@@ -592,15 +592,17 @@ func (s *Ethereum) Start() error {
 		}
 		s.StartMining()
 		// Since the p2pServer has not been initialized, the topic event notification will be performed at this time.
-		event := cbftEngine.GetAwaitingTopicEvent()
-		for ev, _ := range event {
-			switch e := ev.(type) {
-			case cbfttypes.NewTopicEvent:
-				log.Debug("AwaitingTopicEvent, NewTopicEvent", "topic", e.Topic, "nodes", len(e.Nodes))
-				s.eventMux.Post(e)
-			case cbfttypes.GroupTopicEvent:
-				log.Debug("AwaitingTopicEvent, GroupTopicEvent", "topic", e.Topic, "pubSub", e.PubSub)
-				s.eventMux.Post(e)
+		awaiting := cbftEngine.GetAwaitingTopicEvent()
+		for t, event := range awaiting {
+			switch t {
+			case cbfttypes.TypeConsensusTopic:
+				log.Debug("AwaitingTopicEvent, TypeConsensusTopic", "topic", event.Topic, "nodes", len(event.Nodes))
+				s.eventMux.Post(cbfttypes.NewTopicEvent{Topic: event.Topic, Nodes: event.Nodes})
+				s.eventMux.Post(cbfttypes.GroupTopicEvent{Topic: event.Topic, PubSub: false})
+			case cbfttypes.TypeGroupTopic:
+				log.Debug("AwaitingTopicEvent, TypeGroupTopic", "topic", event.Topic, "nodes", len(event.Nodes))
+				s.eventMux.Post(cbfttypes.NewTopicEvent{Topic: event.Topic, Nodes: event.Nodes})
+				s.eventMux.Post(cbfttypes.GroupTopicEvent{Topic: event.Topic, PubSub: true})
 			default:
 			}
 		}

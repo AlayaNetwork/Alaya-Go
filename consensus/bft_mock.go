@@ -158,7 +158,7 @@ func (bm *BftMock) Node() *enode.Node {
 	return enode.NewV4(&privateKey.PublicKey, nil, 0, 0)
 }
 
-func (bm *BftMock) GetAwaitingTopicEvent() map[interface{}]interface{} {
+func (bm *BftMock) GetAwaitingTopicEvent() map[int]cbfttypes.TopicEvent {
 	return nil
 }
 

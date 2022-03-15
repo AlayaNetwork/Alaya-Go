@@ -333,7 +333,7 @@ type ValidatorPool struct {
 	currentValidators *cbfttypes.Validators // Current round validators
 	nextValidators    *cbfttypes.Validators // Next round validators, to Post Pub event
 
-	awaitingTopicEvent map[interface{}]interface{}
+	awaitingTopicEvent map[int]cbfttypes.TopicEvent
 }
 
 // NewValidatorPool new a validator pool.
@@ -345,7 +345,7 @@ func NewValidatorPool(agency consensus.Agency, blockNumber, epoch uint64, nodeID
 		grouped:              needGroup,
 		groupValidatorsLimit: xcom.MaxGroupValidators(),
 		coordinatorLimit:     xcom.CoordinatorsLimit(),
-		awaitingTopicEvent:   make(map[interface{}]interface{}),
+		awaitingTopicEvent:   make(map[int]cbfttypes.TopicEvent),
 	}
 	lastNumber := agency.GetLastNumber(blockNumber)
 	// FIXME: Check `GetValidators` return error
@@ -964,10 +964,8 @@ func (vp *ValidatorPool) organize(validators *cbfttypes.Validators, epoch uint64
 	groupTopic := cbfttypes.ConsensusGroupTopicName(epoch, gvs.GetGroupID())
 
 	if init {
-		vp.awaitingTopicEvent[cbfttypes.NewTopicEvent{Topic: consensusTopic, Nodes: otherConsensusNodes}] = struct{}{}
-		vp.awaitingTopicEvent[cbfttypes.NewTopicEvent{Topic: groupTopic, Nodes: groupNodes}] = struct{}{}
-		vp.awaitingTopicEvent[cbfttypes.GroupTopicEvent{Topic: groupTopic, PubSub: true}] = struct{}{}
-		vp.awaitingTopicEvent[cbfttypes.GroupTopicEvent{Topic: consensusTopic, PubSub: false}] = struct{}{}
+		vp.awaitingTopicEvent[cbfttypes.TypeConsensusTopic] = cbfttypes.TopicEvent{consensusTopic, otherConsensusNodes}
+		vp.awaitingTopicEvent[cbfttypes.TypeGroupTopic] = cbfttypes.TopicEvent{groupTopic, groupNodes}
 	} else {
 		eventMux.Post(cbfttypes.NewTopicEvent{Topic: consensusTopic, Nodes: otherConsensusNodes})
 		eventMux.Post(cbfttypes.NewTopicEvent{Topic: groupTopic, Nodes: groupNodes})
@@ -998,6 +996,6 @@ func (vp *ValidatorPool) dissolve(epoch uint64, eventMux *event.TypeMux) {
 	eventMux.Post(cbfttypes.ExpiredGroupTopicEvent{Topic: consensusTopic}) // for pubsub
 }
 
-func (vp *ValidatorPool) GetAwaitingTopicEvent() map[interface{}]interface{} {
+func (vp *ValidatorPool) GetAwaitingTopicEvent() map[int]cbfttypes.TopicEvent {
 	return vp.awaitingTopicEvent
 }

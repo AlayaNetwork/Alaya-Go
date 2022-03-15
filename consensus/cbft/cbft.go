@@ -2116,7 +2116,7 @@ func (cbft *Cbft) Node() *enode.Node {
 	return cbft.config.Option.Node
 }
 
-func (cbft *Cbft) GetAwaitingTopicEvent() map[interface{}]interface{} {
+func (cbft *Cbft) GetAwaitingTopicEvent() map[int]cbfttypes.TopicEvent {
 	return cbft.validatorPool.GetAwaitingTopicEvent()
 }
 

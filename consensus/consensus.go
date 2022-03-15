@@ -202,5 +202,5 @@ type Bft interface {
 	// NodeID is temporary.
 	Node() *enode.Node
 
-	GetAwaitingTopicEvent() map[interface{}]interface{}
+	GetAwaitingTopicEvent() map[int]cbfttypes.TopicEvent
 }
