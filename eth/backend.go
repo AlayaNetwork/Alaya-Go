@@ -20,6 +20,7 @@ package eth
 import (
 	"errors"
 	"fmt"
+	"github.com/AlayaNetwork/Alaya-Go/core/cbfttypes"
 	"math/big"
 	"os"
 	"sync"
@@ -578,6 +579,7 @@ func (s *Ethereum) Start() error {
 	}*/
 	// Start the networking layer and the light server if requested
 	s.protocolManager.Start(maxPeers)
+	s.p2pServer.StartWatching(s.eventMux)
 
 	//log.Debug("node start", "srvr.Config.PrivateKey", srvr.Config.PrivateKey)
 	if cbftEngine, ok := s.engine.(consensus.Bft); ok {
@@ -591,12 +593,21 @@ func (s *Ethereum) Start() error {
 		}
 		s.StartMining()
 		// Since the p2pServer has not been initialized, the topic event notification will be performed at this time.
-		event := cbftEngine.GetAwaitingTopicEvent()
-		for topic, nodes := range event {
-			s.p2pServer.SetPeers(topic, nodes)
+		awaiting := cbftEngine.GetAwaitingTopicEvent()
+		for t, event := range awaiting {
+			switch t {
+			case cbfttypes.TypeConsensusTopic:
+				log.Debug("AwaitingTopicEvent, TypeConsensusTopic", "topic", event.Topic, "nodes", len(event.Nodes))
+				s.eventMux.Post(cbfttypes.NewTopicEvent{Topic: event.Topic, Nodes: event.Nodes})
+				s.eventMux.Post(cbfttypes.GroupTopicEvent{Topic: event.Topic, PubSub: false})
+			case cbfttypes.TypeGroupTopic:
+				log.Debug("AwaitingTopicEvent, TypeGroupTopic", "topic", event.Topic, "nodes", len(event.Nodes))
+				s.eventMux.Post(cbfttypes.NewTopicEvent{Topic: event.Topic, Nodes: event.Nodes})
+				s.eventMux.Post(cbfttypes.GroupTopicEvent{Topic: event.Topic, PubSub: true})
+			default:
+			}
 		}
 	}
-	s.p2pServer.StartWatching(s.eventMux)
 
 	return nil
 }

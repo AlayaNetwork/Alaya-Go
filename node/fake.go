@@ -22,7 +22,7 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
 )
 
-var FakeNetEnable bool = false
+var FakeNetEnable = false
 
 var indexMock = map[int][]int{
 	1:  []int{2},

@@ -333,7 +333,7 @@ type ValidatorPool struct {
 	currentValidators *cbfttypes.Validators // Current round validators
 	nextValidators    *cbfttypes.Validators // Next round validators, to Post Pub event
 
-	awaitingTopicEvent map[string][]*enode.Node
+	awaitingTopicEvent map[int]cbfttypes.TopicEvent
 }
 
 // NewValidatorPool new a validator pool.
@@ -345,7 +345,7 @@ func NewValidatorPool(agency consensus.Agency, blockNumber, epoch uint64, nodeID
 		grouped:              needGroup,
 		groupValidatorsLimit: xcom.MaxGroupValidators(),
 		coordinatorLimit:     xcom.CoordinatorsLimit(),
-		awaitingTopicEvent:   make(map[string][]*enode.Node),
+		awaitingTopicEvent:   make(map[int]cbfttypes.TopicEvent),
 	}
 	lastNumber := agency.GetLastNumber(blockNumber)
 	// FIXME: Check `GetValidators` return error
@@ -964,14 +964,15 @@ func (vp *ValidatorPool) organize(validators *cbfttypes.Validators, epoch uint64
 	groupTopic := cbfttypes.ConsensusGroupTopicName(epoch, gvs.GetGroupID())
 
 	if init {
-		vp.awaitingTopicEvent[consensusTopic] = otherConsensusNodes
-		vp.awaitingTopicEvent[groupTopic] = groupNodes
+		vp.awaitingTopicEvent[cbfttypes.TypeConsensusTopic] = cbfttypes.TopicEvent{Topic: consensusTopic, Nodes: otherConsensusNodes}
+		vp.awaitingTopicEvent[cbfttypes.TypeGroupTopic] = cbfttypes.TopicEvent{Topic: groupTopic, Nodes: groupNodes}
 	} else {
 		eventMux.Post(cbfttypes.NewTopicEvent{Topic: consensusTopic, Nodes: otherConsensusNodes})
 		eventMux.Post(cbfttypes.NewTopicEvent{Topic: groupTopic, Nodes: groupNodes})
+		eventMux.Post(cbfttypes.GroupTopicEvent{Topic: groupTopic, PubSub: true})
+		eventMux.Post(cbfttypes.GroupTopicEvent{Topic: consensusTopic, PubSub: false})
 	}
-	eventMux.Post(cbfttypes.GroupTopicEvent{Topic: groupTopic, PubSub: true})
-	eventMux.Post(cbfttypes.GroupTopicEvent{Topic: consensusTopic, PubSub: false})
+
 	return nil
 }
 
@@ -995,6 +996,6 @@ func (vp *ValidatorPool) dissolve(epoch uint64, eventMux *event.TypeMux) {
 	eventMux.Post(cbfttypes.ExpiredGroupTopicEvent{Topic: consensusTopic}) // for pubsub
 }
 
-func (vp *ValidatorPool) GetAwaitingTopicEvent() map[string][]*enode.Node {
+func (vp *ValidatorPool) GetAwaitingTopicEvent() map[int]cbfttypes.TopicEvent {
 	return vp.awaitingTopicEvent
 }
