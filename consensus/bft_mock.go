@@ -23,9 +23,9 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
 	"github.com/AlayaNetwork/Alaya-Go/ethdb"
 	"github.com/AlayaNetwork/Alaya-Go/event"
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
 
 	"github.com/AlayaNetwork/Alaya-Go/common/consensus"
 	"github.com/AlayaNetwork/Alaya-Go/crypto"
@@ -158,7 +158,7 @@ func (bm *BftMock) Node() *enode.Node {
 	return enode.NewV4(&privateKey.PublicKey, nil, 0, 0)
 }
 
-func (bm *BftMock) GetAwaitingTopicEvent() map[string][]*enode.Node {
+func (bm *BftMock) GetAwaitingTopicEvent() map[int]cbfttypes.TopicEvent {
 	return nil
 }
 

@@ -41,8 +41,10 @@ import (
 )
 
 const (
-	TopicConsensus = "consensus:%d"    // consensus:{epoch}
-	TopicGroup     = "consensus:%d:%d" // consensus:{epoch}:{groupID}
+	TopicConsensus     = "consensus:%d"    // consensus:{epoch}
+	TopicGroup         = "consensus:%d:%d" // consensus:{epoch}:{groupID}
+	TypeConsensusTopic = 1
+	TypeGroupTopic     = 2
 )
 
 func ConsensusTopicName(epoch uint64) string {
@@ -54,6 +56,11 @@ func ConsensusGroupTopicName(epoch uint64, groupID uint32) string {
 }
 
 type UpdateChainStateFn func(qcState, lockState, commitState *protocols.State)
+
+type TopicEvent struct {
+	Topic string
+	Nodes []*enode.Node
+}
 
 type CbftResult struct {
 	Block              *types.Block
