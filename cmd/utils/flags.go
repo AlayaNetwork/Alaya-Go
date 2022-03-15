@@ -384,7 +384,12 @@ var (
 	MinimumPeersPerTopic = cli.IntFlag{
 		Name:  "minpeerstopic",
 		Usage: "Minimum number of nodes to maintain the same topic",
-		Value: 10,
+		Value: node.DefaultConfig.P2P.MinimumPeersPerTopic,
+	}
+	PubSubTraceHost = cli.StringFlag{
+		Name:  "tracerhost",
+		Usage: "Remote proxy address, collect trace events of pubSub",
+		Value: "",
 	}
 	ListenPortFlag = cli.IntFlag{
 		Name:  "port",
@@ -885,6 +890,9 @@ func SetP2PConfig(ctx *cli.Context, cfg *p2p.Config) {
 
 	if ctx.GlobalIsSet(MinimumPeersPerTopic.Name) {
 		cfg.MinimumPeersPerTopic = ctx.GlobalInt(MinimumPeersPerTopic.Name)
+	}
+	if ctx.GlobalIsSet(PubSubTraceHost.Name) {
+		cfg.PubSubTraceHost = ctx.GlobalString(PubSubTraceHost.Name)
 	}
 	if cfg.MaxPeers <= cfg.MaxConsensusPeers {
 		log.Error("MaxPeers is less than MaxConsensusPeers", "MaxPeers", cfg.MaxPeers, "MaxConsensusPeers", cfg.MaxConsensusPeers)

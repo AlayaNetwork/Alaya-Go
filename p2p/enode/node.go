@@ -258,6 +258,15 @@ func HexID(in string) ID {
 	return id
 }
 
+func BytesID(b []byte) (ID, error) {
+	var id ID
+	if len(b) != len(id) {
+		return id, fmt.Errorf("wrong length, want %d bytes", len(id))
+	}
+	copy(id[:], b)
+	return id, nil
+}
+
 func ParseID(in string) (ID, error) {
 	var id ID
 	b, err := hex.DecodeString(strings.TrimPrefix(in, "0x"))
