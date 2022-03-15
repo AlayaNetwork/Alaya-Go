@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
-
 package wal
 
 import (
@@ -49,13 +48,24 @@ type MessageConfirmedViewChange struct {
 	Data      *protocols.ConfirmedViewChange
 }
 
+// struct SendRGBlockQuorumCert for rlp decode
+type MessageSendRGBlockQuorumCert struct {
+	Timestamp uint64
+	Data      *protocols.SendRGBlockQuorumCert
+}
+
+// struct SendRGViewChangeQuorumCert for rlp decode
+type MessageSendRGViewChangeQuorumCert struct {
+	Timestamp uint64
+	Data      *protocols.SendRGViewChangeQuorumCert
+}
+
 func WALDecode(pack []byte, msgType uint16) (interface{}, error) {
 	switch msgType {
 	case protocols.ConfirmedViewChangeMsg:
 		var j MessageConfirmedViewChange
 		if err := rlp.DecodeBytes(pack, &j); err != nil {
 			return nil, err
-
 		}
 		return j.Data, nil
 
@@ -63,7 +73,6 @@ func WALDecode(pack []byte, msgType uint16) (interface{}, error) {
 		var j MessageSendViewChange
 		if err := rlp.DecodeBytes(pack, &j); err != nil {
 			return nil, err
-
 		}
 		return j.Data, nil
 
@@ -78,7 +87,18 @@ func WALDecode(pack []byte, msgType uint16) (interface{}, error) {
 		var j MessageSendPrepareVote
 		if err := rlp.DecodeBytes(pack, &j); err != nil {
 			return nil, err
-
+		}
+		return j.Data, nil
+	case protocols.SendRGBlockQuorumCertMsg:
+		var j MessageSendRGBlockQuorumCert
+		if err := rlp.DecodeBytes(pack, &j); err != nil {
+			return nil, err
+		}
+		return j.Data, nil
+	case protocols.SendRGViewChangeQuorumCertMsg:
+		var j MessageSendRGViewChangeQuorumCert
+		if err := rlp.DecodeBytes(pack, &j); err != nil {
+			return nil, err
 		}
 		return j.Data, nil
 	}

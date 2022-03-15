@@ -14,12 +14,13 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
-
 package gov
 
 import (
 	"encoding/json"
 	"fmt"
+
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
 
 	"github.com/AlayaNetwork/Alaya-Go/params"
 
@@ -30,7 +31,6 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/common"
 	"github.com/AlayaNetwork/Alaya-Go/common/vm"
 	"github.com/AlayaNetwork/Alaya-Go/log"
-	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
 	"github.com/AlayaNetwork/Alaya-Go/x/xcom"
 )
 
@@ -110,7 +110,7 @@ func GetProposalList(blockHash common.Hash, state xcom.StateDB) ([]Proposal, err
 }
 
 //Add the Vote detail
-func AddVoteValue(proposalID common.Hash, voter discover.NodeID, option VoteOption, blockHash common.Hash) error {
+func AddVoteValue(proposalID common.Hash, voter enode.IDv0, option VoteOption, blockHash common.Hash) error {
 	voteValueList, err := ListVoteValue(proposalID, blockHash)
 	if err != nil {
 		return err
@@ -175,8 +175,8 @@ func ClearVoteValue(proposalID common.Hash, blockHash common.Hash) error {
 }
 
 /*
-func ListVotedVerifier(proposalID common.Hash, state xcom.StateDB) ([]discover.NodeID, error) {
-	var voterList []discover.NodeID
+func ListVotedVerifier(proposalID common.Hash, state xcom.StateDB) ([]enode.IDv0, error) {
+	var voterList []enode.IDv0
 	valueList, err := ListVoteValue(proposalID, state)
 	if err != nil {
 		return nil, err
@@ -189,17 +189,35 @@ func ListVotedVerifier(proposalID common.Hash, state xcom.StateDB) ([]discover.N
 }
 */
 
-func GetVotedVerifierMap(proposalID common.Hash, blockHash common.Hash) (map[discover.NodeID]struct{}, error) {
+func GetVotedVerifierMap(proposalID common.Hash, blockHash common.Hash) (map[enode.IDv0]struct{}, error) {
 	valueList, err := ListVoteValue(proposalID, blockHash)
 	if err != nil {
 		return nil, err
 	}
 
-	votedMap := make(map[discover.NodeID]struct{}, len(valueList))
+	votedMap := make(map[enode.IDv0]struct{}, len(valueList))
 	for _, value := range valueList {
 		votedMap[value.VoteNodeID] = struct{}{}
 	}
 	return votedMap, nil
+}
+
+// update tally result status to Active
+func UpdateTallyResult(proposalID common.Hash, state xcom.StateDB) error {
+	//log.Debug("it's time to active the pre-active version proposal")
+	tallyResult, err := GetTallyResult(proposalID, state)
+	if err != nil || tallyResult == nil {
+		log.Error("find pre-active version proposal tally result failed.", "proposalID", proposalID)
+		return err
+	}
+	//update tally status to "active"
+	tallyResult.Status = Active
+
+	if err := SetTallyResult(*tallyResult, state); err != nil {
+		log.Error("update version proposal tally result failed.", "proposalID", proposalID)
+		return err
+	}
+	return nil
 }
 
 func SetTallyResult(tallyResult TallyResult, state xcom.StateDB) error {
@@ -405,7 +423,7 @@ func MovePreActiveProposalIDToEnd(blockHash common.Hash, proposalID common.Hash)
 }
 
 // Add the node that has made a new version declare or vote during voting period
-func AddActiveNode(blockHash common.Hash, proposalID common.Hash, nodeID discover.NodeID) error {
+func AddActiveNode(blockHash common.Hash, proposalID common.Hash, nodeID enode.IDv0) error {
 	if err := addActiveNode(blockHash, nodeID, proposalID); err != nil {
 		log.Error("add active node to snapshot db failed", "blockHash", blockHash.Hex(), "proposalID", proposalID, "error", err)
 		return err
@@ -414,7 +432,7 @@ func AddActiveNode(blockHash common.Hash, proposalID common.Hash, nodeID discove
 }
 
 // Get the node list that have made a new version declare or vote during voting period
-func GetActiveNodeList(blockHash common.Hash, proposalID common.Hash) ([]discover.NodeID, error) {
+func GetActiveNodeList(blockHash common.Hash, proposalID common.Hash) ([]enode.IDv0, error) {
 	nodes, err := getActiveNodeList(blockHash, proposalID)
 	if err != nil {
 		log.Error("get active nodes from snapshot db failed", "blockHash", blockHash.Hex(), "proposalID", proposalID, "error", err)
@@ -434,7 +452,7 @@ func ClearActiveNodes(blockHash common.Hash, proposalID common.Hash) error {
 }
 
 // AccuVerifiers accumulates all distinct verifiers those can vote this proposal ID
-func AccuVerifiers(blockHash common.Hash, proposalID common.Hash, verifierList []discover.NodeID) error {
+func AccuVerifiers(blockHash common.Hash, proposalID common.Hash, verifierList []enode.IDv0) error {
 	if err := addAccuVerifiers(blockHash, proposalID, verifierList); err != nil {
 		log.Error("accumulates verifiers to snapshot db failed", "blockHash", blockHash.Hex(), "proposalID", proposalID, "error", err)
 		return err
@@ -443,7 +461,7 @@ func AccuVerifiers(blockHash common.Hash, proposalID common.Hash, verifierList [
 }
 
 // Get the total number of all voting verifiers
-func ListAccuVerifier(blockHash common.Hash, proposalID common.Hash) ([]discover.NodeID, error) {
+func ListAccuVerifier(blockHash common.Hash, proposalID common.Hash) ([]enode.IDv0, error) {
 	if l, err := getAccuVerifiers(blockHash, proposalID); err != nil {
 		log.Error("list accumulated verifiers failed", "blockHash", blockHash.Hex(), "proposalID", proposalID, "error", err)
 		return nil, err

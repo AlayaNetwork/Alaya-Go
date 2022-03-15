@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
-
 package plugin
 
 import (
@@ -24,6 +23,8 @@ import (
 	"fmt"
 	"math/big"
 	"testing"
+
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
 
 	"github.com/AlayaNetwork/Alaya-Go/rlp"
 
@@ -45,7 +46,6 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/core/snapshotdb"
 	"github.com/AlayaNetwork/Alaya-Go/core/types"
 	"github.com/AlayaNetwork/Alaya-Go/crypto"
-	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
 	"github.com/AlayaNetwork/Alaya-Go/x/staking"
 	"github.com/AlayaNetwork/Alaya-Go/x/xcom"
 	"github.com/AlayaNetwork/Alaya-Go/x/xutil"
@@ -86,7 +86,7 @@ func buildStakingData(blockNumber uint64, blockHash common.Hash, pri *ecdsa.Priv
 		pri = sk
 	}
 
-	nodeIdA := discover.PubkeyID(&pri.PublicKey)
+	nodeIdA := enode.PublicKeyToIDv0(&pri.PublicKey)
 	addrA, _ := xutil.NodeId2Addr(nodeIdA)
 
 	nodeIdB := nodeIdArr[1]
@@ -252,26 +252,26 @@ func buildStakingData(blockNumber uint64, blockHash common.Hash, pri *ecdsa.Priv
 
 	epochArr := &staking.ValidatorArray{
 		Start: 1,
-		End:   uint64(xutil.CalcBlocksEachEpoch()),
+		End:   uint64(xutil.CalcBlocksEachEpoch(gov.GetCurrentActiveVersion(stateDb))),
 		Arr:   queue,
 	}
 
 	preArr := &staking.ValidatorArray{
 		Start: 1,
-		End:   xutil.ConsensusSize(),
+		End:   xcom.ConsensusSize(gov.GetCurrentActiveVersion(stateDb)),
 		Arr:   queue,
 	}
 
 	curArr := &staking.ValidatorArray{
-		Start: xutil.ConsensusSize() + 1,
-		End:   xutil.ConsensusSize() * 2,
+		Start: xcom.ConsensusSize(gov.GetCurrentActiveVersion(stateDb)) + 1,
+		End:   xcom.ConsensusSize(gov.GetCurrentActiveVersion(stateDb)) * 2,
 		Arr:   queue,
 	}
 
 	setVerifierList(blockHash, epochArr)
 	setRoundValList(blockHash, preArr)
 	setRoundValList(blockHash, curArr)
-	err := stk.storeRoundValidatorAddrs(blockNumber, blockHash, 1, queue)
+	err := stk.storeRoundValidatorAddrs(blockNumber, blockHash, 1, queue, gov.GetCurrentActiveVersion(stateDb), stateDb)
 	assert.Nil(t, err, fmt.Sprintf("Failed to storeRoundValidatorAddrs, err: %v", err))
 	balance, ok := new(big.Int).SetString("9999999999999999999999999999999999999999999999999", 10)
 	if !ok {
@@ -288,8 +288,8 @@ func TestSlashingPlugin_BeginBlock(t *testing.T) {
 		snapshotdb.Instance().Clear()
 	}()
 
-	startNumber := xutil.ConsensusSize()
-	startNumber += xutil.ConsensusSize() - xcom.ElectionDistance() - 2
+	startNumber := xcom.ConsensusSize(gov.GetCurrentActiveVersion(stateDB))
+	startNumber += xcom.ConsensusSize(gov.GetCurrentActiveVersion(stateDB)) - xcom.ElectionDistance() - 2
 	pri, phash := buildBlock(t, int(startNumber), stateDB)
 	startNumber++
 	blockNumber := new(big.Int).SetInt64(int64(startNumber))
@@ -493,7 +493,7 @@ func TestSlashingPlugin_Slash(t *testing.T) {
          }`
 	blockNumber = new(big.Int).Add(blockNumber, common.Big1)
 	stakingAddr := common.MustBech32ToAddress("atx1r9tx0n00etv5c5smmlctlpg8jas7p78nmnfw8v")
-	stakingNodeId, err := discover.HexID("51c0559c065400151377d71acd7a17282a7c8abcfefdb11992dcecafde15e100b8e31e1a5e74834a04792d016f166c80b9923423fe280570e8131debf591d483")
+	stakingNodeId, err := enode.HexIDv0("51c0559c065400151377d71acd7a17282a7c8abcfefdb11992dcecafde15e100b8e31e1a5e74834a04792d016f166c80b9923423fe280570e8131debf591d483")
 	if nil != err {
 		t.Fatal(err)
 	}
@@ -546,7 +546,7 @@ func TestSlashingPlugin_Slash(t *testing.T) {
 	if err := si.Slash(normalEvidence, common.ZeroHash, blockNumber.Uint64(), stateDB, anotherSender); nil != err {
 		t.Fatal(err)
 	}
-	slashNodeId, err := discover.HexID("c0b49363fa1c2a0d3c55cafec4955cb261a537afd4fe45ff21c7b84cba660d5157865d984c2d2a61b4df1d3d028634136d04030ed6a388b429eaa6e2bdefaed1")
+	slashNodeId, err := enode.HexIDv0("c0b49363fa1c2a0d3c55cafec4955cb261a537afd4fe45ff21c7b84cba660d5157865d984c2d2a61b4df1d3d028634136d04030ed6a388b429eaa6e2bdefaed1")
 	if nil != err {
 		t.Fatal(err)
 	}
@@ -565,7 +565,7 @@ func TestSlashingPlugin_Slash(t *testing.T) {
 	assert.NotNil(t, err)
 
 	// Report outdated evidence, expected failure
-	err = si.Slash(normalEvidence, common.ZeroHash, new(big.Int).SetUint64(xutil.CalcBlocksEachEpoch()*uint64(xcom.MaxEvidenceAge())*3).Uint64(), stateDB, anotherSender)
+	err = si.Slash(normalEvidence, common.ZeroHash, new(big.Int).SetUint64(xutil.CalcBlocksEachEpoch(gov.GetCurrentActiveVersion(stateDB))*uint64(xcom.MaxEvidenceAge())*3).Uint64(), stateDB, anotherSender)
 	assert.NotNil(t, err)
 
 	normalEvidence2, err := si.DecodeEvidence(1, normalData2)
@@ -592,7 +592,7 @@ func TestSlashingPlugin_ZeroProduceProcess(t *testing.T) {
 	_, genesis, _ := newChainState()
 	si, stateDB := initInfo(t)
 	// Starting from the second consensus round
-	blockNumber := new(big.Int).SetUint64(xutil.ConsensusSize()*2 - xcom.ElectionDistance())
+	blockNumber := new(big.Int).SetUint64(xcom.ConsensusSize(gov.GetCurrentActiveVersion(stateDB))*2 - xcom.ElectionDistance())
 	if err := snapshotdb.Instance().NewBlock(blockNumber, genesis.Hash(), common.ZeroHash); nil != err {
 		t.Fatal(err)
 	}
@@ -608,7 +608,7 @@ func TestSlashingPlugin_ZeroProduceProcess(t *testing.T) {
 
 	validatorQueue := make(staking.ValidatorQueue, 0)
 	// The following uses multiple nodes to simulate a variety of different scenarios
-	validatorMap := make(map[discover.NodeID]bool)
+	validatorMap := make(map[enode.IDv0]bool)
 	// Blocks were produced in the last round; removed from pending list
 	// bits：1 -> delete
 	validatorMap[nodeIdArr[0]] = true
@@ -619,7 +619,7 @@ func TestSlashingPlugin_ZeroProduceProcess(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	noSlashingNodeId := discover.PubkeyID(&nodePrivate.PublicKey)
+	noSlashingNodeId := enode.PublicKeyToIDv0(&nodePrivate.PublicKey)
 	// Current round of production blocks; removed from pending list
 	// bits: 1 -> delete
 	validatorMap[noSlashingNodeId] = false
@@ -719,15 +719,15 @@ func TestSlashingPlugin_ZeroProduceProcess(t *testing.T) {
 		Number: blockNumber,
 		Extra:  make([]byte, 97),
 	}
-	if slashingQueue, err := si.zeroProduceProcess(common.ZeroHash, header, validatorMap, validatorQueue); nil != err {
+	if slashingQueue, err := si.zeroProduceProcess(common.ZeroHash, header, validatorMap, validatorQueue, stateDB); nil != err {
 		t.Fatal(err)
 	} else if len(slashingQueue) > 0 {
 		t.Errorf("zeroProduceProcess amount: have %v, want %v", len(slashingQueue), 0)
 		return
 	}
 	// Third consensus round
-	blockNumber.Add(blockNumber, new(big.Int).SetUint64(xutil.ConsensusSize()))
-	validatorMap = make(map[discover.NodeID]bool)
+	blockNumber.Add(blockNumber, new(big.Int).SetUint64(xcom.ConsensusSize(gov.GetCurrentActiveVersion(stateDB))))
+	validatorMap = make(map[enode.IDv0]bool)
 	validatorQueue = make(staking.ValidatorQueue, 0)
 	validatorMap[nodeIdArr[0]] = false
 	validatorQueue = append(validatorQueue, &staking.Validator{
@@ -742,32 +742,32 @@ func TestSlashingPlugin_ZeroProduceProcess(t *testing.T) {
 		t.Fatal(err)
 	}
 	copy(header.Extra[len(header.Extra)-common.ExtraSeal:], sign[:])
-	if err := si.setPackAmount(common.ZeroHash, header); nil != err {
+	if err := si.setPackAmount(common.ZeroHash, header, stateDB); nil != err {
 		t.Fatal(err)
 	}
-	if slashingQueue, err := si.zeroProduceProcess(common.ZeroHash, header, validatorMap, validatorQueue); nil != err {
+	if slashingQueue, err := si.zeroProduceProcess(common.ZeroHash, header, validatorMap, validatorQueue, stateDB); nil != err {
 		t.Fatal(err)
 	} else if len(slashingQueue) > 0 {
 		t.Errorf("zeroProduceProcess amount: have %v, want %v", len(slashingQueue), 0)
 		return
 	}
 	// Fourth consensus round
-	blockNumber.Add(blockNumber, new(big.Int).SetUint64(xutil.ConsensusSize()))
-	validatorMap = make(map[discover.NodeID]bool)
+	blockNumber.Add(blockNumber, new(big.Int).SetUint64(xcom.ConsensusSize(gov.GetCurrentActiveVersion(stateDB))))
+	validatorMap = make(map[enode.IDv0]bool)
 	validatorQueue = make(staking.ValidatorQueue, 0)
 	validatorMap[nodeIdArr[0]] = true
 	validatorQueue = append(validatorQueue, &staking.Validator{
 		NodeId: nodeIdArr[0],
 	})
-	if slashingQueue, err := si.zeroProduceProcess(common.ZeroHash, header, validatorMap, validatorQueue); nil != err {
+	if slashingQueue, err := si.zeroProduceProcess(common.ZeroHash, header, validatorMap, validatorQueue, stateDB); nil != err {
 		t.Fatal(err)
 	} else if len(slashingQueue) > 0 {
 		t.Errorf("zeroProduceProcess amount: have %v, want %v", len(slashingQueue), 0)
 		return
 	}
 	// Fifth consensus round
-	blockNumber.Add(blockNumber, new(big.Int).SetUint64(xutil.ConsensusSize()))
-	validatorMap = make(map[discover.NodeID]bool)
+	blockNumber.Add(blockNumber, new(big.Int).SetUint64(xcom.ConsensusSize(gov.GetCurrentActiveVersion(stateDB))))
+	validatorMap = make(map[enode.IDv0]bool)
 	validatorQueue = make(staking.ValidatorQueue, 0)
 	validatorMap[nodeIdArr[2]] = false
 	validatorMap[nodeIdArr[3]] = false
@@ -785,7 +785,7 @@ func TestSlashingPlugin_ZeroProduceProcess(t *testing.T) {
 	validatorQueue = append(validatorQueue, &staking.Validator{
 		NodeId: nodeIdArr[6],
 	})
-	if slashingQueue, err := si.zeroProduceProcess(common.ZeroHash, header, validatorMap, validatorQueue); nil != err {
+	if slashingQueue, err := si.zeroProduceProcess(common.ZeroHash, header, validatorMap, validatorQueue, stateDB); nil != err {
 		t.Fatal(err)
 	} else if len(slashingQueue) != 1 {
 		t.Errorf("zeroProduceProcess amount: have %v, want %v", len(slashingQueue), 1)
@@ -798,8 +798,8 @@ func TestSlashingPlugin_ZeroProduceProcess(t *testing.T) {
 	if err := gov.SetGovernParam(gov.ModuleSlashing, gov.KeyZeroProduceNumberThreshold, "", "2", 1, common.ZeroHash); nil != err {
 		t.Fatal(err)
 	}
-	blockNumber.Add(blockNumber, new(big.Int).SetUint64(xutil.ConsensusSize()))
-	validatorMap = make(map[discover.NodeID]bool)
+	blockNumber.Add(blockNumber, new(big.Int).SetUint64(xcom.ConsensusSize(gov.GetCurrentActiveVersion(stateDB))))
+	validatorMap = make(map[enode.IDv0]bool)
 	validatorQueue = make(staking.ValidatorQueue, 0)
 	validatorMap[nodeIdArr[1]] = false
 	validatorMap[nodeIdArr[2]] = false
@@ -813,7 +813,7 @@ func TestSlashingPlugin_ZeroProduceProcess(t *testing.T) {
 	validatorQueue = append(validatorQueue, &staking.Validator{
 		NodeId: nodeIdArr[5],
 	})
-	if slashingQueue, err := si.zeroProduceProcess(common.ZeroHash, header, validatorMap, validatorQueue); nil != err {
+	if slashingQueue, err := si.zeroProduceProcess(common.ZeroHash, header, validatorMap, validatorQueue, stateDB); nil != err {
 		t.Fatal(err)
 	} else if len(slashingQueue) > 0 {
 		t.Errorf("zeroProduceProcess amount: have %v, want %v", len(slashingQueue), 0)
@@ -826,14 +826,14 @@ func TestSlashingPlugin_ZeroProduceProcess(t *testing.T) {
 	if err := gov.SetGovernParam(gov.ModuleSlashing, gov.KeyZeroProduceNumberThreshold, "", "3", 1, common.ZeroHash); nil != err {
 		t.Fatal(err)
 	}
-	blockNumber.Add(blockNumber, new(big.Int).SetUint64(xutil.ConsensusSize()))
-	validatorMap = make(map[discover.NodeID]bool)
+	blockNumber.Add(blockNumber, new(big.Int).SetUint64(xcom.ConsensusSize(gov.GetCurrentActiveVersion(stateDB))))
+	validatorMap = make(map[enode.IDv0]bool)
 	validatorQueue = make(staking.ValidatorQueue, 0)
 	validatorMap[nodeIdArr[5]] = false
 	validatorQueue = append(validatorQueue, &staking.Validator{
 		NodeId: nodeIdArr[5],
 	})
-	if slashingQueue, err := si.zeroProduceProcess(common.ZeroHash, header, validatorMap, validatorQueue); nil != err {
+	if slashingQueue, err := si.zeroProduceProcess(common.ZeroHash, header, validatorMap, validatorQueue, stateDB); nil != err {
 		t.Fatal(err)
 	} else if len(slashingQueue) > 0 {
 		t.Errorf("zeroProduceProcess amount: have %v, want %v", len(slashingQueue), 0)
@@ -848,7 +848,7 @@ func TestSlashingPlugin_ZeroProduceProcess(t *testing.T) {
 		t.Errorf("waitSlashingNodeList amount: have %v, want %v", len(waitSlashingNodeList), 0)
 		return
 	}
-	expectMap := make(map[discover.NodeID]*WaitSlashingNode)
+	expectMap := make(map[enode.IDv0]*WaitSlashingNode)
 	expectMap[nodeIdArr[1]] = &WaitSlashingNode{
 		CountBit: 1,
 		Round:    5,

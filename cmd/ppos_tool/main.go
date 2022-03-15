@@ -27,12 +27,13 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
+
 	"github.com/AlayaNetwork/Alaya-Go/crypto/bls"
 
 	"github.com/AlayaNetwork/Alaya-Go/cmd/utils"
 	"github.com/AlayaNetwork/Alaya-Go/common"
 	"github.com/AlayaNetwork/Alaya-Go/common/hexutil"
-	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
 	"github.com/AlayaNetwork/Alaya-Go/rlp"
 	"github.com/AlayaNetwork/Alaya-Go/x/restricting"
 )
@@ -46,7 +47,7 @@ var (
 type Ppos_1000 struct {
 	Typ                uint16
 	BenefitAddress     common.Address
-	NodeId             discover.NodeID
+	NodeId             enode.IDv0
 	ExternalId         string
 	NodeName           string
 	Website            string
@@ -62,7 +63,7 @@ type Ppos_1000 struct {
 // editorCandidate
 type Ppos_1001 struct {
 	BenefitAddress common.Address
-	NodeId         discover.NodeID
+	NodeId         enode.IDv0
 	RewardPer      uint16
 	ExternalId     string
 	NodeName       string
@@ -72,27 +73,27 @@ type Ppos_1001 struct {
 
 // increaseStaking
 type Ppos_1002 struct {
-	NodeId discover.NodeID
+	NodeId enode.IDv0
 	Typ    uint16
 	Amount *big.Int
 }
 
 // withdrewStaking
 type Ppos_1003 struct {
-	NodeId discover.NodeID
+	NodeId enode.IDv0
 }
 
 // delegate
 type Ppos_1004 struct {
 	Typ    uint16
-	NodeId discover.NodeID
+	NodeId enode.IDv0
 	Amount *big.Int
 }
 
 // withdrewDelegation
 type Ppos_1005 struct {
 	StakingBlockNum uint64
-	NodeId          discover.NodeID
+	NodeId          enode.IDv0
 	Amount          *big.Int
 }
 
@@ -105,23 +106,23 @@ type Ppos_1103 struct {
 type Ppos_1104 struct {
 	StakingBlockNum uint64
 	DelAddr         common.Address
-	NodeId          discover.NodeID
+	NodeId          enode.IDv0
 }
 
 // getCandidateInfo
 type Ppos_1105 struct {
-	NodeId discover.NodeID
+	NodeId enode.IDv0
 }
 
 // submitText
 type Ppos_2000 struct {
-	Verifier discover.NodeID
+	Verifier enode.IDv0
 	PIPID    string
 }
 
 // submitVersion
 type Ppos_2001 struct {
-	Verifier        discover.NodeID
+	Verifier        enode.IDv0
 	PIPID           string
 	NewVersion      uint32
 	EndVotingRounds uint64
@@ -129,7 +130,7 @@ type Ppos_2001 struct {
 
 // submitParam
 type Ppos_2002 struct {
-	Verifier discover.NodeID
+	Verifier enode.IDv0
 	PIPID    string
 	Module   string
 	Name     string
@@ -138,7 +139,7 @@ type Ppos_2002 struct {
 
 // submitCancel
 type Ppos_2005 struct {
-	Verifier        discover.NodeID
+	Verifier        enode.IDv0
 	PIPID           string
 	EndVotingRounds uint64
 	TobeCanceled    common.Hash
@@ -146,7 +147,7 @@ type Ppos_2005 struct {
 
 // vote
 type Ppos_2003 struct {
-	Verifier       discover.NodeID
+	Verifier       enode.IDv0
 	ProposalID     common.Hash
 	Option         uint8
 	ProgramVersion uint32
@@ -155,7 +156,7 @@ type Ppos_2003 struct {
 
 //declareVersion
 type Ppos_2004 struct {
-	Verifier       discover.NodeID
+	Verifier       enode.IDv0
 	ProgramVersion uint32
 	VersionSign    common.VersionSign
 }
@@ -225,7 +226,7 @@ type Ppos_5000 struct {
 
 type Ppos_5100 struct {
 	Addr    common.Address
-	NodeIDs []discover.NodeID
+	NodeIDs []enode.IDv0
 }
 
 type decDataConfig struct {

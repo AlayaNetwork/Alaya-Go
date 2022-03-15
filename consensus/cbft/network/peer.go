@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
-
 package network
 
 import (
@@ -28,15 +27,17 @@ import (
 	"sync"
 	"time"
 
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
+
 	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/protocols"
 
 	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/types"
 
+	mapset "github.com/deckarep/golang-set"
+
 	"github.com/AlayaNetwork/Alaya-Go/common"
 	"github.com/AlayaNetwork/Alaya-Go/log"
 	"github.com/AlayaNetwork/Alaya-Go/p2p"
-	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
-	mapset "github.com/deckarep/golang-set"
 )
 
 var (
@@ -474,7 +475,7 @@ func (ps *PeerSet) Len() int {
 
 // peersWithConsensus retrieves a list of peers that exist with the PeerSet based
 // on the incoming consensus node ID array.
-func (ps *PeerSet) peersWithConsensus(consensusNodes []discover.NodeID) []*peer {
+func (ps *PeerSet) peersWithConsensus(consensusNodes []enode.ID) []*peer {
 	ps.lock.RLock()
 	defer ps.lock.RUnlock()
 
@@ -489,7 +490,7 @@ func (ps *PeerSet) peersWithConsensus(consensusNodes []discover.NodeID) []*peer 
 }
 
 // peersWithoutConsensus retrieves a list of peer that does not contain consensus nodes.
-func (ps *PeerSet) peersWithoutConsensus(consensusNodes []discover.NodeID) []*peer {
+func (ps *PeerSet) peersWithoutConsensus(consensusNodes []enode.ID) []*peer {
 	ps.lock.RLock()
 	defer ps.lock.RUnlock()
 
@@ -590,7 +591,7 @@ func (ps *PeerSet) printPeers() {
 		case <-outTimer.C:
 			peers := ps.allPeers()
 			if peers != nil {
-				neighborPeerGauage.Update(int64(len(peers)))
+				neighborPeerGauge.Update(int64(len(peers)))
 			}
 			var bf bytes.Buffer
 			for idx, peer := range peers {

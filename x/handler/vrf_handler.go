@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
-
 package handler
 
 import (
@@ -25,12 +24,12 @@ import (
 	"math/big"
 	"sync"
 
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
+
 	"github.com/AlayaNetwork/Alaya-Go/x/gov"
 
-	"github.com/AlayaNetwork/Alaya-Go/core/snapshotdb"
-	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
-
 	"github.com/AlayaNetwork/Alaya-Go/common"
+	"github.com/AlayaNetwork/Alaya-Go/core/snapshotdb"
 	"github.com/AlayaNetwork/Alaya-Go/crypto/vrf"
 	"github.com/AlayaNetwork/Alaya-Go/log"
 	"github.com/AlayaNetwork/Alaya-Go/rlp"
@@ -86,7 +85,7 @@ func (vh *VrfHandler) GenerateNonce(currentBlockNumber *big.Int, parentHash comm
 		if len(value) > 0 {
 			log.Info("Generate vrf proof Success", "blockNumber", currentBlockNumber.Uint64(),
 				"parentHash", hex.EncodeToString(parentHash.Bytes()), "nonce", hex.EncodeToString(value),
-				"nodeId", discover.PubkeyID(&vh.privateKey.PublicKey).String())
+				"nodeId", enode.PublicKeyToIDv0(&vh.privateKey.PublicKey).String())
 			return value, nil
 		}
 	}

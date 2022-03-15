@@ -20,6 +20,7 @@ package eth
 import (
 	"errors"
 	"fmt"
+	"github.com/AlayaNetwork/Alaya-Go/core/cbfttypes"
 	"math/big"
 	"os"
 	"sync"
@@ -56,7 +57,6 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/miner"
 	"github.com/AlayaNetwork/Alaya-Go/node"
 	"github.com/AlayaNetwork/Alaya-Go/p2p"
-	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
 	"github.com/AlayaNetwork/Alaya-Go/params"
 	"github.com/AlayaNetwork/Alaya-Go/rpc"
 	xplugin "github.com/AlayaNetwork/Alaya-Go/x/plugin"
@@ -326,8 +326,13 @@ func New(stack *node.Node, config *Config) (*Ethereum, error) {
 			handlePlugin(reactor)
 			agency = reactor
 
+			currentstate, err := blockChainCache.State()
+			if err != nil {
+				return nil, err
+			}
+
 			//register Govern parameter verifiers
-			gov.RegisterGovernParamVerifiers()
+			gov.RegisterGovernParamVerifiers(gov.GetCurrentActiveVersion(currentstate))
 		}
 
 		if err := recoverSnapshotDB(blockChainCache); err != nil {
@@ -339,6 +344,8 @@ func New(stack *node.Node, config *Config) (*Ethereum, error) {
 			log.Error("Init cbft consensus engine fail", "error", err)
 			return nil, errors.New("Failed to init cbft consensus engine")
 		}
+	} else {
+		log.Crit("Unsupported consensus engine")
 	}
 
 	// Permit the downloader to use the trie cache allowance during fast sync
@@ -435,7 +442,7 @@ func (s *Ethereum) APIs() []rpc.API {
 		}, {
 			Namespace: "debug",
 			Version:   "1.0",
-			Service:   xplugin.NewPublicPPOSAPI(),
+			Service:   xplugin.NewPublicPPOSAPI(s.APIBackend),
 		}, {
 			Namespace: "net",
 			Version:   "1.0",
@@ -564,14 +571,15 @@ func (s *Ethereum) Start() error {
 
 	// Figure out a max peers count based on the server limits
 	maxPeers := s.p2pServer.MaxPeers
-	if s.config.LightServ > 0 {
+	/*if s.config.LightServ > 0 {
 		if s.config.LightPeers >= s.p2pServer.MaxPeers {
 			return fmt.Errorf("invalid peer config: light peer count (%d) >= total peer count (%d)", s.config.LightPeers, s.p2pServer.MaxPeers)
 		}
 		maxPeers -= s.config.LightPeers
-	}
+	}*/
 	// Start the networking layer and the light server if requested
 	s.protocolManager.Start(maxPeers)
+	s.p2pServer.StartWatching(s.eventMux)
 
 	//log.Debug("node start", "srvr.Config.PrivateKey", srvr.Config.PrivateKey)
 	if cbftEngine, ok := s.engine.(consensus.Bft); ok {
@@ -579,13 +587,27 @@ func (s *Ethereum) Start() error {
 			for _, n := range s.blockchain.Config().Cbft.InitialNodes {
 				// todo: Mock point.
 				if !node.FakeNetEnable {
-					s.p2pServer.AddConsensusPeer(discover.NewNode(n.Node.ID, n.Node.IP, n.Node.UDP, n.Node.TCP))
+					s.p2pServer.AddConsensusPeer(n.Node)
 				}
 			}
 		}
 		s.StartMining()
+		// Since the p2pServer has not been initialized, the topic event notification will be performed at this time.
+		awaiting := cbftEngine.GetAwaitingTopicEvent()
+		for t, event := range awaiting {
+			switch t {
+			case cbfttypes.TypeConsensusTopic:
+				log.Debug("AwaitingTopicEvent, TypeConsensusTopic", "topic", event.Topic, "nodes", len(event.Nodes))
+				s.eventMux.Post(cbfttypes.NewTopicEvent{Topic: event.Topic, Nodes: event.Nodes})
+				s.eventMux.Post(cbfttypes.GroupTopicEvent{Topic: event.Topic, PubSub: false})
+			case cbfttypes.TypeGroupTopic:
+				log.Debug("AwaitingTopicEvent, TypeGroupTopic", "topic", event.Topic, "nodes", len(event.Nodes))
+				s.eventMux.Post(cbfttypes.NewTopicEvent{Topic: event.Topic, Nodes: event.Nodes})
+				s.eventMux.Post(cbfttypes.GroupTopicEvent{Topic: event.Topic, PubSub: true})
+			default:
+			}
+		}
 	}
-	s.p2pServer.StartWatching(s.eventMux)
 
 	return nil
 }

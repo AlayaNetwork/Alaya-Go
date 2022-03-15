@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
-
 package plugin
 
 import (
@@ -23,11 +22,11 @@ import (
 	"math/big"
 	"sync"
 
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
+
 	"github.com/AlayaNetwork/Alaya-Go/params"
 
 	"github.com/AlayaNetwork/Alaya-Go/core/snapshotdb"
-
-	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
 
 	"github.com/AlayaNetwork/Alaya-Go/common"
 	"github.com/AlayaNetwork/Alaya-Go/core/types"
@@ -58,7 +57,7 @@ func GovPluginInstance() *GovPlugin {
 func (govPlugin *GovPlugin) SetChainID(chainId *big.Int) {
 	govPlugin.chainID = chainId
 }
-func (govPlugin *GovPlugin) Confirmed(nodeId discover.NodeID, block *types.Block) error {
+func (govPlugin *GovPlugin) Confirmed(nodeId enode.IDv0, block *types.Block) error {
 	return nil
 }
 
@@ -67,11 +66,11 @@ func (govPlugin *GovPlugin) BeginBlock(blockHash common.Hash, header *types.Head
 	var blockNumber = header.Number.Uint64()
 	//log.Debug("call BeginBlock()", "blockNumber", blockNumber, "blockHash", blockHash)
 
-	if !xutil.IsBeginOfConsensus(blockNumber) {
+	if !xutil.IsBeginOfConsensus(blockNumber, header.GetActiveVersion()) {
 		return nil
 	}
 
-	if xutil.IsBeginOfEpoch(blockNumber) {
+	if xutil.IsBeginOfEpoch(blockNumber, header.GetActiveVersion()) {
 		if err := accuVerifiersAtBeginOfSettlement(blockHash, blockNumber); err != nil {
 			log.Error("accumulates all distinct verifiers for voting proposal failed.", "blockNumber", blockNumber, "err", err)
 			return err
@@ -97,24 +96,15 @@ func (govPlugin *GovPlugin) BeginBlock(blockHash common.Hash, header *types.Head
 
 	if isVersionProposal {
 		//log.Debug("found pre-active version proposal", "proposalID", preActiveVersionProposalID, "blockNumber", blockNumber, "blockHash", blockHash, "activeBlockNumber", versionProposal.GetActiveBlock())
-		if blockNumber == versionProposal.GetActiveBlock() {
+		activeNumber := versionProposal.GetActiveBlock(header.GetActiveVersion())
+		if blockNumber == activeNumber {
 			if params.LtMinorVersion(versionProposal.NewVersion) {
 				panic(fmt.Sprintf("Please upgrade to：%s", params.FormatVersion(versionProposal.NewVersion)))
 			}
-			//log.Debug("it's time to active the pre-active version proposal")
-			tallyResult, err := gov.GetTallyResult(preActiveVersionProposalID, state)
-			if err != nil || tallyResult == nil {
-				log.Error("find pre-active version proposal tally result failed.", "blockNumber", blockNumber, "blockHash", blockHash, "preActiveVersionProposalID", preActiveVersionProposalID)
+			if err = gov.UpdateTallyResult(preActiveVersionProposalID, state); err != nil {
+				log.Error("UpdateTallyResult failed.", "blockNumber", blockNumber, "blockHash", blockHash, "preActiveVersionProposalID", preActiveVersionProposalID)
 				return err
 			}
-			//update tally status to "active"
-			tallyResult.Status = gov.Active
-
-			if err := gov.SetTallyResult(*tallyResult, state); err != nil {
-				log.Error("update version proposal tally result failed.", "blockNumber", blockNumber, "preActiveVersionProposalID", preActiveVersionProposalID)
-				return err
-			}
-
 			if err = gov.MovePreActiveProposalIDToEnd(blockHash, preActiveVersionProposalID); err != nil {
 				log.Error("move version proposal ID to EndProposalID list failed.", "blockNumber", blockNumber, "blockHash", blockHash, "preActiveVersionProposalID", preActiveVersionProposalID)
 				return err
@@ -160,7 +150,27 @@ func (govPlugin *GovPlugin) BeginBlock(blockHash common.Hash, header *types.Head
 				}
 				log.Info("Successfully upgraded the new version 0.16.0", "blockNumber", blockNumber, "blockHash", blockHash, "preActiveProposalID", preActiveVersionProposalID)
 			}
+			if versionProposal.NewVersion == params.FORKVERSION_0_17_0 {
+				if err := gov.WriteEcHash0170(state); nil != err {
+					log.Error("save EcHash0170 to stateDB failed.", "blockNumber", blockNumber, "blockHash", blockHash, "preActiveProposalID", preActiveVersionProposalID)
+					return err
+				}
 
+				if err := gov.UpdateGovernParamValue(gov.ModuleSlashing, gov.KeyZeroProduceCumulativeTime, fmt.Sprint(xcom.ZeroProduceCumulativeTime0170()), blockNumber, blockHash); err != nil {
+					return err
+				}
+				if err := gov.UpdateGovernParamValue(gov.ModuleStaking, gov.KeyMaxValidators, fmt.Sprint(xcom.MaxValidators0170()), blockNumber, blockHash); err != nil {
+					return err
+				}
+				log.Info("Successfully upgraded the new version 0.17.0", "blockNumber", blockNumber, "blockHash", blockHash, "preActiveProposalID", preActiveVersionProposalID)
+
+				if err := StakingInstance().Adjust0170RoundValidators(blockHash, blockNumber); err != nil {
+					log.Error("Adjust 0.17.0 validators failed！", "blockNumber", blockNumber, "blockHash", blockHash, "preActiveProposalID", preActiveVersionProposalID)
+					return err
+				}
+			}
+
+			header.SetActiveVersion(versionProposal.NewVersion)
 			log.Info("version proposal is active", "blockNumber", blockNumber, "proposalID", versionProposal.ProposalID, "newVersion", versionProposal.NewVersion, "newVersionString", xutil.ProgramVersion2Str(versionProposal.NewVersion))
 		}
 	}
@@ -176,9 +186,9 @@ func (govPlugin *GovPlugin) EndBlock(blockHash common.Hash, header *types.Header
 	//param proposal's end voting block is end of Epoch
 	isEndOfEpoch := false
 	isElection := false
-	if xutil.IsElection(blockNumber) {
+	if xutil.IsElection(blockNumber, header.GetActiveVersion()) {
 		isElection = true
-	} else if xutil.IsEndOfEpoch(blockNumber) {
+	} else if xutil.IsEndOfEpoch(blockNumber, header.GetActiveVersion()) {
 		isEndOfEpoch = true
 	} else {
 		return nil

@@ -23,6 +23,8 @@ import (
 	"math/big"
 	"sync"
 
+	"github.com/AlayaNetwork/Alaya-Go/params"
+
 	"github.com/AlayaNetwork/Alaya-Go/rlp"
 
 	"github.com/AlayaNetwork/Alaya-Go/log"
@@ -48,8 +50,9 @@ const (
 	TenThousand               = 10000
 	CeilBlocksReward          = 50000
 	CeilMaxValidators         = 201
+	CeilMaxValidators0170     = 500
 	FloorMaxConsensusVals     = 4
-	CeilMaxConsensusVals      = 25
+	CeilMaxConsensusVals      = 500
 	PositiveInfinity          = "+∞"
 	CeilUnStakeFreezeDuration = 168 * 2
 	CeilMaxEvidenceAge        = CeilUnStakeFreezeDuration - 1
@@ -159,15 +162,16 @@ type EconomicModel struct {
 
 // When the chain is started, if new parameters are added, add them to this structure
 type EconomicModelExtend struct {
-	Reward      rewardConfigExtend      `json:"reward"`
-	Restricting restrictingConfigExtend `json:"restricting"`
+	Reward      RewardConfigExtend      `json:"reward"`
+	Restricting RestrictingConfigExtend `json:"restricting"`
+	Extend0170  EconomicModel0170Extend `json:"extend_0170,omitempty"`
 }
 
-type rewardConfigExtend struct {
+type RewardConfigExtend struct {
 	TheNumberOfDelegationsReward uint16 `json:"theNumberOfDelegationsReward"` // The maximum number of delegates that can receive rewards at a time
 }
 
-type restrictingConfigExtend struct {
+type RestrictingConfigExtend struct {
 	MinimumRelease *big.Int `json:"minimumRelease"` //The minimum number of Restricting release in one epoch
 }
 
@@ -289,11 +293,24 @@ func getDefaultEMConfig(netId int8) *EconomicModel {
 			},
 		}
 		ece = &EconomicModelExtend{
-			Reward: rewardConfigExtend{
+			Reward: RewardConfigExtend{
 				TheNumberOfDelegationsReward: 20,
 			},
-			Restricting: restrictingConfigExtend{
+			Restricting: RestrictingConfigExtend{
 				MinimumRelease: new(big.Int).Mul(oneAtp, new(big.Int).SetInt64(80)),
+			},
+			Extend0170: EconomicModel0170Extend{
+				Common: EconomicModel0170CommonConfig{
+					MaxGroupValidators: 25,
+					CoordinatorsLimit:  5,
+					MaxConsensusVals:   215,
+				},
+				Staking: EconomicModel0170StakingConfig{
+					MaxValidators: 500,
+				},
+				Slashing: EconomicModel0170SlashingConfig{
+					ZeroProduceCumulativeTime: 4,
+				},
 			},
 		}
 
@@ -349,11 +366,24 @@ func getDefaultEMConfig(netId int8) *EconomicModel {
 			},
 		}
 		ece = &EconomicModelExtend{
-			Reward: rewardConfigExtend{
+			Reward: RewardConfigExtend{
 				TheNumberOfDelegationsReward: 20,
 			},
-			Restricting: restrictingConfigExtend{
+			Restricting: RestrictingConfigExtend{
 				MinimumRelease: new(big.Int).SetInt64(1),
+			},
+			Extend0170: EconomicModel0170Extend{
+				Common: EconomicModel0170CommonConfig{
+					MaxGroupValidators: 25,
+					CoordinatorsLimit:  5,
+					MaxConsensusVals:   25,
+				},
+				Staking: EconomicModel0170StakingConfig{
+					MaxValidators: 101,
+				},
+				Slashing: EconomicModel0170SlashingConfig{
+					ZeroProduceCumulativeTime: 30,
+				},
 			},
 		}
 	case DefaultUnitTestNet:
@@ -408,11 +438,24 @@ func getDefaultEMConfig(netId int8) *EconomicModel {
 			},
 		}
 		ece = &EconomicModelExtend{
-			Reward: rewardConfigExtend{
+			Reward: RewardConfigExtend{
 				TheNumberOfDelegationsReward: 2,
 			},
-			Restricting: restrictingConfigExtend{
+			Restricting: RestrictingConfigExtend{
 				MinimumRelease: new(big.Int).SetInt64(1),
+			},
+			Extend0170: EconomicModel0170Extend{
+				Common: EconomicModel0170CommonConfig{
+					MaxGroupValidators: 25,
+					CoordinatorsLimit:  5,
+					MaxConsensusVals:   4,
+				},
+				Staking: EconomicModel0170StakingConfig{
+					MaxValidators: 25,
+				},
+				Slashing: EconomicModel0170SlashingConfig{
+					ZeroProduceCumulativeTime: 3,
+				},
 			},
 		}
 	default:
@@ -438,9 +481,15 @@ func CheckOperatingThreshold(threshold *big.Int) error {
 	return nil
 }
 
-func CheckMaxValidators(num int) error {
-	if num < int(ec.Common.MaxConsensusVals) || num > CeilMaxValidators {
-		return common.InvalidParameter.Wrap(fmt.Sprintf("The MaxValidators must be [%d, %d]", int(ec.Common.MaxConsensusVals), CeilMaxValidators))
+func CheckMaxValidators(num int, version uint32) error {
+	if version >= params.FORKVERSION_0_17_0 {
+		if num < int(MaxConsensusVals(version)) || num > CeilMaxValidators0170 {
+			return common.InvalidParameter.Wrap(fmt.Sprintf("The MaxValidators must be [%d, %d]", int(MaxConsensusVals(version)), CeilMaxValidators0170))
+		}
+	} else {
+		if num < int(MaxConsensusVals(version)) || num > CeilMaxValidators {
+			return common.InvalidParameter.Wrap(fmt.Sprintf("The MaxValidators must be [%d, %d]", int(MaxConsensusVals(version)), CeilMaxValidators))
+		}
 	}
 	return nil
 }
@@ -484,9 +533,9 @@ func CheckSlashBlocksReward(rewards int) error {
 	return nil
 }
 
-func CheckZeroProduceCumulativeTime(zeroProduceCumulativeTime uint16, zeroProduceNumberThreshold uint16) error {
-	if zeroProduceCumulativeTime < zeroProduceNumberThreshold || zeroProduceCumulativeTime > uint16(EpochSize()) {
-		return common.InvalidParameter.Wrap(fmt.Sprintf("The ZeroProduceCumulativeTime must be [%d, %d]", zeroProduceNumberThreshold, uint16(EpochSize())))
+func CheckZeroProduceCumulativeTime(zeroProduceCumulativeTime uint16, zeroProduceNumberThreshold uint16, version uint32) error {
+	if zeroProduceCumulativeTime < zeroProduceNumberThreshold || zeroProduceCumulativeTime > uint16(EpochSize(version)) {
+		return common.InvalidParameter.Wrap(fmt.Sprintf("The ZeroProduceCumulativeTime must be [%d, %d]", zeroProduceNumberThreshold, uint16(EpochSize(version))))
 	}
 	return nil
 }
@@ -526,7 +575,7 @@ func CheckZeroProduceFreezeDuration(zeroProduceFreezeDuration uint64, unStakeFre
 	return nil
 }
 
-func CheckEconomicModel() error {
+func CheckEconomicModel(version uint32) error {
 	if nil == ec {
 		return errors.New("EconomicModel config is nil")
 	}
@@ -536,7 +585,7 @@ func CheckEconomicModel() error {
 	// package perblock duration
 	blockDuration := ec.Common.NodeBlockTimeWindow / ec.Common.PerRoundBlocks
 	// round duration
-	roundDuration := ec.Common.MaxConsensusVals * ec.Common.PerRoundBlocks * blockDuration
+	roundDuration := MaxConsensusVals(version) * ec.Common.PerRoundBlocks * blockDuration
 	// epoch Size, how many consensus round
 	epochSize := epochDuration / roundDuration
 	//real epoch duration
@@ -562,11 +611,11 @@ func CheckEconomicModel() error {
 		return errors.New("The issuance period must be integer multiples of the settlement period and multiples must be greater than or equal to 4")
 	}
 
-	if ec.Common.MaxConsensusVals < FloorMaxConsensusVals || ec.Common.MaxConsensusVals > CeilMaxConsensusVals {
+	/*if MaxConsensusVals(version) < FloorMaxConsensusVals || MaxConsensusVals(version) > CeilMaxConsensusVals {
 		return fmt.Errorf("The consensus validator num must be [%d, %d]", FloorMaxConsensusVals, CeilMaxConsensusVals)
-	}
+	}*/
 
-	if err := CheckMaxValidators(int(ec.Staking.MaxValidators)); nil != err {
+	if err := CheckMaxValidators(int(ec.Staking.MaxValidators), version); nil != err {
 		return err
 	}
 
@@ -606,7 +655,7 @@ func CheckEconomicModel() error {
 		return err
 	}
 
-	if uint16(EpochSize()) > maxZeroProduceCumulativeTime {
+	if uint16(EpochSize(version)) > maxZeroProduceCumulativeTime {
 		return fmt.Errorf("the number of consensus rounds in a settlement cycle cannot be greater than maxZeroProduceCumulativeTime(%d)", maxZeroProduceCumulativeTime)
 	}
 
@@ -614,7 +663,7 @@ func CheckEconomicModel() error {
 		return err
 	}
 
-	if err := CheckZeroProduceCumulativeTime(ec.Slashing.ZeroProduceCumulativeTime, ec.Slashing.ZeroProduceNumberThreshold); nil != err {
+	if err := CheckZeroProduceCumulativeTime(ec.Slashing.ZeroProduceCumulativeTime, ec.Slashing.ZeroProduceNumberThreshold, version); nil != err {
 		return err
 	}
 
@@ -656,13 +705,21 @@ func SetPerRoundBlocks(amount uint64) {
 	}
 }
 
+//出块间隔
 func Interval() uint64 {
 	return ec.Common.NodeBlockTimeWindow / ec.Common.PerRoundBlocks
 }
+
+//每个轮值提议人单次出块数
 func BlocksWillCreate() uint64 {
 	return ec.Common.PerRoundBlocks
 }
-func MaxConsensusVals() uint64 {
+
+// 每个共识周期内出块的验证人数
+func MaxConsensusVals(version uint32) uint64 {
+	if version >= params.FORKVERSION_0_17_0 {
+		return ece.Extend0170.Common.MaxConsensusVals
+	}
 	return ec.Common.MaxConsensusVals
 }
 
@@ -670,12 +727,14 @@ func AdditionalCycleTime() uint64 {
 	return ec.Common.AdditionalCycleTime
 }
 
-func ConsensusSize() uint64 {
-	return BlocksWillCreate() * MaxConsensusVals()
+// 共识周期内区块数
+func ConsensusSize(version uint32) uint64 {
+	return BlocksWillCreate() * MaxConsensusVals(version)
 }
 
-func EpochSize() uint64 {
-	consensusSize := ConsensusSize()
+// 结算周期内的共识周期数
+func EpochSize(version uint32) uint64 {
+	consensusSize := ConsensusSize(version)
 	em := MaxEpochMinutes()
 	i := Interval()
 
@@ -698,8 +757,8 @@ func MaxValidators() uint64 {
 	return ec.Staking.MaxValidators
 }
 
-func ShiftValidatorNum() uint64 {
-	return (ec.Common.MaxConsensusVals - 1) / 3
+func ShiftValidatorNum(maxConsensusVals uint64) uint64 {
+	return (maxConsensusVals - 1) / 3
 }
 
 func HesitateRatio() uint64 {
@@ -855,25 +914,7 @@ func CDFBalance() *big.Int {
 
 func EconomicString() string {
 	if nil != ec {
-		type rewardConfigJson struct {
-			rewardConfig
-			rewardConfigExtend
-		}
-		type EconomicModelJson struct {
-			EconomicModel
-			Reward      rewardConfigJson        `json:"reward"`
-			Restricting restrictingConfigExtend `json:"restricting"`
-		}
-
-		emJson := &EconomicModelJson{
-			EconomicModel: *ec,
-			Reward: rewardConfigJson{
-				rewardConfig:       ec.Reward,
-				rewardConfigExtend: ece.Reward,
-			},
-			Restricting: ece.Restricting,
-		}
-		ecByte, _ := json.Marshal(emJson)
+		ecByte, _ := json.Marshal(ec)
 		return string(ecByte)
 	} else {
 		return ""
@@ -892,4 +933,12 @@ func CalcP(totalWeight float64, sqrtWeight float64) float64 {
 
 func CalcPNew(sqrtWeight float64) float64 {
 	return float64(ElectionBase) / sqrtWeight
+}
+
+func MaxGroupValidators() uint32 {
+	return ece.Extend0170.Common.MaxGroupValidators
+}
+
+func CoordinatorsLimit() uint32 {
+	return ece.Extend0170.Common.CoordinatorsLimit
 }

@@ -232,8 +232,6 @@ func (tx *Transaction) Size() common.StorageSize {
 // AsMessage returns the transaction as a core.Message.
 //
 // AsMessage requires a signer to derive the sender.
-//
-// XXX Rename message to something less arbitrary?
 func (tx *Transaction) AsMessage(s Signer) (Message, error) {
 	msg := Message{
 		nonce:      tx.data.AccountNonce,
@@ -295,7 +293,6 @@ func (tx *Transaction) FromAddr(signer Signer) common.Address {
 	if err != nil {
 		return common.Address{}
 	}
-	//log.Debug("Sender cache2", "add", addr, "hash", tx.Hash(), "poi", fmt.Sprintf("%p", tx))
 	tx.from.Store(sigCache{signer: signer, from: addr})
 	return addr
 }

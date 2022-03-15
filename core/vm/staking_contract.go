@@ -22,6 +22,8 @@ import (
 	"math"
 	"math/big"
 
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
+
 	"github.com/AlayaNetwork/Alaya-Go/x/reward"
 
 	"github.com/AlayaNetwork/Alaya-Go/x/xcom"
@@ -40,7 +42,6 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/common/vm"
 	"github.com/AlayaNetwork/Alaya-Go/core/snapshotdb"
 	"github.com/AlayaNetwork/Alaya-Go/log"
-	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
 	"github.com/AlayaNetwork/Alaya-Go/x/plugin"
 	"github.com/AlayaNetwork/Alaya-Go/x/staking"
 	"github.com/AlayaNetwork/Alaya-Go/x/xutil"
@@ -117,7 +118,7 @@ func (stkc *StakingContract) FnSigns() map[uint16]interface{} {
 	}
 }
 
-func (stkc *StakingContract) createStaking(typ uint16, benefitAddress common.Address, nodeId discover.NodeID,
+func (stkc *StakingContract) createStaking(typ uint16, benefitAddress common.Address, nodeId enode.IDv0,
 	externalId, nodeName, website, details string, amount *big.Int, rewardPer uint16, programVersion uint32,
 	programVersionSign common.VersionSign, blsPubKey bls.PublicKeyHex, blsProof bls.SchnorrProofHex) ([]byte, error) {
 
@@ -266,7 +267,7 @@ func (stkc *StakingContract) createStaking(typ uint16, benefitAddress common.Add
 		RestrictingPlanHes:   new(big.Int).SetInt64(0),
 		RewardPer:            rewardPer,
 		NextRewardPer:        rewardPer,
-		RewardPerChangeEpoch: uint32(xutil.CalculateEpoch(blockNumber.Uint64())),
+		RewardPerChangeEpoch: uint32(xutil.CalculateEpoch(blockNumber.Uint64(), gov.GetCurrentActiveVersion(state))),
 		DelegateRewardTotal:  new(big.Int).SetInt64(0),
 	}
 
@@ -332,7 +333,7 @@ func verifyRewardPer(rewardPer uint16) bool {
 	return rewardPer <= 10000 //	1BP(BasePoint)=0.01%
 }
 
-func (stkc *StakingContract) editCandidate(benefitAddress *common.Address, nodeId discover.NodeID, rewardPer *uint16,
+func (stkc *StakingContract) editCandidate(benefitAddress *common.Address, nodeId enode.IDv0, rewardPer *uint16,
 	externalId, nodeName, website, details *string) ([]byte, error) {
 
 	txHash := stkc.Evm.StateDB.TxHash()
@@ -392,7 +393,7 @@ func (stkc *StakingContract) editCandidate(benefitAddress *common.Address, nodeI
 		}
 	}
 
-	currentEpoch := uint32(xutil.CalculateEpoch(blockNumber.Uint64()))
+	currentEpoch := uint32(xutil.CalculateEpoch(blockNumber.Uint64(), gov.GetCurrentActiveVersion(state)))
 
 	if gov.Gte0140VersionState(state) {
 		if nodeName != nil {
@@ -500,7 +501,7 @@ func (stkc *StakingContract) editCandidate(benefitAddress *common.Address, nodeI
 		"", TxEditorCandidate, common.NoErr)
 }
 
-func (stkc *StakingContract) increaseStaking(nodeId discover.NodeID, typ uint16, amount *big.Int) ([]byte, error) {
+func (stkc *StakingContract) increaseStaking(nodeId enode.IDv0, typ uint16, amount *big.Int) ([]byte, error) {
 
 	txHash := stkc.Evm.StateDB.TxHash()
 	blockNumber := stkc.Evm.BlockNumber
@@ -574,7 +575,7 @@ func (stkc *StakingContract) increaseStaking(nodeId discover.NodeID, typ uint16,
 		"", TxIncreaseStaking, common.NoErr)
 }
 
-func (stkc *StakingContract) withdrewStaking(nodeId discover.NodeID) ([]byte, error) {
+func (stkc *StakingContract) withdrewStaking(nodeId enode.IDv0) ([]byte, error) {
 
 	txHash := stkc.Evm.StateDB.TxHash()
 	blockNumber := stkc.Evm.BlockNumber
@@ -639,7 +640,7 @@ func (stkc *StakingContract) withdrewStaking(nodeId discover.NodeID) ([]byte, er
 		"", TxWithdrewCandidate, common.NoErr)
 }
 
-func (stkc *StakingContract) delegate(typ uint16, nodeId discover.NodeID, amount *big.Int) ([]byte, error) {
+func (stkc *StakingContract) delegate(typ uint16, nodeId enode.IDv0, amount *big.Int) ([]byte, error) {
 
 	txHash := stkc.Evm.StateDB.TxHash()
 	blockNumber := stkc.Evm.BlockNumber
@@ -709,7 +710,7 @@ func (stkc *StakingContract) delegate(typ uint16, nodeId discover.NodeID, amount
 	}
 	var delegateRewardPerList []*reward.DelegateRewardPer
 	if del.DelegateEpoch > 0 {
-		delegateRewardPerList, err = plugin.RewardMgrInstance().GetDelegateRewardPerList(blockHash, canBase.NodeId, canBase.StakingBlockNum, uint64(del.DelegateEpoch), xutil.CalculateEpoch(blockNumber.Uint64())-1)
+		delegateRewardPerList, err = plugin.RewardMgrInstance().GetDelegateRewardPerList(blockHash, canBase.NodeId, canBase.StakingBlockNum, uint64(del.DelegateEpoch), xutil.CalculateEpoch(blockNumber.Uint64(), gov.GetCurrentActiveVersion(state))-1)
 		if snapshotdb.NonDbNotFoundErr(err) {
 			log.Error("Failed to delegate by GetDelegateRewardPerList", "txHash", txHash, "blockNumber", blockNumber, "err", err)
 			return nil, err
@@ -767,7 +768,7 @@ func (stkc *StakingContract) delegate(typ uint16, nodeId discover.NodeID, amount
 		"", TxDelegate, common.NoErr)
 }
 
-func (stkc *StakingContract) withdrewDelegation(stakingBlockNum uint64, nodeId discover.NodeID, amount *big.Int) ([]byte, error) {
+func (stkc *StakingContract) withdrewDelegation(stakingBlockNum uint64, nodeId enode.IDv0, amount *big.Int) ([]byte, error) {
 
 	txHash := stkc.Evm.StateDB.TxHash()
 	blockNumber := stkc.Evm.BlockNumber
@@ -799,7 +800,7 @@ func (stkc *StakingContract) withdrewDelegation(stakingBlockNum uint64, nodeId d
 		}
 	}
 
-	delegateRewardPerList, err := plugin.RewardMgrInstance().GetDelegateRewardPerList(blockHash, nodeId, stakingBlockNum, uint64(del.DelegateEpoch), xutil.CalculateEpoch(blockNumber.Uint64())-1)
+	delegateRewardPerList, err := plugin.RewardMgrInstance().GetDelegateRewardPerList(blockHash, nodeId, stakingBlockNum, uint64(del.DelegateEpoch), xutil.CalculateEpoch(blockNumber.Uint64(), gov.GetCurrentActiveVersion(state))-1)
 	if snapshotdb.NonDbNotFoundErr(err) {
 		log.Error("Failed to delegate by GetDelegateRewardPerList", "txHash", txHash, "blockNumber", blockNumber, "err", err)
 		return nil, err
@@ -878,8 +879,9 @@ func (stkc *StakingContract) getValidatorList() ([]byte, error) {
 
 	blockNumber := stkc.Evm.BlockNumber
 	blockHash := stkc.Evm.BlockHash
+	state := stkc.Evm.StateDB
 
-	arr, err := stkc.Plugin.GetValidatorList(blockHash, blockNumber.Uint64(), plugin.CurrentRound, plugin.QueryStartNotIrr)
+	arr, err := stkc.Plugin.GetValidatorList(blockHash, blockNumber.Uint64(), plugin.CurrentRound, plugin.QueryStartNotIrr, gov.GetCurrentActiveVersion(state))
 	if snapshotdb.NonDbNotFoundErr(err) {
 
 		return callResultHandler(stkc.Evm, "getValidatorList",
@@ -899,8 +901,9 @@ func (stkc *StakingContract) getCandidateList() ([]byte, error) {
 
 	blockNumber := stkc.Evm.BlockNumber
 	blockHash := stkc.Evm.BlockHash
+	state := stkc.Evm.StateDB
 
-	arr, err := stkc.Plugin.GetCandidateList(blockHash, blockNumber.Uint64())
+	arr, err := stkc.Plugin.GetCandidateList(blockHash, blockNumber.Uint64(), state)
 	if snapshotdb.NonDbNotFoundErr(err) {
 		return callResultHandler(stkc.Evm, "getCandidateList",
 			arr, staking.ErrGetCandidateList.Wrap(err.Error())), nil
@@ -934,12 +937,13 @@ func (stkc *StakingContract) getRelatedListByDelAddr(addr common.Address) ([]byt
 }
 
 func (stkc *StakingContract) getDelegateInfo(stakingBlockNum uint64, delAddr common.Address,
-	nodeId discover.NodeID) ([]byte, error) {
+	nodeId enode.IDv0) ([]byte, error) {
 
 	blockNumber := stkc.Evm.BlockNumber
 	blockHash := stkc.Evm.BlockHash
+	state := stkc.Evm.StateDB
 
-	del, err := stkc.Plugin.GetDelegateExCompactInfo(blockHash, blockNumber.Uint64(), delAddr, nodeId, stakingBlockNum)
+	del, err := stkc.Plugin.GetDelegateExCompactInfo(blockHash, blockNumber.Uint64(), delAddr, nodeId, stakingBlockNum, state)
 	if snapshotdb.NonDbNotFoundErr(err) {
 		return callResultHandler(stkc.Evm, fmt.Sprintf("getDelegateInfo, delAddr: %s, nodeId: %s, stakingBlockNumber: %d",
 			delAddr, nodeId, stakingBlockNum),
@@ -957,16 +961,17 @@ func (stkc *StakingContract) getDelegateInfo(stakingBlockNum uint64, delAddr com
 		del, nil), nil
 }
 
-func (stkc *StakingContract) getCandidateInfo(nodeId discover.NodeID) ([]byte, error) {
+func (stkc *StakingContract) getCandidateInfo(nodeId enode.IDv0) ([]byte, error) {
 	blockNumber := stkc.Evm.BlockNumber
 	blockHash := stkc.Evm.BlockHash
+	state := stkc.Evm.StateDB
 
 	canAddr, err := xutil.NodeId2Addr(nodeId)
 	if nil != err {
 		return callResultHandler(stkc.Evm, fmt.Sprintf("getCandidateInfo, nodeId: %s",
 			nodeId), nil, staking.ErrQueryCandidateInfo.Wrap(err.Error())), nil
 	}
-	can, err := stkc.Plugin.GetCandidateCompactInfo(blockHash, blockNumber.Uint64(), canAddr)
+	can, err := stkc.Plugin.GetCandidateCompactInfo(blockHash, blockNumber.Uint64(), canAddr, state)
 	if snapshotdb.NonDbNotFoundErr(err) {
 		return callResultHandler(stkc.Evm, fmt.Sprintf("getCandidateInfo, nodeId: %s",
 			nodeId), can, staking.ErrQueryCandidateInfo.Wrap(err.Error())), nil

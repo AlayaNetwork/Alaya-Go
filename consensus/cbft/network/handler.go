@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
-
 package network
 
 import (
@@ -25,7 +24,11 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/hashicorp/golang-lru"
+	"github.com/AlayaNetwork/Alaya-Go/internal/debug"
+
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
+
+	lru "github.com/hashicorp/golang-lru"
 
 	"github.com/AlayaNetwork/Alaya-Go/common"
 
@@ -33,7 +36,7 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/types"
 	"github.com/AlayaNetwork/Alaya-Go/log"
 	"github.com/AlayaNetwork/Alaya-Go/p2p"
-	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
+	//"github.com/AlayaNetwork/Alaya-Go/core/cbfttypes"
 )
 
 const (
@@ -46,6 +49,9 @@ const (
 
 	// CbftProtocolLength are the number of implemented message corresponding to cbft protocol versions.
 	CbftProtocolLength = 40
+
+	// DefaultMaximumMessageSize is 1mb.
+	DefaultMaxMessageSize = 1 << 20
 
 	// sendQueueSize is maximum threshold for the queue of messages waiting to be sent.
 	sendQueueSize = 10240
@@ -107,7 +113,7 @@ func NewEngineManger(engine Cbft) *EngineManager {
 	}
 	handler.blacklist, _ = lru.New(maxBlacklist)
 	// init router
-	handler.router = newRouter(handler.Unregister, handler.getPeer, handler.ConsensusNodes, handler.peerList)
+	handler.router = newRouter(handler.Unregister, handler.GetPeer, handler.ConsensusNodes, handler.peerList)
 	return handler
 }
 
@@ -175,7 +181,7 @@ func (h *EngineManager) PeerSetting(peerID string, bType uint64, blockNumber uin
 }
 
 // GetPeer returns the peer with the specified peerID.
-func (h *EngineManager) getPeer(peerID string) (*peer, error) {
+func (h *EngineManager) GetPeer(peerID string) (*peer, error) {
 	if peerID == "" {
 		return nil, fmt.Errorf("invalid peerID parameter - %v", peerID)
 	}
@@ -273,16 +279,32 @@ func (h *EngineManager) Forwarding(nodeID string, msg types.Message) error {
 		return nil
 	}
 	// PrepareBlockMsg does not forward, the message will be forwarded using PrepareBlockHash.
-	switch msgType {
-	case protocols.PrepareBlockMsg, protocols.PrepareVoteMsg, protocols.ViewChangeMsg:
-		err := forward()
-		if err != nil {
-			messageGossipMeter.Mark(1)
+	if h.engine.NeedGroup() {
+		switch msgType {
+		// Grouping consensus does not require the forwarding of PrepareVoteMsg and ViewChangeMsg
+		// which are uniformly managed by PubSub and automatically forwarded to nodes subscribing to messages on related topics
+		case protocols.PrepareBlockMsg, protocols.RGBlockQuorumCertMsg, protocols.RGViewChangeQuorumCertMsg:
+			err := forward()
+			if err != nil {
+				messageGossipMeter.Mark(1)
+			}
+			return err
+		default:
+			log.Trace("Unmatched message type, need not to be forwarded", "type", reflect.TypeOf(msg), "msgHash", msgHash.TerminalString(), "BHash", msg.BHash().TerminalString())
 		}
-		return err
-	default:
-		log.Trace("Unmatched message type, need not to be forwarded", "type", reflect.TypeOf(msg), "msgHash", msgHash.TerminalString(), "BHash", msg.BHash().TerminalString())
+	} else {
+		switch msgType {
+		case protocols.PrepareBlockMsg, protocols.PrepareVoteMsg, protocols.ViewChangeMsg:
+			err := forward()
+			if err != nil {
+				messageGossipMeter.Mark(1)
+			}
+			return err
+		default:
+			log.Trace("Unmatched message type, need not to be forwarded", "type", reflect.TypeOf(msg), "msgHash", msgHash.TerminalString(), "BHash", msg.BHash().TerminalString())
+		}
 	}
+
 	return nil
 }
 
@@ -299,7 +321,7 @@ func (h *EngineManager) Protocols() []p2p.Protocol {
 			NodeInfo: func() interface{} {
 				return h.NodeInfo()
 			},
-			PeerInfo: func(id discover.NodeID) interface{} {
+			PeerInfo: func(id enode.ID) interface{} {
 				if p, err := h.peers.get(fmt.Sprintf("%x", id[:8])); err == nil {
 					return p.Info()
 				}
@@ -335,7 +357,7 @@ func (h *EngineManager) Unregister(id string) error {
 }
 
 // ConsensusNodes returns a list of all consensus nodes.
-func (h *EngineManager) ConsensusNodes() ([]discover.NodeID, error) {
+func (h *EngineManager) ConsensusNodes() ([]enode.ID, error) {
 	return h.engine.ConsensusNodes()
 }
 
@@ -437,6 +459,60 @@ func (h *EngineManager) handler(p *p2p.Peer, rw p2p.MsgReadWriter) error {
 	}
 }
 
+func (h *EngineManager) HandleRGMsg(p *peer, msg *p2p.Msg) error {
+	if !h.engine.NeedGroup() {
+		return nil
+	}
+	// TODO just for log
+	logVerbosity := debug.GetLogVerbosity()
+	if logVerbosity == log.LvlTrace {
+		myGroupID, _, err1 := h.engine.GetGroupByValidatorID(h.engine.Node().ID())
+		if err1 != nil {
+			p.Log().Error("GetGroupByValidatorID error", "nodeID", h.engine.Node().ID().String())
+		}
+		herGroupID, _, err2 := h.engine.GetGroupByValidatorID(p.Node().ID())
+		if err2 != nil {
+			p.Log().Error("GetGroupByValidatorID error", "nodeID", p.Node().ID().String())
+		}
+		if err1 == nil && err2 == nil {
+			p.Log().Debug("HandleRGMsg", "myGroupID", myGroupID, "myNodeID", h.engine.Node().ID().String(), "herGroupID", herGroupID, "herNodeID", p.Node().ID().String())
+			if myGroupID != herGroupID {
+				p.Log().Error("Invalidate rg msg", "myGroupID", myGroupID, "myNodeID", h.engine.Node().ID().String(), "herGroupID", herGroupID, "herNodeID", p.Node().ID().String())
+			}
+		}
+	}
+
+	// All messages cannot exceed the maximum specified by the agreement.
+	if msg.Size > protocols.CbftProtocolMaxMsgSize {
+		return types.ErrResp(types.ErrMsgTooLarge, "%v > %v", msg.Size, protocols.CbftProtocolMaxMsgSize)
+	}
+
+	switch {
+	case msg.Code == protocols.PrepareVoteMsg:
+		var request protocols.PrepareVote
+		if err := msg.Decode(&request); err == nil {
+			p.MarkMessageHash((&request).MsgHash())
+			MeteredReadRGMsg(msg)
+			p.Log().Debug("Receive PrepareVoteMsg", "msg", request.String())
+			return h.engine.ReceiveMessage(types.NewMsgInfo(&request, p.PeerID()))
+		}
+		return types.ErrResp(types.ErrInvalidRGMsg, "%s: %v", "unmatched code and data", msg.Code)
+
+	case msg.Code == protocols.ViewChangeMsg:
+		var request protocols.ViewChange
+		if err := msg.Decode(&request); err == nil {
+			p.MarkMessageHash((&request).MsgHash())
+			MeteredReadRGMsg(msg)
+			p.Log().Debug("Receive ViewChangeMsg", "msg", request.String())
+			return h.engine.ReceiveMessage(types.NewMsgInfo(&request, p.PeerID()))
+		}
+		return types.ErrResp(types.ErrInvalidRGMsg, "%s: %v", "unmatched code and data", msg.Code)
+
+	default:
+		return types.ErrResp(types.ErrInvalidMsgCode, "%v", msg.Code)
+	}
+}
+
 // Main logic: Distribute according to message type and
 // transfer message to CBFT layer
 func (h *EngineManager) handleMsg(p *peer) error {
@@ -470,6 +546,9 @@ func (h *EngineManager) handleMsg(p *peer) error {
 		return h.engine.ReceiveMessage(types.NewMsgInfo(&request, p.PeerID()))
 
 	case msg.Code == protocols.PrepareVoteMsg:
+		if h.engine.NeedGroup() {
+			return nil
+		}
 		var request protocols.PrepareVote
 		if err := msg.Decode(&request); err != nil {
 			return types.ErrResp(types.ErrDecode, "%v: %v", msg, err)
@@ -478,7 +557,32 @@ func (h *EngineManager) handleMsg(p *peer) error {
 		return h.engine.ReceiveMessage(types.NewMsgInfo(&request, p.PeerID()))
 
 	case msg.Code == protocols.ViewChangeMsg:
+		if h.engine.NeedGroup() {
+			return nil
+		}
 		var request protocols.ViewChange
+		if err := msg.Decode(&request); err != nil {
+			return types.ErrResp(types.ErrDecode, "%v: %v", msg, err)
+		}
+		p.MarkMessageHash((&request).MsgHash())
+		return h.engine.ReceiveMessage(types.NewMsgInfo(&request, p.PeerID()))
+
+	case msg.Code == protocols.RGBlockQuorumCertMsg:
+		if !h.engine.NeedGroup() {
+			return nil
+		}
+		var request protocols.RGBlockQuorumCert
+		if err := msg.Decode(&request); err != nil {
+			return types.ErrResp(types.ErrDecode, "%v: %v", msg, err)
+		}
+		p.MarkMessageHash((&request).MsgHash())
+		return h.engine.ReceiveMessage(types.NewMsgInfo(&request, p.PeerID()))
+
+	case msg.Code == protocols.RGViewChangeQuorumCertMsg:
+		if !h.engine.NeedGroup() {
+			return nil
+		}
+		var request protocols.RGViewChangeQuorumCert
 		if err := msg.Decode(&request); err != nil {
 			return types.ErrResp(types.ErrDecode, "%v: %v", msg, err)
 		}
@@ -521,19 +625,19 @@ func (h *EngineManager) handleMsg(p *peer) error {
 		}
 		return h.engine.ReceiveSyncMsg(types.NewMsgInfo(&request, p.PeerID()))
 
+	case msg.Code == protocols.PrepareVotesMsg:
+		var request protocols.PrepareVotes
+		if err := msg.Decode(&request); err != nil {
+			return types.ErrResp(types.ErrDecode, "%v: %v", msg, err)
+		}
+		return h.engine.ReceiveSyncMsg(types.NewMsgInfo(&request, p.PeerID()))
+
 	case msg.Code == protocols.PrepareBlockHashMsg:
 		var request protocols.PrepareBlockHash
 		if err := msg.Decode(&request); err != nil {
 			return types.ErrResp(types.ErrDecode, "%v: %v", msg, err)
 		}
 		p.MarkMessageHash((&request).MsgHash())
-		return h.engine.ReceiveSyncMsg(types.NewMsgInfo(&request, p.PeerID()))
-
-	case msg.Code == protocols.PrepareVotesMsg:
-		var request protocols.PrepareVotes
-		if err := msg.Decode(&request); err != nil {
-			return types.ErrResp(types.ErrDecode, "%v: %v", msg, err)
-		}
 		return h.engine.ReceiveSyncMsg(types.NewMsgInfo(&request, p.PeerID()))
 
 	case msg.Code == protocols.QCBlockListMsg:
@@ -564,6 +668,13 @@ func (h *EngineManager) handleMsg(p *peer) error {
 		}
 		return h.engine.ReceiveSyncMsg(types.NewMsgInfo(&request, p.PeerID()))
 
+	case msg.Code == protocols.ViewChangesMsg:
+		var request protocols.ViewChanges
+		if err := msg.Decode(&request); err != nil {
+			return types.ErrResp(types.ErrDecode, "%v: %v", msg, err)
+		}
+		return h.engine.ReceiveSyncMsg(types.NewMsgInfo(&request, p.PeerID()))
+
 	case msg.Code == protocols.PingMsg:
 		var pingTime protocols.Ping
 		if err := msg.Decode(&pingTime); err != nil {
@@ -577,7 +688,7 @@ func (h *EngineManager) handleMsg(p *peer) error {
 	case msg.Code == protocols.PongMsg:
 		// Processed after receiving the pong message.
 		curTime := time.Now().UnixNano()
-		log.Debug("Handle a eth Pong message", "curTime", curTime)
+		log.Debug("Handle a alaya Pong message", "curTime", curTime)
 		var pongTime protocols.Pong
 		if err := msg.Decode(&pongTime); err != nil {
 			return types.ErrResp(types.ErrDecode, "%v: %v", msg, err)
@@ -613,12 +724,35 @@ func (h *EngineManager) handleMsg(p *peer) error {
 			return types.ErrResp(types.ErrDecode, "%v: %v", msg, err)
 		}
 		return h.engine.ReceiveSyncMsg(types.NewMsgInfo(&request, p.PeerID()))
-	case msg.Code == protocols.ViewChangesMsg:
-		var request protocols.ViewChanges
-		if err := msg.Decode(&request); err != nil {
+
+	case msg.Code == protocols.GetPrepareVoteV2Msg:
+		var requestV2 protocols.GetPrepareVoteV2
+		if err := msg.Decode(&requestV2); err != nil {
 			return types.ErrResp(types.ErrDecode, "%v: %v", msg, err)
 		}
-		return h.engine.ReceiveSyncMsg(types.NewMsgInfo(&request, p.PeerID()))
+		return h.engine.ReceiveSyncMsg(types.NewMsgInfo(&requestV2, p.PeerID()))
+
+	case msg.Code == protocols.PrepareVotesV2Msg:
+		var requestV2 protocols.PrepareVotesV2
+		if err := msg.Decode(&requestV2); err != nil {
+			return types.ErrResp(types.ErrDecode, "%v: %v", msg, err)
+		}
+		return h.engine.ReceiveSyncMsg(types.NewMsgInfo(&requestV2, p.PeerID()))
+
+	case msg.Code == protocols.GetViewChangeV2Msg:
+		var requestV2 protocols.GetViewChangeV2
+		if err := msg.Decode(&requestV2); err != nil {
+			return types.ErrResp(types.ErrDecode, "%v: %v", msg, err)
+
+		}
+		return h.engine.ReceiveSyncMsg(types.NewMsgInfo(&requestV2, p.PeerID()))
+
+	case msg.Code == protocols.ViewChangesV2Msg:
+		var requestV2 protocols.ViewChangesV2
+		if err := msg.Decode(&requestV2); err != nil {
+			return types.ErrResp(types.ErrDecode, "%v: %v", msg, err)
+		}
+		return h.engine.ReceiveSyncMsg(types.NewMsgInfo(&requestV2, p.PeerID()))
 
 	default:
 		return types.ErrResp(types.ErrInvalidMsgCode, "%v", msg.Code)
@@ -710,7 +844,19 @@ func (h *EngineManager) synchronize() {
 				log.Debug("Request missing prepareVote failed", "err", err)
 				break
 			}
-			log.Debug("Had new prepareVote sync request", "msg", msg.String())
+			log.Debug("Had new prepareVote sync request", "msgType", reflect.TypeOf(msg), "msg", msg.String())
+			// Only broadcasts without forwarding.
+			h.PartBroadcast(msg)
+
+		case <-viewTicker.C:
+			// If the local viewChange has insufficient votes,
+			// the GetViewChange message is sent from the missing node.
+			msg, err := h.engine.MissingViewChangeNodes()
+			if err != nil {
+				log.Debug("Request missing viewChange failed", "err", err)
+				break
+			}
+			log.Debug("Had new viewChange sync request", "msgType", reflect.TypeOf(msg), "msg", msg.String())
 			// Only broadcasts without forwarding.
 			h.PartBroadcast(msg)
 
@@ -723,18 +869,6 @@ func (h *EngineManager) synchronize() {
 			}
 			resetTime := time.Duration(rd) * time.Second
 			blockNumberTimer.Reset(resetTime)
-
-		case <-viewTicker.C:
-			// If the local viewChange has insufficient votes,
-			// the GetViewChange message is sent from the missing node.
-			msg, err := h.engine.MissingViewChangeNodes()
-			if err != nil {
-				log.Debug("Request missing viewchange failed", "err", err)
-				break
-			}
-			log.Debug("Had new viewchange sync request", "msg", msg.String())
-			// Only broadcasts without forwarding.
-			h.PartBroadcast(msg)
 
 		case <-pureBlacklistTicker.C:
 			// Iterate over the blacklist and remove

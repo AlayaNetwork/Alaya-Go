@@ -21,6 +21,7 @@ package platon
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"path/filepath"
 
@@ -28,9 +29,7 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/eth"
 	"github.com/AlayaNetwork/Alaya-Go/eth/downloader"
 	"github.com/AlayaNetwork/Alaya-Go/ethclient"
-	"github.com/AlayaNetwork/Alaya-Go/ethstats"
 	"github.com/AlayaNetwork/Alaya-Go/internal/debug"
-	"github.com/AlayaNetwork/Alaya-Go/les"
 	"github.com/AlayaNetwork/Alaya-Go/node"
 	"github.com/AlayaNetwork/Alaya-Go/p2p"
 	"github.com/AlayaNetwork/Alaya-Go/p2p/nat"
@@ -161,7 +160,8 @@ func NewNode(datadir string, config *NodeConfig) (stack *Node, _ error) {
 		ethConf.SyncMode = downloader.LightSync
 		ethConf.NetworkId = uint64(config.EthereumNetworkID)
 		ethConf.DatabaseCache = config.EthereumDatabaseCache
-		lesBackend, err := les.New(rawStack, &ethConf)
+		return nil, errors.New("not support")
+		/*lesBackend, err := les.New(rawStack, &ethConf)
 		if err != nil {
 			return nil, fmt.Errorf("ethereum init: %v", err)
 		}
@@ -170,7 +170,7 @@ func NewNode(datadir string, config *NodeConfig) (stack *Node, _ error) {
 			if err := ethstats.New(rawStack, lesBackend.ApiBackend, lesBackend.Engine(), config.EthereumNetStats); err != nil {
 				return nil, fmt.Errorf("netstats init: %v", err)
 			}
-		}
+		}*/
 	}
 	return &Node{rawStack}, nil
 }

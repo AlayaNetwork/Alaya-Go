@@ -14,14 +14,15 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
-
 package network
 
 import (
 	"github.com/AlayaNetwork/Alaya-Go/common"
 	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/protocols"
+	ctypes "github.com/AlayaNetwork/Alaya-Go/consensus/cbft/types"
 	"github.com/AlayaNetwork/Alaya-Go/metrics"
 	"github.com/AlayaNetwork/Alaya-Go/p2p"
+	"github.com/AlayaNetwork/Alaya-Go/rlp"
 )
 
 var (
@@ -46,6 +47,18 @@ var (
 	propViewChangeInTrafficMeter  = metrics.NewRegisteredMeter("cbft/prop/view_change/in/traffic", nil)
 	propViewChangeOutPacketsMeter = metrics.NewRegisteredMeter("cbft/prop/view_change/out/packets", nil)
 	propViewChangeOutTrafficMeter = metrics.NewRegisteredMeter("cbft/prop/view_change/out/traffic", nil)
+
+	// RGBlockQuorumCertMsg
+	propRGBlockQuorumCertInPacketsMeter  = metrics.NewRegisteredMeter("cbft/prop/rg_block_quorumcert/in/packets", nil)
+	propRGBlockQuorumCertInTrafficMeter  = metrics.NewRegisteredMeter("cbft/prop/rg_block_quorumcert/in/traffic", nil)
+	propRGBlockQuorumCertOutPacketsMeter = metrics.NewRegisteredMeter("cbft/prop/rg_block_quorumcert/out/packets", nil)
+	propRGBlockQuorumCertOutTrafficMeter = metrics.NewRegisteredMeter("cbft/prop/rg_block_quorumcert/out/traffic", nil)
+
+	// RGViewChangeQuorumCertMsg
+	propRGViewChangeQuorumCertInPacketsMeter  = metrics.NewRegisteredMeter("cbft/prop/rg_viewchange_quorumcert/in/packets", nil)
+	propRGViewChangeQuorumCertInTrafficMeter  = metrics.NewRegisteredMeter("cbft/prop/rg_viewchange_quorumcert/in/traffic", nil)
+	propRGViewChangeQuorumCertOutPacketsMeter = metrics.NewRegisteredMeter("cbft/prop/rg_viewchange_quorumcert/out/packets", nil)
+	propRGViewChangeQuorumCertOutTrafficMeter = metrics.NewRegisteredMeter("cbft/prop/rg_viewchange_quorumcert/out/traffic", nil)
 
 	// PrepareBlockHashMsg
 	propPrepareBlockHashInPacketsMeter  = metrics.NewRegisteredMeter("cbft/prop/prepare_block_hash/in/packets", nil)
@@ -104,7 +117,7 @@ var (
 	messageGossipMeter = metrics.NewRegisteredMeter("cbft/meter/message/gossip", nil)
 	messageRepeatMeter = metrics.NewRegisteredMeter("cbft/meter/message/repeat", nil)
 
-	neighborPeerGauage = metrics.NewRegisteredGauge("cbft/gauage/peer/value", nil)
+	neighborPeerGauge = metrics.NewRegisteredGauge("cbft/gauge/peer/value", nil)
 )
 
 // meteredMsgReadWriter is a wrapper around a p2p.MsgReadWriter, capable of
@@ -129,6 +142,22 @@ func (rw *meteredMsgReadWriter) Init(version int) {
 	rw.version = version
 }
 
+func MeteredReadRGMsg(msg *p2p.Msg) {
+	if !metrics.Enabled {
+		return
+	}
+	packets, traffic := miscInPacketsMeter, miscInTrafficMeter
+	switch {
+	case msg.Code == protocols.RGBlockQuorumCertMsg:
+		packets, traffic = propRGBlockQuorumCertInPacketsMeter, propRGBlockQuorumCertInTrafficMeter
+
+	case msg.Code == protocols.RGViewChangeQuorumCertMsg:
+		packets, traffic = propRGViewChangeQuorumCertInPacketsMeter, propRGViewChangeQuorumCertInTrafficMeter
+	}
+	packets.Mark(1)
+	traffic.Mark(int64(msg.Size))
+}
+
 func (rw *meteredMsgReadWriter) ReadMsg() (p2p.Msg, error) {
 	// Read the message and short circuit in case of an error
 	msg, err := rw.MsgReadWriter.ReadMsg()
@@ -139,22 +168,31 @@ func (rw *meteredMsgReadWriter) ReadMsg() (p2p.Msg, error) {
 	switch {
 	case msg.Code == protocols.PrepareBlockMsg:
 		packets, traffic = propPrepareBlockInPacketsMeter, propPrepareBlockInTrafficMeter
+
 	case msg.Code == protocols.PrepareVoteMsg:
 		packets, traffic = propPrepareVoteInPacketsMeter, propPrepareVoteInTrafficMeter
+
 	case msg.Code == protocols.ViewChangeMsg:
 		packets, traffic = propViewChangeInPacketsMeter, propViewChangeInTrafficMeter
+
 	case msg.Code == protocols.GetPrepareBlockMsg:
 		packets, traffic = reqGetPrepareBlockInPacketsMeter, reqGetPrepareBlockInTrafficMeter
+
 	case msg.Code == protocols.GetBlockQuorumCertMsg:
 		packets, traffic = reqGetQuorumCertInPacketsMeter, reqGetQuorumCertInTrafficMeter
+
 	case msg.Code == protocols.BlockQuorumCertMsg:
 		packets, traffic = reqBlockQuorumCertInPacketsMeter, reqBlockQuorumCertInTrafficMeter
-	case msg.Code == protocols.GetPrepareVoteMsg:
+
+	case msg.Code == protocols.GetPrepareVoteMsg || msg.Code == protocols.GetPrepareVoteV2Msg:
 		packets, traffic = reqGetPrepareVoteInPacketsMeter, reqGetPrepareVoteInTrafficMeter
-	case msg.Code == protocols.PrepareVotesMsg:
+
+	case msg.Code == protocols.PrepareVotesMsg || msg.Code == protocols.PrepareVotesV2Msg:
 		packets, traffic = reqPrepareVotesInPacketsMeter, reqPrepareVotesInTrafficMeter
+
 	case msg.Code == protocols.GetQCBlockListMsg:
 		packets, traffic = reqGetQCBlockListInPacketsMeter, reqGetQCBlockListInTrafficMeter
+
 	case msg.Code == protocols.QCBlockListMsg:
 		packets, traffic = reqQCBlockListInPacketsMeter, reqQCBlockListInTrafficMeter
 	}
@@ -162,6 +200,28 @@ func (rw *meteredMsgReadWriter) ReadMsg() (p2p.Msg, error) {
 	traffic.Mark(int64(msg.Size))
 
 	return msg, err
+}
+
+func MeteredWriteRGMsg(code uint64, msg ctypes.ConsensusMsg) {
+	if !metrics.Enabled {
+		return
+	}
+	size, _, err := rlp.EncodeToReader(msg)
+	if err != nil {
+		return
+	}
+	packets, traffic := miscOutPacketsMeter, miscOutTrafficMeter
+	switch {
+	case code == protocols.RGBlockQuorumCertMsg:
+		packets, traffic = propRGBlockQuorumCertOutPacketsMeter, propRGBlockQuorumCertOutTrafficMeter
+		common.RGBlockQuorumCertEgressTrafficMeter.Mark(int64(size))
+
+	case code == protocols.RGViewChangeQuorumCertMsg:
+		packets, traffic = propRGViewChangeQuorumCertOutPacketsMeter, propRGViewChangeQuorumCertOutTrafficMeter
+		common.RGViewChangeQuorumCertEgressTrafficMeter.Mark(int64(size))
+	}
+	packets.Mark(1)
+	traffic.Mark(int64(size))
 }
 
 func (rw *meteredMsgReadWriter) WriteMsg(msg p2p.Msg) error {
@@ -181,35 +241,35 @@ func (rw *meteredMsgReadWriter) WriteMsg(msg p2p.Msg) error {
 		common.ViewChangeEgressTrafficMeter.Mark(int64(msg.Size))
 
 	case msg.Code == protocols.GetPrepareBlockMsg:
-		//packets, traffic = reqGetPrepareBlockOutPacketsMeter, reqGetPrepareBlockOutTrafficMeter
+		packets, traffic = reqGetPrepareBlockOutPacketsMeter, reqGetPrepareBlockOutTrafficMeter
 		common.GetPrepareBlockEgressTrafficMeter.Mark(int64(msg.Size))
 
 	case msg.Code == protocols.PrepareBlockHashMsg:
-		//packets, traffic = propPrepareBlockHashOutPacketsMeter, propPrepareBlockHashOutTrafficMeter
+		packets, traffic = propPrepareBlockHashOutPacketsMeter, propPrepareBlockHashOutTrafficMeter
 		common.PrepareBlockHashEgressTrafficMeter.Mark(int64(msg.Size))
 
-	case msg.Code == protocols.GetPrepareVoteMsg:
-		//packets, traffic = reqGetPrepareBlockOutPacketsMeter, reqGetPrepareVoteOutTrafficMeter
+	case msg.Code == protocols.GetPrepareVoteMsg || msg.Code == protocols.GetPrepareVoteV2Msg:
+		packets, traffic = reqGetPrepareBlockOutPacketsMeter, reqGetPrepareVoteOutTrafficMeter
 		common.GetPrepareVoteEgressTrafficMeter.Mark(int64(msg.Size))
 
 	case msg.Code == protocols.GetBlockQuorumCertMsg:
-		//packets, traffic = reqGetQuorumCertOutPacketsMeter, reqGetQuorumCertOutTrafficMeter
+		packets, traffic = reqGetQuorumCertOutPacketsMeter, reqGetQuorumCertOutTrafficMeter
 		common.GetBlockQuorumCertEgressTrafficMeter.Mark(int64(msg.Size))
 
 	case msg.Code == protocols.BlockQuorumCertMsg:
-		//packets, traffic = reqBlockQuorumCertOutPacketsMeter, reqBlockQuorumCertOutTrafficMeter
+		packets, traffic = reqBlockQuorumCertOutPacketsMeter, reqBlockQuorumCertOutTrafficMeter
 		common.BlockQuorumCertEgressTrafficMeter.Mark(int64(msg.Size))
 
-	case msg.Code == protocols.PrepareVotesMsg:
-		//packets, traffic = reqPrepareVotesOutPacketsMeter, reqPrepareVotesOutTrafficMeter
+	case msg.Code == protocols.PrepareVotesMsg || msg.Code == protocols.PrepareVotesV2Msg:
+		packets, traffic = reqPrepareVotesOutPacketsMeter, reqPrepareVotesOutTrafficMeter
 		common.PrepareVotesEgressTrafficMeter.Mark(int64(msg.Size))
 
 	case msg.Code == protocols.GetQCBlockListMsg:
-		//packets, traffic = reqGetQCBlockListOutPacketsMeter, reqGetQCBlockListOutTrafficMeter
+		packets, traffic = reqGetQCBlockListOutPacketsMeter, reqGetQCBlockListOutTrafficMeter
 		common.GetQCBlockListEgressTrafficMeter.Mark(int64(msg.Size))
 
 	case msg.Code == protocols.QCBlockListMsg:
-		//packets, traffic = reqQCBlockListOutPacketsMeter, reqQCBlockListOutTrafficMeter
+		packets, traffic = reqQCBlockListOutPacketsMeter, reqQCBlockListOutTrafficMeter
 		common.QCBlockListEgressTrafficMeter.Mark(int64(msg.Size))
 
 	case msg.Code == protocols.CBFTStatusMsg:

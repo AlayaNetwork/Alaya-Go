@@ -14,13 +14,14 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
-
 package gov
 
 import (
 	"fmt"
 	"math/big"
 	"testing"
+
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
 
 	"github.com/AlayaNetwork/Alaya-Go/common/vm"
 
@@ -33,7 +34,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
 	"github.com/AlayaNetwork/Alaya-Go/params"
 
 	"github.com/AlayaNetwork/Alaya-Go/common"
@@ -42,7 +42,7 @@ import (
 
 var (
 	sender = common.MustBech32ToAddress("atx1pmhjxvfqeccm87kzpkkr08djgvpp5535gxm6s5")
-	nodeID = discover.MustHexID("0x362003c50ed3a523cdede37a001803b8f0fed27cb402b3d6127a1a96661ec202318f68f4c76d9b0bfbabfd551a178d4335eaeaa9b7981a4df30dfc8c0bfe3384")
+	nodeID = enode.MustHexIDv0("0x362003c50ed3a523cdede37a001803b8f0fed27cb402b3d6127a1a96661ec202318f68f4c76d9b0bfbabfd551a178d4335eaeaa9b7981a4df30dfc8c0bfe3384")
 
 	priKey = crypto.HexMustToECDSA("0c6ccec28e36dc5581ea3d8af1303c774b51523da397f55cdc4acd9d2b988132")
 
@@ -61,7 +61,7 @@ var (
 )
 
 type MockStaking struct {
-	DeclaeredVodes map[discover.NodeID]uint32
+	DeclaeredVodes map[enode.IDv0]uint32
 }
 
 func (stk *MockStaking) GetVerifierList(blockHash common.Hash, blockNumber uint64, isCommit bool) (staking.ValidatorExQueue, error) {
@@ -75,8 +75,8 @@ func (stk *MockStaking) GetVerifierList(blockHash common.Hash, blockNumber uint6
 	return []*staking.ValidatorEx{valEx}, nil
 }
 
-func (stk *MockStaking) ListVerifierNodeID(blockHash common.Hash, blockNumber uint64) ([]discover.NodeID, error) {
-	return []discover.NodeID{nodeID}, nil
+func (stk *MockStaking) ListVerifierNodeID(blockHash common.Hash, blockNumber uint64) ([]enode.IDv0, error) {
+	return []enode.IDv0{nodeID}, nil
 }
 
 func (stk *MockStaking) GetCanBaseList(blockHash common.Hash, blockNumber uint64) (staking.CandidateBaseQueue, error) {
@@ -101,15 +101,15 @@ func (stk *MockStaking) GetCanMutable(blockHash common.Hash, addr common.NodeAdd
 	can := &staking.CandidateMutable{Status: staking.Valided}
 	return can, nil
 }
-func (stk *MockStaking) DeclarePromoteNotify(blockHash common.Hash, blockNumber uint64, nodeId discover.NodeID, programVersion uint32) error {
+func (stk *MockStaking) DeclarePromoteNotify(blockHash common.Hash, blockNumber uint64, nodeId enode.IDv0, programVersion uint32) error {
 	if stk.DeclaeredVodes == nil {
-		stk.DeclaeredVodes = make(map[discover.NodeID]uint32)
+		stk.DeclaeredVodes = make(map[enode.IDv0]uint32)
 	}
 	stk.DeclaeredVodes[nodeID] = programVersion
 	return nil
 }
 
-func (stk *MockStaking) ListDeclaredNode() map[discover.NodeID]uint32 {
+func (stk *MockStaking) ListDeclaredNode() map[enode.IDv0]uint32 {
 	return stk.DeclaeredVodes
 }
 
@@ -188,7 +188,7 @@ func setup(t *testing.T) *mock.Chain {
 		t.Error("InitGenesisGovernParam, error", err)
 	}
 
-	RegisterGovernParamVerifiers()
+	RegisterGovernParamVerifiers(params.GenesisVersion)
 
 	if err := AddActiveVersion(params.GenesisVersion, 0, chain.StateDB); err != nil {
 		t.Error("AddActiveVersion, err", err)
@@ -556,7 +556,7 @@ func TestGov_NotifyPunishedVerifiers(t *testing.T) {
 		assert.Equal(t, 1, len(vvList))
 	}
 
-	punishedVerifierMap := make(map[discover.NodeID]struct{})
+	punishedVerifierMap := make(map[enode.IDv0]struct{})
 	punishedVerifierMap[nodeID] = struct{}{}
 
 	if err := NotifyPunishedVerifiers(chain.CurrentHeader().Hash(), punishedVerifierMap, chain.StateDB); err != nil {

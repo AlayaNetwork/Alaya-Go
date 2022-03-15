@@ -14,14 +14,13 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
-
 package network
 
 import (
 	"github.com/AlayaNetwork/Alaya-Go/common"
 	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/protocols"
 	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/types"
-	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
 )
 
 // Cbft defines the network layer to use the relevant interface
@@ -29,10 +28,10 @@ import (
 type Cbft interface {
 
 	// Returns the ID value of the current node.
-	NodeID() discover.NodeID
+	Node() *enode.Node
 
 	// Return a list of all consensus nodes.
-	ConsensusNodes() ([]discover.NodeID, error)
+	ConsensusNodes() ([]enode.ID, error)
 
 	// Return configuration information of CBFT consensus.
 	Config() *types.Config
@@ -54,11 +53,11 @@ type Cbft interface {
 	// Return the highest commit block number of the current node.
 	HighestCommitBlockBn() (uint64, common.Hash)
 
-	// Returns the node ID of the missing vote.
-	MissingViewChangeNodes() (*protocols.GetViewChange, error)
-
 	// Returns the missing vote.
-	MissingPrepareVote() (*protocols.GetPrepareVote, error)
+	MissingPrepareVote() (types.Message, error)
+
+	// Returns the node ID of the missing vote.
+	MissingViewChangeNodes() (types.Message, error)
 
 	// Returns latest status.
 	LatestStatus() *protocols.GetLatestStatus
@@ -68,4 +67,10 @@ type Cbft interface {
 
 	// BlockExists determines if a block exists.
 	BlockExists(blockNumber uint64, blockHash common.Hash) error
+
+	// NeedGroup indicates whether grouped consensus will be used
+	NeedGroup() bool
+
+	// TODO just for log
+	GetGroupByValidatorID(nodeID enode.ID) (uint32, uint32, error)
 }

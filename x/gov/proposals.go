@@ -14,16 +14,18 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
-
 package gov
 
 import (
 	"fmt"
 	"math/big"
 
+	"github.com/AlayaNetwork/Alaya-Go/params"
+
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
+
 	"github.com/AlayaNetwork/Alaya-Go/common"
 	"github.com/AlayaNetwork/Alaya-Go/log"
-	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
 	"github.com/AlayaNetwork/Alaya-Go/x/xcom"
 	"github.com/AlayaNetwork/Alaya-Go/x/xutil"
 )
@@ -97,7 +99,7 @@ type Proposal interface {
 	GetPIPID() string
 	GetSubmitBlock() uint64
 	GetEndVotingBlock() uint64
-	GetProposer() discover.NodeID
+	GetProposer() enode.IDv0
 	GetTallyResult() TallyResult
 	Verify(blockNumber uint64, blockHash common.Hash, state xcom.StateDB, chainID *big.Int) error
 	String() string
@@ -109,7 +111,7 @@ type TextProposal struct {
 	PIPID          string
 	SubmitBlock    uint64
 	EndVotingBlock uint64
-	Proposer       discover.NodeID
+	Proposer       enode.IDv0
 	Result         TallyResult `json:"-"`
 }
 
@@ -133,7 +135,7 @@ func (tp *TextProposal) GetEndVotingBlock() uint64 {
 	return tp.EndVotingBlock
 }
 
-func (tp *TextProposal) GetProposer() discover.NodeID {
+func (tp *TextProposal) GetProposer() enode.IDv0 {
 	return tp.Proposer
 }
 
@@ -149,8 +151,8 @@ func (tp *TextProposal) Verify(submitBlock uint64, blockHash common.Hash, state 
 	if err := verifyBasic(tp, blockHash, state); err != nil {
 		return err
 	}
-
-	endVotingBlock := xutil.CalEndVotingBlock(submitBlock, xutil.EstimateConsensusRoundsForGov(xcom.TextProposalVote_DurationSeconds()))
+	acVersion := GetCurrentActiveVersion(state)
+	endVotingBlock := xutil.CalEndVotingBlock(submitBlock, xutil.EstimateConsensusRoundsForGov(xcom.TextProposalVote_DurationSeconds(), acVersion), acVersion)
 	if endVotingBlock <= submitBlock {
 		log.Error("the end-voting-block is lower than submit-block. Please check configuration")
 		return common.InternalError
@@ -178,7 +180,7 @@ type VersionProposal struct {
 	SubmitBlock     uint64
 	EndVotingRounds uint64
 	EndVotingBlock  uint64
-	Proposer        discover.NodeID
+	Proposer        enode.IDv0
 	Result          TallyResult `json:"-"`
 	NewVersion      uint32
 	ActiveBlock     uint64
@@ -204,7 +206,7 @@ func (vp *VersionProposal) GetEndVotingBlock() uint64 {
 	return vp.EndVotingBlock
 }
 
-func (vp *VersionProposal) GetProposer() discover.NodeID {
+func (vp *VersionProposal) GetProposer() enode.IDv0 {
 	return vp.Proposer
 }
 
@@ -216,7 +218,11 @@ func (vp *VersionProposal) GetNewVersion() uint32 {
 	return vp.NewVersion
 }
 
-func (vp *VersionProposal) GetActiveBlock() uint64 {
+func (vp *VersionProposal) GetActiveBlock(version uint32) uint64 {
+	if vp.NewVersion == params.FORKVERSION_0_17_0 {
+		epoch := xutil.CalculateEpoch(vp.ActiveBlock-1, version)
+		return epoch*xutil.CalcBlocksEachEpoch(version) + 1
+	}
 	return vp.ActiveBlock
 }
 
@@ -229,7 +235,9 @@ func (vp *VersionProposal) Verify(submitBlock uint64, blockHash common.Hash, sta
 		return EndVotingRoundsTooSmall
 	}
 
-	if vp.EndVotingRounds > xutil.EstimateConsensusRoundsForGov(xcom.VersionProposalVote_DurationSeconds()) {
+	acVersion := GetCurrentActiveVersion(state)
+
+	if vp.EndVotingRounds > xutil.EstimateConsensusRoundsForGov(xcom.VersionProposalVote_DurationSeconds(), acVersion) {
 		return EndVotingRoundsTooLarge
 	}
 
@@ -237,7 +245,7 @@ func (vp *VersionProposal) Verify(submitBlock uint64, blockHash common.Hash, sta
 		return err
 	}
 
-	endVotingBlock := xutil.CalEndVotingBlock(submitBlock, vp.EndVotingRounds)
+	endVotingBlock := xutil.CalEndVotingBlock(submitBlock, vp.EndVotingRounds, acVersion)
 	if endVotingBlock <= submitBlock {
 		log.Error("the end-voting-block is lower than submit-block. Please check configuration")
 		return common.InternalError
@@ -294,7 +302,7 @@ type CancelProposal struct {
 	SubmitBlock     uint64
 	EndVotingRounds uint64
 	EndVotingBlock  uint64
-	Proposer        discover.NodeID
+	Proposer        enode.IDv0
 	TobeCanceled    common.Hash
 	Result          TallyResult `json:"-"`
 }
@@ -319,7 +327,7 @@ func (cp *CancelProposal) GetEndVotingBlock() uint64 {
 	return cp.EndVotingBlock
 }
 
-func (cp *CancelProposal) GetProposer() discover.NodeID {
+func (cp *CancelProposal) GetProposer() enode.IDv0 {
 	return cp.Proposer
 }
 
@@ -340,7 +348,7 @@ func (cp *CancelProposal) Verify(submitBlock uint64, blockHash common.Hash, stat
 		return EndVotingRoundsTooSmall
 	}
 
-	endVotingBlock := xutil.CalEndVotingBlock(submitBlock, cp.EndVotingRounds)
+	endVotingBlock := xutil.CalEndVotingBlock(submitBlock, cp.EndVotingRounds, GetCurrentActiveVersion(state))
 	if endVotingBlock <= submitBlock {
 		log.Error("the end-voting-block is lower than submit-block. Please check configuration")
 		return common.InternalError
@@ -390,7 +398,7 @@ type ParamProposal struct {
 	PIPID          string
 	SubmitBlock    uint64
 	EndVotingBlock uint64
-	Proposer       discover.NodeID
+	Proposer       enode.IDv0
 	Result         TallyResult `json:"-"`
 	Module         string
 	Name           string
@@ -417,7 +425,7 @@ func (pp *ParamProposal) GetEndVotingBlock() uint64 {
 	return pp.EndVotingBlock
 }
 
-func (pp *ParamProposal) GetProposer() discover.NodeID {
+func (pp *ParamProposal) GetProposer() enode.IDv0 {
 	return pp.Proposer
 }
 
@@ -474,7 +482,8 @@ func (pp *ParamProposal) Verify(submitBlock uint64, blockHash common.Hash, state
 
 	var voteDuration = xcom.ParamProposalVote_DurationSeconds()
 
-	endVotingBlock := xutil.EstimateEndVotingBlockForParaProposal(submitBlock, voteDuration)
+	acVersion := GetCurrentActiveVersion(state)
+	endVotingBlock := xutil.EstimateEndVotingBlockForParaProposal(submitBlock, voteDuration, acVersion)
 	if endVotingBlock <= submitBlock {
 		log.Error("the end-voting-block is lower than submit-block. Please check configuration")
 		return common.InternalError
@@ -513,7 +522,7 @@ func verifyBasic(p Proposal, blockHash common.Hash, state xcom.StateDB) error {
 		return ProposalIDEmpty
 	}
 
-	if p.GetProposer() == discover.ZeroNodeID {
+	if p.GetProposer() == enode.ZeroIDv0 {
 		return ProposerEmpty
 	}
 

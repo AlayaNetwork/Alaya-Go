@@ -14,18 +14,18 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
-
 package types
 
 import (
 	"fmt"
-	"reflect"
-
 	"github.com/AlayaNetwork/Alaya-Go/common"
 	"github.com/AlayaNetwork/Alaya-Go/common/hexutil"
+	"github.com/AlayaNetwork/Alaya-Go/common/json"
 	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/utils"
 	"github.com/AlayaNetwork/Alaya-Go/crypto"
+	"github.com/AlayaNetwork/Alaya-Go/crypto/bls"
 	"github.com/AlayaNetwork/Alaya-Go/rlp"
+	"reflect"
 )
 
 const (
@@ -79,6 +79,22 @@ type QuorumCert struct {
 	ValidatorSet *utils.BitArray `json:"validatorSet"`
 }
 
+func (q *QuorumCert) DeepCopyQuorumCert() *QuorumCert {
+	if q == nil {
+		return nil
+	}
+	qc := &QuorumCert{
+		Epoch:        q.Epoch,
+		ViewNumber:   q.ViewNumber,
+		BlockHash:    q.BlockHash,
+		BlockNumber:  q.BlockNumber,
+		BlockIndex:   q.BlockIndex,
+		Signature:    q.Signature,
+		ValidatorSet: q.ValidatorSet.Copy(),
+	}
+	return qc
+}
+
 func (q QuorumCert) CannibalizeBytes() ([]byte, error) {
 	buf, err := rlp.EncodeToBytes([]interface{}{
 		q.Epoch,
@@ -93,7 +109,11 @@ func (q QuorumCert) CannibalizeBytes() ([]byte, error) {
 	return crypto.Keccak256(buf), nil
 }
 
-func (q QuorumCert) Len() int {
+func (q *QuorumCert) Len() int {
+	if q == nil || q.ValidatorSet == nil {
+		return 0
+	}
+
 	length := 0
 	for i := uint32(0); i < q.ValidatorSet.Size(); i++ {
 		if q.ValidatorSet.GetIndex(i) {
@@ -107,7 +127,61 @@ func (q *QuorumCert) String() string {
 	if q == nil {
 		return ""
 	}
-	return fmt.Sprintf("{Epoch:%d,ViewNumber:%d,Hash:%s,Number:%d,Index:%d,ValidatorSet:%s}", q.Epoch, q.ViewNumber, q.BlockHash.TerminalString(), q.BlockNumber, q.BlockIndex, q.ValidatorSet.String())
+	return fmt.Sprintf("{Epoch:%d,ViewNumber:%d,Hash:%s,Number:%d,Index:%d,Signature:%s,ValidatorSetLen:%d}", q.Epoch, q.ViewNumber, q.BlockHash.TerminalString(), q.BlockNumber, q.BlockIndex, q.Signature.String(), q.ValidatorSet.HasLength())
+}
+
+// Add a new signature to the aggregate signature
+// Note: Call this method to ensure that the new signature does not exist in the aggregate signature, otherwise the entire aggregate signature will be wrong
+func (q *QuorumCert) AddSign(sign Signature, NodeIndex uint32) bool {
+	if q == nil {
+		return false
+	}
+	var (
+		addSig bls.Sign
+		blsSig bls.Sign
+	)
+	if err := addSig.Deserialize(sign.Bytes()); err != nil {
+		return false
+	}
+	if err := blsSig.Deserialize(q.Signature.Bytes()); err != nil {
+		return false
+	}
+	blsSig.Add(&addSig)
+	q.Signature.SetBytes(blsSig.Serialize())
+	q.ValidatorSet.SetIndex(NodeIndex, true)
+	return true
+}
+
+func (q *QuorumCert) HigherSign(c *QuorumCert) bool {
+	if q == nil && c == nil {
+		return false
+	}
+	if q == nil && c != nil {
+		return false
+	}
+	if c == nil {
+		return true
+	}
+	if !q.EqualState(c) {
+		return false
+	}
+	return q.ValidatorSet.HasLength() > c.ValidatorSet.HasLength()
+}
+
+func (q *QuorumCert) HasSign(signIndex uint32) bool {
+	if q == nil || q.ValidatorSet == nil {
+		return false
+	}
+	return q.ValidatorSet.GetIndex(signIndex)
+}
+
+func (q *QuorumCert) EqualState(c *QuorumCert) bool {
+	return q.Epoch == c.Epoch &&
+		q.ViewNumber == c.ViewNumber &&
+		q.BlockHash == c.BlockHash &&
+		q.BlockNumber == c.BlockNumber &&
+		q.BlockIndex == c.BlockIndex &&
+		q.ValidatorSet.Size() == c.ValidatorSet.Size()
 }
 
 // if the two quorumCert have the same blockNumber
@@ -135,6 +209,23 @@ type ViewChangeQuorumCert struct {
 	ValidatorSet    *utils.BitArray `json:"validatorSet"`
 }
 
+func (q *ViewChangeQuorumCert) DeepCopyViewChangeQuorumCert() *ViewChangeQuorumCert {
+	if q == nil {
+		return nil
+	}
+	qc := &ViewChangeQuorumCert{
+		Epoch:           q.Epoch,
+		ViewNumber:      q.ViewNumber,
+		BlockHash:       q.BlockHash,
+		BlockNumber:     q.BlockNumber,
+		BlockEpoch:      q.BlockEpoch,
+		BlockViewNumber: q.BlockViewNumber,
+		Signature:       q.Signature,
+		ValidatorSet:    q.ValidatorSet.Copy(),
+	}
+	return qc
+}
+
 func (q ViewChangeQuorumCert) CannibalizeBytes() ([]byte, error) {
 	buf, err := rlp.EncodeToBytes([]interface{}{
 		q.Epoch,
@@ -150,7 +241,11 @@ func (q ViewChangeQuorumCert) CannibalizeBytes() ([]byte, error) {
 	return crypto.Keccak256(buf), nil
 }
 
-func (q ViewChangeQuorumCert) Len() int {
+func (q *ViewChangeQuorumCert) Len() int {
+	if q.ValidatorSet == nil {
+		return 0
+	}
+
 	length := 0
 	for i := uint32(0); i < q.ValidatorSet.Size(); i++ {
 		if q.ValidatorSet.GetIndex(i) {
@@ -161,7 +256,7 @@ func (q ViewChangeQuorumCert) Len() int {
 }
 
 func (q ViewChangeQuorumCert) String() string {
-	return fmt.Sprintf("{Epoch:%d,ViewNumber:%d,Hash:%s,Number:%d,BlockEpoch:%d,BlockViewNumber:%d:ValidatorSet:%s}", q.Epoch, q.ViewNumber, q.BlockHash.TerminalString(), q.BlockNumber, q.BlockEpoch, q.BlockViewNumber, q.ValidatorSet.String())
+	return fmt.Sprintf("{Epoch:%d,ViewNumber:%d,Hash:%s,Number:%d,BlockEpoch:%d,BlockViewNumber:%d:ValidatorSetLen:%d}", q.Epoch, q.ViewNumber, q.BlockHash.TerminalString(), q.BlockNumber, q.BlockEpoch, q.BlockViewNumber, q.ValidatorSet.HasLength())
 }
 
 // if the two quorumCert have the same blockNumber
@@ -187,6 +282,61 @@ func (q *ViewChangeQuorumCert) Copy() *ViewChangeQuorumCert {
 		Signature:    q.Signature,
 		ValidatorSet: q.ValidatorSet.Copy(),
 	}
+}
+
+// Add a new signature to the aggregate signature
+// Note: Call this method to ensure that the new signature does not exist in the aggregate signature, otherwise the entire aggregate signature will be wrong
+func (q *ViewChangeQuorumCert) AddSign(sign Signature, NodeIndex uint32) bool {
+	if q == nil {
+		return false
+	}
+	var (
+		addSig bls.Sign
+		blsSig bls.Sign
+	)
+	if err := addSig.Deserialize(sign.Bytes()); err != nil {
+		return false
+	}
+	if err := blsSig.Deserialize(q.Signature.Bytes()); err != nil {
+		return false
+	}
+	blsSig.Add(&addSig)
+	q.Signature.SetBytes(blsSig.Serialize())
+	q.ValidatorSet.SetIndex(NodeIndex, true)
+	return true
+}
+
+func (q *ViewChangeQuorumCert) HigherSign(c *ViewChangeQuorumCert) bool {
+	if q == nil && c == nil {
+		return false
+	}
+	if q == nil && c != nil {
+		return false
+	}
+	if c == nil {
+		return true
+	}
+	if !q.EqualState(c) {
+		return false
+	}
+	return q.ValidatorSet.HasLength() > c.ValidatorSet.HasLength()
+}
+
+func (q *ViewChangeQuorumCert) HasSign(signIndex uint32) bool {
+	if q == nil || q.ValidatorSet == nil {
+		return false
+	}
+	return q.ValidatorSet.GetIndex(signIndex)
+}
+
+func (q *ViewChangeQuorumCert) EqualState(c *ViewChangeQuorumCert) bool {
+	return q.Epoch == c.Epoch &&
+		q.ViewNumber == c.ViewNumber &&
+		q.BlockHash == c.BlockHash &&
+		q.BlockNumber == c.BlockNumber &&
+		q.BlockEpoch == c.BlockEpoch &&
+		q.BlockViewNumber == c.BlockViewNumber &&
+		q.ValidatorSet.Size() == c.ValidatorSet.Size()
 }
 
 func (v ViewChangeQC) EqualAll(epoch uint64, viewNumber uint64) error {
@@ -216,12 +366,49 @@ func (v ViewChangeQC) MaxBlock() (uint64, uint64, uint64, uint64, common.Hash, u
 	return maxQC.Epoch, maxQC.ViewNumber, maxQC.BlockEpoch, maxQC.BlockViewNumber, maxQC.BlockHash, maxQC.BlockNumber
 }
 
-func (v ViewChangeQC) Len() int {
+func (v *ViewChangeQC) Len() int {
+	if v == nil || len(v.QCs) <= 0 {
+		return 0
+	}
 	length := 0
 	for _, qc := range v.QCs {
 		length += qc.Len()
 	}
 	return length
+}
+
+func (v *ViewChangeQC) HasLength() int {
+	if v == nil || len(v.QCs) <= 0 {
+		return 0
+	}
+	return v.ValidatorSet().HasLength()
+}
+
+func (v *ViewChangeQC) ValidatorSet() *utils.BitArray {
+	if len(v.QCs) > 0 {
+		vSet := v.QCs[0].ValidatorSet
+		for i := 1; i < len(v.QCs); i++ {
+			vSet = vSet.Or(v.QCs[i].ValidatorSet)
+		}
+		return vSet
+	}
+	return nil
+}
+
+func (v *ViewChangeQC) HasSign(signIndex uint32) bool {
+	if v == nil || len(v.QCs) <= 0 {
+		return false
+	}
+	for _, qc := range v.QCs {
+		if qc.HasSign(signIndex) {
+			return true
+		}
+	}
+	return false
+}
+
+func (v *ViewChangeQC) HigherSign(c *ViewChangeQC) bool {
+	return v.HasLength() > c.HasLength()
 }
 
 func (v ViewChangeQC) String() string {
@@ -240,4 +427,106 @@ func (v ViewChangeQC) ExistViewChange(epoch, viewNumber uint64, blockHash common
 
 func (v *ViewChangeQC) AppendQuorumCert(viewChangeQC *ViewChangeQuorumCert) {
 	v.QCs = append(v.QCs, viewChangeQC)
+}
+
+func (v *ViewChangeQC) DeepCopyViewChangeQC() *ViewChangeQC {
+	if v == nil || len(v.QCs) <= 0 {
+		return nil
+	}
+	cpy := &ViewChangeQC{QCs: make([]*ViewChangeQuorumCert, 0, len(v.QCs))}
+	for _, qc := range v.QCs {
+		cpy.AppendQuorumCert(qc.DeepCopyViewChangeQuorumCert())
+	}
+	return cpy
+}
+
+type PrepareQCs struct {
+	QCs []*QuorumCert `json:"qcs"`
+}
+
+func (p *PrepareQCs) FindPrepareQC(hash common.Hash) *QuorumCert {
+	if p == nil || len(p.QCs) <= 0 {
+		return nil
+	}
+	for _, qc := range p.QCs {
+		if qc.BlockHash == hash {
+			return qc
+		}
+	}
+	return nil
+}
+
+func (p *PrepareQCs) FlattenMap() map[common.Hash]*QuorumCert {
+	if p == nil || len(p.QCs) <= 0 {
+		return nil
+	}
+	m := make(map[common.Hash]*QuorumCert)
+	for _, qc := range p.QCs {
+		m[qc.BlockHash] = qc
+	}
+	return m
+}
+
+func (p *PrepareQCs) AppendQuorumCert(qc *QuorumCert) {
+	p.QCs = append(p.QCs, qc)
+}
+
+func (p *PrepareQCs) DeepCopyPrepareQCs() *PrepareQCs {
+	if p == nil || len(p.QCs) <= 0 {
+		return nil
+	}
+	cpy := &PrepareQCs{QCs: make([]*QuorumCert, 0, len(p.QCs))}
+	for _, qc := range p.QCs {
+		cpy.AppendQuorumCert(qc.DeepCopyQuorumCert())
+	}
+	return cpy
+}
+
+type UnKnownGroups struct {
+	UnKnown []*UnKnownGroup `json:"unKnowns"`
+}
+
+type UnKnownGroup struct {
+	GroupID    uint32          `json:"groupID"`
+	UnKnownSet *utils.BitArray `json:"unKnownSet"`
+}
+
+func (unKnown *UnKnownGroup) MarshalJSON() ([]byte, error) {
+	type UnKnownGroup struct {
+		GroupID       uint32 `json:"groupID"`
+		UnKnownSetLen int    `json:"unKnownSetLen"`
+	}
+
+	un := &UnKnownGroup{
+		GroupID:       unKnown.GroupID,
+		UnKnownSetLen: unKnown.UnKnownSet.HasLength(),
+	}
+
+	return json.Marshal(un)
+}
+
+func (unKnowns *UnKnownGroups) UnKnownSize() int {
+	if unKnowns == nil || len(unKnowns.UnKnown) <= 0 {
+		return 0
+	}
+
+	var unKnownSets *utils.BitArray
+	for _, un := range unKnowns.UnKnown {
+		if unKnownSets == nil {
+			unKnownSets = un.UnKnownSet
+		} else {
+			unKnownSets = unKnownSets.Or(un.UnKnownSet)
+		}
+	}
+	return unKnownSets.HasLength()
+}
+
+func (unKnowns *UnKnownGroups) String() string {
+	if unKnowns == nil || len(unKnowns.UnKnown) <= 0 {
+		return ""
+	}
+	if b, err := json.Marshal(unKnowns); err == nil {
+		return string(b)
+	}
+	return ""
 }

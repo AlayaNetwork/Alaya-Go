@@ -22,6 +22,10 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/AlayaNetwork/Alaya-Go/x/xcom"
+
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
+
 	"github.com/AlayaNetwork/Alaya-Go/core/state"
 
 	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/utils"
@@ -37,7 +41,6 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/crypto/bls"
 	"github.com/AlayaNetwork/Alaya-Go/event"
 	"github.com/AlayaNetwork/Alaya-Go/log"
-	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
 	"github.com/AlayaNetwork/Alaya-Go/params"
 	"github.com/AlayaNetwork/Alaya-Go/rlp"
 )
@@ -49,18 +52,18 @@ func newValidators(nodes []params.CbftNode, validBlockNumber uint64) *cbfttypes.
 	}
 
 	for i, node := range nodes {
-		pubkey, err := node.Node.ID.Pubkey()
-		if err != nil {
-			panic(err)
+		pubkey := node.Node.Pubkey()
+		if pubkey == nil {
+			panic("pubkey should not nil")
 		}
 
 		blsPubKey := node.BlsPubKey
 
-		vds.Nodes[node.Node.ID] = &cbfttypes.ValidateNode{
+		vds.Nodes[node.Node.ID()] = &cbfttypes.ValidateNode{
 			Index:     uint32(i),
 			Address:   crypto.PubkeyToNodeAddress(*pubkey),
 			PubKey:    pubkey,
-			NodeID:    node.Node.ID,
+			NodeID:    node.Node.ID(),
 			BlsPubKey: &blsPubKey,
 		}
 	}
@@ -99,11 +102,15 @@ func (d *StaticAgency) GetLastNumber(blockNumber uint64) uint64 {
 	return 0
 }
 
-func (d *StaticAgency) GetValidator(uint64) (*cbfttypes.Validators, error) {
+func (d *StaticAgency) GetLastNumberByHash(blockHash common.Hash, blockNumber uint64) uint64 {
+	return 0
+}
+
+func (d *StaticAgency) GetValidators(blockHash common.Hash, blockNumber uint64) (*cbfttypes.Validators, error) {
 	return d.validators, nil
 }
 
-func (d *StaticAgency) IsCandidateNode(nodeID discover.NodeID) bool {
+func (d *StaticAgency) IsCandidateNode(nodeID enode.IDv0) bool {
 	return false
 }
 
@@ -147,14 +154,18 @@ func (d *MockAgency) GetLastNumber(blockNumber uint64) uint64 {
 	return 0
 }
 
-func (d *MockAgency) GetValidator(blockNumber uint64) (*cbfttypes.Validators, error) {
+func (d *MockAgency) GetLastNumberByHash(blockHash common.Hash, blockNumber uint64) uint64 {
+	return 0
+}
+
+func (d *MockAgency) GetValidators(blockHash common.Hash, blockNumber uint64) (*cbfttypes.Validators, error) {
 	if blockNumber > d.interval && blockNumber%d.interval == 1 {
 		d.validators.ValidBlockNumber = d.validators.ValidBlockNumber + d.interval + 1
 	}
 	return d.validators, nil
 }
 
-func (d *MockAgency) IsCandidateNode(nodeID discover.NodeID) bool {
+func (d *MockAgency) IsCandidateNode(nodeID enode.IDv0) bool {
 	return false
 }
 
@@ -203,7 +214,7 @@ func (ia *InnerAgency) GetLastNumber(blockNumber uint64) uint64 {
 	if blockNumber <= ia.defaultBlocksPerRound {
 		lastBlockNumber = ia.defaultBlocksPerRound
 	} else {
-		vds, err := ia.GetValidator(blockNumber)
+		vds, err := ia.GetValidators(common.ZeroHash, blockNumber)
 		if err != nil {
 			log.Error("Get validator fail", "blockNumber", blockNumber)
 			return 0
@@ -232,7 +243,11 @@ func (ia *InnerAgency) GetLastNumber(blockNumber uint64) uint64 {
 	return lastBlockNumber
 }
 
-func (ia *InnerAgency) GetValidator(blockNumber uint64) (v *cbfttypes.Validators, err error) {
+func (ia *InnerAgency) GetLastNumberByHash(blockHash common.Hash, blockNumber uint64) uint64 {
+	return 0
+}
+
+func (ia *InnerAgency) GetValidators(blockHash common.Hash, blockNumber uint64) (v *cbfttypes.Validators, err error) {
 	defaultValidators := *ia.defaultValidators
 	baseNumber := blockNumber
 	if blockNumber == 0 {
@@ -267,14 +282,16 @@ func (ia *InnerAgency) GetValidator(blockNumber uint64) (v *cbfttypes.Validators
 	}
 	var validators cbfttypes.Validators
 	validators.Nodes = make(cbfttypes.ValidateNodeMap, len(vds.ValidateNodes))
+
 	for _, node := range vds.ValidateNodes {
 		pubkey, _ := node.NodeID.Pubkey()
 		blsPubKey := node.BlsPubKey
-		validators.Nodes[node.NodeID] = &cbfttypes.ValidateNode{
+		id := enode.PubkeyToIDV4(pubkey)
+		validators.Nodes[id] = &cbfttypes.ValidateNode{
 			Index:     uint32(node.Index),
 			Address:   node.Address,
 			PubKey:    pubkey,
-			NodeID:    node.NodeID,
+			NodeID:    id,
 			BlsPubKey: &blsPubKey,
 		}
 	}
@@ -282,7 +299,7 @@ func (ia *InnerAgency) GetValidator(blockNumber uint64) (v *cbfttypes.Validators
 	return &validators, nil
 }
 
-func (ia *InnerAgency) IsCandidateNode(nodeID discover.NodeID) bool {
+func (ia *InnerAgency) IsCandidateNode(nodeID enode.IDv0) bool {
 	return true
 }
 
@@ -293,42 +310,56 @@ func (ia *InnerAgency) OnCommit(block *types.Block) error {
 // ValidatorPool a pool storing validators.
 type ValidatorPool struct {
 	agency consensus.Agency
-
-	lock sync.RWMutex
+	lock   sync.RWMutex
 
 	// Current node's public key
-	nodeID discover.NodeID
+	nodeID enode.ID
 
-	// A block number which validators switch point.
+	// A block number which validators switch to current.
 	switchPoint uint64
 	lastNumber  uint64
 
+	// current epoch
 	epoch uint64
 
-	prevValidators    *cbfttypes.Validators // Previous validators
-	currentValidators *cbfttypes.Validators // Current validators
+	// grouped indicates if validators need grouped
+	grouped bool
+	// max validators in per group
+	groupValidatorsLimit uint32
+	// coordinator limit
+	coordinatorLimit uint32
 
+	prevValidators    *cbfttypes.Validators // Previous round validators
+	currentValidators *cbfttypes.Validators // Current round validators
+	nextValidators    *cbfttypes.Validators // Next round validators, to Post Pub event
+
+	awaitingTopicEvent map[int]cbfttypes.TopicEvent
 }
 
 // NewValidatorPool new a validator pool.
-func NewValidatorPool(agency consensus.Agency, blockNumber uint64, epoch uint64, nodeID discover.NodeID) *ValidatorPool {
+func NewValidatorPool(agency consensus.Agency, blockNumber, epoch uint64, nodeID enode.ID, needGroup bool, eventMux *event.TypeMux) *ValidatorPool {
 	pool := &ValidatorPool{
-		agency: agency,
-		nodeID: nodeID,
-		epoch:  epoch,
+		agency:               agency,
+		nodeID:               nodeID,
+		epoch:                epoch,
+		grouped:              needGroup,
+		groupValidatorsLimit: xcom.MaxGroupValidators(),
+		coordinatorLimit:     xcom.CoordinatorsLimit(),
+		awaitingTopicEvent:   make(map[int]cbfttypes.TopicEvent),
 	}
-	// FIXME: Check `GetValidator` return error
-	if agency.GetLastNumber(blockNumber) == blockNumber {
-		pool.prevValidators, _ = agency.GetValidator(blockNumber)
-		pool.currentValidators, _ = agency.GetValidator(NextRound(blockNumber))
+	lastNumber := agency.GetLastNumber(blockNumber)
+	// FIXME: Check `GetValidators` return error
+	if lastNumber == blockNumber {
+		pool.prevValidators, _ = agency.GetValidators(common.ZeroHash, blockNumber)
+		pool.currentValidators, _ = agency.GetValidators(common.ZeroHash, NextRound(blockNumber))
 		pool.lastNumber = agency.GetLastNumber(NextRound(blockNumber))
 		if blockNumber != 0 {
 			pool.epoch += 1
 		}
 	} else {
-		pool.currentValidators, _ = agency.GetValidator(blockNumber)
+		pool.currentValidators, _ = agency.GetValidators(common.ZeroHash, blockNumber)
 		pool.prevValidators = pool.currentValidators
-		pool.lastNumber = agency.GetLastNumber(blockNumber)
+		pool.lastNumber = lastNumber
 	}
 	// When validator mode is `static`, the `ValidatorBlockNumber` always 0,
 	// means we are using static validators. Otherwise, represent use current
@@ -337,20 +368,36 @@ func NewValidatorPool(agency consensus.Agency, blockNumber uint64, epoch uint64,
 	if pool.currentValidators.ValidBlockNumber > 0 {
 		pool.switchPoint = pool.currentValidators.ValidBlockNumber - 1
 	}
-
-	log.Debug("Update validator", "validators", pool.currentValidators.String(), "switchpoint", pool.switchPoint, "epoch", pool.epoch, "lastNumber", pool.lastNumber)
+	if needGroup {
+		if err := pool.organize(pool.currentValidators, epoch, eventMux, true); err != nil {
+			log.Error("ValidatorPool organized failed!", "error", err)
+		}
+		blockDif := lastNumber - blockNumber
+		if blockDif > 0 && blockDif < xcom.ElectionDistance() {
+			nds, err := pool.agency.GetValidators(common.ZeroHash, NextRound(lastNumber))
+			if err != nil {
+				log.Debug("Get nextValidators error", "blockNumber", blockNumber, "err", err)
+				return pool
+			}
+			if nds != nil {
+				pool.nextValidators = nds
+				pool.organize(pool.nextValidators, epoch+1, eventMux, true)
+			}
+		}
+	}
+	log.Debug("NewValidatorPool:", "validators", pool.currentValidators.String(), "switchpoint", pool.switchPoint, "epoch", pool.epoch, "lastNumber", pool.lastNumber)
 	return pool
 }
 
 // Reset reset validator pool.
-func (vp *ValidatorPool) Reset(blockNumber uint64, epoch uint64) {
+func (vp *ValidatorPool) Reset(blockNumber uint64, epoch uint64, eventMux *event.TypeMux) {
 	if vp.agency.GetLastNumber(blockNumber) == blockNumber {
-		vp.prevValidators, _ = vp.agency.GetValidator(blockNumber)
-		vp.currentValidators, _ = vp.agency.GetValidator(NextRound(blockNumber))
+		vp.prevValidators, _ = vp.agency.GetValidators(common.ZeroHash, blockNumber)
+		vp.currentValidators, _ = vp.agency.GetValidators(common.ZeroHash, NextRound(blockNumber))
 		vp.lastNumber = vp.agency.GetLastNumber(NextRound(blockNumber))
 		vp.epoch = epoch + 1
 	} else {
-		vp.currentValidators, _ = vp.agency.GetValidator(blockNumber)
+		vp.currentValidators, _ = vp.agency.GetValidators(common.ZeroHash, blockNumber)
 		vp.prevValidators = vp.currentValidators
 		vp.lastNumber = vp.agency.GetLastNumber(blockNumber)
 		vp.epoch = epoch
@@ -358,7 +405,10 @@ func (vp *ValidatorPool) Reset(blockNumber uint64, epoch uint64) {
 	if vp.currentValidators.ValidBlockNumber > 0 {
 		vp.switchPoint = vp.currentValidators.ValidBlockNumber - 1
 	}
-	log.Debug("Update validator", "validators", vp.currentValidators.String(), "switchpoint", vp.switchPoint, "epoch", vp.epoch, "lastNumber", vp.lastNumber)
+	if vp.grouped {
+		vp.organize(vp.currentValidators, epoch, eventMux, false)
+	}
+	log.Debug("Reset validator", "validators", vp.currentValidators.String(), "switchpoint", vp.switchPoint, "epoch", vp.epoch, "lastNumber", vp.lastNumber)
 }
 
 // ShouldSwitch check if should switch validators at the moment.
@@ -382,7 +432,7 @@ func (vp *ValidatorPool) EnableVerifyEpoch(epoch uint64) error {
 	if epoch+1 == vp.epoch || epoch == vp.epoch {
 		return nil
 	}
-	return fmt.Errorf("enable verify epoch:%d,%d, request:%d", vp.epoch-1, vp.epoch, epoch)
+	return fmt.Errorf("unable verify epoch:%d,%d, request:%d", vp.epoch-1, vp.epoch, epoch)
 }
 
 func (vp *ValidatorPool) MockSwitchPoint(number uint64) {
@@ -391,30 +441,94 @@ func (vp *ValidatorPool) MockSwitchPoint(number uint64) {
 }
 
 // Update switch validators.
-func (vp *ValidatorPool) Update(blockNumber uint64, epoch uint64, eventMux *event.TypeMux) error {
+func (vp *ValidatorPool) Update(blockHash common.Hash, blockNumber uint64, epoch uint64, version uint32, eventMux *event.TypeMux) error {
 	vp.lock.Lock()
 	defer vp.lock.Unlock()
 
-	// Only updated once
+	needGroup := version >= params.FORKVERSION_0_17_0
+	//分组提案生效后第一个共识round到ElectionPoint时初始化分组信息
+	if !vp.grouped && needGroup {
+		vp.grouped = true
+		vp.groupValidatorsLimit = xcom.MaxGroupValidators()
+		vp.coordinatorLimit = xcom.CoordinatorsLimit()
+	}
+	// 生效后第一个共识周期的Election block已经是新值（2130）所以第一次触发update是cbft.tryChangeView->shouldSwitch
 	if blockNumber <= vp.switchPoint {
-		log.Debug("Already update validator before", "blockNumber", blockNumber, "switchPoint", vp.switchPoint)
+		log.Trace("Already update validator before", "blockNumber", blockNumber, "switchPoint", vp.switchPoint)
 		return errors.New("already updated before")
 	}
 
-	nds, err := vp.agency.GetValidator(NextRound(blockNumber))
+	var err error
+	var nds *cbfttypes.Validators
+	// 节点中间重启过， nextValidators没有赋值
+	if vp.nextValidators == nil {
+		nds, err = vp.agency.GetValidators(blockHash, NextRound(blockNumber))
+		if err != nil {
+			log.Error("Get validator error", "blockNumber", blockNumber, "err", err)
+			return err
+		}
+
+		vp.nextValidators = nds
+		if vp.grouped {
+			vp.organize(vp.nextValidators, epoch, eventMux, false)
+		}
+	}
+
+	vp.prevValidators = vp.currentValidators
+	vp.currentValidators = vp.nextValidators
+	vp.switchPoint = vp.currentValidators.ValidBlockNumber - 1
+	vp.lastNumber = vp.agency.GetLastNumber(NextRound(blockNumber))
+	currEpoch := vp.epoch
+	vp.epoch = epoch
+	vp.nextValidators = nil
+
+	//切换共识轮时需要将上一轮分组的topic取消订阅
+	// TODO 考虑到区块尚未QC，此时断开链接不太事宜，待改进
+	vp.dissolve(currEpoch, eventMux)
+	//旧版本（非分组共识）需要发events断开落选的共识节点
+	if !vp.grouped {
+		vp.dealWithOldVersionEvents(epoch, eventMux)
+	}
+	log.Info("Update validators", "validators.len", vp.currentValidators.Len(), "switchpoint", vp.switchPoint, "epoch", vp.epoch, "lastNumber", vp.lastNumber)
+	return nil
+}
+
+// pre-init validator nodes for the next round.version >= 0.17.0 only
+func (vp *ValidatorPool) InitComingValidators(blockHash common.Hash, blockNumber uint64, eventMux *event.TypeMux) error {
+	vp.lock.Lock()
+	defer vp.lock.Unlock()
+
+	// 提前更新nextValidators，为了p2p早一步订阅分组事件以便建链接
+	nds, err := vp.agency.GetValidators(blockHash, blockNumber+xcom.ElectionDistance()+1)
 	if err != nil {
-		log.Error("Get validator error", "blockNumber", blockNumber, "err", err)
+		log.Info("InitComingValidators：Get validators error", "blockNumber", blockNumber, "err", err)
+		//如果没查到，说明是提案生效后首次走选举块逻辑，不是真正的选举块，此时还没真正选举，所以查不到
 		return err
 	}
-	vp.prevValidators = vp.currentValidators
-	vp.currentValidators = nds
-	vp.switchPoint = nds.ValidBlockNumber - 1
-	vp.lastNumber = vp.agency.GetLastNumber(NextRound(blockNumber))
-	vp.epoch = epoch
-	log.Info("Update validator", "validators", nds.String(), "switchpoint", vp.switchPoint, "epoch", vp.epoch, "lastNumber", vp.lastNumber)
+	// 如果是提案生效后第一个选举块，只有新ConsensusSize和旧ConsensusSize一样才会走下面的逻辑
+	vp.nextValidators = nds
+	vp.organize(vp.nextValidators, vp.epoch+1, eventMux, false)
+	log.Debug("InitComingValidators：Update nextValidators OK", "blockNumber", blockNumber, "epoch", vp.epoch+1)
+	return nil
+}
 
+// 分组共识提案生效后首个共识轮的lastnumber在StakingInstance().Adjust0170RoundValidators更新了
+// 按正常逻辑，第一个共识轮时vp.lastnumber还是旧值，需要择机更新
+func (vp *ValidatorPool) UpdateLastNumber(blockHash common.Hash, blockNumber uint64) {
+	vp.lock.Lock()
+	defer vp.lock.Unlock()
+
+	if !vp.grouped {
+		// 提案生效后第一个选举块，此时因ConsensusSize更新到新值（215）需要更新vp.lastNumber
+		vp.lastNumber = vp.agency.GetLastNumberByHash(blockHash, blockNumber)
+	}
+
+	log.Debug("UpdateLastNumber：vp.lastNumber updated", "blockHash", blockHash.TerminalString(), "blockNumber", blockNumber, "epoch", vp.epoch, "lastNumber", vp.lastNumber, "grouped", vp.grouped)
+}
+
+// dealWithOldVersionEvents process version <= 0.16.0 logics
+func (vp *ValidatorPool) dealWithOldVersionEvents(epoch uint64, eventMux *event.TypeMux) {
 	isValidatorBefore := vp.isValidator(epoch-1, vp.nodeID)
-
 	isValidatorAfter := vp.isValidator(epoch, vp.nodeID)
 
 	if isValidatorBefore {
@@ -425,23 +539,23 @@ func (vp *ValidatorPool) Update(blockNumber uint64, epoch uint64, eventMux *even
 		// in the consensus stages. Also we are not needed
 		// to keep connect with old validators.
 		if isValidatorAfter {
-			for _, nodeID := range vp.currentValidators.NodeList() {
-				if node, _ := vp.prevValidators.FindNodeByID(nodeID); node == nil {
-					eventMux.Post(cbfttypes.AddValidatorEvent{NodeID: nodeID})
-					log.Trace("Post AddValidatorEvent", "nodeID", nodeID.String())
+			for _, n := range vp.currentValidators.Nodes {
+				if node, _ := vp.prevValidators.FindNodeByID(n.NodeID); node == nil {
+					eventMux.Post(cbfttypes.AddValidatorEvent{Node: enode.NewV4(n.PubKey, nil, 0, 0)})
+					log.Trace("Post AddValidatorEvent", "node", n.String())
 				}
 			}
 
-			for _, nodeID := range vp.prevValidators.NodeList() {
-				if node, _ := vp.currentValidators.FindNodeByID(nodeID); node == nil {
-					eventMux.Post(cbfttypes.RemoveValidatorEvent{NodeID: nodeID})
-					log.Trace("Post RemoveValidatorEvent", "nodeID", nodeID.String())
+			for _, n := range vp.prevValidators.Nodes {
+				if node, _ := vp.currentValidators.FindNodeByID(n.NodeID); node == nil {
+					eventMux.Post(cbfttypes.RemoveValidatorEvent{Node: enode.NewV4(n.PubKey, nil, 0, 0)})
+					log.Trace("Post RemoveValidatorEvent", "node", n.String())
 				}
 			}
 		} else {
-			for _, nodeID := range vp.prevValidators.NodeList() {
-				eventMux.Post(cbfttypes.RemoveValidatorEvent{NodeID: nodeID})
-				log.Trace("Post RemoveValidatorEvent", "nodeID", nodeID.String())
+			for _, node := range vp.prevValidators.Nodes {
+				eventMux.Post(cbfttypes.RemoveValidatorEvent{Node: enode.NewV4(node.PubKey, nil, 0, 0)})
+				log.Trace("Post RemoveValidatorEvent", "nodeID", node.String())
 			}
 		}
 	} else {
@@ -450,24 +564,22 @@ func (vp *ValidatorPool) Update(blockNumber uint64, epoch uint64, eventMux *even
 		// consensus peers is because we need to keep connecting
 		// with other validators in the consensus stages.
 		if isValidatorAfter {
-			for _, nodeID := range vp.currentValidators.NodeList() {
-				eventMux.Post(cbfttypes.AddValidatorEvent{NodeID: nodeID})
-				log.Trace("Post AddValidatorEvent", "nodeID", nodeID.String())
+			for _, node := range vp.currentValidators.Nodes {
+				eventMux.Post(cbfttypes.AddValidatorEvent{Node: enode.NewV4(node.PubKey, nil, 0, 0)})
+				log.Trace("Post AddValidatorEvent", "nodeID", node.String())
 			}
 		}
 	}
-
-	return nil
 }
 
 // GetValidatorByNodeID get the validator by node id.
-func (vp *ValidatorPool) GetValidatorByNodeID(epoch uint64, nodeID discover.NodeID) (*cbfttypes.ValidateNode, error) {
+func (vp *ValidatorPool) GetValidatorByNodeID(epoch uint64, nodeID enode.ID) (*cbfttypes.ValidateNode, error) {
 	vp.lock.RLock()
 	defer vp.lock.RUnlock()
 	return vp.getValidatorByNodeID(epoch, nodeID)
 }
 
-func (vp *ValidatorPool) getValidatorByNodeID(epoch uint64, nodeID discover.NodeID) (*cbfttypes.ValidateNode, error) {
+func (vp *ValidatorPool) getValidatorByNodeID(epoch uint64, nodeID enode.ID) (*cbfttypes.ValidateNode, error) {
 	if vp.epochToBlockNumber(epoch) <= vp.switchPoint {
 		return vp.prevValidators.FindNodeByID(nodeID)
 	}
@@ -499,20 +611,20 @@ func (vp *ValidatorPool) GetValidatorByIndex(epoch uint64, index uint32) (*cbftt
 
 func (vp *ValidatorPool) getValidatorByIndex(epoch uint64, index uint32) (*cbfttypes.ValidateNode, error) {
 	if vp.epochToBlockNumber(epoch) <= vp.switchPoint {
-		return vp.prevValidators.FindNodeByIndex(int(index))
+		return vp.prevValidators.FindNodeByIndex(index)
 	}
-	return vp.currentValidators.FindNodeByIndex(int(index))
+	return vp.currentValidators.FindNodeByIndex(index)
 }
 
 // GetNodeIDByIndex get the node id by index.
-func (vp *ValidatorPool) GetNodeIDByIndex(epoch uint64, index int) discover.NodeID {
+func (vp *ValidatorPool) GetNodeIDByIndex(epoch uint64, index uint32) enode.ID {
 	vp.lock.RLock()
 	defer vp.lock.RUnlock()
 
 	return vp.getNodeIDByIndex(epoch, index)
 }
 
-func (vp *ValidatorPool) getNodeIDByIndex(epoch uint64, index int) discover.NodeID {
+func (vp *ValidatorPool) getNodeIDByIndex(epoch uint64, index uint32) enode.ID {
 	if vp.epochToBlockNumber(epoch) <= vp.switchPoint {
 		return vp.prevValidators.NodeID(index)
 	}
@@ -520,14 +632,14 @@ func (vp *ValidatorPool) getNodeIDByIndex(epoch uint64, index int) discover.Node
 }
 
 // GetIndexByNodeID get the index by node id.
-func (vp *ValidatorPool) GetIndexByNodeID(epoch uint64, nodeID discover.NodeID) (uint32, error) {
+func (vp *ValidatorPool) GetIndexByNodeID(epoch uint64, nodeID enode.ID) (uint32, error) {
 	vp.lock.RLock()
 	defer vp.lock.RUnlock()
 
 	return vp.getIndexByNodeID(epoch, nodeID)
 }
 
-func (vp *ValidatorPool) getIndexByNodeID(epoch uint64, nodeID discover.NodeID) (uint32, error) {
+func (vp *ValidatorPool) getIndexByNodeID(epoch uint64, nodeID enode.ID) (uint32, error) {
 	if vp.epochToBlockNumber(epoch) <= vp.switchPoint {
 		return vp.prevValidators.Index(nodeID)
 	}
@@ -535,21 +647,24 @@ func (vp *ValidatorPool) getIndexByNodeID(epoch uint64, nodeID discover.NodeID) 
 }
 
 // ValidatorList get the validator list.
-func (vp *ValidatorPool) ValidatorList(epoch uint64) []discover.NodeID {
+func (vp *ValidatorPool) ValidatorList(epoch uint64) []enode.ID {
 	vp.lock.RLock()
 	defer vp.lock.RUnlock()
 
 	return vp.validatorList(epoch)
 }
 
-func (vp *ValidatorPool) validatorList(epoch uint64) []discover.NodeID {
+func (vp *ValidatorPool) validatorList(epoch uint64) []enode.ID {
 	if vp.epochToBlockNumber(epoch) <= vp.switchPoint {
-		return vp.prevValidators.NodeList()
+		return vp.prevValidators.NodeIdList()
 	}
-	return vp.currentValidators.NodeList()
+	return vp.currentValidators.NodeIdList()
 }
 
 func (vp *ValidatorPool) Validators(epoch uint64) *cbfttypes.Validators {
+	vp.lock.RLock()
+	defer vp.lock.RUnlock()
+
 	if vp.epochToBlockNumber(epoch) <= vp.switchPoint {
 		return vp.prevValidators
 	}
@@ -562,25 +677,21 @@ func (vp *ValidatorPool) VerifyHeader(header *types.Header) error {
 	if err != nil {
 		return err
 	}
-	// todo: need confirmed.
 	return vp.agency.VerifyHeader(header, nil)
 }
 
 // IsValidator check if the node is validator.
-func (vp *ValidatorPool) IsValidator(epoch uint64, nodeID discover.NodeID) bool {
-	vp.lock.RLock()
-	defer vp.lock.RUnlock()
-
+func (vp *ValidatorPool) IsValidator(epoch uint64, nodeID enode.ID) bool {
 	return vp.isValidator(epoch, nodeID)
 }
 
-func (vp *ValidatorPool) isValidator(epoch uint64, nodeID discover.NodeID) bool {
+func (vp *ValidatorPool) isValidator(epoch uint64, nodeID enode.ID) bool {
 	_, err := vp.getValidatorByNodeID(epoch, nodeID)
 	return err == nil
 }
 
 // IsCandidateNode check if the node is candidate node.
-func (vp *ValidatorPool) IsCandidateNode(nodeID discover.NodeID) bool {
+func (vp *ValidatorPool) IsCandidateNode(nodeID enode.IDv0) bool {
 	return vp.agency.IsCandidateNode(nodeID)
 }
 
@@ -684,6 +795,207 @@ func (vp *ValidatorPool) Commit(block *types.Block) error {
 	return vp.agency.OnCommit(block)
 }
 
+// NeedGroup return if currentValidators need grouped
+func (vp *ValidatorPool) NeedGroup() bool {
+	vp.lock.RLock()
+	defer vp.lock.RUnlock()
+
+	return vp.grouped
+}
+
+// GetGroupID return GroupID according epoch & NodeID
+func (vp *ValidatorPool) GetGroupID(epoch uint64, nodeID enode.ID) (uint32, error) {
+	vp.lock.RLock()
+	defer vp.lock.RUnlock()
+
+	var validators *cbfttypes.Validators
+	if vp.epochToBlockNumber(epoch) <= vp.switchPoint {
+		validators = vp.prevValidators
+	} else {
+		validators = vp.currentValidators
+	}
+	gvs, err := validators.GetGroupValidators(nodeID)
+	if err != nil || gvs == nil {
+		return 0, err
+	}
+	return gvs.GetGroupID(), nil
+}
+
+// GetUnitID return index according epoch & NodeID
+func (vp *ValidatorPool) GetUnitID(epoch uint64, nodeID enode.ID) (uint32, error) {
+	vp.lock.RLock()
+	defer vp.lock.RUnlock()
+
+	if vp.epochToBlockNumber(epoch) <= vp.switchPoint {
+		return vp.prevValidators.UnitID(nodeID)
+	}
+	return vp.currentValidators.UnitID(nodeID)
+}
+
 func NextRound(blockNumber uint64) uint64 {
 	return blockNumber + 1
+}
+
+// Len return number of validators by groupID.
+// 返回指定epoch和分组下的节点总数
+func (vp *ValidatorPool) LenByGroupID(epoch uint64, groupID uint32) int {
+	vp.lock.RLock()
+	defer vp.lock.RUnlock()
+
+	grouplen := 0
+	if vp.epochToBlockNumber(epoch) <= vp.switchPoint {
+		grouplen, _ = vp.prevValidators.MembersCount(groupID)
+	}
+	grouplen, _ = vp.currentValidators.MembersCount(groupID)
+	return grouplen
+}
+
+//// 查询指定epoch下对应nodeIndex的节点信息，没有对应信息返回nil
+//func (vp *ValidatorPool) GetValidatorByGroupIdAndIndex(epoch uint64, nodeIndex uint32) (*cbfttypes.ValidateNode,error) {
+//	vp.lock.RLock()
+//	defer vp.lock.RUnlock()
+//
+//	if epoch+1 == vp.epoch {
+//		return vp.prevValidators.FindNodeByIndex(int(nodeIndex))
+//	}
+//	return vp.currentValidators.FindNodeByIndex(int(nodeIndex))
+//}
+
+// 返回指定epoch和分组下所有共识节点的index集合，e.g. [25,26,27,28,29,30...49]
+func (vp *ValidatorPool) GetValidatorIndexesByGroupID(epoch uint64, groupID uint32) ([]uint32, error) {
+	vp.lock.RLock()
+	defer vp.lock.RUnlock()
+
+	if vp.epochToBlockNumber(epoch) <= vp.switchPoint {
+		return vp.prevValidators.GetValidatorIndexes(groupID)
+	}
+	return vp.currentValidators.GetValidatorIndexes(groupID)
+}
+
+// 返回指定epoch和分组下所有共识节点的协调节点编组信息，e.g. [[25,26],[27,28],[29,30]...[49]]
+// 严格按编组顺序返回
+func (vp *ValidatorPool) GetCoordinatorIndexesByGroupID(epoch uint64, groupID uint32) ([][]uint32, error) {
+	vp.lock.RLock()
+	defer vp.lock.RUnlock()
+
+	var validators *cbfttypes.Validators
+	if vp.epochToBlockNumber(epoch) <= vp.switchPoint {
+		validators = vp.prevValidators
+	} else {
+		validators = vp.currentValidators
+	}
+
+	if groupID >= uint32(len(validators.GroupNodes)) {
+		return nil, fmt.Errorf("GetCoordinatorIndexesByGroupID: wrong groupid[%d]", groupID)
+	}
+	return validators.GroupNodes[groupID].Units, nil
+}
+
+// 返回指定epoch下，nodeID所在的groupID和unitID（两者都是0开始计数），没有对应信息需返回error
+func (vp *ValidatorPool) GetGroupByValidatorID(epoch uint64, nodeID enode.ID) (uint32, uint32, error) {
+	vp.lock.RLock()
+	defer vp.lock.RUnlock()
+
+	var validators *cbfttypes.Validators
+	if vp.epochToBlockNumber(epoch) <= vp.switchPoint {
+		validators = vp.prevValidators
+	} else {
+		validators = vp.currentValidators
+	}
+	gvs, err := validators.GetGroupValidators(nodeID)
+	if nil != err || gvs == nil {
+		return 0, 0, err
+	}
+	unitID, err := validators.UnitID(nodeID)
+	return gvs.GetGroupID(), unitID, err
+}
+
+// 返回指定epoch下节点的分组信息，key=groupID，value=分组节点index集合
+func (vp *ValidatorPool) GetGroupIndexes(epoch uint64) map[uint32][]uint32 {
+	vp.lock.RLock()
+	defer vp.lock.RUnlock()
+
+	validators := vp.currentValidators
+	if vp.epochToBlockNumber(epoch) <= vp.switchPoint {
+		validators = vp.prevValidators
+	}
+	groupIdxs := make(map[uint32][]uint32, len(validators.GroupNodes))
+	var err error
+	for i, _ := range validators.GroupNodes {
+		gid := uint32(i)
+		groupIdxs[gid], err = validators.GetValidatorIndexes(gid)
+		if nil != err {
+			log.Error("GetValidatorIndexes failed!", "err", err)
+		}
+	}
+	return groupIdxs
+}
+
+// organize validators into groups
+func (vp *ValidatorPool) organize(validators *cbfttypes.Validators, epoch uint64, eventMux *event.TypeMux, init bool) error {
+	if validators == nil {
+		return errors.New("validators is nil")
+	}
+	err := validators.Grouped()
+	if err != nil {
+		return err
+	}
+
+	gvs, err := validators.GetGroupValidators(vp.nodeID)
+	if nil != err || gvs == nil {
+		// 当前节点不是共识节点
+		return err
+	}
+	log.Debug("ValidatorPool organized OK!", "epoch", epoch, "validators", validators.String())
+
+	consensusNodes := validators.NodeList()
+	groupNodes := gvs.NodeList()
+
+	// 选节点时要把所有共识节点中去掉本组节点
+	otherConsensusNodes := make([]*enode.Node, 0)
+	for _, node := range consensusNodes {
+		if gvs.IsOurs(node.ID()) {
+			continue
+		} else {
+			otherConsensusNodes = append(otherConsensusNodes, node)
+		}
+	}
+	consensusTopic := cbfttypes.ConsensusTopicName(epoch)
+	groupTopic := cbfttypes.ConsensusGroupTopicName(epoch, gvs.GetGroupID())
+
+	if init {
+		vp.awaitingTopicEvent[cbfttypes.TypeConsensusTopic] = cbfttypes.TopicEvent{Topic: consensusTopic, Nodes: otherConsensusNodes}
+		vp.awaitingTopicEvent[cbfttypes.TypeGroupTopic] = cbfttypes.TopicEvent{Topic: groupTopic, Nodes: groupNodes}
+	} else {
+		eventMux.Post(cbfttypes.NewTopicEvent{Topic: consensusTopic, Nodes: otherConsensusNodes})
+		eventMux.Post(cbfttypes.NewTopicEvent{Topic: groupTopic, Nodes: groupNodes})
+		eventMux.Post(cbfttypes.GroupTopicEvent{Topic: groupTopic, PubSub: true})
+		eventMux.Post(cbfttypes.GroupTopicEvent{Topic: consensusTopic, PubSub: false})
+	}
+
+	return nil
+}
+
+// dissolve prevValidators group
+func (vp *ValidatorPool) dissolve(epoch uint64, eventMux *event.TypeMux) {
+	if !vp.grouped || vp.prevValidators == nil {
+		return
+	}
+	gvs, err := vp.prevValidators.GetGroupValidators(vp.nodeID)
+	if nil != err || gvs == nil {
+		// nil != err 说明当前节点上一轮不是共识节点，gvs == nil意味着上一轮共识没分组
+		return
+	}
+
+	consensusTopic := cbfttypes.ConsensusTopicName(epoch)
+	groupTopic := cbfttypes.ConsensusGroupTopicName(epoch, gvs.GetGroupID())
+
+	eventMux.Post(cbfttypes.ExpiredTopicEvent{Topic: consensusTopic})      // for p2p
+	eventMux.Post(cbfttypes.ExpiredTopicEvent{Topic: groupTopic})          // for p2p
+	eventMux.Post(cbfttypes.ExpiredGroupTopicEvent{Topic: groupTopic})     // for pubsub
+	eventMux.Post(cbfttypes.ExpiredGroupTopicEvent{Topic: consensusTopic}) // for pubsub
+}
+
+func (vp *ValidatorPool) GetAwaitingTopicEvent() map[int]cbfttypes.TopicEvent {
+	return vp.awaitingTopicEvent
 }

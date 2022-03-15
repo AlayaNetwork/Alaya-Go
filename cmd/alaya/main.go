@@ -92,6 +92,8 @@ var (
 		utils.MaxPeersFlag,
 		utils.MaxConsensusPeersFlag,
 		utils.MaxPendingPeersFlag,
+		utils.MinimumPeersPerTopic,
+		utils.PubSubTraceHost,
 		utils.MinerGasPriceFlag,
 		utils.NATFlag,
 		utils.NoDiscoverFlag,

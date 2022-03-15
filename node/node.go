@@ -17,6 +17,7 @@
 package node
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"math/big"
@@ -26,6 +27,8 @@ import (
 	"reflect"
 	"strings"
 	"sync"
+
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
 
 	"github.com/AlayaNetwork/Alaya-Go/core/rawdb"
 
@@ -64,6 +67,7 @@ type Node struct {
 
 	databases map[*closeTrackingDB]struct{} // All open databases
 
+	pubSubServer *p2p.PubSubServer
 }
 
 const (
@@ -154,6 +158,12 @@ func New(conf *Config) (*Node, error) {
 	node.ws = newHTTPServer(node.log, rpc.DefaultHTTPTimeouts)
 	node.ipc = newIPCServer(node.log, conf.IPCEndpoint())
 
+	ctx, cancel := context.WithCancel(context.Background())
+	localNode := enode.NewV4(&node.server.Config.PrivateKey.PublicKey, nil, 0, 0)
+	pubSubServer := p2p.NewPubSubServer(ctx, localNode, node.server)
+	node.server.SetPubSubServer(pubSubServer, cancel)
+	node.pubSubServer = pubSubServer
+
 	return node, nil
 }
 
@@ -173,6 +183,7 @@ func (n *Node) Start() error {
 		return ErrNodeStopped
 	}
 	n.state = runningState
+
 	err := n.startNetworking()
 	lifecycles := make([]Lifecycle, len(n.lifecycles))
 	copy(lifecycles, n.lifecycles)
@@ -191,6 +202,7 @@ func (n *Node) Start() error {
 		}
 		started = append(started, lifecycle)
 	}
+
 	// Check if any lifecycle failed to start.
 	if err != nil {
 		n.stopServices(started)
@@ -200,6 +212,15 @@ func (n *Node) Start() error {
 }
 func (n *Node) SetP2pChainID(ChainID *big.Int) {
 	n.server.ChainID = ChainID
+}
+
+func (n *Node) SetPubSubServer(server *p2p.PubSubServer, cancel context.CancelFunc) {
+	n.pubSubServer = server
+	n.server.SetPubSubServer(server, cancel)
+}
+
+func (n *Node) PubSubServer() *p2p.PubSubServer {
+	return n.pubSubServer
 }
 
 // Close stops the Node and releases resources acquired in

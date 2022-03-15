@@ -14,18 +14,18 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
-
 // Package network implements  a concrete consensus engines.
 package network
 
 import (
 	"bytes"
 	"fmt"
+	"github.com/AlayaNetwork/Alaya-Go/p2p"
 	"math"
 	"reflect"
 	"sync"
 
-	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
 
 	"github.com/AlayaNetwork/Alaya-Go/common"
 	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/protocols"
@@ -38,10 +38,11 @@ import (
 // the number of nodes selected per broadcast.
 const DefaultFanOut = 5
 
-type unregisterFunc func(id string) error                 // Unregister peer from peerSet.
-type getByIDFunc func(id string) (*peer, error)           // Get peer based on ID.
-type consensusNodesFunc func() ([]discover.NodeID, error) // Get a list of consensus nodes.
-type peersFunc func() ([]*peer, error)                    // Get a list of all neighbor nodes.
+type unregisterFunc func(id string) error              // Unregister peer from peerSet.
+type getByIDFunc func(id string) (*peer, error)        // Get peer based on ID.
+type consensusNodesFunc func() ([]enode.ID, error)     // Get a list of consensus nodes.
+type peersFunc func() ([]*peer, error)                 // Get a list of all neighbor nodes.
+type receiveCallback func(p *peer, msg *p2p.Msg) error // Callback function for receiving topic messages
 
 // Router implements the message protocol of gossip.
 //
@@ -151,11 +152,12 @@ func (r *router) filteredPeers(msgType uint64, condition common.Hash) ([]*peer, 
 	// Test the anchor point, please pay attention to let go.
 	//return r.peers()
 	switch msgType {
-	case protocols.PrepareBlockMsg, protocols.PrepareVoteMsg,
-		protocols.ViewChangeMsg, protocols.BlockQuorumCertMsg:
+	case protocols.PrepareBlockMsg, protocols.PrepareVoteMsg, protocols.ViewChangeMsg,
+		protocols.RGBlockQuorumCertMsg, protocols.RGViewChangeQuorumCertMsg,
+		protocols.BlockQuorumCertMsg:
 		return r.kMixingRandomNodes(condition, r.filter)
 	case protocols.PrepareBlockHashMsg, protocols.GetLatestStatusMsg,
-		protocols.GetViewChangeMsg, protocols.GetPrepareVoteMsg,
+		protocols.GetViewChangeMsg, protocols.GetPrepareVoteMsg, protocols.GetViewChangeV2Msg, protocols.GetPrepareVoteV2Msg,
 		protocols.GetPrepareBlockMsg:
 		return r.kMixingRandomNodes(condition, nil)
 	}
@@ -313,7 +315,7 @@ func formatPeers(peers []*peer) string {
 }
 
 // FormatNodes is used to print the information about peerID.
-func FormatNodes(ids []discover.NodeID) string {
+func FormatNodes(ids []enode.ID) string {
 	var bf bytes.Buffer
 	for idx, id := range ids {
 		bf.WriteString(id.TerminalString())

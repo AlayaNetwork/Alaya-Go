@@ -17,6 +17,7 @@
 package validator
 
 import (
+	"crypto/ecdsa"
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
@@ -27,9 +28,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
+
 	"github.com/AlayaNetwork/Alaya-Go/core/rawdb"
 
-	"github.com/AlayaNetwork/Alaya-Go/core/cbfttypes"
 	"github.com/AlayaNetwork/Alaya-Go/core/snapshotdb"
 	"github.com/AlayaNetwork/Alaya-Go/core/state"
 
@@ -40,13 +42,13 @@ import (
 	vm2 "github.com/AlayaNetwork/Alaya-Go/common/vm"
 	"github.com/AlayaNetwork/Alaya-Go/consensus"
 	"github.com/AlayaNetwork/Alaya-Go/core"
+	"github.com/AlayaNetwork/Alaya-Go/core/cbfttypes"
 	"github.com/AlayaNetwork/Alaya-Go/core/types"
 	"github.com/AlayaNetwork/Alaya-Go/core/vm"
 	"github.com/AlayaNetwork/Alaya-Go/crypto"
 	"github.com/AlayaNetwork/Alaya-Go/crypto/bls"
 	"github.com/AlayaNetwork/Alaya-Go/ethdb"
 	"github.com/AlayaNetwork/Alaya-Go/event"
-	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
 	"github.com/AlayaNetwork/Alaya-Go/params"
 	"github.com/AlayaNetwork/Alaya-Go/rlp"
 )
@@ -89,44 +91,63 @@ var (
 
 func newTestNode() []params.CbftNode {
 	nodes := make([]params.CbftNode, 0)
-
-	n0, _ := discover.ParseNode("enode://e74864b27aecf5cbbfcd523da7657f126b0a5330a970c8264140704d280e6737fd8098d0ee4299706b825771f3d7017aa02f662e4e9a48e9112d93bf05fea66d@127.0.0.1:16789")
+	n0, _ := enode.ParseV4("enode://e74864b27aecf5cbbfcd523da7657f126b0a5330a970c8264140704d280e6737fd8098d0ee4299706b825771f3d7017aa02f662e4e9a48e9112d93bf05fea66d@127.0.0.1:16789")
 	var sec0 bls.SecretKey
 	sec0.SetByCSPRNG()
-	n1, _ := discover.ParseNode("enode://bf0cd4c95bc3d48cc7999bcf5b3fe6ab9974fd5dabc5253e3e7506c075d0c7a699251caa76672b144be0fc75fe34cee9aaac20753036b0dbd1cb2b3691f26965@127.0.0.1:26789")
+	n1, _ := enode.ParseV4("enode://bf0cd4c95bc3d48cc7999bcf5b3fe6ab9974fd5dabc5253e3e7506c075d0c7a699251caa76672b144be0fc75fe34cee9aaac20753036b0dbd1cb2b3691f26965@127.0.0.1:26789")
 	var sec1 bls.SecretKey
 	sec1.SetByCSPRNG()
-	n2, _ := discover.ParseNode("enode://84c59064dd3b2df54204c52d772cf3809bb0ad6be268843e406f473cef61dacc6d4d4546779dbfa1480deddc64016179ecefdf75d837914f69b679a71ad9711a@127.0.0.1:36789")
+	n2, _ := enode.ParseV4("enode://84c59064dd3b2df54204c52d772cf3809bb0ad6be268843e406f473cef61dacc6d4d4546779dbfa1480deddc64016179ecefdf75d837914f69b679a71ad9711a@127.0.0.1:36789")
 	var sec2 bls.SecretKey
 	sec2.SetByCSPRNG()
-	n3, _ := discover.ParseNode("enode://a9b7e60fa1290c1013cb862c0693d9e87113e8d4cb87d60452749acd978c9fd3a80b49ab5ce7916a5bbfe0b0a0d7e4cde201bd59acccdf97006990156bfe73a5@127.0.0.1:46789")
+	n3, _ := enode.ParseV4("enode://a9b7e60fa1290c1013cb862c0693d9e87113e8d4cb87d60452749acd978c9fd3a80b49ab5ce7916a5bbfe0b0a0d7e4cde201bd59acccdf97006990156bfe73a5@127.0.0.1:46789")
 	var sec3 bls.SecretKey
 	sec3.SetByCSPRNG()
 
-	nodes = append(nodes, params.CbftNode{Node: *n0, BlsPubKey: *sec0.GetPublicKey()})
-	nodes = append(nodes, params.CbftNode{Node: *n1, BlsPubKey: *sec1.GetPublicKey()})
-	nodes = append(nodes, params.CbftNode{Node: *n2, BlsPubKey: *sec2.GetPublicKey()})
-	nodes = append(nodes, params.CbftNode{Node: *n3, BlsPubKey: *sec3.GetPublicKey()})
+	nodes = append(nodes, params.CbftNode{Node: n0, BlsPubKey: *sec0.GetPublicKey()})
+	nodes = append(nodes, params.CbftNode{Node: n1, BlsPubKey: *sec1.GetPublicKey()})
+	nodes = append(nodes, params.CbftNode{Node: n2, BlsPubKey: *sec2.GetPublicKey()})
+	nodes = append(nodes, params.CbftNode{Node: n3, BlsPubKey: *sec3.GetPublicKey()})
 	return nodes
 }
 
 func newTestNode3() []params.CbftNode {
 	nodes := make([]params.CbftNode, 0)
 
-	n0, _ := discover.ParseNode("enode://e74864b27aecf5cbbfcd523da7657f126b0a5330a970c8264140704d280e6737fd8098d0ee4299706b825771f3d7017aa02f662e4e9a48e9112d93bf05fea66d@127.0.0.1:16789")
+	n0, _ := enode.ParseV4("enode://e74864b27aecf5cbbfcd523da7657f126b0a5330a970c8264140704d280e6737fd8098d0ee4299706b825771f3d7017aa02f662e4e9a48e9112d93bf05fea66d@127.0.0.1:16789")
 	var sec0 bls.SecretKey
 	sec0.SetByCSPRNG()
-	n1, _ := discover.ParseNode("enode://bf0cd4c95bc3d48cc7999bcf5b3fe6ab9974fd5dabc5253e3e7506c075d0c7a699251caa76672b144be0fc75fe34cee9aaac20753036b0dbd1cb2b3691f26965@127.0.0.1:26789")
+	n1, _ := enode.ParseV4("enode://bf0cd4c95bc3d48cc7999bcf5b3fe6ab9974fd5dabc5253e3e7506c075d0c7a699251caa76672b144be0fc75fe34cee9aaac20753036b0dbd1cb2b3691f26965@127.0.0.1:26789")
 	var sec1 bls.SecretKey
 	sec1.SetByCSPRNG()
-	n2, _ := discover.ParseNode("enode://84c59064dd3b2df54204c52d772cf3809bb0ad6be268843e406f473cef61dacc6d4d4546779dbfa1480deddc64016179ecefdf75d837914f69b679a71ad9711a@127.0.0.1:36789")
+	n2, _ := enode.ParseV4("enode://84c59064dd3b2df54204c52d772cf3809bb0ad6be268843e406f473cef61dacc6d4d4546779dbfa1480deddc64016179ecefdf75d837914f69b679a71ad9711a@127.0.0.1:36789")
 	var sec2 bls.SecretKey
 	sec2.SetByCSPRNG()
 
-	nodes = append(nodes, params.CbftNode{Node: *n0, BlsPubKey: *sec0.GetPublicKey()})
-	nodes = append(nodes, params.CbftNode{Node: *n1, BlsPubKey: *sec1.GetPublicKey()})
-	nodes = append(nodes, params.CbftNode{Node: *n2, BlsPubKey: *sec2.GetPublicKey()})
+	nodes = append(nodes, params.CbftNode{Node: n0, BlsPubKey: *sec0.GetPublicKey()})
+	nodes = append(nodes, params.CbftNode{Node: n1, BlsPubKey: *sec1.GetPublicKey()})
+	nodes = append(nodes, params.CbftNode{Node: n2, BlsPubKey: *sec2.GetPublicKey()})
 
+	return nodes
+}
+
+func newTestNodeByNum(num int) []params.CbftNode {
+	nodes := make([]params.CbftNode, 0, num)
+
+	randomPubKey := func() *ecdsa.PublicKey {
+		ecdsaKey, _ := crypto.GenerateKey()
+		return &ecdsaKey.PublicKey
+	}
+
+	for i := 0; i < num; i++ {
+		var sec bls.SecretKey
+		sec.SetByCSPRNG()
+		node := params.CbftNode{
+			Node:      enode.NewV4(randomPubKey(), nil, 0, 0),
+			BlsPubKey: *sec.GetPublicKey(),
+		}
+		nodes = append(nodes, node)
+	}
 	return nodes
 }
 
@@ -137,16 +158,16 @@ func TestValidators(t *testing.T) {
 	vds := newValidators(nodes, 0)
 
 	assert.True(t, len(nodes) == vds.Len())
-	assert.Equal(t, vds.NodeID(0), nodes[0].Node.ID)
+	assert.Equal(t, vds.NodeID(0), nodes[0].Node.ID())
 
-	validator, err := vds.FindNodeByID(nodes[2].Node.ID)
+	validator, err := vds.FindNodeByID(nodes[2].Node.ID())
 	assert.True(t, err == nil, "get node idex fail")
 	assert.True(t, validator.Index == 2)
 
-	pubkey, _ := nodes[1].Node.ID.Pubkey()
+	pubkey := nodes[1].Node.Pubkey()
 	addrN1 := crypto.PubkeyToNodeAddress(*pubkey)
 
-	validator, err = vds.FindNodeByID(nodes[1].Node.ID)
+	validator, err = vds.FindNodeByID(nodes[1].Node.ID())
 	assert.True(t, err == nil, "get node index and address fail")
 	assert.Equal(t, validator.Address, addrN1)
 	assert.Equal(t, validator.Index, uint32(1))
@@ -155,10 +176,10 @@ func TestValidators(t *testing.T) {
 	assert.True(t, err == nil, "get index by address fail")
 	assert.Equal(t, validator.Index, idxN1.Index)
 
-	nl := vds.NodeList()
+	nl := vds.NodeIdList()
 	assert.True(t, len(nl) == vds.Len())
 
-	emptyNodeID := discover.NodeID{}
+	emptyNodeID := enode.ID{}
 	validator, err = vds.FindNodeByID(emptyNodeID)
 	assert.True(t, validator == nil)
 	assert.True(t, err != nil)
@@ -181,10 +202,10 @@ func TestValidators(t *testing.T) {
 	assert.False(t, vds.Equal(vds3))
 
 	badNodes := make([]params.CbftNode, 0)
-	badNode, _ := discover.ParseNode("enode://111164b27aecf5cbbfcd523da7657f126b0a5330a970c8264140704d280e6737fd8098d0ee4299706b825771f3d7017aa02f662e4e9a48e9112d93bf05fea66d@127.0.0.1:16789")
+	badNode, _ := enode.ParseV4("enode://111164b27aecf5cbbfcd523da7657f126b0a5330a970c8264140704d280e6737fd8098d0ee4299706b825771f3d7017aa02f662e4e9a48e9112d93bf05fea66d@127.0.0.1:16789")
 	var sec bls.SecretKey
 	sec.SetByCSPRNG()
-	badNodes = append(badNodes, params.CbftNode{Node: *badNode, BlsPubKey: *sec.GetPublicKey()})
+	badNodes = append(badNodes, params.CbftNode{Node: badNode, BlsPubKey: *sec.GetPublicKey()})
 	assert.Panics(t, func() { newValidators(badNodes, 0) })
 }
 
@@ -194,7 +215,7 @@ func TestStaticAgency(t *testing.T) {
 	vds := newValidators(nodes, 0)
 
 	agency := NewStaticAgency(nodes)
-	validators, err := agency.GetValidator(0)
+	validators, err := agency.GetValidators(common.ZeroHash, 0)
 	assert.True(t, err == nil)
 	assert.Equal(t, *vds, *validators)
 	assert.True(t, agency.Sign(nil) == nil)
@@ -311,18 +332,19 @@ func TestInnerAgency(t *testing.T) {
 	assert.True(t, agency.GetLastNumber(81) == 120)
 	assert.True(t, agency.GetLastNumber(110) == 120)
 
-	validators, err := agency.GetValidator(0)
+	validators, err := agency.GetValidators(common.ZeroHash, 0)
 	assert.True(t, err == nil)
 	assert.Equal(t, *vds, *validators)
 	assert.True(t, blockchain.Genesis() != nil)
 
-	newVds, err := agency.GetValidator(81)
+	validators.Sort()
+	newVds, err := agency.GetValidators(common.ZeroHash, 81)
 	assert.True(t, err == nil)
 	assert.True(t, newVds.Len() == 4)
 	assert.True(t, newVds.ValidBlockNumber == 81)
 
 	id3 := newVds.NodeID(3)
-	assert.Equal(t, id3, vmVds.ValidateNodes[3].NodeID)
+	assert.Equal(t, id3, vmVds.ValidateNodes[3].NodeID.ID())
 	assert.True(t, agency.GetLastNumber(81) == 120)
 
 	assert.True(t, agency.Sign(nil) == nil)
@@ -330,7 +352,7 @@ func TestInnerAgency(t *testing.T) {
 	assert.True(t, newVds.String() != "")
 	assert.False(t, newVds.Equal(validators))
 
-	defaultVds, _ := agency.GetValidator(60)
+	defaultVds, _ := agency.GetValidators(common.ZeroHash, 60)
 	assert.True(t, defaultVds.Equal(validators))
 
 	assert.True(t, agency.GetLastNumber(120) == 120)
@@ -423,25 +445,27 @@ func newTestInnerAgency(nodes []params.CbftNode) consensus.Agency {
 
 func TestValidatorPool(t *testing.T) {
 	bls.Init(bls.BLS12_381)
-	nodes := newTestNode()
+	nodes := newTestNodeByNum(100)
 	agency := newTestInnerAgency(nodes)
+	eventMux := &event.TypeMux{}
 
-	validatorPool := NewValidatorPool(agency, 0, 0, nodes[0].Node.ID)
+	validatorPool := NewValidatorPool(agency, 0, 0, nodes[0].Node.ID(), true, eventMux)
 	assert.False(t, validatorPool.ShouldSwitch(0))
-	assert.True(t, validatorPool.ShouldSwitch(40))
+	assert.True(t, validatorPool.ShouldSwitch(1000))
+	assert.Equal(t, uint64(1000), agency.GetLastNumber(2))
 
-	node, err := validatorPool.GetValidatorByNodeID(0, nodes[0].Node.ID)
+	node, err := validatorPool.GetValidatorByNodeID(0, nodes[0].Node.ID())
 	assert.Nil(t, err)
-	assert.Equal(t, node.NodeID, nodes[0].Node.ID)
+	assert.Equal(t, node.NodeID, nodes[0].Node.ID())
 
-	_, err = validatorPool.GetValidatorByNodeID(0, discover.NodeID{})
+	_, err = validatorPool.GetValidatorByNodeID(0, enode.ID{})
 	assert.Equal(t, err, errors.New("not found the node"))
 
 	node, err = validatorPool.GetValidatorByIndex(0, 1)
 	assert.Nil(t, err)
-	assert.Equal(t, node.NodeID, nodes[1].Node.ID)
+	assert.Equal(t, node.NodeID, nodes[1].Node.ID())
 
-	_, err = validatorPool.GetValidatorByIndex(0, 5)
+	_, err = validatorPool.GetValidatorByIndex(0, 100)
 	assert.Equal(t, err, errors.New("not found the specified validator"))
 
 	vds := newValidators(nodes, 0)
@@ -453,32 +477,26 @@ func TestValidatorPool(t *testing.T) {
 	_, err = validatorPool.GetValidatorByAddr(0, common.NodeAddress{})
 	assert.Equal(t, err, errors.New("invalid address"))
 
-	nodeID := validatorPool.GetNodeIDByIndex(0, 4)
-	assert.Equal(t, nodeID, discover.NodeID{})
+	nodeID := validatorPool.GetNodeIDByIndex(0, 100)
+	assert.Equal(t, nodeID, enode.ID{})
 
 	nodeID = validatorPool.GetNodeIDByIndex(0, 0)
-	assert.Equal(t, nodeID, nodes[0].Node.ID)
+	assert.Equal(t, nodeID, nodes[0].Node.ID())
 
 	index, err := validatorPool.GetIndexByNodeID(0, nodeID)
 	assert.Nil(t, err)
 	assert.Equal(t, index, uint32(0))
 
-	index, err = validatorPool.GetIndexByNodeID(0, discover.NodeID{})
+	index, err = validatorPool.GetIndexByNodeID(0, enode.ID{})
 	assert.Equal(t, err, errors.New("not found the specified validator"))
 	assert.Equal(t, index, uint32(0xffffffff))
 
 	nl := validatorPool.ValidatorList(0)
 	assert.True(t, len(nl) == len(nodes))
 
-	assert.True(t, validatorPool.IsValidator(0, nodes[0].Node.ID))
+	assert.True(t, validatorPool.IsValidator(0, nodes[0].Node.ID()))
 	assert.True(t, validatorPool.Len(0) == len(nodes))
-	assert.True(t, validatorPool.IsCandidateNode(discover.NodeID{}))
-
-	eventMux := &event.TypeMux{}
-
-	validatorPool.Update(80, 1, eventMux)
-	assert.True(t, validatorPool.IsValidator(0, nodes[0].Node.ID))
-	assert.False(t, validatorPool.IsValidator(1, nodes[0].Node.ID))
+	assert.True(t, validatorPool.IsCandidateNode(enode.ZeroIDv0))
 }
 
 func TestValidatorPoolVerify(t *testing.T) {
@@ -486,33 +504,33 @@ func TestValidatorPoolVerify(t *testing.T) {
 
 	nodes := make([]params.CbftNode, 0)
 
-	n0, _ := discover.ParseNode("enode://e74864b27aecf5cbbfcd523da7657f126b0a5330a970c8264140704d280e6737fd8098d0ee4299706b825771f3d7017aa02f662e4e9a48e9112d93bf05fea66d@127.0.0.1:16789")
+	n0, _ := enode.ParseV4("enode://e74864b27aecf5cbbfcd523da7657f126b0a5330a970c8264140704d280e6737fd8098d0ee4299706b825771f3d7017aa02f662e4e9a48e9112d93bf05fea66d@127.0.0.1:16789")
 	var sec0 bls.SecretKey
 	sec0.SetByCSPRNG()
-	n1, _ := discover.ParseNode("enode://bf0cd4c95bc3d48cc7999bcf5b3fe6ab9974fd5dabc5253e3e7506c075d0c7a699251caa76672b144be0fc75fe34cee9aaac20753036b0dbd1cb2b3691f26965@127.0.0.1:26789")
+	n1, _ := enode.ParseV4("enode://bf0cd4c95bc3d48cc7999bcf5b3fe6ab9974fd5dabc5253e3e7506c075d0c7a699251caa76672b144be0fc75fe34cee9aaac20753036b0dbd1cb2b3691f26965@127.0.0.1:26789")
 	var sec1 bls.SecretKey
 	sec1.SetByCSPRNG()
-	n2, _ := discover.ParseNode("enode://84c59064dd3b2df54204c52d772cf3809bb0ad6be268843e406f473cef61dacc6d4d4546779dbfa1480deddc64016179ecefdf75d837914f69b679a71ad9711a@127.0.0.1:36789")
+	n2, _ := enode.ParseV4("enode://84c59064dd3b2df54204c52d772cf3809bb0ad6be268843e406f473cef61dacc6d4d4546779dbfa1480deddc64016179ecefdf75d837914f69b679a71ad9711a@127.0.0.1:36789")
 	var sec2 bls.SecretKey
 	sec2.SetByCSPRNG()
-	n3, _ := discover.ParseNode("enode://a9b7e60fa1290c1013cb862c0693d9e87113e8d4cb87d60452749acd978c9fd3a80b49ab5ce7916a5bbfe0b0a0d7e4cde201bd59acccdf97006990156bfe73a5@127.0.0.1:46789")
+	n3, _ := enode.ParseV4("enode://a9b7e60fa1290c1013cb862c0693d9e87113e8d4cb87d60452749acd978c9fd3a80b49ab5ce7916a5bbfe0b0a0d7e4cde201bd59acccdf97006990156bfe73a5@127.0.0.1:46789")
 	var sec3 bls.SecretKey
 	sec3.SetByCSPRNG()
 
 	priKey, _ := crypto.GenerateKey()
 	nodeStr := fmt.Sprintf("enode://%s@127.0.0.1:6666", hex.EncodeToString(crypto.FromECDSAPub(&priKey.PublicKey)[1:]))
-	n4, _ := discover.ParseNode(nodeStr)
+	n4, _ := enode.ParseV4(nodeStr)
 	var sec4 bls.SecretKey
 	sec4.SetByCSPRNG()
 
-	nodes = append(nodes, params.CbftNode{Node: *n0, BlsPubKey: *sec0.GetPublicKey()})
-	nodes = append(nodes, params.CbftNode{Node: *n1, BlsPubKey: *sec1.GetPublicKey()})
-	nodes = append(nodes, params.CbftNode{Node: *n2, BlsPubKey: *sec2.GetPublicKey()})
-	nodes = append(nodes, params.CbftNode{Node: *n3, BlsPubKey: *sec3.GetPublicKey()})
-	nodes = append(nodes, params.CbftNode{Node: *n4, BlsPubKey: *sec4.GetPublicKey()})
+	nodes = append(nodes, params.CbftNode{Node: n0, BlsPubKey: *sec0.GetPublicKey()})
+	nodes = append(nodes, params.CbftNode{Node: n1, BlsPubKey: *sec1.GetPublicKey()})
+	nodes = append(nodes, params.CbftNode{Node: n2, BlsPubKey: *sec2.GetPublicKey()})
+	nodes = append(nodes, params.CbftNode{Node: n3, BlsPubKey: *sec3.GetPublicKey()})
+	nodes = append(nodes, params.CbftNode{Node: n4, BlsPubKey: *sec4.GetPublicKey()})
 
 	agency := newTestInnerAgency(nodes)
-	vp := NewValidatorPool(agency, 0, 0, nodes[0].Node.ID)
+	vp := NewValidatorPool(agency, 0, 0, nodes[0].Node.ID(), false, new(event.TypeMux))
 
 	m := "test sig"
 
@@ -573,26 +591,89 @@ func (m *mockAgency) VerifyHeader(*types.Header, *state.StateDB) error { return 
 
 func (m *mockAgency) GetLastNumber(blockNumber uint64) uint64 { return m.lastNumber }
 
-func (m *mockAgency) GetValidator(blockNumber uint64) (*cbfttypes.Validators, error) {
+func (m *mockAgency) GetLastNumberByHash(blockHash common.Hash, blockNumber uint64) uint64 {
+	return 0
+}
+
+func (m *mockAgency) GetValidators(blockHash common.Hash, blockNumber uint64) (*cbfttypes.Validators, error) {
 	return &cbfttypes.Validators{
 		ValidBlockNumber: blockNumber,
 	}, nil
 }
 
-func (m *mockAgency) IsCandidateNode(discover.NodeID) bool { return false }
+func (m *mockAgency) IsCandidateNode(dv0 enode.IDv0) bool { return false }
 
 func (m *mockAgency) OnCommit(block *types.Block) error { return nil }
 
 func TestValidatorPoolReset(t *testing.T) {
 	agency := newMockAgency(100)
-	vp := NewValidatorPool(agency, 0, 0, discover.NodeID{})
+	vp := NewValidatorPool(agency, 0, 0, enode.ID{}, true, new(event.TypeMux))
 
-	vp.Reset(100, 10)
+	vp.Reset(100, 10, nil)
 	assert.Equal(t, vp.switchPoint, uint64(100))
 	assert.Equal(t, vp.epoch, uint64(11))
 
 	agency.lastNumber = 200
-	vp.Reset(150, 15)
+	vp.Reset(150, 15, nil)
 	assert.Equal(t, vp.epoch, uint64(15))
 	assert.Equal(t, vp.switchPoint, uint64(149))
+}
+
+func TestValidatorGrouped(t *testing.T) {
+
+	nodes := newTestNodeByNum(100)
+	vs := newValidators(nodes, 0)
+	vs.Grouped()
+	assert.Equal(t, 4, len(vs.GroupNodes))
+	assert.Equal(t, 5, len(vs.GroupNodes[2].Units))
+	assert.Equal(t, 25, len(vs.GroupNodes[0].Nodes))
+	assert.Equal(t, 25, len(vs.GroupNodes[2].Nodes))
+	assert.Equal(t, 25, len(vs.GroupNodes[3].Nodes))
+}
+
+func TestGetGroupID(t *testing.T) {
+	bls.Init(bls.BLS12_381)
+	nodes := newTestNodeByNum(100)
+	targetID := nodes[0].Node.ID()
+	agency := newTestInnerAgency(nodes)
+	vp := NewValidatorPool(agency, 0, 0, nodes[0].Node.ID(), true, new(event.TypeMux))
+
+	grpID, _ := vp.GetGroupID(0, targetID)
+	assert.True(t, grpID < 4)
+}
+
+func TestUpdate(t *testing.T) {
+	bls.Init(bls.BLS12_381)
+	nodes := newTestNodeByNum(100)
+	agency := newTestInnerAgency(nodes)
+	eventMux := new(event.TypeMux)
+	blockNum := uint64(0)
+	lastNumber := agency.GetLastNumber(blockNum)
+	vp := NewValidatorPool(agency, 0, 0, nodes[0].Node.ID(), false, eventMux)
+
+	assert.False(t, vp.NeedGroup())
+	assert.Equal(t, lastNumber, vp.lastNumber)
+	assert.Equal(t, vp.prevValidators, vp.currentValidators)
+
+	vp.InitComingValidators(common.ZeroHash, 980, eventMux)
+	assert.False(t, vp.NeedGroup())
+	assert.Equal(t, vp.epoch, uint64(0))
+
+	vp.Update(common.ZeroHash, 1000, 0, 4352, eventMux)
+	assert.Nil(t, vp.nextValidators)
+	assert.True(t, vp.NeedGroup())
+	assert.Equal(t, vp.epoch, uint64(0))
+
+	nextNodes := newTestNodeByNum(100)
+	nextAgency := newTestInnerAgency(nextNodes)
+	next, err := nextAgency.GetValidators(common.ZeroHash, lastNumber+1)
+	if err != nil || next == nil {
+		t.Error("agency.GetValidators", "err", err)
+	}
+	next.Grouped()
+	assert.NotEqual(t, vp.currentValidators, next)
+	vp.Update(common.ZeroHash, vp.lastNumber+1, 1, 4352, eventMux)
+	assert.True(t, vp.NeedGroup())
+	assert.Equal(t, vp.epoch, uint64(1))
+	assert.Nil(t, vp.nextValidators)
 }

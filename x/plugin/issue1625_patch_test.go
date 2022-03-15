@@ -20,7 +20,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
+	"github.com/AlayaNetwork/Alaya-Go/crypto"
 
 	"github.com/AlayaNetwork/Alaya-Go/common"
 
@@ -40,10 +40,10 @@ func TestIssue1625AccountDelInfos_Sort(t *testing.T) {
 	dels = append(dels, &issue1625AccountDelInfo{
 		del: &staking.Delegation{DelegateEpoch: 2},
 		candidate: &staking.Candidate{
-			&staking.CandidateBase{
-				NodeId: [discover.NodeIDBits / 8]byte{13},
+			CandidateBase: &staking.CandidateBase{
+				NodeId: [crypto.PubkeyBytesBits / 8]byte{13},
 			},
-			&staking.CandidateMutable{
+			CandidateMutable: &staking.CandidateMutable{
 				Status: staking.Invalided | staking.Withdrew,
 			},
 		},
@@ -53,10 +53,10 @@ func TestIssue1625AccountDelInfos_Sort(t *testing.T) {
 	dels = append(dels, &issue1625AccountDelInfo{
 		del: &staking.Delegation{DelegateEpoch: 1},
 		candidate: &staking.Candidate{
-			&staking.CandidateBase{
-				NodeId: [discover.NodeIDBits / 8]byte{11},
+			CandidateBase: &staking.CandidateBase{
+				NodeId: [crypto.PubkeyBytesBits / 8]byte{11},
 			},
-			&staking.CandidateMutable{
+			CandidateMutable: &staking.CandidateMutable{
 				Status: staking.Invalided | staking.Withdrew,
 			},
 		},
@@ -67,10 +67,10 @@ func TestIssue1625AccountDelInfos_Sort(t *testing.T) {
 	dels = append(dels, &issue1625AccountDelInfo{
 		del: &staking.Delegation{DelegateEpoch: 2},
 		candidate: &staking.Candidate{
-			&staking.CandidateBase{
-				NodeId: [discover.NodeIDBits / 8]byte{2},
+			CandidateBase: &staking.CandidateBase{
+				NodeId: [crypto.PubkeyBytesBits / 8]byte{2},
 			},
-			&staking.CandidateMutable{
+			CandidateMutable: &staking.CandidateMutable{
 				RewardPer: 10,
 			},
 		},
@@ -79,10 +79,10 @@ func TestIssue1625AccountDelInfos_Sort(t *testing.T) {
 	dels = append(dels, &issue1625AccountDelInfo{
 		del: &staking.Delegation{DelegateEpoch: 2},
 		candidate: &staking.Candidate{
-			&staking.CandidateBase{
-				NodeId: [discover.NodeIDBits / 8]byte{1},
+			CandidateBase: &staking.CandidateBase{
+				NodeId: [crypto.PubkeyBytesBits / 8]byte{1},
 			},
-			&staking.CandidateMutable{
+			CandidateMutable: &staking.CandidateMutable{
 				RewardPer: 10,
 			},
 		},
@@ -92,10 +92,10 @@ func TestIssue1625AccountDelInfos_Sort(t *testing.T) {
 	dels = append(dels, &issue1625AccountDelInfo{
 		del: &staking.Delegation{DelegateEpoch: 1},
 		candidate: &staking.Candidate{
-			&staking.CandidateBase{
-				NodeId: [discover.NodeIDBits / 8]byte{3},
+			CandidateBase: &staking.CandidateBase{
+				NodeId: [crypto.PubkeyBytesBits / 8]byte{3},
 			},
-			&staking.CandidateMutable{
+			CandidateMutable: &staking.CandidateMutable{
 				RewardPer: 15,
 			},
 		},

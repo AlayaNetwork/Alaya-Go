@@ -22,6 +22,8 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/AlayaNetwork/Alaya-Go/common"
+
 	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/state"
 
 	"github.com/AlayaNetwork/Alaya-Go/common/math"
@@ -53,6 +55,8 @@ type Bridge interface {
 	SendViewChange(view *protocols.ViewChange)
 	SendPrepareBlock(pb *protocols.PrepareBlock)
 	SendPrepareVote(block *types.Block, vote *protocols.PrepareVote)
+	SendRGBlockQuorumCert(epoch uint64, viewNumber uint64, blockIndex uint32)
+	SendRGViewChangeQuorumCert(epoch uint64, viewNumber uint64)
 	GetViewChangeQC(epoch uint64, viewNumber uint64) (*ctypes.ViewChangeQC, error)
 
 	Close()
@@ -75,6 +79,12 @@ func (b *emptyBridge) SendPrepareBlock(pb *protocols.PrepareBlock) {
 }
 
 func (b *emptyBridge) SendPrepareVote(block *types.Block, vote *protocols.PrepareVote) {
+}
+
+func (b *emptyBridge) SendRGBlockQuorumCert(epoch uint64, viewNumber uint64, blockIndex uint32) {
+}
+
+func (b *emptyBridge) SendRGViewChangeQuorumCert(epoch uint64, viewNumber uint64) {
 }
 
 func (b *emptyBridge) GetViewChangeQC(epoch uint64, viewNumber uint64) (*ctypes.ViewChangeQC, error) {
@@ -208,31 +218,28 @@ func (b *baseBridge) ConfirmViewChange(epoch, viewNumber uint64, block *types.Bl
 
 // SendViewChange tries to update SendViewChange consensus msg to wal.
 func (b *baseBridge) SendViewChange(view *protocols.ViewChange) {
-	tStart := time.Now()
 	s := &protocols.SendViewChange{
 		ViewChange: view,
 	}
 	if err := b.cbft.wal.WriteSync(s); err != nil {
 		panic(fmt.Sprintf("write send viewChange error, err:%s", err.Error()))
 	}
-	log.Debug("Success to send viewChange", "view", view.String(), "elapsed", time.Since(tStart))
+	log.Debug("Success to send viewChange", "view", view.String())
 }
 
 // SendPrepareBlock tries to update SendPrepareBlock consensus msg to wal.
 func (b *baseBridge) SendPrepareBlock(pb *protocols.PrepareBlock) {
-	tStart := time.Now()
 	s := &protocols.SendPrepareBlock{
 		Prepare: pb,
 	}
 	if err := b.cbft.wal.WriteSync(s); err != nil {
 		panic(fmt.Sprintf("write send prepareBlock error, err:%s", err.Error()))
 	}
-	log.Debug("Success to send prepareBlock", "prepareBlock", pb.String(), "elapsed", time.Since(tStart))
+	log.Debug("Success to send prepareBlock", "prepareBlock", pb.String())
 }
 
 // SendPrepareVote tries to update SendPrepareVote consensus msg to wal.
 func (b *baseBridge) SendPrepareVote(block *types.Block, vote *protocols.PrepareVote) {
-	tStart := time.Now()
 	s := &protocols.SendPrepareVote{
 		Block: block,
 		Vote:  vote,
@@ -240,7 +247,32 @@ func (b *baseBridge) SendPrepareVote(block *types.Block, vote *protocols.Prepare
 	if err := b.cbft.wal.WriteSync(s); err != nil {
 		panic(fmt.Sprintf("write send prepareVote error, err:%s", err.Error()))
 	}
-	log.Debug("Success to send prepareVote", "prepareVote", vote.String(), "elapsed", time.Since(tStart))
+	log.Debug("Success to send prepareVote", "prepareVote", vote.String())
+}
+
+// SendRGBlockQuorumCert tries to update SendRGBlockQuorumCert consensus msg to wal.
+func (b *baseBridge) SendRGBlockQuorumCert(epoch uint64, viewNumber uint64, blockIndex uint32) {
+	s := &protocols.SendRGBlockQuorumCert{
+		RGEpoch:      epoch,
+		RGViewNumber: viewNumber,
+		RGBlockIndex: blockIndex,
+	}
+	if err := b.cbft.wal.WriteSync(s); err != nil {
+		panic(fmt.Sprintf("write send RGBlockQuorumCert error, err:%s", err.Error()))
+	}
+	log.Debug("Success to send RGBlockQuorumCert", "sendRGBlockQuorumCert", s.String())
+}
+
+// SendRGViewChangeQuorumCert tries to update SendRGViewChangeQuorumCert consensus msg to wal.
+func (b *baseBridge) SendRGViewChangeQuorumCert(epoch uint64, viewNumber uint64) {
+	s := &protocols.SendRGViewChangeQuorumCert{
+		RGEpoch:      epoch,
+		RGViewNumber: viewNumber,
+	}
+	if err := b.cbft.wal.WriteSync(s); err != nil {
+		panic(fmt.Sprintf("write send SendRGViewChangeQuorumCert error, err:%s", err.Error()))
+	}
+	log.Debug("Success to send SendRGViewChangeQuorumCert", "sendRGViewChangeQuorumCert", s.String())
 }
 
 func (b *baseBridge) GetViewChangeQC(epoch uint64, viewNumber uint64) (*ctypes.ViewChangeQC, error) {
@@ -297,7 +329,7 @@ func (cbft *Cbft) recoveryCommitState(commit *protocols.State, parent *types.Blo
 		return err
 	}
 	commit.Block.SetExtraData(extra)
-	if err := cbft.blockCacheWriter.WriteBlock(commit.Block); err != nil {
+	if err := cbft.blockCache.WriteBlock(commit.Block); err != nil {
 		return err
 	}
 	if err := cbft.validatorPool.Commit(commit.Block); err != nil {
@@ -330,7 +362,7 @@ func (cbft *Cbft) recoveryQCState(qcs []*protocols.State, parent *types.Block) e
 
 // recoveryChainStateProcess tries to recovery the corresponding state to cbft consensus.
 func (cbft *Cbft) recoveryChainStateProcess(stateType uint16, s *protocols.State) {
-	cbft.trySwitchValidator(s.Block.NumberU64())
+	cbft.trySwitchValidator(s.Block.Hash(), s.Block.NumberU64(), s.Block.ActiveVersion())
 	cbft.tryWalChangeView(s.QuorumCert.Epoch, s.QuorumCert.ViewNumber, s.Block, s.QuorumCert, nil)
 	cbft.state.AddQCBlock(s.Block, s.QuorumCert)
 	cbft.state.AddQC(s.QuorumCert)
@@ -360,9 +392,9 @@ func (cbft *Cbft) recoveryChainStateProcess(stateType uint16, s *protocols.State
 }
 
 // trySwitch tries to switch next validator.
-func (cbft *Cbft) trySwitchValidator(blockNumber uint64) {
+func (cbft *Cbft) trySwitchValidator(blockHash common.Hash, blockNumber uint64, version uint32) {
 	if cbft.validatorPool.ShouldSwitch(blockNumber) {
-		if err := cbft.validatorPool.Update(blockNumber, cbft.state.Epoch()+1, cbft.eventMux); err != nil {
+		if err := cbft.validatorPool.Update(blockHash, blockNumber, cbft.state.Epoch()+1, version, cbft.eventMux); err != nil {
 			cbft.log.Debug("Update validator error", "err", err.Error())
 		}
 	}
@@ -392,11 +424,11 @@ func (cbft *Cbft) recoveryMsg(msg interface{}) error {
 			return err
 		}
 		if should {
-			node, err := cbft.validatorPool.GetValidatorByNodeID(m.ViewChange.Epoch, cbft.config.Option.NodeID)
+			node, err := cbft.validatorPool.GetValidatorByNodeID(m.ViewChange.Epoch, cbft.config.Option.Node.ID())
 			if err != nil {
 				return err
 			}
-			cbft.state.AddViewChange(uint32(node.Index), m.ViewChange)
+			cbft.state.AddViewChange(node.Index, m.ViewChange)
 		}
 
 	case *protocols.SendPrepareBlock:
@@ -443,9 +475,22 @@ func (cbft *Cbft) recoveryMsg(msg interface{}) error {
 			}
 
 			cbft.state.HadSendPrepareVote().Push(m.Vote)
-			node, _ := cbft.validatorPool.GetValidatorByNodeID(m.Vote.Epoch, cbft.config.Option.NodeID)
-			cbft.state.AddPrepareVote(uint32(node.Index), m.Vote)
+			node, _ := cbft.validatorPool.GetValidatorByNodeID(m.Vote.Epoch, cbft.config.Option.Node.ID())
+			cbft.state.AddPrepareVote(node.Index, m.Vote)
 		}
+
+	case *protocols.SendRGBlockQuorumCert:
+		cbft.log.Debug("Load journal message from wal", "msgType", reflect.TypeOf(msg), "sendRGBlockQuorumCert", m.String())
+		if cbft.equalViewState(m) {
+			cbft.state.AddSendRGBlockQuorumCerts(m.BlockIndex())
+		}
+
+	case *protocols.SendRGViewChangeQuorumCert:
+		cbft.log.Debug("Load journal message from wal", "msgType", reflect.TypeOf(msg), "sendRGViewChangeQuorumCert", m.String())
+		if cbft.equalViewState(m) {
+			cbft.state.AddSendRGViewChangeQuorumCerts(m.ViewNumber())
+		}
+
 	}
 	return nil
 }
@@ -459,7 +504,7 @@ func contiguousChainBlock(p *types.Block, s *types.Block) bool {
 	return contiguous
 }
 
-// executeBlock call blockCacheWriter to execute block.
+// executeBlock call blockCache to execute block.
 func (cbft *Cbft) executeBlock(block *types.Block, parent *types.Block, index uint32) error {
 	if parent == nil {
 		if parent, _ = cbft.blockTree.FindBlockAndQC(block.ParentHash(), block.NumberU64()-1); parent == nil {
@@ -468,7 +513,7 @@ func (cbft *Cbft) executeBlock(block *types.Block, parent *types.Block, index ui
 			}
 		}
 	}
-	if err := cbft.blockCacheWriter.Execute(block, parent); err != nil {
+	if err := cbft.blockCache.Execute(block, parent); err != nil {
 		return fmt.Errorf("execute block failed, blockNum:%d, blockHash:%s, parentNum:%d, parentHash:%s, err:%s", block.NumberU64(), block.Hash().String(), parent.NumberU64(), parent.Hash().String(), err.Error())
 	}
 	return nil

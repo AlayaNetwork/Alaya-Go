@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/network"
+
 	"github.com/pkg/errors"
 
 	"github.com/AlayaNetwork/Alaya-Go/crypto/bls"
@@ -108,7 +110,7 @@ func (cbft *Cbft) OnPrepareVote(id string, msg *protocols.PrepareVote) error {
 	cbft.log.Debug("Receive PrepareVote", "id", id, "msg", msg.String())
 	if err := cbft.safetyRules.PrepareVoteRules(msg); err != nil {
 		if err.Common() {
-			cbft.log.Debug("Preparevote rules fail", "number", msg.BlockHash, "hash", msg.BlockHash, "err", err)
+			cbft.log.Debug("Preparevote rules fail", "number", msg.BlockNumber, "hash", msg.BlockHash, "err", err)
 			return err
 		}
 
@@ -136,9 +138,11 @@ func (cbft *Cbft) OnPrepareVote(id string, msg *protocols.PrepareVote) error {
 		return err
 	}
 
-	cbft.state.AddPrepareVote(uint32(node.Index), msg)
+	cbft.state.AddPrepareVote(node.Index, msg)
+	cbft.mergeVoteToQuorumCerts(node, msg)
 	cbft.log.Debug("Receive new prepareVote", "msgHash", msg.MsgHash(), "vote", msg.String(), "votes", cbft.state.PrepareVoteLenByIndex(msg.BlockIndex))
 
+	cbft.trySendRGBlockQuorumCert()
 	cbft.insertPrepareQC(msg.ParentQC)
 	cbft.findQCBlock()
 	return nil
@@ -165,8 +169,193 @@ func (cbft *Cbft) OnViewChange(id string, msg *protocols.ViewChange) error {
 		return err
 	}
 
-	cbft.state.AddViewChange(uint32(node.Index), msg)
+	cbft.state.AddViewChange(node.Index, msg)
+	cbft.mergeViewChangeToViewChangeQuorumCerts(node, msg)
 	cbft.log.Debug("Receive new viewChange", "msgHash", msg.MsgHash(), "viewChange", msg.String(), "total", cbft.state.ViewChangeLen())
+	cbft.trySendRGViewChangeQuorumCert()
+
+	// It is possible to achieve viewchangeQC every time you add viewchange
+	cbft.tryChangeView()
+	return nil
+}
+
+// OnRGBlockQuorumCert perform security rule verification，store in viewRGBlockQuorumCerts and selectedRGBlockQuorumCerts,
+// Whether to start synchronization
+func (cbft *Cbft) OnRGBlockQuorumCert(id string, msg *protocols.RGBlockQuorumCert) error {
+	cbft.log.Debug("Receive RGBlockQuorumCert", "id", id, "msg", msg.String())
+	if err := cbft.safetyRules.RGBlockQuorumCertRules(msg); err != nil {
+		if err.Common() {
+			cbft.log.Debug("RGBlockQuorumCert rules fail", "number", msg.BlockNum(), "hash", msg.BHash(), "err", err)
+			return err
+		}
+
+		// verify consensus signature
+		if cbft.verifyConsensusSign(msg) != nil {
+			signatureCheckFailureMeter.Mark(1)
+			return err
+		}
+
+		if err.Fetch() {
+			if msg.ParentQC != nil {
+				cbft.log.Info("Epoch or viewNumber higher than local, try to fetch block", "fetchHash", msg.ParentQC.BlockHash, "fetchNumber", msg.ParentQC.BlockNumber)
+				cbft.fetchBlock(id, msg.ParentQC.BlockHash, msg.ParentQC.BlockNumber, msg.ParentQC)
+			}
+		} else if err.FetchPrepare() {
+			cbft.prepareVoteFetchRules(id, msg)
+		}
+		return err
+	}
+
+	if err := cbft.AllowRGQuorumCert(msg); err != nil {
+		cbft.log.Error("Failed to allow RGBlockQuorumCert", "RGBlockQuorumCert", msg.String(), "error", err.Error())
+		return err
+	}
+
+	var node *cbfttypes.ValidateNode
+	var err error
+	if node, err = cbft.verifyConsensusMsg(msg); err != nil {
+		cbft.log.Error("Failed to verify RGBlockQuorumCert", "RGBlockQuorumCert", msg.String(), "error", err.Error())
+		return err
+	}
+
+	// VerifyQuorumCert,This method simply verifies the correctness of the aggregated signature itself
+	// Before this, it is necessary to verify parentqc, whether the number of group signatures is sufficient, whether all signers are group members, whether the message is sent by group members.
+	if err := cbft.verifyQuorumCert(msg.BlockQC); err != nil {
+		cbft.log.Error("Failed to verify RGBlockQuorumCert blockQC", "blockQC", msg.BlockQC.String(), "err", err.Error())
+		return &authFailedError{err}
+	}
+
+	cbft.state.AddRGBlockQuorumCert(node.Index, msg)
+	blockQC, ParentQC := msg.BlockQC.DeepCopyQuorumCert(), msg.ParentQC
+	cbft.richBlockQuorumCert(msg.EpochNum(), msg.BlockIndx(), msg.GroupID, blockQC)
+	cbft.state.AddSelectRGQuorumCerts(msg.BlockIndx(), msg.GroupID, blockQC, ParentQC)
+	cbft.log.Debug("Receive new RGBlockQuorumCert", "msgHash", msg.MsgHash(), "RGBlockQuorumCert", msg.String(), "total", cbft.state.RGBlockQuorumCertsLen(msg.BlockIndx(), msg.GroupID))
+
+	cbft.trySendRGBlockQuorumCert()
+	cbft.insertPrepareQC(ParentQC)
+	cbft.findQCBlock()
+	return nil
+}
+
+// Determine whether the total number of RGBlockQuorumCert signatures has reached the minimum threshold for group consensus nodes
+func (cbft *Cbft) enoughSigns(epoch uint64, groupID uint32, signs int) bool {
+	threshold := cbft.groupThreshold(epoch, groupID)
+	return signs >= threshold
+}
+
+// Determine whether the signer of the RGBlockQuorumCert message is a member of the group
+func (cbft *Cbft) isGroupMember(epoch uint64, groupID uint32, nodeIndex uint32) bool {
+	// Index collection of the group members
+	indexes, err := cbft.validatorPool.GetValidatorIndexesByGroupID(epoch, groupID)
+	if err != nil || indexes == nil {
+		return false
+	}
+	for _, index := range indexes {
+		if index == nodeIndex {
+			return true
+		}
+	}
+	return false
+}
+
+// Determine whether the aggregate signers in the RGBlockQuorumCert message are all members of the group
+func (cbft *Cbft) allGroupMember(epoch uint64, groupID uint32, validatorSet *utils.BitArray) bool {
+	// Index collection of the group members
+	indexes, err := cbft.validatorPool.GetValidatorIndexesByGroupID(epoch, groupID)
+	if err != nil || indexes == nil {
+		return false
+	}
+	total := cbft.validatorPool.Len(epoch)
+	vSet := utils.NewBitArray(uint32(total))
+	for _, index := range indexes {
+		vSet.SetIndex(index, true)
+	}
+
+	return vSet.Contains(validatorSet)
+}
+
+// Verify the aggregate signer information of RGQuorumCert
+func (cbft *Cbft) AllowRGQuorumCert(msg ctypes.ConsensusMsg) error {
+	epoch := msg.EpochNum()
+	nodeIndex := msg.NodeIndex()
+	var (
+		groupID      uint32
+		validatorSet *utils.BitArray
+		signsTotal   int
+	)
+
+	switch rg := msg.(type) {
+	case *protocols.RGBlockQuorumCert:
+		groupID = rg.GroupID
+		signsTotal = rg.BlockQC.Len()
+		validatorSet = rg.BlockQC.ValidatorSet
+	case *protocols.RGViewChangeQuorumCert:
+		groupID = rg.GroupID
+		//signsTotal = rg.ViewChangeQC.Len()
+		signsTotal = rg.ViewChangeQC.HasLength()
+		validatorSet = rg.ViewChangeQC.ValidatorSet()
+	}
+
+	if !cbft.enoughSigns(epoch, groupID, signsTotal) {
+		return authFailedError{
+			err: fmt.Errorf("insufficient signatures"),
+		}
+	}
+	if !cbft.isGroupMember(epoch, groupID, nodeIndex) {
+		return authFailedError{
+			err: fmt.Errorf("the message sender is not a member of the group"),
+		}
+	}
+	if !cbft.allGroupMember(epoch, groupID, validatorSet) {
+		return authFailedError{
+			err: fmt.Errorf("signers include non-group members"),
+		}
+	}
+	return nil
+}
+
+// OnRGViewChangeQuorumCert performs security rule verification, view switching.
+func (cbft *Cbft) OnRGViewChangeQuorumCert(id string, msg *protocols.RGViewChangeQuorumCert) error {
+	cbft.log.Debug("Receive RGViewChangeQuorumCert", "id", id, "msg", msg.String())
+	if err := cbft.safetyRules.RGViewChangeQuorumCertRules(msg); err != nil {
+		if err.Fetch() {
+			viewChangeQC := msg.ViewChangeQC
+			_, _, _, _, blockHash, blockNumber := viewChangeQC.MaxBlock()
+			if msg.PrepareQCs != nil && msg.PrepareQCs.FindPrepareQC(blockHash) != nil {
+				cbft.log.Info("Epoch or viewNumber higher than local, try to fetch block", "fetchHash", blockHash, "fetchNumber", blockNumber)
+				cbft.fetchBlock(id, blockHash, blockNumber, msg.PrepareQCs.FindPrepareQC(blockHash))
+			}
+		}
+		return err
+	}
+
+	if err := cbft.AllowRGQuorumCert(msg); err != nil {
+		cbft.log.Error("Failed to allow RGViewChangeQuorumCert", "RGViewChangeQuorumCert", msg.String(), "error", err.Error())
+		return err
+	}
+
+	var node *cbfttypes.ValidateNode
+	var err error
+
+	if node, err = cbft.verifyConsensusMsg(msg); err != nil {
+		cbft.log.Error("Failed to verify RGViewChangeQuorumCert", "viewChange", msg.String(), "error", err.Error())
+		return err
+	}
+
+	// VerifyQuorumCert,This method simply verifies the correctness of the aggregated signature itself
+	// Before this, it is necessary to verify parentqc, whether the number of group signatures is sufficient, whether all signers are group members, whether the message is sent by group members.
+	if err := cbft.verifyGroupViewChangeQC(msg.GroupID, msg.ViewChangeQC); err != nil {
+		cbft.log.Error("Failed to verify RGViewChangeQuorumCert viewChangeQC", "err", err.Error())
+		return &authFailedError{err}
+	}
+
+	cbft.state.AddRGViewChangeQuorumCert(node.Index, msg)
+	viewChangeQC, prepareQCs := msg.ViewChangeQC.DeepCopyViewChangeQC(), msg.PrepareQCs.DeepCopyPrepareQCs()
+	cbft.richViewChangeQuorumCert(msg.EpochNum(), msg.GroupID, viewChangeQC, prepareQCs)
+	cbft.state.AddSelectRGViewChangeQuorumCerts(msg.GroupID, viewChangeQC, prepareQCs.FlattenMap())
+	cbft.log.Debug("Receive new RGViewChangeQuorumCert", "msgHash", msg.MsgHash(), "RGViewChangeQuorumCert", msg.String(), "total", cbft.state.RGViewChangeQuorumCertsLen(msg.GroupID))
+	cbft.trySendRGViewChangeQuorumCert()
+
 	// It is possible to achieve viewchangeQC every time you add viewchange
 	cbft.tryChangeView()
 	return nil
@@ -194,7 +383,7 @@ func (cbft *Cbft) OnViewTimeout() {
 		ViewNumber:     cbft.state.ViewNumber(),
 		BlockHash:      hash,
 		BlockNumber:    number,
-		ValidatorIndex: uint32(node.Index),
+		ValidatorIndex: node.Index,
 		PrepareQC:      qc,
 	}
 
@@ -208,8 +397,12 @@ func (cbft *Cbft) OnViewTimeout() {
 		cbft.bridge.SendViewChange(viewChange)
 	}
 
-	cbft.state.AddViewChange(uint32(node.Index), viewChange)
-	cbft.network.Broadcast(viewChange)
+	cbft.state.AddViewChange(node.Index, viewChange)
+	// send viewChange use pubsub
+	if err := cbft.publishTopicMsg(viewChange); err != nil {
+		cbft.log.Error("Publish viewChange failed", "err", err.Error(), "view", cbft.state.ViewString(), "viewChange", viewChange.String())
+	}
+	//cbft.network.Broadcast(viewChange)
 	cbft.log.Info("Local add viewChange", "index", node.Index, "viewChange", viewChange.String(), "total", cbft.state.ViewChangeLen())
 
 	cbft.tryChangeView()
@@ -220,10 +413,8 @@ func (cbft *Cbft) OnInsertQCBlock(blocks []*types.Block, qcs []*ctypes.QuorumCer
 	if len(blocks) != len(qcs) {
 		return fmt.Errorf("block qc is inconsistent")
 	}
-	//todo insert tree, update view
 	for i := 0; i < len(blocks); i++ {
 		block, qc := blocks[i], qcs[i]
-		//todo verify qc
 
 		if err := cbft.safetyRules.QCBlockRules(block, qc); err != nil {
 			if err.NewView() {
@@ -307,15 +498,15 @@ func (cbft *Cbft) insertPrepareQC(qc *ctypes.QuorumCert) {
 			return false
 		}
 		hasExecuted := func() bool {
-			if cbft.validatorPool.IsValidator(qc.Epoch, cbft.config.Option.NodeID) {
+			if cbft.validatorPool.IsValidator(qc.Epoch, cbft.config.Option.Node.ID()) {
 				return cbft.state.HadSendPrepareVote().Had(qc.BlockIndex) && linked(qc.BlockNumber)
-			} else if cbft.validatorPool.IsCandidateNode(cbft.config.Option.NodeID) {
+			} else {
 				blockIndex, finish := cbft.state.Executing()
 				return blockIndex != math.MaxUint32 && (qc.BlockIndex < blockIndex || (qc.BlockIndex == blockIndex && finish)) && linked(qc.BlockNumber)
 			}
-			return false
 		}
 		if block != nil && hasExecuted() {
+			cbft.log.Trace("Insert prepareQC", "qc", qc.String())
 			cbft.insertQCBlock(block, qc)
 		}
 	}
@@ -337,7 +528,7 @@ func (cbft *Cbft) onAsyncExecuteStatus(s *executor.BlockExecuteStatus) {
 				if cbft.executeFinishHook != nil {
 					cbft.executeFinishHook(index)
 				}
-				_, err := cbft.validatorPool.GetValidatorByNodeID(cbft.state.Epoch(), cbft.config.Option.NodeID)
+				_, err := cbft.isCurrentValidator()
 				if err != nil {
 					cbft.log.Debug("Current node is not validator,no need to sign block", "err", err, "hash", s.Hash, "number", s.Number)
 					return
@@ -349,7 +540,7 @@ func (cbft *Cbft) onAsyncExecuteStatus(s *executor.BlockExecuteStatus) {
 
 				cbft.log.Debug("Sign block", "hash", s.Hash, "number", s.Number)
 				if msg := cbft.csPool.GetPrepareQC(cbft.state.Epoch(), cbft.state.ViewNumber(), index); msg != nil {
-					go cbft.ReceiveMessage(msg)
+					go cbft.ReceiveSyncMsg(ctypes.NewInnerMsgInfo(msg.Msg, msg.PeerID))
 				}
 			}
 		}
@@ -361,10 +552,9 @@ func (cbft *Cbft) onAsyncExecuteStatus(s *executor.BlockExecuteStatus) {
 // Sign the block that has been executed
 // Every time try to trigger a send PrepareVote
 func (cbft *Cbft) signBlock(hash common.Hash, number uint64, index uint32) error {
-	// todo sign vote
 	// parentQC added when sending
 	// Determine if the current consensus node is
-	node, err := cbft.validatorPool.GetValidatorByNodeID(cbft.state.Epoch(), cbft.config.Option.NodeID)
+	node, err := cbft.isCurrentValidator()
 	if err != nil {
 		return err
 	}
@@ -374,7 +564,7 @@ func (cbft *Cbft) signBlock(hash common.Hash, number uint64, index uint32) error
 		BlockHash:      hash,
 		BlockNumber:    number,
 		BlockIndex:     index,
-		ValidatorIndex: uint32(node.Index),
+		ValidatorIndex: node.Index,
 	}
 
 	if err := cbft.signMsgByBls(prepareVote); err != nil {
@@ -414,15 +604,15 @@ func (cbft *Cbft) trySendPrepareVote() {
 		// Only when the view is switched, the block is cleared but the vote is also cleared.
 		// If there is no block, the consensus process is abnormal and should not run.
 		if block == nil {
-			cbft.log.Crit("Try send PrepareVote failed", "err", "vote corresponding block not found", "view", cbft.state.ViewString(), p.String())
+			cbft.log.Crit("Try send PrepareVote failed", "err", "vote corresponding block not found", "view", cbft.state.ViewString(), "vote", p.String())
 		}
 		if b, qc := cbft.blockTree.FindBlockAndQC(block.ParentHash(), block.NumberU64()-1); b != nil || block.NumberU64() == 0 {
 			p.ParentQC = qc
 			hadSend.Push(p)
 			//Determine if the current consensus node is
-			node, _ := cbft.validatorPool.GetValidatorByNodeID(cbft.state.Epoch(), cbft.config.Option.NodeID)
+			node, _ := cbft.isCurrentValidator()
 			cbft.log.Info("Add local prepareVote", "vote", p.String())
-			cbft.state.AddPrepareVote(uint32(node.Index), p)
+			cbft.state.AddPrepareVote(node.Index, p)
 			pending.Pop()
 
 			// write sendPrepareVote info to wal
@@ -430,10 +620,160 @@ func (cbft *Cbft) trySendPrepareVote() {
 				cbft.bridge.SendPrepareVote(block, p)
 			}
 
-			cbft.network.Broadcast(p)
+			// send prepareVote use pubsub
+			if err := cbft.publishTopicMsg(p); err != nil {
+				cbft.log.Error("Publish PrepareVote failed", "err", err.Error(), "view", cbft.state.ViewString(), "vote", p.String())
+			}
+			//cbft.network.Broadcast(p)
 		} else {
 			break
 		}
+	}
+}
+
+func (cbft *Cbft) publishTopicMsg(msg ctypes.ConsensusMsg) error {
+	if cbft.NeedGroup() {
+		groupID, _, err := cbft.getGroupByValidatorID(cbft.state.Epoch(), cbft.Node().ID())
+		if err != nil {
+			return fmt.Errorf("the group info of the current node is not queried, cannot publish the topic message")
+		}
+		network.MeteredWriteRGMsg(protocols.MessageType(msg), msg)
+		topic := cbfttypes.ConsensusGroupTopicName(cbft.state.Epoch(), groupID)
+		return cbft.pubSub.Publish(topic, protocols.MessageType(msg), msg)
+	} else {
+		cbft.network.Broadcast(msg)
+		return nil
+	}
+}
+
+func (cbft *Cbft) trySendRGBlockQuorumCert() {
+	if !cbft.NeedGroup() {
+		return
+	}
+	// Check timeout
+	if cbft.state.IsDeadline() {
+		cbft.log.Debug("Current view had timeout, refuse to send RGBlockQuorumCert")
+		return
+	}
+
+	//node, err := cbft.isCurrentValidator()
+	//if err != nil || node == nil {
+	//	cbft.log.Debug("Current node is not validator, no need to send RGBlockQuorumCert")
+	//	return
+	//}
+
+	groupID, _, err := cbft.getGroupByValidatorID(cbft.state.Epoch(), cbft.Node().ID())
+	if err != nil {
+		cbft.log.Debug("Current node is not validator, no need to send RGBlockQuorumCert")
+		return
+	}
+
+	enoughVotes := func(blockIndex, groupID uint32) bool {
+		threshold := cbft.groupThreshold(cbft.state.Epoch(), groupID)
+		groupVotes := cbft.groupPrepareVotes(cbft.state.Epoch(), blockIndex, groupID)
+		if len(groupVotes) >= threshold {
+			// generatePrepareQC by group votes
+			rgqc := cbft.generatePrepareQC(groupVotes)
+			// get parentQC
+			var parentQC *ctypes.QuorumCert
+			for _, v := range groupVotes {
+				parentQC = v.ParentQC
+				break
+			}
+			// Add SelectRGQuorumCerts
+			cbft.state.AddSelectRGQuorumCerts(blockIndex, groupID, rgqc, parentQC)
+			blockGroupQCBySelfCounter.Inc(1)
+			return true
+		}
+		return false
+	}
+
+	alreadyRGBlockQuorumCerts := func(blockIndex, groupID uint32) bool {
+		len := cbft.state.SelectRGQuorumCertsLen(blockIndex, groupID)
+		if len > 0 {
+			blockGroupQCByOtherCounter.Inc(1)
+			return true
+		}
+		return false
+	}
+
+	for index := uint32(0); index <= cbft.state.MaxViewBlockIndex(); index++ {
+		if cbft.state.HadSendRGBlockQuorumCerts(index) {
+			cbft.log.Trace("RGBlockQuorumCert has been sent, no need to send again", "blockIndex", index, "groupID", groupID)
+			continue
+		}
+
+		if alreadyRGBlockQuorumCerts(index, groupID) || enoughVotes(index, groupID) {
+			cbft.RGBroadcastManager.AsyncSendRGQuorumCert(&awaitingRGBlockQC{
+				groupID:    groupID,
+				blockIndex: index,
+				epoch:      cbft.state.Epoch(),
+				viewNumber: cbft.state.ViewNumber(),
+			})
+			cbft.state.AddSendRGBlockQuorumCerts(index)
+			cbft.log.Debug("Send RGBlockQuorumCert asynchronously", "blockIndex", index, "groupID", groupID)
+			// record metrics
+			block := cbft.state.ViewBlockByIndex(index)
+			blockGroupQCTimer.UpdateSince(time.Unix(int64(block.Time()), 0))
+		}
+	}
+}
+
+func (cbft *Cbft) trySendRGViewChangeQuorumCert() {
+	if !cbft.NeedGroup() {
+		return
+	}
+
+	groupID, _, err := cbft.getGroupByValidatorID(cbft.state.Epoch(), cbft.Node().ID())
+	if err != nil {
+		cbft.log.Debug("Current node is not validator, no need to send RGViewChangeQuorumCert")
+		return
+	}
+
+	enoughViewChanges := func(groupID uint32) bool {
+		threshold := cbft.groupThreshold(cbft.state.Epoch(), groupID)
+		groupViewChanges := cbft.groupViewChanges(cbft.state.Epoch(), groupID)
+		if len(groupViewChanges) >= threshold {
+			// generatePrepareQC by group votes
+			rgqc := cbft.generateViewChangeQC(groupViewChanges)
+			// get parentQC
+			prepareQCs := make(map[common.Hash]*ctypes.QuorumCert)
+			for _, v := range groupViewChanges {
+				if v.PrepareQC != nil {
+					prepareQCs[v.BlockHash] = v.PrepareQC
+				}
+			}
+			// Add SelectRGViewChangeQuorumCerts
+			cbft.state.AddSelectRGViewChangeQuorumCerts(groupID, rgqc, prepareQCs)
+			viewGroupQCBySelfCounter.Inc(1)
+			return true
+		}
+		return false
+	}
+
+	alreadyRGViewChangeQuorumCerts := func(groupID uint32) bool {
+		len := cbft.state.SelectRGViewChangeQuorumCertsLen(groupID)
+		if len > 0 {
+			viewGroupQCByOtherCounter.Inc(1)
+			return true
+		}
+		return false
+	}
+
+	if cbft.state.HadSendRGViewChangeQuorumCerts(cbft.state.ViewNumber()) {
+		cbft.log.Trace("RGViewChangeQuorumCert has been sent, no need to send again", "groupID", groupID)
+		return
+	}
+
+	if alreadyRGViewChangeQuorumCerts(groupID) || enoughViewChanges(groupID) {
+		cbft.RGBroadcastManager.AsyncSendRGQuorumCert(&awaitingRGViewQC{
+			groupID:    groupID,
+			epoch:      cbft.state.Epoch(),
+			viewNumber: cbft.state.ViewNumber(),
+		})
+		cbft.state.AddSendRGViewChangeQuorumCerts(cbft.state.ViewNumber())
+		cbft.log.Debug("Send RGViewChangeQuorumCert asynchronously", "groupID", groupID)
+		viewGroupQCTimer.UpdateSince(cbft.state.Deadline())
 	}
 }
 
@@ -483,25 +823,221 @@ func (cbft *Cbft) findExecutableBlock() {
 	}
 }
 
+func (cbft *Cbft) mergeVoteToQuorumCerts(node *cbfttypes.ValidateNode, vote *protocols.PrepareVote) {
+	if !cbft.NeedGroup() {
+		return
+	}
+	// Query which group the PrepareVote belongs to according to the information of the node sending the PrepareVote message
+	groupID, _, err := cbft.getGroupByValidatorID(vote.EpochNum(), node.NodeID)
+	if err != nil {
+		cbft.log.Error("Failed to find the group info of the node", "epoch", vote.EpochNum(), "nodeID", node.NodeID.TerminalString(), "error", err)
+		return
+	}
+	cbft.state.MergePrepareVotes(vote.BlockIndex, groupID, []*protocols.PrepareVote{vote})
+}
+
+func (cbft *Cbft) richBlockQuorumCert(epoch uint64, blockIndex, groupID uint32, blockQC *ctypes.QuorumCert) {
+	mergeVotes := cbft.groupPrepareVotes(epoch, blockIndex, groupID)
+	if len(mergeVotes) > 0 {
+		for _, v := range mergeVotes {
+			if !blockQC.HasSign(v.NodeIndex()) {
+				blockQC.AddSign(v.Signature, v.NodeIndex())
+			}
+		}
+	}
+}
+
+func (cbft *Cbft) mergeViewChangeToViewChangeQuorumCerts(node *cbfttypes.ValidateNode, vc *protocols.ViewChange) {
+	if !cbft.NeedGroup() {
+		return
+	}
+	// Query which group the ViewChange belongs to according to the information of the node sending the ViewChange message
+	groupID, _, err := cbft.getGroupByValidatorID(vc.EpochNum(), node.NodeID)
+	if err != nil {
+		cbft.log.Error("Failed to find the group info of the node", "epoch", vc.EpochNum(), "nodeID", node.NodeID.TerminalString(), "error", err)
+		return
+	}
+	validatorLen := cbft.currentValidatorLen()
+	cbft.state.MergeViewChanges(groupID, []*protocols.ViewChange{vc}, validatorLen)
+}
+
+func (cbft *Cbft) richViewChangeQuorumCert(epoch uint64, groupID uint32, viewChangeQC *ctypes.ViewChangeQC, prepareQCs *ctypes.PrepareQCs) {
+	mergeVcs := cbft.groupViewChanges(epoch, groupID)
+	if len(mergeVcs) > 0 {
+		for _, vc := range mergeVcs {
+			cbft.MergeViewChange(viewChangeQC, vc)
+			if !viewChangeQC.ExistViewChange(vc.Epoch, vc.ViewNumber, vc.BlockHash) {
+				if vc.PrepareQC != nil {
+					prepareQCs.AppendQuorumCert(vc.PrepareQC)
+				}
+			}
+		}
+	}
+}
+
+func (cbft *Cbft) MergeViewChange(qcs *ctypes.ViewChangeQC, vc *protocols.ViewChange) {
+	validatorLen := cbft.currentValidatorLen()
+
+	if !qcs.ExistViewChange(vc.Epoch, vc.ViewNumber, vc.BlockHash) {
+		qc := &ctypes.ViewChangeQuorumCert{
+			Epoch:        vc.Epoch,
+			ViewNumber:   vc.ViewNumber,
+			BlockHash:    vc.BlockHash,
+			BlockNumber:  vc.BlockNumber,
+			ValidatorSet: utils.NewBitArray(uint32(validatorLen)),
+		}
+		if vc.PrepareQC != nil {
+			qc.BlockEpoch = vc.PrepareQC.Epoch
+			qc.BlockViewNumber = vc.PrepareQC.ViewNumber
+			//rgb.PrepareQCs.AppendQuorumCert(vc.PrepareQC)
+		}
+		qc.ValidatorSet.SetIndex(vc.ValidatorIndex, true)
+		qc.Signature.SetBytes(vc.Signature.Bytes())
+
+		qcs.AppendQuorumCert(qc)
+	} else {
+		for _, qc := range qcs.QCs {
+			if qc.BlockHash == vc.BlockHash && !qc.HasSign(vc.NodeIndex()) {
+				qc.AddSign(vc.Signature, vc.NodeIndex())
+				break
+			}
+		}
+	}
+}
+
+// Return all votes of the specified group under the current view
+func (cbft *Cbft) groupPrepareVotes(epoch uint64, blockIndex, groupID uint32) map[uint32]*protocols.PrepareVote {
+	indexes, err := cbft.validatorPool.GetValidatorIndexesByGroupID(epoch, groupID)
+	if err != nil || indexes == nil {
+		return nil
+	}
+	// Find votes corresponding to indexes
+	votes := cbft.state.AllPrepareVoteByIndex(blockIndex)
+	if len(votes) > 0 {
+		groupVotes := make(map[uint32]*protocols.PrepareVote)
+		for _, index := range indexes {
+			if vote, ok := votes[index]; ok {
+				groupVotes[index] = vote
+			}
+		}
+		return groupVotes
+	}
+	return nil
+}
+
+// Return all viewChanges of the specified group under the current view
+func (cbft *Cbft) groupViewChanges(epoch uint64, groupID uint32) map[uint32]*protocols.ViewChange {
+	indexes, err := cbft.validatorPool.GetValidatorIndexesByGroupID(epoch, groupID)
+	if err != nil || indexes == nil {
+		return nil
+	}
+	// Find viewChanges corresponding to indexes
+	vcs := cbft.state.AllViewChange()
+	if len(vcs) > 0 {
+		groupVcs := make(map[uint32]*protocols.ViewChange)
+		for _, index := range indexes {
+			if vc, ok := vcs[index]; ok {
+				groupVcs[index] = vc
+			}
+		}
+		return groupVcs
+	}
+	return nil
+}
+
 // Each time a new vote is triggered, a new QC Block will be triggered, and a new one can be found by the commit block.
 func (cbft *Cbft) findQCBlock() {
 	index := cbft.state.MaxQCIndex()
 	next := index + 1
-	size := cbft.state.PrepareVoteLenByIndex(next)
+	threshold := cbft.threshold(cbft.currentValidatorLen())
 
-	prepareQC := func() bool {
-		return size >= cbft.threshold(cbft.currentValidatorLen()) && cbft.state.HadSendPrepareVote().Had(next)
+	var qc *ctypes.QuorumCert
+
+	enoughVotes := func() bool {
+		size := cbft.state.PrepareVoteLenByIndex(next)
+		if size >= threshold {
+			qc = cbft.generatePrepareQC(cbft.state.AllPrepareVoteByIndex(next))
+			blockWholeQCByVotesCounter.Inc(1)
+			cbft.log.Debug("Enough prepareVote have been received, generate prepareQC", "qc", qc.String())
+		}
+		return qc.Len() >= threshold
 	}
 
-	if prepareQC() {
+	enoughRGQuorumCerts := func() bool {
+		if !cbft.NeedGroup() {
+			return false
+		}
+		rgqcs := cbft.state.FindMaxRGQuorumCerts(next)
+		size := 0
+		if len(rgqcs) > 0 {
+			for _, qc := range rgqcs {
+				size += qc.Len()
+			}
+		}
+		if size >= threshold {
+			qc = cbft.combinePrepareQC(rgqcs)
+			blockWholeQCByRGQCCounter.Inc(1)
+			cbft.log.Debug("Enough RGBlockQuorumCerts have been received, combine prepareQC", "qc", qc.String())
+		}
+		return qc.Len() >= threshold
+	}
+
+	enoughCombine := func() bool {
+		if !cbft.NeedGroup() {
+			return false
+		}
+		knownIndexes := cbft.KnownVoteIndexes(next)
+		if len(knownIndexes) >= threshold {
+			rgqcs := cbft.state.FindMaxRGQuorumCerts(next)
+			qc = cbft.combinePrepareQC(rgqcs)
+			cbft.log.Trace("enoughCombine rgqcs", "qc", qc.String())
+
+			allVotes := cbft.state.AllPrepareVoteByIndex(next)
+			for index, v := range allVotes {
+				if qc.Len() >= threshold {
+					break // The merge can be stopped when the threshold is reached
+				}
+				if !qc.HasSign(index) {
+					cbft.log.Trace("enoughCombine add vote", "index", v.NodeIndex(), "vote", v.String())
+					qc.AddSign(v.Signature, v.NodeIndex())
+				}
+			}
+			blockWholeQCByCombineCounter.Inc(1)
+			cbft.log.Debug("Enough RGBlockQuorumCerts and prepareVote have been received, combine prepareQC", "qc", qc.String())
+		}
+		return qc.Len() >= threshold
+	}
+
+	linked := func(blockIndex uint32) bool {
+		block := cbft.state.ViewBlockByIndex(blockIndex)
+		if block != nil {
+			parent, _ := cbft.blockTree.FindBlockAndQC(block.ParentHash(), block.NumberU64()-1)
+			return parent != nil && cbft.state.HighestQCBlock().NumberU64()+1 == block.NumberU64()
+		}
+		return false
+	}
+
+	hasExecuted := func(blockIndex uint32) bool {
+		if cbft.validatorPool.IsValidator(cbft.state.Epoch(), cbft.config.Option.Node.ID()) {
+			return cbft.state.HadSendPrepareVote().Had(blockIndex)
+		} else {
+			executingIndex, finish := cbft.state.Executing()
+			return blockIndex != math.MaxUint32 && (blockIndex < executingIndex || (executingIndex == blockIndex && finish)) && linked(blockIndex)
+		}
+	}
+
+	alreadyQC := func() bool {
+		return hasExecuted(next) && (enoughRGQuorumCerts() || enoughVotes() || enoughCombine())
+	}
+
+	if alreadyQC() {
 		block := cbft.state.ViewBlockByIndex(next)
-		qc := cbft.generatePrepareQC(cbft.state.AllPrepareVoteByIndex(next))
 		if qc != nil {
 			cbft.log.Info("New qc block have been created", "qc", qc.String())
 			cbft.insertQCBlock(block, qc)
 			cbft.network.Broadcast(&protocols.BlockQuorumCert{BlockQC: qc})
 			// metrics
-			blockQCCollectedGauage.Update(int64(block.Time()))
+			blockWholeQCTimer.UpdateSince(time.Unix(int64(block.Time()), 0))
 			cbft.trySendPrepareVote()
 		}
 	}
@@ -531,12 +1067,6 @@ func (cbft *Cbft) tryCommitNewBlock(lock *types.Block, commit *types.Block, qc *
 		cbft.state.SetHighestCommitBlock(commit)
 		cbft.blockTree.PruneBlock(commit.Hash(), commit.NumberU64(), nil)
 		cbft.blockTree.NewRoot(commit)
-		// metrics
-		blockNumberGauage.Update(int64(commit.NumberU64()))
-		highestQCNumberGauage.Update(int64(highestqc.NumberU64()))
-		highestLockedNumberGauage.Update(int64(lock.NumberU64()))
-		highestCommitNumberGauage.Update(int64(commit.NumberU64()))
-		blockConfirmedMeter.Mark(1)
 	} else if oldCommit.NumberU64() == commit.NumberU64() && oldCommit.NumberU64() > 0 {
 		cbft.log.Info("Fork block", "number", highestqc.NumberU64(), "hash", highestqc.Hash())
 		lockBlock, lockQC := cbft.blockTree.FindBlockAndQC(lock.Hash(), lock.NumberU64())
@@ -573,9 +1103,16 @@ func (cbft *Cbft) tryChangeView() {
 			(qc != nil && qc.Epoch == cbft.state.Epoch() && shouldSwitch)
 	}()
 
+	activeVersion, err := cbft.blockCache.GetActiveVersion(block.Header())
+	if err != nil {
+		log.Error("GetActiveVersion failed", "err", err)
+	}
+
 	if shouldSwitch {
-		if err := cbft.validatorPool.Update(block.NumberU64(), cbft.state.Epoch()+1, cbft.eventMux); err == nil {
+		if err := cbft.validatorPool.Update(block.Hash(), block.NumberU64(), cbft.state.Epoch()+1, activeVersion, cbft.eventMux); err == nil {
 			cbft.log.Info("Update validator success", "number", block.NumberU64())
+		} else {
+			cbft.log.Trace("Update validator failed!", "number", block.NumberU64(), "err", err)
 		}
 	}
 
@@ -592,17 +1129,70 @@ func (cbft *Cbft) tryChangeView() {
 		return
 	}
 
-	viewChangeQC := func() bool {
-		if cbft.state.ViewChangeLen() >= cbft.threshold(cbft.currentValidatorLen()) {
-			return true
+	threshold := cbft.threshold(cbft.currentValidatorLen())
+	var viewChangeQC *ctypes.ViewChangeQC
+
+	enoughViewChanges := func() bool {
+		size := cbft.state.ViewChangeLen()
+		if size >= threshold {
+			viewChangeQC = cbft.generateViewChangeQC(cbft.state.AllViewChange())
+			viewWholeQCByVcsCounter.Inc(1)
+			cbft.log.Info("Receive enough viewChange, generate viewChangeQC", "viewChangeQC", viewChangeQC.String())
 		}
-		cbft.log.Debug("Try change view failed, had receive viewchange", "len", cbft.state.ViewChangeLen(), "view", cbft.state.ViewString())
-		return false
+		return viewChangeQC.HasLength() >= threshold
 	}
 
-	if viewChangeQC() {
-		viewChangeQC := cbft.generateViewChangeQC(cbft.state.AllViewChange())
-		cbft.log.Info("Receive enough viewchange, try change view by viewChangeQC", "view", cbft.state.ViewString(), "viewChangeQC", viewChangeQC.String())
+	enoughRGQuorumCerts := func() bool {
+		if !cbft.NeedGroup() {
+			return false
+		}
+		viewChangeQCs := cbft.state.FindMaxRGViewChangeQuorumCerts()
+		size := 0
+		if len(viewChangeQCs) > 0 {
+			for _, qcs := range viewChangeQCs {
+				size += qcs.HasLength()
+			}
+		}
+		if size >= threshold {
+			viewChangeQC = cbft.combineViewChangeQC(viewChangeQCs)
+			viewWholeQCByRGQCCounter.Inc(1)
+			cbft.log.Debug("Enough RGViewChangeQuorumCerts have been received, combine ViewChangeQC", "viewChangeQC", viewChangeQC.String())
+		}
+		return viewChangeQC.HasLength() >= threshold
+	}
+
+	enoughCombine := func() bool {
+		if !cbft.NeedGroup() {
+			return false
+		}
+		knownIndexes := cbft.KnownViewChangeIndexes()
+		if len(knownIndexes) >= threshold {
+			viewChangeQCs := cbft.state.FindMaxRGViewChangeQuorumCerts()
+			viewChangeQC = cbft.combineViewChangeQC(viewChangeQCs)
+			cbft.log.Trace("enoughCombine viewChangeQCs", "viewChangeQC", viewChangeQC.String())
+
+			allViewChanges := cbft.state.AllViewChange()
+			for index, v := range allViewChanges {
+				if viewChangeQC.HasLength() >= threshold {
+					break // The merge can be stopped when the threshold is reached
+				}
+				if !viewChangeQC.HasSign(index) {
+					cbft.log.Trace("enoughCombine add viewChange", "index", v.NodeIndex(), "viewChange", v.String())
+					cbft.MergeViewChange(viewChangeQC, v)
+				}
+			}
+			viewWholeQCByCombineCounter.Inc(1)
+			cbft.log.Debug("Enough RGViewChangeQuorumCerts and viewChange have been received, combine ViewChangeQC", "viewChangeQC", viewChangeQC.String())
+		}
+		return viewChangeQC.HasLength() >= threshold
+	}
+
+	alreadyQC := func() bool {
+		return enoughRGQuorumCerts() || enoughViewChanges() || enoughCombine()
+	}
+
+	if alreadyQC() {
+		viewWholeQCTimer.UpdateSince(cbft.state.Deadline())
 		cbft.tryChangeViewByViewChange(viewChangeQC)
 	}
 }
@@ -613,7 +1203,7 @@ func (cbft *Cbft) richViewChangeQC(viewChangeQC *ctypes.ViewChangeQC) {
 		cbft.log.Info("Local node is not validator")
 		return
 	}
-	hadSend := cbft.state.ViewChangeByIndex(uint32(node.Index))
+	hadSend := cbft.state.ViewChangeByIndex(node.Index)
 	if hadSend != nil && !viewChangeQC.ExistViewChange(hadSend.Epoch, hadSend.ViewNumber, hadSend.BlockHash) {
 		cert, err := cbft.generateViewChangeQuorumCert(hadSend)
 		if err != nil {
@@ -677,7 +1267,7 @@ func (cbft *Cbft) generateViewChangeQuorumCert(v *protocols.ViewChange) (*ctypes
 	if err != nil {
 		return nil, errors.Wrap(err, "local node is not validator")
 	}
-	total := uint32(cbft.validatorPool.Len(cbft.state.Epoch()))
+	total := uint32(cbft.currentValidatorLen())
 	var aggSig bls.Sign
 	if err := aggSig.Deserialize(v.Sign()); err != nil {
 		return nil, err
@@ -711,7 +1301,7 @@ func (cbft *Cbft) generateViewChange(qc *ctypes.QuorumCert) (*protocols.ViewChan
 		ViewNumber:     cbft.state.ViewNumber(),
 		BlockHash:      qc.BlockHash,
 		BlockNumber:    qc.BlockNumber,
-		ValidatorIndex: uint32(node.Index),
+		ValidatorIndex: node.Index,
 		PrepareQC:      qc,
 	}
 	if err := cbft.signMsgByBls(v); err != nil {
@@ -748,15 +1338,16 @@ func (cbft *Cbft) changeView(epoch, viewNumber uint64, block *types.Block, qc *c
 	cbft.state.SetViewTimer(interval())
 	cbft.state.SetLastViewChangeQC(viewChangeQC)
 
-	// metrics.
-	viewNumberGauage.Update(int64(viewNumber))
-	epochNumberGauage.Update(int64(epoch))
+	// record metrics
+	viewNumberGauge.Update(int64(viewNumber))
+	epochNumberGauge.Update(int64(epoch))
 	viewChangedTimer.UpdateSince(time.Unix(int64(block.Time()), 0))
 
 	// write confirmed viewChange info to wal
 	if !cbft.isLoading() {
 		cbft.bridge.ConfirmViewChange(epoch, viewNumber, block, qc, viewChangeQC, preEpoch, preViewNumber)
 	}
+	cbft.RGBroadcastManager.Reset()
 	cbft.clearInvalidBlocks(block)
 	cbft.evPool.Clear(epoch, viewNumber)
 	// view change maybe lags behind the other nodes,active sync prepare block
@@ -781,7 +1372,7 @@ func (cbft *Cbft) clearInvalidBlocks(newBlock *types.Block) {
 			rollback = append(rollback, block)
 		}
 	}
-	cbft.blockCacheWriter.ClearCache(cbft.state.HighestCommitBlock())
+	cbft.blockCache.ClearCache(cbft.state.HighestCommitBlock())
 
 	//todo proposer is myself
 	cbft.txPool.ForkedReset(newHead, rollback)

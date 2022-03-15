@@ -18,7 +18,6 @@ package core
 
 import (
 	"github.com/AlayaNetwork/Alaya-Go/common"
-	"github.com/AlayaNetwork/Alaya-Go/core/cbfttypes"
 	"github.com/AlayaNetwork/Alaya-Go/core/types"
 )
 
@@ -32,15 +31,6 @@ type PendingLogsEvent struct {
 
 // NewMinedBlockEvent is posted when a block has been imported.
 type NewMinedBlockEvent struct{ Block *types.Block }
-
-type PrepareMinedBlockEvent struct {
-	Block *types.Block
-	// ConsensusNodes []discover.NodeID
-}
-type BlockSignatureEvent struct {
-	BlockSignature *cbfttypes.BlockSignature
-	// ConsensusNodes []discover.NodeID
-}
 
 // RemovedLogsEvent is posted when a reorg happens
 type RemovedLogsEvent struct{ Logs []*types.Log }

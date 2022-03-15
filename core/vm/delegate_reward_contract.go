@@ -21,6 +21,8 @@ import (
 	"math/big"
 	"sort"
 
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
+
 	"github.com/AlayaNetwork/Alaya-Go/x/gov"
 	"github.com/AlayaNetwork/Alaya-Go/x/staking"
 	"github.com/AlayaNetwork/Alaya-Go/x/xcom"
@@ -33,8 +35,6 @@ import (
 
 	"github.com/AlayaNetwork/Alaya-Go/common"
 	"github.com/AlayaNetwork/Alaya-Go/log"
-
-	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
 
 	"github.com/AlayaNetwork/Alaya-Go/params"
 	"github.com/AlayaNetwork/Alaya-Go/x/plugin"
@@ -119,7 +119,7 @@ func (rc *DelegateRewardContract) withdrawDelegateReward() ([]byte, error) {
 		return nil, ErrOutOfGas
 	}
 
-	currentEpoch := xutil.CalculateEpoch(blockNum.Uint64())
+	currentEpoch := xutil.CalculateEpoch(blockNum.Uint64(), gov.GetCurrentActiveVersion(state))
 	unCalEpoch := 0
 	delegationInfoWithRewardPerList := make([]*plugin.DelegationInfoWithRewardPerList, 0)
 	for _, stakingNode := range list {
@@ -161,7 +161,7 @@ func (rc *DelegateRewardContract) withdrawDelegateReward() ([]byte, error) {
 	return txResultHandlerWithRes(vm.DelegateRewardPoolAddr, rc.Evm, FuncNameWithdrawDelegateReward, "", TxWithdrawDelegateReward, int(common.NoErr.Code), reward), nil
 }
 
-func (rc *DelegateRewardContract) getDelegateReward(address common.Address, nodeIDs []discover.NodeID) ([]byte, error) {
+func (rc *DelegateRewardContract) getDelegateReward(address common.Address, nodeIDs []enode.IDv0) ([]byte, error) {
 	state := rc.Evm.StateDB
 
 	blockNum := rc.Evm.BlockNumber

@@ -21,13 +21,14 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
+
 	"github.com/AlayaNetwork/Alaya-Go/internal/debug"
 	"github.com/AlayaNetwork/Alaya-Go/params"
 
 	"github.com/AlayaNetwork/Alaya-Go/common/hexutil"
 	"github.com/AlayaNetwork/Alaya-Go/crypto"
 	"github.com/AlayaNetwork/Alaya-Go/p2p"
-	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
 	"github.com/AlayaNetwork/Alaya-Go/rpc"
 )
 
@@ -71,7 +72,7 @@ func (api *privateAdminAPI) AddPeer(url string) (bool, error) {
 		return false, ErrNodeStopped
 	}
 	// Try to add the url as a static peer and return
-	node, err := discover.ParseNode(url)
+	node, err := enode.Parse(enode.ValidSchemes, url)
 	if err != nil {
 		return false, fmt.Errorf("invalid enode: %v", err)
 	}
@@ -87,7 +88,7 @@ func (api *privateAdminAPI) RemovePeer(url string) (bool, error) {
 		return false, ErrNodeStopped
 	}
 	// Try to remove the url as a static peer and return
-	node, err := discover.ParseNode(url)
+	node, err := enode.Parse(enode.ValidSchemes, url)
 	if err != nil {
 		return false, fmt.Errorf("invalid enode: %v", err)
 	}
@@ -289,6 +290,14 @@ func (api *publicAdminAPI) GetProgramVersion() (*params.ProgramVersion, error) {
 		return nil, err
 	}
 	return &params.ProgramVersion{Version: programVersion, Sign: hexutil.Encode(sig)}, nil
+}
+
+func (api *publicAdminAPI) GroupInfo() (map[string][]string, error) {
+	server := api.node.Server()
+	if server == nil {
+		return nil, ErrNodeStopped
+	}
+	return server.GroupInfo(), nil
 }
 
 // publicWeb3API offers helper utils

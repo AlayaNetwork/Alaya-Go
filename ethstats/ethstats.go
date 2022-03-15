@@ -40,7 +40,6 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/eth"
 	"github.com/AlayaNetwork/Alaya-Go/eth/downloader"
 	"github.com/AlayaNetwork/Alaya-Go/event"
-	"github.com/AlayaNetwork/Alaya-Go/les"
 	"github.com/AlayaNetwork/Alaya-Go/log"
 	"github.com/AlayaNetwork/Alaya-Go/miner"
 	"github.com/AlayaNetwork/Alaya-Go/node"
@@ -399,9 +398,6 @@ func (s *Service) login(conn *websocket.Conn) error {
 	if info := infos.Protocols["platon"]; info != nil {
 		network = fmt.Sprintf("%d", info.(*eth.NodeInfo).Network)
 		protocol = fmt.Sprintf("alaya/%d", eth.ProtocolVersions[0])
-	} else {
-		network = fmt.Sprintf("%d", infos.Protocols["les"].(*les.NodeInfo).Network)
-		protocol = fmt.Sprintf("les/%d", les.ClientProtocolVersions[0])
 	}
 	auth := &authMsg{
 		ID: s.node,

@@ -29,12 +29,9 @@ func genesisStakingData(prevHash common.Hash, snapdb snapshotdb.BaseDB, g *Genes
 		log.Info("Init staking snapshotdb data, validatorMode is not ppos")
 		return prevHash, nil
 	}
-
-	var length int
-
-	if int(xcom.MaxConsensusVals()) <= len(g.Config.Cbft.InitialNodes) {
-		length = int(xcom.MaxConsensusVals())
-	} else {
+	activerVersion := gov.GetCurrentActiveVersion(stateDB)
+	length := int(xcom.MaxConsensusVals(activerVersion))
+	if length > len(g.Config.Cbft.InitialNodes) {
 		length = len(g.Config.Cbft.InitialNodes)
 	}
 
@@ -75,7 +72,7 @@ func genesisStakingData(prevHash common.Hash, snapdb snapshotdb.BaseDB, g *Genes
 		}
 
 		base := &staking.CandidateBase{
-			NodeId:          node.Node.ID,
+			NodeId:          node.Node.IDv0(),
 			BlsPubKey:       keyHex,
 			StakingAddress:  xcom.CDFAccount(),
 			BenefitAddress:  vm.RewardManagerPoolAddr,
@@ -179,7 +176,7 @@ func genesisStakingData(prevHash common.Hash, snapdb snapshotdb.BaseDB, g *Genes
 	// build epoch validators indexInfo
 	verifierIndex := &staking.ValArrIndex{
 		Start: 1,
-		End:   xutil.CalcBlocksEachEpoch(),
+		End:   xutil.CalcBlocksEachEpoch(activerVersion),
 	}
 	epochIndexArr := make(staking.ValArrIndexQueue, 0)
 	epochIndexArr = append(epochIndexArr, verifierIndex)
@@ -212,7 +209,7 @@ func genesisStakingData(prevHash common.Hash, snapdb snapshotdb.BaseDB, g *Genes
 	// build current round validators indexInfo
 	curr_indexInfo := &staking.ValArrIndex{
 		Start: 1,
-		End:   xutil.ConsensusSize(),
+		End:   xcom.ConsensusSize(activerVersion),
 	}
 	roundIndexArr := make(staking.ValArrIndexQueue, 0)
 	roundIndexArr = append(roundIndexArr, pre_indexInfo)

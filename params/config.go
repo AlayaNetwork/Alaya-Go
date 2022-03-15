@@ -20,9 +20,10 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
+
 	"github.com/AlayaNetwork/Alaya-Go/common"
 	"github.com/AlayaNetwork/Alaya-Go/crypto/bls"
-	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
 )
 
 // Genesis hashes to enforce below configs on.
@@ -180,7 +181,7 @@ type ChainConfig struct {
 }
 
 type CbftNode struct {
-	Node      discover.Node `json:"node"`
+	Node      *enode.Node   `json:"node"`
 	BlsPubKey bls.PublicKey `json:"blsPubKey"`
 }
 
@@ -194,6 +195,8 @@ type CbftConfig struct {
 	Amount        uint32     `json:"amount,omitempty"`        //The maximum number of blocks generated per cycle
 	InitialNodes  []CbftNode `json:"initialNodes,omitempty"`  //Genesis consensus node
 	ValidatorMode string     `json:"validatorMode,omitempty"` //Validator mode for easy testing
+	GroupValidatorsLimit uint32	`json:"GroupValidatorsLimit,omitempty"` //Max validators per group
+	CoordinatorLimit uint32	`json:"CoordinatorLimit,omitempty"` //Coordinators Limit C0>C1>C2...
 }
 
 // CliqueConfig is the consensus engine configs for proof-of-authority based sealing.
@@ -333,8 +336,8 @@ func ConvertNodeUrl(initialNodes []initNode) []CbftNode {
 
 		cbftNode := new(CbftNode)
 
-		if node, err := discover.ParseNode(n.Enode); nil == err {
-			cbftNode.Node = *node
+		if node, err := enode.Parse(enode.ValidSchemes, n.Enode); nil == err {
+			cbftNode.Node = node
 		}
 
 		if n.BlsPubkey != "" {

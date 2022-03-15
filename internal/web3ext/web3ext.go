@@ -18,6 +18,7 @@
 package web3ext
 
 var Modules = map[string]string{
+	"accounting": Accounting_JS,
 	"admin":      AdminJs,
 	"debug":      DebugJs,
 	"platon":     PlatonJs,
@@ -340,6 +341,10 @@ web3._extend({
 			call: 'debug_consensusStatus',
 		}),
 		new web3._extend.Method({
+			name: 'pubSubStatus',
+			call: 'debug_pubSubStatus',
+		}),
+		new web3._extend.Method({
 			name: 'economicConfig',
 			call: 'debug_economicConfig',
 		}),
@@ -348,12 +353,29 @@ web3._extend({
 			call: 'debug_getWaitSlashingNodeList',
 		}),
 		new web3._extend.Method({
+			name: 'getConsensusNodeList',
+			call: 'debug_getConsensusNodeList',
+		}),
+		new web3._extend.Method({
+			name: 'getValidatorList',
+			call: 'debug_getValidatorList',
+		}),
+		new web3._extend.Method({
+			name: 'getCandidateList',
+			call: 'debug_getCandidateList',
+		}),
+		new web3._extend.Method({
 			name: 'enableDBGC',
 			call: 'debug_enableDBGC',
 		}),
 		new web3._extend.Method({
 			name: 'disableDBGC',
 			call: 'debug_disableDBGC',
+		}),
+		new web3._extend.Method({
+			name: 'getPrepareQC',
+			call: 'debug_getPrepareQC',
+			params: 1
 		}),
 	],
 	properties: []
@@ -411,11 +433,6 @@ web3._extend({
 			},
 			params: 2,
 			inputFormatter: [web3._extend.formatters.inputBlockNumberFormatter, web3._extend.utils.toHex]
-		}),
-		new web3._extend.Method({
-			name: 'getPrepareQC',
-			call: 'platon_getPrepareQC',
-			params: 1
 		}),
 	],
 	properties: [
@@ -544,6 +561,50 @@ web3._extend({
 				status.queued = web3._extend.utils.toDecimal(status.queued);
 				return status;
 			}
+		}),
+	]
+});
+`
+
+const Accounting_JS = `
+web3._extend({
+	property: 'accounting',
+	methods: [
+		new web3._extend.Property({
+			name: 'balance',
+			getter: 'account_balance'
+		}),
+		new web3._extend.Property({
+			name: 'balanceCredit',
+			getter: 'account_balanceCredit'
+		}),
+		new web3._extend.Property({
+			name: 'balanceDebit',
+			getter: 'account_balanceDebit'
+		}),
+		new web3._extend.Property({
+			name: 'bytesCredit',
+			getter: 'account_bytesCredit'
+		}),
+		new web3._extend.Property({
+			name: 'bytesDebit',
+			getter: 'account_bytesDebit'
+		}),
+		new web3._extend.Property({
+			name: 'msgCredit',
+			getter: 'account_msgCredit'
+		}),
+		new web3._extend.Property({
+			name: 'msgDebit',
+			getter: 'account_msgDebit'
+		}),
+		new web3._extend.Property({
+			name: 'peerDrops',
+			getter: 'account_peerDrops'
+		}),
+		new web3._extend.Property({
+			name: 'selfDrops',
+			getter: 'account_selfDrops'
 		}),
 	]
 });

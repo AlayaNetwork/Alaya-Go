@@ -165,7 +165,7 @@ func SetupGenesisBlock(db ethdb.Database, snapshotBaseDB snapshotdb.BaseDB, gene
 		}
 
 		// check EconomicModel configuration
-		if err := xcom.CheckEconomicModel(); nil != err {
+		if err := xcom.CheckEconomicModel(genesis.Config.GenesisVersion); nil != err {
 			log.Error("Failed to check economic config", "err", err)
 			return nil, common.Hash{}, err
 		}
@@ -190,7 +190,7 @@ func SetupGenesisBlock(db ethdb.Database, snapshotBaseDB snapshotdb.BaseDB, gene
 		}
 
 		// check EconomicModel configuration
-		if err := xcom.CheckEconomicModel(); nil != err {
+		if err := xcom.CheckEconomicModel(genesis.Config.GenesisVersion); nil != err {
 			log.Error("Failed to check economic config", "err", err)
 			return nil, common.Hash{}, err
 		}
@@ -237,20 +237,23 @@ func SetupGenesisBlock(db ethdb.Database, snapshotBaseDB snapshotdb.BaseDB, gene
 
 	// Get the existing EconomicModel configuration.
 	ecCfg := rawdb.ReadEconomicModel(db, stored)
-	eceCfg := rawdb.ReadEconomicModelExtend(db, stored)
 	if nil == ecCfg {
 		log.Warn("Found genesis block without EconomicModel config")
 		ecCfg = xcom.GetEc(xcom.DefaultAlayaNet)
 		rawdb.WriteEconomicModel(db, stored, ecCfg)
 	}
+	xcom.ResetEconomicDefaultConfig(ecCfg)
+
+	eceCfg := rawdb.ReadEconomicModelExtend(db, stored)
 	if nil == eceCfg {
 		log.Warn("Found genesis block without EconomicModelExtend config")
 		xcom.GetEc(xcom.DefaultAlayaNet)
 		eceCfg = xcom.GetEce()
 		rawdb.WriteEconomicModelExtend(db, stored, eceCfg)
 	}
-	xcom.ResetEconomicDefaultConfig(ecCfg)
 	xcom.ResetEconomicExtendConfig(eceCfg)
+
+	//update chain config here
 
 	// Special case: don't change the existing config of a non-mainnet chain if no new
 	// config is supplied. These chains would get AllProtocolChanges (and a compat error)
@@ -287,15 +290,64 @@ func (g *Genesis) UnmarshalAddressHRP(r io.Reader) (string, error) {
 	return genesisAddressHRP.Config.AddressHRP, nil
 }
 
-func (g *Genesis) UnmarshalEconomicConfigExtend(r io.Reader) error {
+func (g *Genesis) UnmarshalEconomicConfigExtend(file *os.File) error {
+	newEce := xcom.GetEce()
 	var genesisEcConfig struct {
-		EconomicModel *xcom.EconomicModelExtend `json:"economicModel"`
+		EconomicModel *struct {
+			Reward      xcom.RewardConfigExtend      `json:"reward"`
+			Restricting xcom.RestrictingConfigExtend `json:"restricting"`
+		} `json:"economicModel"`
+		Config *struct {
+			GenesisVersion uint32 `json:"genesisVersion"`
+		} `json:"config"`
 	}
-	genesisEcConfig.EconomicModel = xcom.GetEce()
-	if err := json.NewDecoder(r).Decode(&genesisEcConfig); err != nil {
+	file.Seek(0, io.SeekStart)
+	if err := json.NewDecoder(file).Decode(&genesisEcConfig); err != nil {
 		return fmt.Errorf("invalid genesis file economicModel: %v", err)
 	}
-	xcom.ResetEconomicExtendConfig(genesisEcConfig.EconomicModel)
+
+	if genesisEcConfig.EconomicModel != nil {
+		if genesisEcConfig.EconomicModel.Reward.TheNumberOfDelegationsReward != 0 {
+			newEce.Reward.TheNumberOfDelegationsReward = genesisEcConfig.EconomicModel.Reward.TheNumberOfDelegationsReward
+		}
+
+		if genesisEcConfig.EconomicModel.Restricting.MinimumRelease != nil {
+			newEce.Restricting.MinimumRelease = genesisEcConfig.EconomicModel.Restricting.MinimumRelease
+		}
+	}
+	if nil == genesisEcConfig.Config {
+		return errors.New("genesis configuration is missed")
+	}
+	if genesisEcConfig.Config.GenesisVersion >= params.FORKVERSION_0_17_0 {
+		file.Seek(0, io.SeekStart)
+		var genesis0170EcConfig struct {
+			EconomicModel *xcom.EconomicModel0170Extend `json:"economicModel"`
+		}
+		if err := json.NewDecoder(file).Decode(&genesis0170EcConfig); err != nil {
+			return fmt.Errorf("invalid genesis file for  genesis0170EcConfig: %v", err)
+		}
+		if genesis0170EcConfig.EconomicModel != nil {
+			if genesis0170EcConfig.EconomicModel.Common.MaxGroupValidators != 0 {
+				newEce.Extend0170.Common.MaxGroupValidators = genesis0170EcConfig.EconomicModel.Common.MaxGroupValidators
+			}
+			if genesis0170EcConfig.EconomicModel.Common.CoordinatorsLimit != 0 {
+				newEce.Extend0170.Common.CoordinatorsLimit = genesis0170EcConfig.EconomicModel.Common.CoordinatorsLimit
+			}
+			if genesis0170EcConfig.EconomicModel.Common.MaxConsensusVals != 0 {
+				newEce.Extend0170.Common.MaxConsensusVals = genesis0170EcConfig.EconomicModel.Common.MaxConsensusVals
+			}
+
+			if genesis0170EcConfig.EconomicModel.Staking.MaxValidators != 0 {
+				newEce.Extend0170.Staking.MaxValidators = genesis0170EcConfig.EconomicModel.Staking.MaxValidators
+			}
+
+			if genesis0170EcConfig.EconomicModel.Slashing.ZeroProduceCumulativeTime != 0 {
+				newEce.Extend0170.Slashing.ZeroProduceCumulativeTime = genesis0170EcConfig.EconomicModel.Slashing.ZeroProduceCumulativeTime
+			}
+		}
+	}
+
+	xcom.ResetEconomicExtendConfig(newEce)
 	return nil
 }
 
@@ -317,7 +369,6 @@ func (g *Genesis) InitGenesisAndSetEconomicConfig(path string) error {
 
 	g.EconomicModel = xcom.GetEc(xcom.DefaultAlayaNet)
 
-	file.Seek(0, io.SeekStart)
 	if err := g.UnmarshalEconomicConfigExtend(file); nil != err {
 		return err
 	}
@@ -352,7 +403,7 @@ func (g *Genesis) InitGenesisAndSetEconomicConfig(path string) error {
 	xcom.SetPerRoundBlocks(uint64(g.Config.Cbft.Amount))
 
 	// check EconomicModel configuration
-	if err := xcom.CheckEconomicModel(); nil != err {
+	if err := xcom.CheckEconomicModel(g.Config.GenesisVersion); nil != err {
 		return fmt.Errorf("Failed CheckEconomicModel configuration: %v", err)
 	}
 	return nil
@@ -446,6 +497,13 @@ func (g *Genesis) ToBlock(db ethdb.Database, sdb snapshotdb.BaseDB) *types.Block
 		if gov.Gte0140Version(genesisVersion) {
 			if err := gov.WriteEcHash0140(statedb); nil != err {
 				panic("Failed Store EcHash0140: " + err.Error())
+			}
+		}
+
+		// 0.17.0
+		if gov.Gte0170Version(genesisVersion) {
+			if err := gov.WriteEcHash0170(statedb); nil != err {
+				panic("Failed Store EcHash0170: " + err.Error())
 			}
 		}
 

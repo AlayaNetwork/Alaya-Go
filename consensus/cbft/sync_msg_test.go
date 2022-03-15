@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
-
 package cbft
 
 import (
@@ -28,7 +27,6 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/common/math"
 	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/protocols"
 	ctypes "github.com/AlayaNetwork/Alaya-Go/consensus/cbft/types"
-	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/utils"
 	"github.com/AlayaNetwork/Alaya-Go/core/types"
 )
 
@@ -355,44 +353,12 @@ func (suit *SyncMsgTestSuite) TestOnGetQCBlockListDifNumber() {
 }
 
 // normal
-func (suit *SyncMsgTestSuite) TestOnGetPrepareVote() {
-	votes := make([]*protocols.PrepareVote, 0)
-	for _, node := range suit.view.allCbft {
-		index, err := node.validatorPool.GetIndexByNodeID(suit.epoch, node.config.Option.NodeID)
-		if err != nil {
-			panic(err.Error())
-		}
-		vote := mockPrepareVote(node.config.Option.BlsPriKey, suit.epoch, suit.oldViewNumber,
-			0, index, suit.blockOne.Hash(), suit.blockOne.NumberU64(), nil)
-		votes = append(votes, vote)
-		suit.view.firstProposer().state.AddPrepareVote(index, vote)
-	}
-	unKnownSet := utils.NewBitArray(uint32(len(suit.view.allCbft)))
-	for i := uint32(0); i < unKnownSet.Size(); i++ {
-		unKnownSet.SetIndex(i, true)
-	}
-	getPrepareVote := &protocols.GetPrepareVote{
-		Epoch:      suit.epoch,
-		ViewNumber: suit.oldViewNumber,
-		BlockIndex: 0,
-		UnKnownSet: unKnownSet,
-	}
-	cleanCh(suit.msgCh)
-	suit.view.firstProposer().OnGetPrepareVote("", getPrepareVote)
-	select {
-	case <-suit.msgCh:
-	case <-time.After(time.Millisecond * 10):
-		suit.T().Fatal("timeout")
-	}
-}
-
-// normal
 func (suit *SyncMsgTestSuite) TestOnPrepareVotes() {
 	pb := mockPrepareBlock(suit.view.firstProposerBlsKey(), suit.epoch, suit.oldViewNumber, 0, suit.view.firstProposerIndex(), suit.blockOne, nil, nil)
 	suit.view.firstProposer().state.AddPrepareBlock(pb)
 	votes := make([]*protocols.PrepareVote, 0)
 	for _, node := range suit.view.allCbft {
-		index, err := node.validatorPool.GetIndexByNodeID(suit.epoch, node.config.Option.NodeID)
+		index, err := node.validatorPool.GetIndexByNodeID(suit.epoch, node.config.Option.Node.ID())
 		if err != nil {
 			panic(err.Error())
 		}
@@ -417,7 +383,7 @@ func (suit *SyncMsgTestSuite) TestOnPrepareVotesDup() {
 	suit.view.firstProposer().state.AddPrepareBlock(pb)
 	votes := make([]*protocols.PrepareVote, 0)
 	for _, node := range suit.view.allCbft {
-		index, err := node.validatorPool.GetIndexByNodeID(suit.epoch, node.config.Option.NodeID)
+		index, err := node.validatorPool.GetIndexByNodeID(suit.epoch, node.config.Option.Node.ID())
 		if err != nil {
 			panic(err.Error())
 		}

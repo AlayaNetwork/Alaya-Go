@@ -22,11 +22,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
+
 	"github.com/AlayaNetwork/Alaya-Go/crypto/bls"
 
 	"github.com/AlayaNetwork/Alaya-Go/crypto"
-
-	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
 
 	"github.com/AlayaNetwork/Alaya-Go/core/cbfttypes"
 	"github.com/AlayaNetwork/Alaya-Go/core/types"
@@ -66,13 +66,15 @@ func GenerateKeys(num int) ([]*ecdsa.PrivateKey, []*bls.SecretKey) {
 func createValidateNode(num int) ([]*cbfttypes.ValidateNode, []*bls.SecretKey) {
 	pk, sk := GenerateKeys(num)
 	nodes := make([]*cbfttypes.ValidateNode, num)
+
 	for i := 0; i < num; i++ {
 
+		id := enode.PubkeyToIDV4(&pk[i].PublicKey)
 		nodes[i] = &cbfttypes.ValidateNode{
 			Index:   uint32(i),
 			Address: crypto.PubkeyToNodeAddress(pk[i].PublicKey),
 			PubKey:  &pk[i].PublicKey,
-			NodeID:  discover.PubkeyID(&pk[i].PublicKey),
+			NodeID:  id,
 		}
 		nodes[i].BlsPubKey = sk[i].GetPublicKey()
 

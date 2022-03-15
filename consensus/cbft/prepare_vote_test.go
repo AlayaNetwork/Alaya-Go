@@ -14,12 +14,13 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
-
 package cbft
 
 import (
 	"fmt"
+	"github.com/stretchr/testify/assert"
 	"regexp"
+	"strings"
 	"testing"
 	"time"
 
@@ -27,10 +28,11 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/utils"
 	"github.com/AlayaNetwork/Alaya-Go/crypto/bls"
 
+	"github.com/stretchr/testify/suite"
+
 	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/protocols"
 	ctypes "github.com/AlayaNetwork/Alaya-Go/consensus/cbft/types"
 	"github.com/AlayaNetwork/Alaya-Go/core/types"
-	"github.com/stretchr/testify/suite"
 )
 
 func TestPrepareVoteSuite(t *testing.T) {
@@ -87,7 +89,7 @@ func (suit *PrepareVoteTestSuite) TestBuildPrepareVote() {
 	block12 := NewBlockWithSign(block11.Hash(), 12, suit.view.allNode[1])
 	prepareBlock := mockPrepareBlock(suit.view.secondProposerBlsKey(), suit.view.Epoch(), suit.oldViewNumber+1, 1,
 		suit.view.secondProposerIndex(), block12, nil, nil)
-	if err := suit.view.firstProposer().OnPrepareBlock(suit.view.secondProposer().NodeID().String(), prepareBlock); err != nil {
+	if err := suit.view.firstProposer().OnPrepareBlock(suit.view.secondProposer().Node().ID().String(), prepareBlock); err != nil {
 		suit.T().Fatal(err.Error())
 	}
 	suit.waitVote()
@@ -108,7 +110,7 @@ func (suit *PrepareVoteTestSuite) TestCheckErrPrepareVote() {
 	_, notConsensusKey := GenerateKeys(1)
 	prepareBlock := mockPrepareBlock(suit.view.firstProposerBlsKey(), suit.view.Epoch(), suit.oldViewNumber, 0,
 		suit.view.firstProposerIndex(), suit.blockOne, nil, nil)
-	if err := suit.view.secondProposer().OnPrepareBlock(suit.view.firstProposer().NodeID().String(), prepareBlock); err != nil {
+	if err := suit.view.secondProposer().OnPrepareBlock(suit.view.firstProposer().Node().ID().String(), prepareBlock); err != nil {
 		suit.T().Fatal("FAIL")
 	}
 	testcases := []struct {
@@ -138,7 +140,7 @@ func (suit *PrepareVoteTestSuite) TestCheckErrPrepareVote() {
 		},
 	}
 	for _, testcase := range testcases {
-		if err := suit.view.secondProposer().OnPrepareVote(suit.view.firstProposer().NodeID().String(), testcase.data); err == nil {
+		if err := suit.view.secondProposer().OnPrepareVote(suit.view.firstProposer().Node().ID().String(), testcase.data); err == nil {
 			suit.T().Errorf("case %s is failed", testcase.name)
 		} else {
 			fmt.Println(err.Error())
@@ -158,7 +160,7 @@ func (suit *PrepareVoteTestSuite) TestPrepareVoteWithParentIsZeroButNotParentQC(
 	suit.view.secondProposer().state.AddPrepareBlock(prepareBlock)
 	prepareVote := mockPrepareVote(suit.view.firstProposerBlsKey(), epoch, suit.oldViewNumber, 0, suit.view.firstProposerIndex(),
 		suit.blockOne.Hash(), suit.blockOne.NumberU64(), nil)
-	if err := suit.view.secondProposer().OnPrepareVote(suit.view.firstProposer().NodeID().String(), prepareVote); err != nil {
+	if err := suit.view.secondProposer().OnPrepareVote(suit.view.firstProposer().Node().ID().String(), prepareVote); err != nil {
 		suit.T().Fatal(err.Error())
 	}
 	suit.Equal(suit.view.firstProposerIndex(), suit.view.secondProposer().state.AllPrepareVoteByIndex(0)[0].ValidatorIndex)
@@ -171,12 +173,12 @@ func (suit *PrepareVoteTestSuite) TestPrepareVoteWithParentIsNotZeroButNotParent
 	block2 := NewBlockWithSign(suit.blockOne.Hash(), 2, suit.view.allNode[0])
 	prepareBlock := mockPrepareBlock(suit.view.firstProposerBlsKey(), suit.view.Epoch(), suit.oldViewNumber, 1,
 		suit.view.firstProposerIndex(), block2, nil, nil)
-	if err := suit.view.secondProposer().OnPrepareBlock(suit.view.secondProposer().NodeID().String(), prepareBlock); err != nil {
+	if err := suit.view.secondProposer().OnPrepareBlock(suit.view.secondProposer().Node().ID().String(), prepareBlock); err != nil {
 		suit.T().Fatal(err.Error())
 	}
 	prepareVote := mockPrepareVote(suit.view.firstProposerBlsKey(), suit.epoch, suit.oldViewNumber, 1, suit.view.firstProposerIndex(), block2.Hash(),
 		block2.NumberU64(), nil)
-	if err := suit.view.secondProposer().OnPrepareVote(suit.view.firstProposer().NodeID().String(), prepareVote); err == nil {
+	if err := suit.view.secondProposer().OnPrepareVote(suit.view.firstProposer().Node().ID().String(), prepareVote); err == nil {
 		suit.T().Fatal("FAIL")
 	} else {
 		fmt.Println(err.Error())
@@ -193,12 +195,12 @@ func (suit *PrepareVoteTestSuite) TestPrepareVoteWithParentIsNotZeroAndBlockInde
 	fmt.Println(qc.String())
 	prepareBlock := mockPrepareBlock(suit.view.secondProposerBlsKey(), suit.view.Epoch(), suit.oldViewNumber+1, 0,
 		suit.view.secondProposerIndex(), block1, qc, nil)
-	if err := suit.view.secondProposer().OnPrepareBlock(suit.view.secondProposer().NodeID().String(), prepareBlock); err != nil {
+	if err := suit.view.secondProposer().OnPrepareBlock(suit.view.secondProposer().Node().ID().String(), prepareBlock); err != nil {
 		suit.T().Fatal(err.Error())
 	}
 	prepareVote := mockPrepareVote(suit.view.firstProposerBlsKey(), suit.epoch, suit.oldViewNumber+1, 0, suit.view.firstProposerIndex(), block1.Hash(),
 		block1.NumberU64(), nil)
-	if err := suit.view.secondProposer().OnPrepareVote(suit.view.firstProposer().NodeID().String(), prepareVote); err == nil {
+	if err := suit.view.secondProposer().OnPrepareVote(suit.view.firstProposer().Node().ID().String(), prepareVote); err == nil {
 		suit.T().Fatal("FAIL")
 	} else {
 		fmt.Println(err.Error())
@@ -227,7 +229,7 @@ func (suit *PrepareVoteTestSuite) TestPrepareVoteWithBlockNumberIsOneAndErrParen
 func (suit *PrepareVoteTestSuite) TestPrepareVoteWithNotPrepareBlock() {
 	prepareVote := mockPrepareVote(suit.view.firstProposerBlsKey(), suit.epoch, suit.oldViewNumber, 0, suit.view.firstProposerIndex(), suit.blockOne.Hash(),
 		suit.blockOne.NumberU64(), nil)
-	if err := suit.view.secondProposer().OnPrepareVote(suit.view.firstProposer().NodeID().String(), prepareVote); err == nil {
+	if err := suit.view.secondProposer().OnPrepareVote(suit.view.firstProposer().Node().ID().String(), prepareVote); err == nil {
 		suit.T().Fatal("FAIL")
 	} else {
 		fmt.Println(err.Error())
@@ -243,7 +245,7 @@ func (suit *PrepareVoteTestSuite) TestPrepareVoteWithExceedLimit() {
 	_, oldQC := suit.view.firstProposer().blockTree.FindBlockAndQC(h, n)
 	prepareVote := mockPrepareVote(suit.view.secondProposerBlsKey(), suit.epoch, suit.oldViewNumber+1, 10,
 		suit.view.secondProposerIndex(), block11.Hash(), block11.NumberU64(), oldQC)
-	if err := suit.view.firstProposer().OnPrepareVote(suit.view.secondProposer().NodeID().String(), prepareVote); err == nil {
+	if err := suit.view.firstProposer().OnPrepareVote(suit.view.secondProposer().Node().ID().String(), prepareVote); err == nil {
 		suit.T().Fatal("FAIL")
 	} else {
 		fmt.Println(err.Error())
@@ -260,10 +262,10 @@ func (suit *PrepareVoteTestSuite) TestPrepareVoteWithRepeat() {
 	prepareVote := mockPrepareVote(suit.view.firstProposerBlsKey(), suit.epoch, suit.oldViewNumber, 0,
 		suit.view.firstProposerIndex(), suit.blockOne.Hash(),
 		suit.blockOne.NumberU64(), nil)
-	if err := suit.view.secondProposer().OnPrepareVote(suit.view.firstProposer().NodeID().String(), prepareVote); err != nil {
+	if err := suit.view.secondProposer().OnPrepareVote(suit.view.firstProposer().Node().ID().String(), prepareVote); err != nil {
 		suit.T().Fatal(err.Error())
 	}
-	if err := suit.view.secondProposer().OnPrepareVote(suit.view.firstProposer().NodeID().String(), prepareVote); err == nil {
+	if err := suit.view.secondProposer().OnPrepareVote(suit.view.firstProposer().Node().ID().String(), prepareVote); err == nil {
 		suit.T().Fatal("FAIL")
 	} else {
 		suit.Equal(err.Error(), "prepare vote has exist(blockIndex:0, validatorIndex:0)")
@@ -287,10 +289,10 @@ func (suit *PrepareVoteTestSuite) TestPrepareVoteDu() {
 	prepareVote2 := mockPrepareVote(suit.view.firstProposerBlsKey(), suit.epoch, suit.oldViewNumber, 0,
 		suit.view.firstProposerIndex(), block1.Hash(),
 		block1.NumberU64(), nil)
-	if err := suit.view.secondProposer().OnPrepareVote(suit.view.firstProposer().NodeID().String(), prepareVote1); err != nil {
+	if err := suit.view.secondProposer().OnPrepareVote(suit.view.firstProposer().Node().ID().String(), prepareVote1); err != nil {
 		suit.T().Fatal(err.Error())
 	}
-	if err := suit.view.secondProposer().OnPrepareVote(suit.view.firstProposer().NodeID().String(), prepareVote2); err == nil {
+	if err := suit.view.secondProposer().OnPrepareVote(suit.view.firstProposer().Node().ID().String(), prepareVote2); err == nil {
 		suit.T().Fatal("FAIL")
 	} else {
 		reg := regexp.MustCompile(`DuplicatePrepareVoteEvidence`)
@@ -310,7 +312,7 @@ func (suit *PrepareVoteTestSuite) TestPrepareVoteWithViewNumberTooLow() {
 	suit.view.secondProposer().state.ResetView(suit.epoch, suit.oldViewNumber+1)
 	prepareVote := mockPrepareVote(suit.view.firstProposerBlsKey(), suit.epoch, suit.oldViewNumber, 0, suit.view.firstProposerIndex(), suit.blockOne.Hash(),
 		suit.blockOne.NumberU64(), nil)
-	if err := suit.view.secondProposer().OnPrepareVote(suit.view.firstProposer().NodeID().String(), prepareVote); err == nil {
+	if err := suit.view.secondProposer().OnPrepareVote(suit.view.firstProposer().Node().ID().String(), prepareVote); err == nil {
 		suit.T().Fatal("FAIL")
 	} else {
 		suit.Equal(err.Error(), "viewNumber too low(local:1, msg:0)")
@@ -322,7 +324,7 @@ func (suit *PrepareVoteTestSuite) TestPrepareVoteWithViewNumberTooLow() {
 func (suit *PrepareVoteTestSuite) TestPrepareVoteWithViewNumberTooHigh() {
 	prepareVote := mockPrepareVote(suit.view.firstProposerBlsKey(), suit.epoch, suit.oldViewNumber+1, 0, suit.view.firstProposerIndex(), suit.blockOne.Hash(),
 		suit.blockOne.NumberU64(), nil)
-	if err := suit.view.secondProposer().OnPrepareVote(suit.view.firstProposer().NodeID().String(), prepareVote); err == nil {
+	if err := suit.view.secondProposer().OnPrepareVote(suit.view.firstProposer().Node().ID().String(), prepareVote); err == nil {
 		suit.T().Fatal("FAIL")
 	} else {
 		suit.Equal(err.Error(), "viewNumber higher than local(local:0, msg:1)")
@@ -335,18 +337,18 @@ func (suit *PrepareVoteTestSuite) TestPrepareVoteWithParentIsNotParentQC() {
 	qc := mockBlockQC(suit.view.allNode, suit.blockOne, 0, nil)
 	prepareBlock1 := mockPrepareBlock(suit.view.firstProposerBlsKey(), suit.view.Epoch(), suit.oldViewNumber, 0,
 		suit.view.firstProposerIndex(), suit.blockOne, nil, nil)
-	if err := suit.view.secondProposer().OnPrepareBlock(suit.view.firstProposer().NodeID().String(), prepareBlock1); err != nil {
+	if err := suit.view.secondProposer().OnPrepareBlock(suit.view.firstProposer().Node().ID().String(), prepareBlock1); err != nil {
 		suit.T().Fatal(err.Error())
 	}
 	block2 := NewBlockWithSign(suit.blockOne.Hash(), 2, suit.view.allNode[0])
 	prepareBlock2 := mockPrepareBlock(suit.view.firstProposerBlsKey(), suit.view.Epoch(), suit.oldViewNumber, 1,
 		suit.view.firstProposerIndex(), block2, nil, nil)
-	if err := suit.view.secondProposer().OnPrepareBlock(suit.view.secondProposer().NodeID().String(), prepareBlock2); err != nil {
+	if err := suit.view.secondProposer().OnPrepareBlock(suit.view.secondProposer().Node().ID().String(), prepareBlock2); err != nil {
 		suit.T().Fatal("FAIL")
 	}
 	prepareVote := mockPrepareVote(suit.view.firstProposerBlsKey(), suit.epoch, suit.oldViewNumber, 1, suit.view.firstProposerIndex(), block2.Hash(),
 		block2.NumberU64(), qc.BlockQC)
-	if err := suit.view.secondProposer().OnPrepareVote(suit.view.firstProposer().NodeID().String(), prepareVote); err != nil {
+	if err := suit.view.secondProposer().OnPrepareVote(suit.view.firstProposer().Node().ID().String(), prepareVote); err != nil {
 		suit.T().Fatal(err.Error())
 	}
 }
@@ -357,19 +359,19 @@ func (suit *PrepareVoteTestSuite) TestPrepareVoteWithParentErrParentQC() {
 	qc := mockBlockQC(suit.view.allNode[0:1], suit.blockOne, 0, nil)
 	prepareBlock1 := mockPrepareBlock(suit.view.firstProposerBlsKey(), suit.view.Epoch(), suit.oldViewNumber, 0,
 		suit.view.firstProposerIndex(), suit.blockOne, nil, nil)
-	if err := suit.view.secondProposer().OnPrepareBlock(suit.view.secondProposer().NodeID().String(), prepareBlock1); err != nil {
+	if err := suit.view.secondProposer().OnPrepareBlock(suit.view.secondProposer().Node().ID().String(), prepareBlock1); err != nil {
 		suit.T().Fatal("FAIL")
 	}
 	block2 := NewBlockWithSign(suit.blockOne.Hash(), 2, suit.view.allNode[0])
 	prepareBlock2 := mockPrepareBlock(suit.view.firstProposerBlsKey(), suit.view.Epoch(), suit.oldViewNumber, 1,
 		suit.view.firstProposerIndex(), block2, nil, nil)
-	if err := suit.view.secondProposer().OnPrepareBlock(suit.view.secondProposer().NodeID().String(), prepareBlock2); err != nil {
+	if err := suit.view.secondProposer().OnPrepareBlock(suit.view.secondProposer().Node().ID().String(), prepareBlock2); err != nil {
 		suit.T().Fatal("FAIL")
 	}
 	prepareVote := mockPrepareVote(suit.view.firstProposerBlsKey(), suit.epoch, suit.oldViewNumber, 1,
 		suit.view.firstProposerIndex(), block2.Hash(),
 		block2.NumberU64(), qc.BlockQC)
-	if err := suit.view.secondProposer().OnPrepareVote(suit.view.firstProposer().NodeID().String(), prepareVote); err == nil {
+	if err := suit.view.secondProposer().OnPrepareVote(suit.view.firstProposer().Node().ID().String(), prepareVote); err == nil {
 		suit.T().Fatal("FAIL")
 	} else {
 		fmt.Println(err.Error())
@@ -389,14 +391,14 @@ func (suit *PrepareVoteTestSuite) TestPrepareVoteWithParentQCHasChild() {
 	block12 := NewBlockWithSign(block11.Hash(), 12, suit.view.allNode[1])
 	prepareBlock12 := mockPrepareBlock(suit.view.secondProposerBlsKey(), suit.view.Epoch(), suit.oldViewNumber+1, 1,
 		suit.view.secondProposerIndex(), block12, nil, nil)
-	if err := suit.view.firstProposer().OnPrepareBlock(suit.view.secondProposer().NodeID().String(), prepareBlock12); err != nil {
+	if err := suit.view.firstProposer().OnPrepareBlock(suit.view.secondProposer().Node().ID().String(), prepareBlock12); err != nil {
 		suit.T().Fatal(err.Error())
 	}
 	block12QC := mockBlockQC(suit.view.allNode, block12, 1, block11QC.BlockQC)
 	block13 := NewBlockWithSign(block12.Hash(), 13, suit.view.allNode[1])
 	prepareBlock13 := mockPrepareBlock(suit.view.secondProposerBlsKey(), suit.view.Epoch(), suit.oldViewNumber+1, 2,
 		suit.view.secondProposerIndex(), block13, nil, nil)
-	if err := suit.view.firstProposer().OnPrepareBlock(suit.view.secondProposer().NodeID().String(), prepareBlock13); err != nil {
+	if err := suit.view.firstProposer().OnPrepareBlock(suit.view.secondProposer().Node().ID().String(), prepareBlock13); err != nil {
 		suit.T().Fatal(err.Error())
 	}
 	suit.waitVote()
@@ -429,20 +431,20 @@ func (suit *PrepareVoteTestSuite) TestPrepareVoteWithTimeout() {
 		suit.view.firstProposerIndex(), suit.blockOne, nil, nil)
 	suit.view.secondProposer().state.AddPrepareBlock(prepareBlock)
 	time.Sleep(time.Millisecond * testPeriod)
-	if err := suit.view.secondProposer().OnPrepareVote(suit.view.firstProposer().NodeID().String(), prepareVote); err == nil {
+	if err := suit.view.secondProposer().OnPrepareVote(suit.view.firstProposer().Node().ID().String(), prepareVote); err == nil {
 		suit.T().Fatal("FAIL")
 	} else {
 		fmt.Println(err.Error())
 	}
 }
 
-// The data just meets the 2f+1 prepareQC message
-// Verification pass
+// The data just meets the 2f+1 prepareQC message,But there aren't enough validatorsets
+// Verification not pass
 func (suit *PrepareVoteTestSuite) TestPrepareVote2fAndOne() {
 	qc := mockBlockQC(suit.view.allNode[0:3], suit.blockOne, 0, nil)
-	if err := suit.view.secondProposer().verifyPrepareQC(suit.blockOne.NumberU64(), suit.blockOne.Hash(), qc.BlockQC); err != nil {
-		suit.T().Fatal(err.Error())
-	}
+	err := suit.view.secondProposer().verifyPrepareQC(suit.blockOne.NumberU64(), suit.blockOne.Hash(), qc.BlockQC)
+	assert.NotNil(suit.T(), err)
+	assert.True(suit.T(), strings.HasPrefix(err.Error(), "verify prepare qc failed: verify QuorumCert failed,mismatched validator size"))
 }
 
 func (cbft *Cbft) generateErrPrepareQC(votes map[uint32]*protocols.PrepareVote) *ctypes.QuorumCert {
@@ -495,7 +497,7 @@ func (suit *PrepareVoteTestSuite) TestPrepareVoteOfNotConsensus() {
 	prepareBlock := mockPrepareBlock(suit.view.firstProposerBlsKey(), suit.epoch, suit.oldViewNumber, 0,
 		suit.view.firstProposerIndex(), suit.blockOne, nil, nil)
 	notConsensus[0].engine.state.AddPrepareBlock(prepareBlock)
-	if err := notConsensus[0].engine.OnPrepareVote(suit.view.firstProposer().NodeID().String(), prepareVote); err != nil {
+	if err := notConsensus[0].engine.OnPrepareVote(suit.view.firstProposer().Node().ID().String(), prepareVote); err != nil {
 		suit.T().Error(err.Error())
 	}
 }

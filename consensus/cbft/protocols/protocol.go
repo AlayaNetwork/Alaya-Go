@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
-
 package protocols
 
 import (
@@ -57,6 +56,14 @@ const (
 	PongMsg                 = 0x10
 	ViewChangeQuorumCertMsg = 0x11
 	ViewChangesMsg          = 0x12
+
+	// for rand-grouped-consensus
+	RGBlockQuorumCertMsg      = 0x13
+	RGViewChangeQuorumCertMsg = 0x14
+	GetPrepareVoteV2Msg       = 0x15
+	PrepareVotesV2Msg         = 0x16
+	GetViewChangeV2Msg        = 0x17
+	ViewChangesV2Msg          = 0x18
 )
 
 // A is used to convert specific message types according to the message body.
@@ -102,6 +109,18 @@ func MessageType(msg interface{}) uint64 {
 		return ViewChangeQuorumCertMsg
 	case *ViewChanges:
 		return ViewChangesMsg
+	case *RGBlockQuorumCert:
+		return RGBlockQuorumCertMsg
+	case *RGViewChangeQuorumCert:
+		return RGViewChangeQuorumCertMsg
+	case *GetPrepareVoteV2:
+		return GetPrepareVoteV2Msg
+	case *PrepareVotesV2:
+		return PrepareVotesV2Msg
+	case *GetViewChangeV2:
+		return GetViewChangeV2Msg
+	case *ViewChangesV2:
+		return ViewChangesV2Msg
 	default:
 	}
 	panic(fmt.Sprintf("unknown message type [%v}", reflect.TypeOf(msg)))
@@ -152,6 +171,14 @@ func (pb *PrepareBlock) NodeIndex() uint32 {
 	return pb.ProposalIndex
 }
 
+func (pb *PrepareBlock) BlockIndx() uint32 {
+	return pb.BlockIndex
+}
+
+func (pb *PrepareBlock) CheckQC() *ctypes.QuorumCert {
+	return pb.PrepareQC
+}
+
 func (pb *PrepareBlock) CannibalizeBytes() ([]byte, error) {
 	blockData, err := rlp.EncodeToBytes(pb.Block)
 	if err != nil {
@@ -195,8 +222,8 @@ type PrepareVote struct {
 }
 
 func (pv *PrepareVote) String() string {
-	return fmt.Sprintf("{Epoch:%d,ViewNumber:%d,Hash:%s,Number:%d,BlockIndex:%d,ValidatorIndex:%d}",
-		pv.Epoch, pv.ViewNumber, pv.BlockHash.TerminalString(), pv.BlockNumber, pv.BlockIndex, pv.ValidatorIndex)
+	return fmt.Sprintf("{Epoch:%d,ViewNumber:%d,Hash:%s,Number:%d,BlockIndex:%d,Signature:%s,ValidatorIndex:%d}",
+		pv.Epoch, pv.ViewNumber, pv.BlockHash.TerminalString(), pv.BlockNumber, pv.BlockIndex, pv.Signature.String(), pv.ValidatorIndex)
 }
 
 func (pv *PrepareVote) MsgHash() common.Hash {
@@ -212,6 +239,7 @@ func (pv *PrepareVote) MsgHash() common.Hash {
 func (pv *PrepareVote) BHash() common.Hash {
 	return pv.BlockHash
 }
+
 func (pv *PrepareVote) EpochNum() uint64 {
 	return pv.Epoch
 }
@@ -225,6 +253,14 @@ func (pv *PrepareVote) BlockNum() uint64 {
 
 func (pv *PrepareVote) NodeIndex() uint32 {
 	return pv.ValidatorIndex
+}
+
+func (pv *PrepareVote) BlockIndx() uint32 {
+	return pv.BlockIndex
+}
+
+func (pv *PrepareVote) CheckQC() *ctypes.QuorumCert {
+	return pv.ParentQC
 }
 
 func (pv *PrepareVote) CannibalizeBytes() ([]byte, error) {
@@ -306,6 +342,14 @@ func (vc *ViewChange) NodeIndex() uint32 {
 	return vc.ValidatorIndex
 }
 
+func (vc *ViewChange) BlockIndx() uint32 {
+	return vc.PrepareQC.BlockIndex
+}
+
+func (vc *ViewChange) CheckQC() *ctypes.QuorumCert {
+	return vc.PrepareQC
+}
+
 func (vc *ViewChange) CannibalizeBytes() ([]byte, error) {
 	blockEpoch, blockView := uint64(0), uint64(0)
 	if vc.PrepareQC != nil {
@@ -363,7 +407,40 @@ func (v ViewChanges) MsgHash() common.Hash {
 	return mv
 }
 
-func (ViewChanges) BHash() common.Hash {
+func (v ViewChanges) BHash() common.Hash {
+	return common.Hash{}
+}
+
+type ViewChangesV2 struct {
+	VCs                     []*ViewChange
+	RGViewChangeQuorumCerts []*RGViewChangeQuorumCert
+	messageHash             atomic.Value `rlp:"-"`
+}
+
+func (v ViewChangesV2) String() string {
+	if len(v.VCs) != 0 {
+		epoch, viewNumber := v.VCs[0].Epoch, v.VCs[0].ViewNumber
+		return fmt.Sprintf("{Epoch:%d,ViewNumber:%d,VCsLen:%d,,RGLen:%d}", epoch, viewNumber, len(v.VCs), len(v.RGViewChangeQuorumCerts))
+	}
+	return ""
+}
+
+func (v ViewChangesV2) MsgHash() common.Hash {
+	if mhash := v.messageHash.Load(); mhash != nil {
+		return mhash.(common.Hash)
+	}
+	var mv common.Hash
+	if len(v.VCs) != 0 {
+		epoch, viewNumber := v.VCs[0].Epoch, v.VCs[0].ViewNumber
+		mv = utils.BuildHash(ViewChangesV2Msg, utils.MergeBytes(common.Uint64ToBytes(epoch), common.Uint64ToBytes(viewNumber)))
+	} else {
+		mv = utils.BuildHash(ViewChangesV2Msg, common.Hash{}.Bytes())
+	}
+	v.messageHash.Store(mv)
+	return mv
+}
+
+func (v ViewChangesV2) BHash() common.Hash {
 	return common.Hash{}
 }
 
@@ -425,7 +502,6 @@ func (s *GetPrepareBlock) BHash() common.Hash {
 }
 
 // GetBlockQuorumCert is the protocol message for obtaining an aggregated signature.
-// todo: Need to determine the attribute field - ParentQC.
 type GetBlockQuorumCert struct {
 	BlockHash   common.Hash  `json:"blockHash"`   // The hash of the block to be acquired.
 	BlockNumber uint64       `json:"blockNumber"` // The number of the block to be acquired.
@@ -449,8 +525,7 @@ func (s *GetBlockQuorumCert) BHash() common.Hash {
 	return s.BlockHash
 }
 
-// Aggregate signature response message, representing
-// aggregated signature information for a block.
+// Aggregate signature response message, representing aggregated signature information for a block.
 type BlockQuorumCert struct {
 	BlockQC     *ctypes.QuorumCert `json:"qc"`        // Block aggregation signature information.
 	messageHash atomic.Value       `json:"-" rlp:"-"` // BlockQuorumCert hash value.
@@ -529,6 +604,33 @@ func (s *GetPrepareVote) BHash() common.Hash {
 	return common.Hash{}
 }
 
+// Message used to get block voting.
+type GetPrepareVoteV2 struct {
+	Epoch         uint64
+	ViewNumber    uint64
+	BlockIndex    uint32
+	UnKnownGroups *ctypes.UnKnownGroups
+	messageHash   atomic.Value `json:"-" rlp:"-"`
+}
+
+func (s *GetPrepareVoteV2) String() string {
+	return fmt.Sprintf("{Epoch:%d,ViewNumber:%d,BlockIndex:%d,UnKnownSetLen:%d,UnKnownGroups:%s}", s.Epoch, s.ViewNumber, s.BlockIndex, s.UnKnownGroups.UnKnownSize(), s.UnKnownGroups.String())
+}
+
+func (s *GetPrepareVoteV2) MsgHash() common.Hash {
+	if mhash := s.messageHash.Load(); mhash != nil {
+		return mhash.(common.Hash)
+	}
+	v := utils.BuildHash(GetPrepareVoteV2Msg, utils.MergeBytes(common.Uint64ToBytes(s.Epoch), common.Uint64ToBytes(s.ViewNumber),
+		common.Uint32ToBytes(s.BlockIndex)))
+	s.messageHash.Store(v)
+	return v
+}
+
+func (s *GetPrepareVoteV2) BHash() common.Hash {
+	return common.Hash{}
+}
+
 // Message used to respond to the number of block votes.
 type PrepareVotes struct {
 	Epoch       uint64
@@ -552,6 +654,33 @@ func (s *PrepareVotes) MsgHash() common.Hash {
 }
 
 func (s *PrepareVotes) BHash() common.Hash {
+	return common.Hash{}
+}
+
+// Message used to respond to the number of block votes.
+type PrepareVotesV2 struct {
+	Epoch              uint64
+	ViewNumber         uint64
+	BlockIndex         uint32
+	Votes              []*PrepareVote // Block voting set.
+	RGBlockQuorumCerts []*RGBlockQuorumCert
+	messageHash        atomic.Value `json:"-" rlp:"-"`
+}
+
+func (s *PrepareVotesV2) String() string {
+	return fmt.Sprintf("{Epoch:%d,ViewNumber:%d,BlockIndex:%d,VotesLen:%d,RGLen:%d}", s.Epoch, s.ViewNumber, s.BlockIndex, len(s.Votes), len(s.RGBlockQuorumCerts))
+}
+
+func (s *PrepareVotesV2) MsgHash() common.Hash {
+	if mhash := s.messageHash.Load(); mhash != nil {
+		return mhash.(common.Hash)
+	}
+	v := utils.BuildHash(PrepareVotesV2Msg, utils.MergeBytes(common.Uint64ToBytes(s.Epoch), common.Uint64ToBytes(s.ViewNumber), common.Uint32ToBytes(s.BlockIndex)))
+	s.messageHash.Store(v)
+	return v
+}
+
+func (s *PrepareVotesV2) BHash() common.Hash {
 	return common.Hash{}
 }
 
@@ -730,13 +859,37 @@ func (s *GetViewChange) MsgHash() common.Hash {
 	if mhash := s.messageHash.Load(); mhash != nil {
 		return mhash.(common.Hash)
 	}
-	v := utils.BuildHash(GetViewChangeMsg,
-		utils.MergeBytes(common.Uint64ToBytes(s.Epoch), common.Uint64ToBytes(s.ViewNumber)))
+	v := utils.BuildHash(GetViewChangeMsg, utils.MergeBytes(common.Uint64ToBytes(s.Epoch), common.Uint64ToBytes(s.ViewNumber)))
 	s.messageHash.Store(v)
 	return v
 }
 
 func (s *GetViewChange) BHash() common.Hash {
+	return common.Hash{}
+}
+
+// Used to actively request to get viewChange.
+type GetViewChangeV2 struct {
+	Epoch         uint64                `json:"epoch"`
+	ViewNumber    uint64                `json:"viewNumber"`
+	UnKnownGroups *ctypes.UnKnownGroups `json:"unKnownSet"`
+	messageHash   atomic.Value          `rlp:"-"`
+}
+
+func (s *GetViewChangeV2) String() string {
+	return fmt.Sprintf("{Epoch:%d,ViewNumber:%d,UnKnownSetLen:%d,UnKnownGroups:%s}", s.Epoch, s.ViewNumber, s.UnKnownGroups.UnKnownSize(), s.UnKnownGroups.String())
+}
+
+func (s *GetViewChangeV2) MsgHash() common.Hash {
+	if mhash := s.messageHash.Load(); mhash != nil {
+		return mhash.(common.Hash)
+	}
+	v := utils.BuildHash(GetViewChangeV2Msg, utils.MergeBytes(common.Uint64ToBytes(s.Epoch), common.Uint64ToBytes(s.ViewNumber)))
+	s.messageHash.Store(v)
+	return v
+}
+
+func (s *GetViewChangeV2) BHash() common.Hash {
 	return common.Hash{}
 }
 
@@ -778,4 +931,187 @@ func (v *ViewChangeQuorumCert) MsgHash() common.Hash {
 func (v *ViewChangeQuorumCert) BHash() common.Hash {
 	_, _, _, _, hash, _ := v.ViewChangeQC.MaxBlock()
 	return hash
+}
+
+// Group Aggregate signature response message. Represents aggregate signature information for a grouping pair block.
+type RGBlockQuorumCert struct {
+	GroupID        uint32             `json:"groupID"` // Unique identifier for group.
+	BlockQC        *ctypes.QuorumCert `json:"qc"`      // Group Aggregate signature information for a block.
+	ValidatorIndex uint32             `json:"validatorIndex"`
+	ParentQC       *ctypes.QuorumCert `json:"parentQC" rlp:"nil"`
+	Signature      ctypes.Signature   `json:"signature"` // RGBlockQuorumCert signature information
+	messageHash    atomic.Value       `json:"-" rlp:"-"` // BlockQuorumCert hash value.
+}
+
+func (rgb *RGBlockQuorumCert) String() string {
+	return fmt.Sprintf("{GroupID:%d,Epoch:%d,ViewNumber:%d,BlockIndex:%d,Hash:%s,Number:%d,ValidatorIndex:%d,Signature:%s,ValidatorSetLen:%d}",
+		rgb.GroupID, rgb.EpochNum(), rgb.ViewNum(), rgb.BlockIndx(), rgb.BHash().TerminalString(), rgb.BlockNum(), rgb.NodeIndex(), rgb.Signature.String(), rgb.BlockQC.ValidatorSet.HasLength())
+}
+
+func (rgb *RGBlockQuorumCert) MsgHash() common.Hash {
+	if mhash := rgb.messageHash.Load(); mhash != nil {
+		return mhash.(common.Hash)
+	}
+
+	v := utils.BuildHash(RGBlockQuorumCertMsg, utils.MergeBytes(
+		common.Uint32ToBytes(rgb.GroupID),
+		common.Uint32ToBytes(rgb.ValidatorIndex),
+		common.Uint64ToBytes(rgb.BlockQC.Epoch),
+		common.Uint64ToBytes(rgb.BlockQC.ViewNumber),
+		rgb.BlockQC.BlockHash.Bytes(),
+		common.Uint64ToBytes(rgb.BlockQC.BlockNumber),
+		common.Uint32ToBytes(rgb.BlockQC.BlockIndex),
+		rgb.Signature.Bytes(),
+		//rgb.BlockQC.Signature.Bytes(),
+		//rgb.BlockQC.ValidatorSet.Bytes()
+	))
+
+	rgb.messageHash.Store(v)
+	return v
+}
+
+func (rgb *RGBlockQuorumCert) BHash() common.Hash {
+	return rgb.BlockQC.BlockHash
+}
+
+func (rgb *RGBlockQuorumCert) EpochNum() uint64 {
+	return rgb.BlockQC.Epoch
+}
+
+func (rgb *RGBlockQuorumCert) ViewNum() uint64 {
+	return rgb.BlockQC.ViewNumber
+}
+
+func (rgb *RGBlockQuorumCert) BlockNum() uint64 {
+	return rgb.BlockQC.BlockNumber
+}
+
+func (rgb *RGBlockQuorumCert) NodeIndex() uint32 {
+	return rgb.ValidatorIndex
+}
+
+func (rgb *RGBlockQuorumCert) BlockIndx() uint32 {
+	return rgb.BlockQC.BlockIndex
+}
+
+func (rgb *RGBlockQuorumCert) CheckQC() *ctypes.QuorumCert {
+	return rgb.ParentQC
+}
+
+func (rgb *RGBlockQuorumCert) CannibalizeBytes() ([]byte, error) {
+	blockQCData, err := rlp.EncodeToBytes(rgb.BlockQC)
+	if err != nil {
+		return nil, err
+	}
+	buf, err := rlp.EncodeToBytes([]interface{}{
+		rgb.GroupID,
+		rgb.ValidatorIndex,
+		crypto.Keccak256(blockQCData),
+	})
+
+	if err != nil {
+		return nil, err
+	}
+	return crypto.Keccak256(buf), nil
+}
+
+func (rgb *RGBlockQuorumCert) Sign() []byte {
+	return rgb.Signature.Bytes()
+}
+
+func (rgb *RGBlockQuorumCert) SetSign(sign []byte) {
+	rgb.Signature.SetBytes(sign)
+}
+
+type RGViewChangeQuorumCert struct {
+	GroupID        uint32               `json:"groupID"`      // Unique identifier for group.
+	ViewChangeQC   *ctypes.ViewChangeQC `json:"viewchangeQC"` // viewChange aggregate signature
+	ValidatorIndex uint32               `json:"validatorIndex"`
+	PrepareQCs     *ctypes.PrepareQCs   `json:"prepareQCs" rlp:"nil"`
+	Signature      ctypes.Signature     `json:"signature"` // RGViewChangeQuorumCert signature information
+	messageHash    atomic.Value         `rlp:"-"`
+}
+
+func (rgv *RGViewChangeQuorumCert) String() string {
+	epoch, viewNumber, blockEpoch, blockViewNumber, hash, number := rgv.ViewChangeQC.MaxBlock()
+	return fmt.Sprintf("{GroupID:%d,Epoch:%d,ViewNumber:%d,BlockEpoch:%d,BlockViewNumber:%d,Hash:%s,Number:%d}",
+		rgv.GroupID, epoch, viewNumber, blockEpoch, blockViewNumber, hash.TerminalString(), number)
+}
+
+func (rgv *RGViewChangeQuorumCert) MsgHash() common.Hash {
+	if mhash := rgv.messageHash.Load(); mhash != nil {
+		return mhash.(common.Hash)
+	}
+
+	epoch, viewNumber, blockEpoch, blockViewNumber, hash, number := rgv.ViewChangeQC.MaxBlock()
+	mv := utils.BuildHash(RGViewChangeQuorumCertMsg, utils.MergeBytes(
+		common.Uint32ToBytes(rgv.GroupID),
+		common.Uint32ToBytes(rgv.ValidatorIndex),
+		common.Uint64ToBytes(epoch),
+		common.Uint64ToBytes(viewNumber),
+		common.Uint64ToBytes(blockEpoch),
+		common.Uint64ToBytes(blockViewNumber),
+		hash.Bytes(),
+		common.Uint64ToBytes(number),
+		rgv.Signature.Bytes(),
+	))
+	rgv.messageHash.Store(mv)
+	return mv
+}
+
+func (rgv *RGViewChangeQuorumCert) BHash() common.Hash {
+	_, _, _, _, hash, _ := rgv.ViewChangeQC.MaxBlock()
+	return hash
+}
+
+func (rgv *RGViewChangeQuorumCert) EpochNum() uint64 {
+	epoch, _, _, _, _, _ := rgv.ViewChangeQC.MaxBlock()
+	return epoch
+}
+
+func (rgv *RGViewChangeQuorumCert) ViewNum() uint64 {
+	_, viewNumber, _, _, _, _ := rgv.ViewChangeQC.MaxBlock()
+	return viewNumber
+}
+
+func (rgv *RGViewChangeQuorumCert) BlockNum() uint64 {
+	_, _, _, _, _, number := rgv.ViewChangeQC.MaxBlock()
+	return number
+}
+
+func (rgv *RGViewChangeQuorumCert) NodeIndex() uint32 {
+	return rgv.ValidatorIndex
+}
+
+func (rgv *RGViewChangeQuorumCert) BlockIndx() uint32 {
+	return 0
+}
+
+func (rgv *RGViewChangeQuorumCert) CheckQC() *ctypes.QuorumCert {
+	return nil
+}
+
+func (rgv *RGViewChangeQuorumCert) CannibalizeBytes() ([]byte, error) {
+	viewChangeQCData, err := rlp.EncodeToBytes(rgv.ViewChangeQC)
+	if err != nil {
+		return nil, err
+	}
+	buf, err := rlp.EncodeToBytes([]interface{}{
+		rgv.GroupID,
+		rgv.ValidatorIndex,
+		crypto.Keccak256(viewChangeQCData),
+	})
+
+	if err != nil {
+		return nil, err
+	}
+	return crypto.Keccak256(buf), nil
+}
+
+func (rgv *RGViewChangeQuorumCert) Sign() []byte {
+	return rgv.Signature.Bytes()
+}
+
+func (rgv *RGViewChangeQuorumCert) SetSign(sign []byte) {
+	rgv.Signature.SetBytes(sign)
 }

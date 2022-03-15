@@ -32,6 +32,8 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/internal/ethapi"
 	"github.com/AlayaNetwork/Alaya-Go/miner"
 
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
+
 	"github.com/AlayaNetwork/Alaya-Go/core/snapshotdb"
 
 	"gopkg.in/urfave/cli.v1"
@@ -51,13 +53,11 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/eth/gasprice"
 	"github.com/AlayaNetwork/Alaya-Go/ethdb"
 	"github.com/AlayaNetwork/Alaya-Go/ethstats"
-	"github.com/AlayaNetwork/Alaya-Go/les"
 	"github.com/AlayaNetwork/Alaya-Go/log"
 	"github.com/AlayaNetwork/Alaya-Go/metrics"
 	"github.com/AlayaNetwork/Alaya-Go/metrics/influxdb"
 	"github.com/AlayaNetwork/Alaya-Go/node"
 	"github.com/AlayaNetwork/Alaya-Go/p2p"
-	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
 	"github.com/AlayaNetwork/Alaya-Go/p2p/nat"
 	"github.com/AlayaNetwork/Alaya-Go/p2p/netutil"
 	"github.com/AlayaNetwork/Alaya-Go/params"
@@ -381,6 +381,16 @@ var (
 		Usage: "Maximum number of pending connection attempts (defaults used if set to 0)",
 		Value: node.DefaultConfig.P2P.MaxPendingPeers,
 	}
+	MinimumPeersPerTopic = cli.IntFlag{
+		Name:  "minpeerstopic",
+		Usage: "Minimum number of nodes to maintain the same topic",
+		Value: node.DefaultConfig.P2P.MinimumPeersPerTopic,
+	}
+	PubSubTraceHost = cli.StringFlag{
+		Name:  "tracerhost",
+		Usage: "Remote proxy address, collect trace events of pubSub",
+		Value: "",
+	}
 	ListenPortFlag = cli.IntFlag{
 		Name:  "port",
 		Usage: "Network listening port",
@@ -620,15 +630,13 @@ func setBootstrapNodes(ctx *cli.Context, cfg *p2p.Config) {
 		return // already set, don't apply defaults.
 	}
 
-	cfg.BootstrapNodes = make([]*discover.Node, 0, len(urls))
+	cfg.BootstrapNodes = make([]*enode.Node, 0, len(urls))
 	for _, url := range urls {
-		if url != "" {
-			node, err := discover.ParseNode(url)
-			if err != nil {
-				log.Crit("Bootstrap URL invalid", "enode", url, "err", err)
-			}
-			cfg.BootstrapNodes = append(cfg.BootstrapNodes, node)
+		node, err := enode.Parse(enode.ValidSchemes, url)
+		if err != nil {
+			log.Crit("Bootstrap URL invalid", "enode", url, "err", err)
 		}
+		cfg.BootstrapNodes = append(cfg.BootstrapNodes, node)
 	}
 }
 
@@ -880,6 +888,12 @@ func SetP2PConfig(ctx *cli.Context, cfg *p2p.Config) {
 
 	ethPeers := cfg.MaxPeers
 
+	if ctx.GlobalIsSet(MinimumPeersPerTopic.Name) {
+		cfg.MinimumPeersPerTopic = ctx.GlobalInt(MinimumPeersPerTopic.Name)
+	}
+	if ctx.GlobalIsSet(PubSubTraceHost.Name) {
+		cfg.PubSubTraceHost = ctx.GlobalString(PubSubTraceHost.Name)
+	}
 	if cfg.MaxPeers <= cfg.MaxConsensusPeers {
 		log.Error("MaxPeers is less than MaxConsensusPeers", "MaxPeers", cfg.MaxPeers, "MaxConsensusPeers", cfg.MaxConsensusPeers)
 		Fatalf("MaxPeers is less than MaxConsensusPeers, MaxPeers: %d, MaxConsensusPeers: %d", cfg.MaxPeers, cfg.MaxConsensusPeers)
@@ -1089,7 +1103,8 @@ func SetEthConfig(ctx *cli.Context, stack *node.Node, cfg *eth.Config) {
 func SetCbft(ctx *cli.Context, cfg *types.OptionsConfig, nodeCfg *node.Config) {
 	if nodeCfg.P2P.PrivateKey != nil {
 		cfg.NodePriKey = nodeCfg.P2P.PrivateKey
-		cfg.NodeID = discover.PubkeyID(&cfg.NodePriKey.PublicKey)
+		cfg.Node = enode.NewV4(&cfg.NodePriKey.PublicKey, nil, 0, 0)
+		cfg.NodeID = cfg.Node.IDv0()
 	}
 
 	if ctx.GlobalIsSet(CbftBlsPriKeyFileFlag.Name) {
@@ -1123,22 +1138,19 @@ func SetCbft(ctx *cli.Context, cfg *types.OptionsConfig, nodeCfg *node.Config) {
 // RegisterEthService adds an Ethereum client to the stack.
 func RegisterEthService(stack *node.Node, cfg *eth.Config) ethapi.Backend {
 	if cfg.SyncMode == downloader.LightSync {
-		backend, err := les.New(stack, cfg)
-		if err != nil {
-			Fatalf("Failed to register the Ethereum service: %v", err)
-		}
-		return backend.ApiBackend
+		Fatalf("Failed to register the Alaya-Go service: %v", "not support LightSync")
+		return nil
 	} else {
 		backend, err := eth.New(stack, cfg)
 		if err != nil {
 			Fatalf("Failed to register the Ethereum service: %v", err)
 		}
-		if cfg.LightServ > 0 {
+		/*	if cfg.LightServ > 0 {
 			_, err := les.NewLesServer(stack, backend, cfg)
 			if err != nil {
 				Fatalf("Failed to create the LES server: %v", err)
 			}
-		}
+		}*/
 		return backend.APIBackend
 	}
 }

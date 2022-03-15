@@ -25,13 +25,16 @@ import (
 	"math/big"
 	"sync"
 
+	"github.com/AlayaNetwork/Alaya-Go/x/gov"
+
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
+
 	"github.com/AlayaNetwork/Alaya-Go/common"
 	cvm "github.com/AlayaNetwork/Alaya-Go/common/vm"
 	"github.com/AlayaNetwork/Alaya-Go/core/cbfttypes"
 	"github.com/AlayaNetwork/Alaya-Go/core/snapshotdb"
 	"github.com/AlayaNetwork/Alaya-Go/core/state"
 	"github.com/AlayaNetwork/Alaya-Go/core/vm"
-	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
 	"github.com/AlayaNetwork/Alaya-Go/x/handler"
 	"github.com/AlayaNetwork/Alaya-Go/x/staking"
 	"github.com/AlayaNetwork/Alaya-Go/x/xutil"
@@ -51,7 +54,7 @@ type BlockChainReactor struct {
 	beginRule     []int                     // Order rules for xxPlugins called in BeginBlocker
 	endRule       []int                     // Order rules for xxPlugins called in EndBlocker
 	validatorMode string                    // mode: static, inner, ppos
-	NodeId        discover.NodeID           // The nodeId of current node
+	NodeId        enode.IDv0                // The nodeId of current node
 	exitCh        chan chan struct{}        // Used to receive an exit signal
 	exitOnce      sync.Once
 	chainID       *big.Int
@@ -80,7 +83,7 @@ func (bcr *BlockChainReactor) Start(mode string) {
 	if mode == common.PPOS_VALIDATOR_MODE {
 		// Subscribe events for confirmed blocks
 		bcr.bftResultSub = bcr.eventMux.Subscribe(cbfttypes.CbftResult{})
-		// start the loop rutine
+		// start the loop routine
 		go bcr.loop()
 	}
 }
@@ -144,7 +147,6 @@ func (bcr *BlockChainReactor) commit(block *types.Block) error {
 		if err := plugin.Confirmed(bcr.NodeId, block); nil != err {
 			log.Error("Failed to call Staking Confirmed", "blockNumber", block.Number(), "blockHash", block.Hash().Hex(), "err", err.Error())
 		}
-
 	}
 
 	log.Info("Call snapshotdb commit on blockchain_reactor", "blockNumber", block.Number(), "blockHash", block.Hash())
@@ -184,7 +186,7 @@ func (bcr *BlockChainReactor) SetPrivateKey(privateKey *ecdsa.PrivateKey) {
 			bcr.vh.SetPrivateKey(privateKey)
 		}
 		plugin.SlashInstance().SetPrivateKey(privateKey)
-		bcr.NodeId = discover.PubkeyID(&privateKey.PublicKey)
+		bcr.NodeId = enode.PublicKeyToIDv0(&privateKey.PublicKey)
 	}
 }
 
@@ -195,7 +197,7 @@ func (bcr *BlockChainReactor) SetEndRule(rule []int) {
 	bcr.endRule = rule
 }
 
-func (bcr *BlockChainReactor) SetWorkerCoinBase(header *types.Header, nodeId discover.NodeID) {
+func (bcr *BlockChainReactor) SetWorkerCoinBase(header *types.Header, nodeId enode.IDv0) {
 
 	/**
 	this things about ppos
@@ -266,6 +268,7 @@ func (bcr *BlockChainReactor) BeginBlocker(header *types.Header, state xcom.Stat
 		return err
 	}
 
+	header.SetActiveVersion(gov.GetCurrentActiveVersion(state))
 	for _, pluginRule := range bcr.beginRule {
 		if plugin, ok := bcr.basePluginMap[pluginRule]; ok {
 			if err := plugin.BeginBlock(blockHash, header, state); nil != err {
@@ -389,11 +392,15 @@ func (bcr *BlockChainReactor) GetLastNumber(blockNumber uint64) uint64 {
 	return plugin.StakingInstance().GetLastNumber(blockNumber)
 }
 
-func (bcr *BlockChainReactor) GetValidator(blockNumber uint64) (*cbfttypes.Validators, error) {
-	return plugin.StakingInstance().GetValidator(blockNumber)
+func (bcr *BlockChainReactor) GetLastNumberByHash(blockHash common.Hash, blockNumber uint64) uint64 {
+	return plugin.StakingInstance().GetLastNumberByHash(blockHash, blockNumber)
 }
 
-func (bcr *BlockChainReactor) IsCandidateNode(nodeID discover.NodeID) bool {
+func (bcr *BlockChainReactor) GetValidators(blockHash common.Hash, blockNumber uint64) (*cbfttypes.Validators, error) {
+	return plugin.StakingInstance().GetValidators(blockHash, blockNumber)
+}
+
+func (bcr *BlockChainReactor) IsCandidateNode(nodeID enode.IDv0) bool {
 	return plugin.StakingInstance().IsCandidateNode(nodeID)
 }
 

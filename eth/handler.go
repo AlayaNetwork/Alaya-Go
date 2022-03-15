@@ -28,6 +28,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
+
 	"github.com/AlayaNetwork/Alaya-Go/trie"
 
 	"github.com/syndtr/goleveldb/leveldb/iterator"
@@ -43,7 +45,6 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/event"
 	"github.com/AlayaNetwork/Alaya-Go/log"
 	"github.com/AlayaNetwork/Alaya-Go/p2p"
-	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
 	"github.com/AlayaNetwork/Alaya-Go/params"
 	"github.com/AlayaNetwork/Alaya-Go/rlp"
 )
@@ -151,7 +152,7 @@ func NewProtocolManager(config *params.ChainConfig, mode downloader.SyncMode, ne
 			NodeInfo: func() interface{} {
 				return manager.NodeInfo()
 			},
-			PeerInfo: func(id discover.NodeID) interface{} {
+			PeerInfo: func(id enode.ID) interface{} {
 				if p := manager.peers.Peer(fmt.Sprintf("%x", id[:8])); p != nil {
 					return p.Info()
 				}
@@ -228,9 +229,7 @@ func (pm *ProtocolManager) removePeer(id string) {
 		log.Error("Peer removal failed", "peer", id, "err", err)
 	}
 	// Hard disconnect at the networking layer
-	if peer != nil {
-		peer.Peer.Disconnect(p2p.DiscUselessPeer)
-	}
+	peer.Peer.Disconnect(p2p.DiscUselessPeer)
 }
 
 func (pm *ProtocolManager) Start(maxPeers int) {
@@ -412,7 +411,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 					unknown = true
 				} else {
 					query.Origin.Hash, query.Origin.Number = pm.blockchain.GetAncestor(query.Origin.Hash, query.Origin.Number, ancestor, &maxNonCanonical)
-					unknown = (query.Origin.Hash == common.Hash{})
+					unknown = query.Origin.Hash == common.Hash{}
 				}
 			case hashMode && !query.Reverse:
 				// Hash based traversal towards the leaf block
@@ -835,7 +834,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			return errResp(ErrDecode, "msg %v: %v", msg, err)
 		}
 		log.Trace("Handler Receive GetPooledTransactions", "peer", p.id, "hashes", len(query))
-		hashes, txs := pm.answerGetPooledTransactions(query, p)
+		hashes, txs := pm.answerGetPooledTransactions(query)
 		if len(txs) > 0 {
 			log.Trace("Handler Send PooledTransactions", "peer", p.id, "txs", len(txs))
 			return p.SendPooledTransactionsRLP(hashes, txs)
@@ -977,7 +976,7 @@ func (pm *ProtocolManager) BroadcastTxs(txs types.Transactions) {
 		"announce packs", annoPeers, "announced hashes", annoCount)
 }
 
-func (pm *ProtocolManager) answerGetPooledTransactions(query GetPooledTransactionsPacket, peer *peer) ([]common.Hash, []rlp.RawValue) {
+func (pm *ProtocolManager) answerGetPooledTransactions(query GetPooledTransactionsPacket) ([]common.Hash, []rlp.RawValue) {
 	// Gather transactions until the fetch or network limits is reached
 	var (
 		bytes  int

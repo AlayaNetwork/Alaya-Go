@@ -20,9 +20,14 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/AlayaNetwork/Alaya-Go/x/xcom"
 	"math/big"
 	"testing"
 	"time"
+
+	"github.com/AlayaNetwork/Alaya-Go/event"
+
+	"github.com/AlayaNetwork/Alaya-Go/p2p/enode"
 
 	"github.com/AlayaNetwork/Alaya-Go/core/rawdb"
 
@@ -41,7 +46,6 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/core/types"
 	cvm "github.com/AlayaNetwork/Alaya-Go/core/vm"
 	"github.com/AlayaNetwork/Alaya-Go/crypto/bls"
-	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
 	"github.com/AlayaNetwork/Alaya-Go/params"
 	"github.com/AlayaNetwork/Alaya-Go/rlp"
 )
@@ -52,6 +56,7 @@ var (
 
 func init() {
 	bls.Init(bls.BLS12_381)
+	xcom.GetEc(xcom.DefaultUnitTestNet)
 }
 func TestThreshold(t *testing.T) {
 	f := &Cbft{}
@@ -72,14 +77,14 @@ func TestBls(t *testing.T) {
 	owner := sk[0]
 	nodes := make([]params.CbftNode, num)
 	for i := 0; i < num; i++ {
-		nodes[i].Node = *discover.NewNode(discover.PubkeyID(&pk[i].PublicKey), nil, 0, 0)
+		nodes[i].Node = enode.NewV4(&pk[i].PublicKey, nil, 0, 0)
 		nodes[i].BlsPubKey = *sk[i].GetPublicKey()
 	}
 
 	agency := validator.NewStaticAgency(nodes)
 
 	cbft := &Cbft{
-		validatorPool: validator.NewValidatorPool(agency, 0, 0, nodes[0].Node.ID),
+		validatorPool: validator.NewValidatorPool(agency, 0, 0, nodes[0].Node.ID(), false, new(event.TypeMux)),
 		config: ctypes.Config{
 			Option: &ctypes.OptionsConfig{
 				BlsPriKey: owner,
@@ -98,13 +103,13 @@ func TestPrepareBlockBls(t *testing.T) {
 	pk, sk := GenerateKeys(1)
 	owner := sk[0]
 	node := params.CbftNode{
-		Node:      *discover.NewNode(discover.PubkeyID(&pk[0].PublicKey), nil, 0, 0),
+		Node:      enode.NewV4(&pk[0].PublicKey, nil, 0, 0),
 		BlsPubKey: *sk[0].GetPublicKey(),
 	}
 	agency := validator.NewStaticAgency([]params.CbftNode{node})
 
 	cbft := &Cbft{
-		validatorPool: validator.NewValidatorPool(agency, 0, 0, node.Node.ID),
+		validatorPool: validator.NewValidatorPool(agency, 0, 0, node.Node.ID(), false, new(event.TypeMux)),
 		config: ctypes.Config{
 			Option: &ctypes.OptionsConfig{
 				BlsPriKey: owner,
@@ -162,7 +167,7 @@ func TestAgg(t *testing.T) {
 	pk, sk := GenerateKeys(num)
 	nodes := make([]params.CbftNode, num)
 	for i := 0; i < num; i++ {
-		nodes[i].Node = *discover.NewNode(discover.PubkeyID(&pk[i].PublicKey), nil, 0, 0)
+		nodes[i].Node = enode.NewV4(&pk[i].PublicKey, nil, 0, 0)
 		nodes[i].BlsPubKey = *sk[i].GetPublicKey()
 
 	}
@@ -173,7 +178,7 @@ func TestAgg(t *testing.T) {
 
 	for i := 0; i < num; i++ {
 		cnode[i] = &Cbft{
-			validatorPool: validator.NewValidatorPool(agency, 0, 0, nodes[0].Node.ID),
+			validatorPool: validator.NewValidatorPool(agency, 0, 0, nodes[0].Node.ID(), false, new(event.TypeMux)),
 			config: ctypes.Config{
 				Option: &ctypes.OptionsConfig{
 					BlsPriKey: sk[i],
@@ -186,7 +191,9 @@ func TestAgg(t *testing.T) {
 	}
 
 	testPrepareQC(t, cnode)
+	testCombinePrepareQC(t, cnode)
 	testViewChangeQC(t, cnode)
+	testCombineViewChangeQC(t, cnode)
 }
 
 func testPrepareQC(t *testing.T, cnode []*Cbft) {
@@ -199,12 +206,47 @@ func testPrepareQC(t *testing.T, cnode []*Cbft) {
 		pbs[uint32(i)] = pb
 	}
 	qc := cnode[0].generatePrepareQC(pbs)
-	fmt.Println(qc)
 
 	assert.Nil(t, cnode[0].verifyPrepareQC(qc.BlockNumber, qc.BlockHash, qc))
 	qc.ValidatorSet = nil
 	assert.NotNil(t, cnode[0].verifyPrepareQC(qc.BlockNumber, qc.BlockHash, qc))
+}
 
+func testCombinePrepareQC(t *testing.T, cnode []*Cbft) {
+	pbs := make(map[uint32]*protocols.PrepareVote)
+
+	for i := 0; i < len(cnode); i++ {
+		pb := &protocols.PrepareVote{ValidatorIndex: uint32(i)}
+		assert.NotNil(t, cnode[i])
+		cnode[i].signMsgByBls(pb)
+		pbs[uint32(i)] = pb
+	}
+	qc1 := cnode[0].generatePrepareQC(pbs)
+	//fmt.Println(qc1.String())
+
+	// combine
+	qcs := make([]*ctypes.QuorumCert, 0, len(pbs))
+	for i, v := range pbs {
+		vSet := utils.NewBitArray(uint32(len(pbs)))
+		vSet.SetIndex(i, true)
+		qcs = append(qcs, &ctypes.QuorumCert{
+			Epoch:        v.Epoch,
+			ViewNumber:   v.ViewNumber,
+			BlockHash:    v.BlockHash,
+			BlockNumber:  v.BlockNumber,
+			BlockIndex:   v.BlockIndex,
+			Signature:    v.Signature,
+			ValidatorSet: vSet,
+		})
+	}
+	qc2 := cnode[0].combinePrepareQC(qcs)
+	//fmt.Println(qc2.String())
+
+	assert.Equal(t, qc1.String(), qc2.String())
+	assert.Nil(t, cnode[0].verifyPrepareQC(qc1.BlockNumber, qc1.BlockHash, qc1))
+	assert.Nil(t, cnode[0].verifyPrepareQC(qc2.BlockNumber, qc2.BlockHash, qc2))
+	qc2.ValidatorSet = nil
+	assert.NotNil(t, cnode[0].verifyPrepareQC(qc2.BlockNumber, qc2.BlockHash, qc2))
 }
 
 func testViewChangeQC(t *testing.T, cnode []*Cbft) {
@@ -222,6 +264,47 @@ func testViewChangeQC(t *testing.T, cnode []*Cbft) {
 	assert.Equal(t, uint64(len(cnode)-1), num)
 
 	assert.Nil(t, cnode[0].verifyViewChangeQC(qc))
+}
+
+func testCombineViewChangeQC(t *testing.T, cnode []*Cbft) {
+	pbs := make(map[uint32]*protocols.ViewChange)
+
+	for i := 0; i < len(cnode); i++ {
+		pb := &protocols.ViewChange{BlockHash: common.BigToHash(big.NewInt(int64(i))), BlockNumber: uint64(i), ValidatorIndex: uint32(i)}
+		assert.NotNil(t, cnode[i])
+		cnode[i].signMsgByBls(pb)
+		pbs[uint32(i)] = pb
+	}
+	qc1 := cnode[0].generateViewChangeQC(pbs)
+	//fmt.Println(qc1.String())
+	assert.Len(t, qc1.QCs, len(cnode))
+	_, _, _, _, _, num := qc1.MaxBlock()
+	assert.Equal(t, uint64(len(cnode)-1), num)
+
+	assert.Nil(t, cnode[0].verifyViewChangeQC(qc1))
+
+	// combine
+	qcs := make([]*ctypes.ViewChangeQC, 0, len(pbs))
+	for i, v := range pbs {
+		vSet := utils.NewBitArray(uint32(len(pbs)))
+		vSet.SetIndex(i, true)
+		qcs = append(qcs, &ctypes.ViewChangeQC{
+			QCs: []*ctypes.ViewChangeQuorumCert{
+				{
+					Epoch:        v.Epoch,
+					ViewNumber:   v.ViewNumber,
+					BlockHash:    v.BlockHash,
+					BlockNumber:  v.BlockNumber,
+					Signature:    v.Signature,
+					ValidatorSet: vSet,
+				},
+			},
+		})
+	}
+
+	qc2 := cnode[0].combineViewChangeQC(qcs)
+	//fmt.Println(qc2.String())
+	assert.Nil(t, cnode[0].verifyViewChangeQC(qc2))
 }
 
 func TestNode(t *testing.T) {
@@ -269,7 +352,7 @@ func testTimeout(t *testing.T, node, node2 *TestCBFT) {
 	assert.Nil(t, node2.engine.OnViewChange(node.engine.config.Option.NodeID.TerminalString(), node.engine.state.AllViewChange()[0]))
 }
 
-func testExecuteBlock(t *testing.T) {
+func TestExecuteBlock(t *testing.T) {
 	pk, sk, cbftnodes := GenerateCbftNode(4)
 	nodes := make([]*TestCBFT, 0)
 	for i := 0; i < 4; i++ {
@@ -283,7 +366,7 @@ func testExecuteBlock(t *testing.T) {
 	complete := make(chan struct{}, 1)
 	parent := nodes[0].chain.Genesis()
 	for i := 0; i < 8; i++ {
-		block := NewBlock(parent.Hash(), parent.NumberU64()+1)
+		block := NewBlockWithSign(parent.Hash(), parent.NumberU64()+1, nodes[0])
 		assert.True(t, nodes[0].engine.state.HighestExecutedBlock().Hash() == block.ParentHash())
 		nodes[0].engine.OnSeal(block, result, nil, complete)
 		<-complete
@@ -310,8 +393,10 @@ func testExecuteBlock(t *testing.T) {
 				index, finish := nodes[j].engine.state.Executing()
 				assert.True(t, index == uint32(i) && finish, fmt.Sprintf("%d,%v", index, finish))
 				assert.Nil(t, nodes[j].engine.signMsgByBls(msg))
-				assert.Nil(t, nodes[0].engine.OnPrepareVote("id", msg), fmt.Sprintf("number:%d", b.NumberU64()))
-				assert.Nil(t, nodes[1].engine.OnPrepareVote("id", msg), fmt.Sprintf("number:%d", b.NumberU64()))
+				nodes[0].engine.OnPrepareVote("id", msg)
+				nodes[1].engine.OnPrepareVote("id", msg)
+				//assert.Nil(t, nodes[0].engine.OnPrepareVote("id", msg), fmt.Sprintf("number:%d", b.NumberU64()))
+				//assert.Nil(t, nodes[1].engine.OnPrepareVote("id", msg), fmt.Sprintf("number:%d", b.NumberU64()))
 			}
 			parent = b
 		}
@@ -439,7 +524,7 @@ func testValidatorSwitch(t *testing.T) {
 					_, qqc := nodes[i].engine.blockTree.FindBlockAndQC(qcBlock.Hash(), qcBlock.NumberU64())
 					assert.NotNil(t, qqc)
 					p := nodes[ii].engine.state.HighestQCBlock()
-					assert.Nil(t, nodes[ii].engine.blockCacheWriter.Execute(qcBlock, p), fmt.Sprintf("execute block error, parent: %d block: %d", p.NumberU64(), qcBlock.NumberU64()))
+					assert.Nil(t, nodes[ii].engine.blockCache.Execute(qcBlock, p), fmt.Sprintf("execute block error, parent: %d block: %d", p.NumberU64(), qcBlock.NumberU64()))
 					assert.Nil(t, nodes[ii].engine.OnInsertQCBlock([]*types.Block{qcBlock}, []*ctypes.QuorumCert{qqc}))
 				}
 
@@ -448,7 +533,7 @@ func testValidatorSwitch(t *testing.T) {
 					_, qqc := nodes[i].engine.blockTree.FindBlockAndQC(qcBlock.Hash(), qcBlock.NumberU64())
 					assert.NotNil(t, qqc)
 					p := switchNode.engine.state.HighestQCBlock()
-					assert.Nil(t, switchNode.engine.blockCacheWriter.Execute(qcBlock, p), fmt.Sprintf("execute block error, parent: %d block: %d", p.NumberU64(), qcBlock.NumberU64()))
+					assert.Nil(t, switchNode.engine.blockCache.Execute(qcBlock, p), fmt.Sprintf("execute block error, parent: %d block: %d", p.NumberU64(), qcBlock.NumberU64()))
 					assert.Nil(t, switchNode.engine.OnInsertQCBlock([]*types.Block{qcBlock}, []*ctypes.QuorumCert{qqc}))
 				}
 			}
@@ -498,7 +583,7 @@ func testValidatorSwitch(t *testing.T) {
 		_, qqc := nodes[0].engine.blockTree.FindBlockAndQC(qcBlock.Hash(), qcBlock.NumberU64())
 		assert.NotNil(t, qqc)
 		p := nodes[3].engine.state.HighestQCBlock()
-		assert.Nil(t, nodes[3].engine.blockCacheWriter.Execute(qcBlock, p), fmt.Sprintf("execute block error, parent: %d block: %d", p.NumberU64(), qcBlock.NumberU64()))
+		assert.Nil(t, nodes[3].engine.blockCache.Execute(qcBlock, p), fmt.Sprintf("execute block error, parent: %d block: %d", p.NumberU64(), qcBlock.NumberU64()))
 		assert.Nil(t, nodes[3].engine.OnInsertQCBlock([]*types.Block{qcBlock}, []*ctypes.QuorumCert{qqc}))
 	}
 
@@ -512,9 +597,9 @@ func testValidatorSwitch(t *testing.T) {
 
 func newUpdateValidatorTx(t *testing.T, parent *types.Block, header *types.Header, nodes []params.CbftNode, switchNode params.CbftNode, mineNode *TestCBFT) (*types.Transaction, *types.Receipt, *cstate.StateDB) {
 	type Vd struct {
-		Index     uint            `json:"index"`
-		NodeID    discover.NodeID `json:"nodeID"`
-		BlsPubKey bls.PublicKey   `json:"blsPubKey"`
+		Index     uint          `json:"index"`
+		NodeID    enode.IDv0    `json:"nodeID"`
+		BlsPubKey bls.PublicKey `json:"blsPubKey"`
 	}
 	type VdList struct {
 		NodeList []*Vd `json:"validateNode"`
@@ -527,13 +612,13 @@ func newUpdateValidatorTx(t *testing.T, parent *types.Block, header *types.Heade
 	for i := 0; i < 3; i++ {
 		vdl.NodeList = append(vdl.NodeList, &Vd{
 			Index:     uint(i),
-			NodeID:    nodes[i].Node.ID,
+			NodeID:    nodes[i].Node.IDv0(),
 			BlsPubKey: nodes[i].BlsPubKey,
 		})
 	}
 	vdl.NodeList = append(vdl.NodeList, &Vd{
 		Index:     3,
-		NodeID:    switchNode.Node.ID,
+		NodeID:    switchNode.Node.IDv0(),
 		BlsPubKey: switchNode.BlsPubKey,
 	})
 

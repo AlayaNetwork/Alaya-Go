@@ -19,6 +19,7 @@ package core
 import (
 	"errors"
 	"fmt"
+	"github.com/AlayaNetwork/Alaya-Go/x/gov"
 	"sort"
 	"sync"
 	"time"
@@ -35,7 +36,7 @@ import (
 var (
 	errMakeStateDB = errors.New("make StateDB error")
 
-	blockExecutedGauage = metrics.NewRegisteredGauge("cbft/gauage/block/executed", nil)
+	blockExecutedGauge = metrics.NewRegisteredGauge("cbft/gauge/block/executed", nil)
 )
 
 type BlockChainCache struct {
@@ -308,7 +309,7 @@ func (bcc *BlockChainCache) Execute(block *types.Block, parent *types.Block) err
 	} else {
 		return fmt.Errorf("execute block error, err:%s", err.Error())
 	}
-	blockExecutedGauage.Update(common.Millis(time.Now()) - common.Millis(start))
+	blockExecutedGauge.Update(common.Millis(time.Now()) - common.Millis(start))
 	return nil
 }
 
@@ -346,6 +347,15 @@ func (bcc *BlockChainCache) WriteBlock(block *types.Block) error {
 
 	log.Info("Successfully write new block", "hash", block.Hash(), "number", block.NumberU64())
 	return nil
+}
+
+// CurrentActiveVersion return current gov version
+func (bcc *BlockChainCache) GetActiveVersion(header *types.Header) (uint32, error) {
+	if state, err := bcc.GetState(header); err != nil {
+		return 0, err
+	} else {
+		return gov.GetCurrentActiveVersion(state), nil
+	}
 }
 
 type sealHashNumber struct {

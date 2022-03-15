@@ -61,6 +61,14 @@ func (m mockCSMsg) NodeIndex() uint32 {
 	panic("implement me")
 }
 
+func (m mockCSMsg) BlockIndx() uint32 {
+	panic("implement me")
+}
+
+func (m mockCSMsg) CheckQC() *QuorumCert {
+	panic("implement me")
+}
+
 func (m mockCSMsg) CannibalizeBytes() ([]byte, error) {
 	panic("implement me")
 }
