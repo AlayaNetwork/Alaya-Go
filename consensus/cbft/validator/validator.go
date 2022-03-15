@@ -964,8 +964,8 @@ func (vp *ValidatorPool) organize(validators *cbfttypes.Validators, epoch uint64
 	groupTopic := cbfttypes.ConsensusGroupTopicName(epoch, gvs.GetGroupID())
 
 	if init {
-		vp.awaitingTopicEvent[cbfttypes.TypeConsensusTopic] = cbfttypes.TopicEvent{consensusTopic, otherConsensusNodes}
-		vp.awaitingTopicEvent[cbfttypes.TypeGroupTopic] = cbfttypes.TopicEvent{groupTopic, groupNodes}
+		vp.awaitingTopicEvent[cbfttypes.TypeConsensusTopic] = cbfttypes.TopicEvent{Topic: consensusTopic, Nodes: otherConsensusNodes}
+		vp.awaitingTopicEvent[cbfttypes.TypeGroupTopic] = cbfttypes.TopicEvent{Topic: groupTopic, Nodes: groupNodes}
 	} else {
 		eventMux.Post(cbfttypes.NewTopicEvent{Topic: consensusTopic, Nodes: otherConsensusNodes})
 		eventMux.Post(cbfttypes.NewTopicEvent{Topic: groupTopic, Nodes: groupNodes})
