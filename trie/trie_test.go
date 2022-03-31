@@ -20,7 +20,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"github.com/AlayaNetwork/Alaya-Go/common/byteutil"
 	"io/ioutil"
 	"math/big"
 	"math/rand"
@@ -29,6 +28,8 @@ import (
 	"testing"
 	"testing/quick"
 	"time"
+
+	"github.com/AlayaNetwork/Alaya-Go/common/byteutil"
 
 	"github.com/AlayaNetwork/Alaya-Go/ethdb/leveldb"
 
@@ -58,7 +59,7 @@ func TestEmptyTrie(t *testing.T) {
 	var trie Trie
 	res := trie.Hash()
 	exp := emptyRoot
-	if res != common.Hash(exp) {
+	if res != exp {
 		t.Errorf("expected %x got %x", exp, res)
 	}
 }
