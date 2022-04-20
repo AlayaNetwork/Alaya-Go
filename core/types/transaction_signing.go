@@ -82,7 +82,6 @@ func Sender(signer Signer, tx *Transaction) (common.Address, error) {
 	if err != nil {
 		return common.Address{}, err
 	}
-	//log.Debug("Sender cache1", "add", addr, "hash", tx.Hash(), "poi", fmt.Sprintf("%p", tx))
 	tx.from.Store(sigCache{signer: signer, from: addr})
 	return addr, nil
 }
@@ -183,7 +182,7 @@ func recoverPlain(sighash common.Hash, R, S, Vb *big.Int, homestead bool) (commo
 	}
 	// encode the signature in uncompressed format
 	r, s := R.Bytes(), S.Bytes()
-	sig := make([]byte, 65)
+	sig := make([]byte, crypto.SignatureLength)
 	copy(sig[32-len(r):32], r)
 	copy(sig[64-len(s):64], s)
 	sig[64] = V
