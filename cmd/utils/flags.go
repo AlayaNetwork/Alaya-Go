@@ -318,6 +318,10 @@ var (
 		Usage: "API's offered over the HTTP-RPC interface",
 		Value: "",
 	}
+	HTTPEnabledEthCompatibleFlag = cli.BoolFlag{
+		Name:  "http.ethcompatible",
+		Usage: "Enable eth compatible",
+	}
 	GraphQLEnabledFlag = cli.BoolFlag{
 		Name:  "graphql",
 		Usage: "Enable GraphQL on the HTTP-RPC server. Note that GraphQL can only be started if an HTTP server is started as well.",
@@ -731,6 +735,9 @@ func setHTTP(ctx *cli.Context, cfg *node.Config) {
 	}
 	if ctx.GlobalIsSet(HTTPApiFlag.Name) {
 		cfg.HTTPModules = splitAndTrim(ctx.GlobalString(HTTPApiFlag.Name))
+	}
+	if ctx.GlobalBool(HTTPEnabledEthCompatibleFlag.Name) {
+		ethapi.HttpEthCompatible = true
 	}
 
 	if ctx.GlobalIsSet(LegacyRPCVirtualHostsFlag.Name) {
