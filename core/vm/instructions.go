@@ -28,6 +28,7 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/log"
 	"github.com/AlayaNetwork/Alaya-Go/params"
 	"github.com/AlayaNetwork/Alaya-Go/rlp"
+	"github.com/AlayaNetwork/Alaya-Go/x/gov"
 	"github.com/AlayaNetwork/Alaya-Go/x/plugin"
 	"github.com/AlayaNetwork/Alaya-Go/x/staking"
 )
@@ -718,7 +719,7 @@ func opCall(pc *uint64, interpreter *EVMInterpreter, callContext *callCtx) ([]by
 	}
 	callContext.contract.Gas += returnGas
 
-	if IsPlatONPrecompiledContract(toAddr) {
+	if IsPlatONPrecompiledContract(toAddr, gov.Gte120VersionState(interpreter.evm.StateDB)) {
 		saveTransData(interpreter, args, callContext.contract.self.Address().Bytes(), addr.Bytes(), string(ret))
 	}
 
@@ -785,7 +786,7 @@ func opDelegateCall(pc *uint64, interpreter *EVMInterpreter, callContext *callCt
 	}
 	callContext.contract.Gas += returnGas
 
-	if IsPlatONPrecompiledContract(toAddr) {
+	if IsPlatONPrecompiledContract(toAddr, gov.Gte120VersionState(interpreter.evm.StateDB)) {
 		saveTransData(interpreter, args, callContext.contract.CallerAddress.Bytes(), addr.Bytes(), string(ret))
 	}
 
