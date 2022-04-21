@@ -1,11 +1,14 @@
 package core
 
 import (
-	"github.com/AlayaNetwork/Alaya-Go/crypto"
 	"math/big"
 	"runtime"
 	"sync"
 	"time"
+
+	"github.com/AlayaNetwork/Alaya-Go/x/gov"
+
+	"github.com/AlayaNetwork/Alaya-Go/crypto"
 
 	"github.com/panjf2000/ants/v2"
 
@@ -33,7 +36,7 @@ type Executor struct {
 	signer       types.Signer
 
 	workerPool *ants.PoolWithFunc
-	txpool *TxPool
+	txpool     *TxPool
 }
 
 type TaskArgs struct {
@@ -140,11 +143,11 @@ func (exe *Executor) ExecuteTransactions(ctx *ParallelContext) error {
 	}
 
 	// dag print info
-/*	logVerbosity := debug.GetLogVerbosity()
-	if logVerbosity == log.LvlTrace {
-		inf := ctx.txListInfo()
-		log.Trace("TxList Info", "blockNumber", ctx.header.Number, "txList", inf)
-	}*/
+	/*	logVerbosity := debug.GetLogVerbosity()
+		if logVerbosity == log.LvlTrace {
+			inf := ctx.txListInfo()
+			log.Trace("TxList Info", "blockNumber", ctx.header.Number, "txList", inf)
+		}*/
 
 	return nil
 }
@@ -240,6 +243,6 @@ func (exe *Executor) isContract(tx *types.Transaction, state *state.StateDB, ctx
 	if _, ok := ctx.tempContractCache[*address]; ok {
 		return true
 	}
-	isContract := vm.IsPrecompiledContract(*address) || state.GetCodeSize(*address) > 0
+	isContract := vm.IsPrecompiledContract(*address, gov.Gte170VersionState(state)) || state.GetCodeSize(*address) > 0
 	return isContract
 }
