@@ -51,8 +51,6 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/rpc"
 )
 
-var HttpEthCompatible = false
-
 // PublicEthereumAPI provides an API to access Ethereum related information.
 // It offers only methods that operate on public data that is freely available to anyone.
 type PublicEthereumAPI struct {
@@ -1076,9 +1074,11 @@ func RPCMarshalHeader(head *types.Header) map[string]interface{} {
 		"transactionsRoot": head.TxHash,
 		"receiptsRoot":     head.ReceiptHash,
 	}
-	if HttpEthCompatible {
+	if types.HttpEthCompatible {
 		m["nonce"] = hexutil.Bytes(head.Nonce[0:8])
 		m["timestamp"] = hexutil.Uint64(head.Time / 1000)
+		m["sha3Uncles"] = common.ZeroHash
+		m["difficulty"] = (*hexutil.Big)(head.Number)
 	}
 
 	return m
