@@ -145,16 +145,17 @@ func New(root common.Hash, db Database) (*StateDB, error) {
 // New StateDB based on the parent StateDB
 func (self *StateDB) NewStateDB() *StateDB {
 	stateDB := &StateDB{
-		db:                 self.db,
-		trie:               self.db.NewTrie(self.trie),
-		stateObjects:       make(map[common.Address]*stateObject),
-		stateObjectsDirty:  make(map[common.Address]struct{}),
-		logs:               make(map[common.Hash][]*types.Log),
-		preimages:          make(map[common.Hash][]byte),
-		journal:            newJournal(),
-		parent:             self,
-		clearReferenceFunc: make([]func(), 0),
-		originRoot:         self.Root(),
+		db:                  self.db,
+		trie:                self.db.NewTrie(self.trie),
+		stateObjects:        make(map[common.Address]*stateObject),
+		stateObjectsPending: make(map[common.Address]struct{}),
+		stateObjectsDirty:   make(map[common.Address]struct{}),
+		logs:                make(map[common.Hash][]*types.Log),
+		preimages:           make(map[common.Hash][]byte),
+		journal:             newJournal(),
+		parent:              self,
+		clearReferenceFunc:  make([]func(), 0),
+		originRoot:          self.Root(),
 	}
 
 	index := self.AddReferenceFunc(stateDB.clearParentRef)
