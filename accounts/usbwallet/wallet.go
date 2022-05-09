@@ -25,12 +25,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/karalabe/hid"
+
 	ethereum "github.com/AlayaNetwork/Alaya-Go"
 	"github.com/AlayaNetwork/Alaya-Go/accounts"
 	"github.com/AlayaNetwork/Alaya-Go/common"
 	"github.com/AlayaNetwork/Alaya-Go/core/types"
 	"github.com/AlayaNetwork/Alaya-Go/log"
-	"github.com/karalabe/hid"
 )
 
 // Maximum time between wallet health checks to detect USB unplugs.
@@ -475,7 +476,8 @@ func (w *wallet) Derive(path accounts.DerivationPath, pin bool) (accounts.Accoun
 
 	if _, ok := w.paths[address]; !ok {
 		w.accounts = append(w.accounts, account)
-		w.paths[address] = path
+		w.paths[address] = make(accounts.DerivationPath, len(path))
+		copy(w.paths[address], path)
 	}
 	return account, nil
 }
