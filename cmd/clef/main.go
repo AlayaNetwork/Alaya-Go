@@ -26,6 +26,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/mattn/go-isatty"
 	"io"
 	"io/ioutil"
 	"os"
@@ -46,6 +47,7 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/signer/core"
 	"github.com/AlayaNetwork/Alaya-Go/signer/rules"
 	"github.com/AlayaNetwork/Alaya-Go/signer/storage"
+	colorable "github.com/mattn/go-colorable"
 )
 
 // ExternalAPIVersion -- see extapi_changelog.md
@@ -308,7 +310,13 @@ func initialize(c *cli.Context) error {
 		}
 	}
 
-	log.Root().SetHandler(log.LvlFilterHandler(log.Lvl(c.Int(logLevelFlag.Name)), log.StreamHandler(logOutput, log.TerminalFormat(true))))
+	usecolor := (isatty.IsTerminal(os.Stderr.Fd()) || isatty.IsCygwinTerminal(os.Stderr.Fd())) && os.Getenv("TERM") != "dumb"
+	output := io.Writer(logOutput)
+	if usecolor {
+		output = colorable.NewColorable(logOutput)
+	}
+	log.Root().SetHandler(log.LvlFilterHandler(log.Lvl(c.Int(logLevelFlag.Name)), log.StreamHandler(output, log.TerminalFormat(usecolor))))
+
 	return nil
 }
 
