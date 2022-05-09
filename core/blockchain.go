@@ -268,6 +268,10 @@ func NewBlockChain(db ethdb.Database, cacheConfig *CacheConfig, chainConfig *par
 		return nil, ErrNoGenesis
 	}
 
+	var nilBlock *types.Block
+	bc.currentBlock.Store(nilBlock)
+	bc.currentFastBlock.Store(nilBlock)
+
 	// Initialize the chain with ancient data if it isn't empty.
 	if bc.empty() {
 		rawdb.InitDatabaseFromFreezer(bc.db)
