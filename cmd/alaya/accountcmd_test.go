@@ -96,7 +96,7 @@ Your new account is locked with a password. Please give a password. Do not forge
 !! Unsupported terminal, password will be echoed.
 Password: {{.InputLine "something"}}
 Repeat password: {{.InputLine "something else"}}
-Fatal: password do not match
+Fatal: Passwords do not match
 `)
 }
 
