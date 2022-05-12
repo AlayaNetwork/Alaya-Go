@@ -30,6 +30,8 @@ import (
 	"testing/quick"
 	"time"
 
+	"github.com/AlayaNetwork/Alaya-Go/common/vm"
+
 	"github.com/AlayaNetwork/Alaya-Go/core/rawdb"
 
 	"github.com/stretchr/testify/assert"
@@ -58,6 +60,7 @@ func TestUpdateLeaks(t *testing.T) {
 	//dir, _ := ioutil.TempDir("", "eth-core-bench")
 	//ethdb,err:= ethdb.NewLDBDatabase(dir,128,128)
 	state, _ := New(common.Hash{}, NewDatabase(db))
+	vm.PrecompiledContractCheckInstance = &TestPrecompiledContractCheck{}
 
 	// Update it with some accounts
 	for i := byte(0); i < 255; i++ {
@@ -152,7 +155,7 @@ func TestNewStateDBAndCopy(t *testing.T) {
 			value := st.GetState(addr, []byte(k))
 			//fmt.Println("storage :::: ", "k", k, "v", v, "state v", string(value))
 			//if bytes.Equal([]byte{}, []byte(v)) || bytes.Equal(value, []byte(nil)) {
-			//	fmt.Println("lalalalala", "k", k, "v", v, "state v", string(value))
+			//	fmt.Println("lalalalala :::: ", "k", k, "v", v, "state v", string(value))
 			//}
 			assert.Equal(t, []byte(v), value)
 		}
@@ -177,7 +180,7 @@ func TestNewStateDBAndCopy(t *testing.T) {
 			value := st2.GetState(addr, []byte(k))
 			value2 := s1c.GetState(addr, []byte(k))
 			value3 := s1db.GetState(addr, []byte(k))
-			//fmt.Println("v", hex.EncodeToString([]byte(v)), "value", hex.EncodeToString([]byte(value)), "value2", hex.EncodeToString(value2))
+			fmt.Println("v", hex.EncodeToString([]byte(v)), "value", hex.EncodeToString([]byte(value)), "value2", hex.EncodeToString(value2))
 			assert.Equal(t, []byte(v), value)
 			assert.Equal(t, []byte(v), value2)
 			assert.Equal(t, []byte(v), value3)

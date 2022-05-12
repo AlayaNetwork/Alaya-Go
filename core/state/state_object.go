@@ -253,9 +253,11 @@ func (s *stateObject) GetCommittedState(db Database, key []byte) []byte {
 	if value, pending := s.pendingStorage[string(key)]; pending {
 		return value
 	}
-	if value, cached := s.originStorage[string(key)]; cached {
+	// If we have the original value cached, return that
+	if value := s.getCommittedStateCache(key); len(value) != 0 {
 		return value
 	}
+
 	// Track the amount of time wasted on reading the storage trie
 	if metrics.EnabledExpensive {
 		defer func(start time.Time) { s.db.StorageReads += time.Since(start) }(time.Now())

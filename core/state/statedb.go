@@ -780,9 +780,10 @@ func (s *StateDB) getStateObject(addr common.Address) *stateObject {
 // destructed object instead of wiping all knowledge about the state object.
 func (s *StateDB) getDeletedStateObject(addr common.Address) *stateObject {
 	// Prefer live objects if any is available
-	if obj := s.stateObjects[addr]; obj != nil {
+	if obj := s.getStateObjectCache(addr); obj != nil {
 		return obj
 	}
+
 	if metrics.EnabledExpensive {
 		defer func(start time.Time) { s.AccountReads += time.Since(start) }(time.Now())
 	}
