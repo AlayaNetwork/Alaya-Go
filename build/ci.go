@@ -228,6 +228,9 @@ func doInstall(cmdline []string) {
 
 	if *arch == "" || *arch == runtime.GOARCH {
 		goinstall := goTool("install", buildFlags(env)...)
+		if runtime.GOARCH == "arm64" {
+			goinstall.Args = append(goinstall.Args, "-p", "1")
+		}
 		goinstall.Args = append(goinstall.Args, "-v")
 		index := 0
 		packages2 := []string{}
