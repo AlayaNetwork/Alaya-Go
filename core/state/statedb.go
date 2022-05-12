@@ -702,6 +702,11 @@ func (self *StateDB) getStateObjectSnapshot(addr common.Address, key []byte) []b
 			return value
 		}
 
+		value, pending := obj.pendingStorage[string(key)]
+		if pending {
+			return value
+		}
+
 	}
 	return nil
 }

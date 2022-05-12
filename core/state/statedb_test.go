@@ -180,7 +180,7 @@ func TestNewStateDBAndCopy(t *testing.T) {
 			value := st2.GetState(addr, []byte(k))
 			value2 := s1c.GetState(addr, []byte(k))
 			value3 := s1db.GetState(addr, []byte(k))
-			fmt.Println("v", hex.EncodeToString([]byte(v)), "value", hex.EncodeToString([]byte(value)), "value2", hex.EncodeToString(value2))
+			//fmt.Println("v", hex.EncodeToString([]byte(v)), "value", hex.EncodeToString([]byte(value)), "value2", hex.EncodeToString(value2))
 			assert.Equal(t, []byte(v), value)
 			assert.Equal(t, []byte(v), value2)
 			assert.Equal(t, []byte(v), value3)
