@@ -139,20 +139,20 @@ func TestSnapshot(t *testing.T) {
 	s.state.SetState(stateobjaddr, storageaddr.Bytes(), data2.Bytes())
 	s.state.RevertToSnapshot(snapshot)
 
-	if v := s.state.GetState(stateobjaddr, storageaddr.Bytes()); bytes.Equal(v, data1.Bytes()) {
+	if v := s.state.GetState(stateobjaddr, storageaddr.Bytes()); !bytes.Equal(v, data1.Bytes()) {
 		t.Errorf("wrong storage value %v, want %v", v, data1)
 	}
-	if v := s.state.GetCommittedState(stateobjaddr, storageaddr.Bytes()); bytes.Equal(v, common.Hash{}.Bytes()) {
-		t.Errorf("wrong committed storage value %v, want %v", v, common.Hash{})
+	if v := s.state.GetCommittedState(stateobjaddr, storageaddr.Bytes()); !bytes.Equal(v, []byte("")) {
+		t.Errorf("wrong committed storage value %v, want %v", v, []byte(""))
 	}
 
 	// revert up to the genesis state and ensure correct content
 	s.state.RevertToSnapshot(genesis)
-	if v := s.state.GetState(stateobjaddr, storageaddr.Bytes()); bytes.Equal(v, common.Hash{}.Bytes()) {
-		t.Errorf("wrong storage value %v, want %v", v, common.Hash{})
+	if v := s.state.GetState(stateobjaddr, storageaddr.Bytes()); !bytes.Equal(v, []byte("")) {
+		t.Errorf("wrong storage value %v, want %v", v, []byte(""))
 	}
-	if v := s.state.GetCommittedState(stateobjaddr, storageaddr.Bytes()); bytes.Equal(v, common.Hash{}.Bytes()) {
-		t.Errorf("wrong committed storage value %v, want %v", v, common.Hash{})
+	if v := s.state.GetCommittedState(stateobjaddr, storageaddr.Bytes()); !bytes.Equal(v, []byte("")) {
+		t.Errorf("wrong committed storage value %v, want %v", v, []byte(""))
 	}
 }
 
