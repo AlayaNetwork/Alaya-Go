@@ -833,14 +833,16 @@ func (self *StateDB) GetOrNewStateObject(addr common.Address) *stateObject {
 // the given address, it is overwritten and returned as the second return value.
 func (self *StateDB) createObject(addr common.Address) (newobj, prev *stateObject) {
 	prev = self.getDeletedStateObject(addr) // Note, prev might have been deleted, we need that!
-	newobj = newObject(self, addr, Account{})
-	newobj.setNonce(0) // sets the object to dirty
-
 	if prev == nil {
+		newobj = newObject(self, addr, Account{StorageKeyPrefix: addr.Bytes()})
 		self.journal.append(createObjectChange{account: &addr})
 	} else {
+		prefix := make([]byte, len(prev.data.StorageKeyPrefix))
+		copy(prefix, prev.data.StorageKeyPrefix)
+		newobj = newObject(self, addr, Account{StorageKeyPrefix: prefix})
 		self.journal.append(resetObjectChange{prev: prev})
 	}
+	newobj.setNonce(0) // sets the object to dirty
 	self.setStateObject(newobj)
 	return newobj, prev
 }
