@@ -38,6 +38,9 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/trie"
 )
 
+// AccountRangeMaxResults is the maximum number of results to be returned per call
+const AccountRangeMaxResults = 256
+
 // PrivateMinerAPI provides private RPC methods to control the miner.
 // These methods can be abused by external users and must be considered insecure for use by untrusted users.
 type PrivateMinerAPI struct {
@@ -73,6 +76,11 @@ func NewPrivateAdminAPI(eth *Ethereum) *PrivateAdminAPI {
 
 // ExportChain exports the current blockchain into a local file.
 func (api *PrivateAdminAPI) ExportChain(file string) (bool, error) {
+	if _, err := os.Stat(file); err == nil {
+		// File already exists. Allowing overwrite could be a DoS vecotor,
+		// since the 'file' may point to arbitrary paths on the drive
+		return false, errors.New("location would overwrite an existing file")
+	}
 	// Make sure we can create the file to export into
 	out, err := os.OpenFile(file, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, os.ModePerm)
 	if err != nil {
@@ -166,13 +174,17 @@ func NewPublicDebugAPI(eth *Ethereum) *PublicDebugAPI {
 
 // DumpBlock retrieves the entire state of the database at a given block.
 func (api *PublicDebugAPI) DumpBlock(blockNr rpc.BlockNumber) (state.Dump, error) {
+	opts := &state.DumpConfig{
+		OnlyWithAddresses: true,
+		Max:               AccountRangeMaxResults, // Sanity limit over RPC
+	}
 	if blockNr == rpc.PendingBlockNumber {
 		// If we're dumping the pending state, we need to request
 		// both the pending block as well as the pending state from
 		// the miner and operate on those
 		_, stateDb := api.eth.miner.Pending()
 		stateDb.ClearParentReference()
-		return stateDb.RawDump(), nil
+		return stateDb.RawDump(opts), nil
 	}
 	var block *types.Block
 	if blockNr == rpc.LatestBlockNumber {
@@ -187,7 +199,7 @@ func (api *PublicDebugAPI) DumpBlock(blockNr rpc.BlockNumber) (state.Dump, error
 	if err != nil {
 		return state.Dump{}, err
 	}
-	return stateDb.RawDump(), nil
+	return stateDb.RawDump(opts), nil
 }
 
 // EnableDBGC enable database garbage collection.
@@ -248,6 +260,69 @@ func (api *PrivateDebugAPI) GetBadBlocks(ctx context.Context) ([]*BadBlockArgs, 
 		}
 	}
 	return results, nil
+}
+
+// AccountRangeResult returns a mapping from the hash of an account addresses
+// to its preimage. It will return the JSON null if no preimage is found.
+// Since a query can return a limited amount of results, a "next" field is
+// also present for paging.
+type AccountRangeResult struct {
+	Accounts map[common.Hash]*common.Address `json:"accounts"`
+	Next     common.Hash                     `json:"next"`
+}
+
+func accountRange(st state.Trie, start *common.Hash, maxResults int) (AccountRangeResult, error) {
+	if start == nil {
+		start = &common.Hash{0}
+	}
+	it := trie.NewIterator(st.NodeIterator(start.Bytes()))
+	result := AccountRangeResult{Accounts: make(map[common.Hash]*common.Address), Next: common.Hash{}}
+
+	if maxResults > AccountRangeMaxResults {
+		maxResults = AccountRangeMaxResults
+	}
+
+	for i := 0; i < maxResults && it.Next(); i++ {
+		if preimage := st.GetKey(it.Key); preimage != nil {
+			addr := &common.Address{}
+			addr.SetBytes(preimage)
+			result.Accounts[common.BytesToHash(it.Key)] = addr
+		} else {
+			result.Accounts[common.BytesToHash(it.Key)] = nil
+		}
+	}
+
+	if it.Next() {
+		result.Next = common.BytesToHash(it.Key)
+	}
+
+	return result, nil
+}
+
+// AccountRange enumerates all accounts in the latest state
+func (api *PrivateDebugAPI) AccountRange(ctx context.Context, start *common.Hash, maxResults int) (AccountRangeResult, error) {
+	var statedb *state.StateDB
+	var err error
+	block := api.eth.blockchain.CurrentBlock()
+
+	if len(block.Transactions()) == 0 {
+		statedb, err = api.computeStateDB(block, defaultTraceReexec)
+		if err != nil {
+			return AccountRangeResult{}, err
+		}
+	} else {
+		_, _, statedb, err = api.computeTxEnv(block.Hash(), len(block.Transactions())-1, 0)
+		if err != nil {
+			return AccountRangeResult{}, err
+		}
+	}
+
+	trie, err := statedb.Database().OpenTrie(block.Header().Root)
+	if err != nil {
+		return AccountRangeResult{}, err
+	}
+
+	return accountRange(trie, start, maxResults)
 }
 
 // StorageRangeResult is the result of a debug_storageRangeAt API call.

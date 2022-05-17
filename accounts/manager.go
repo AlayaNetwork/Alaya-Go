@@ -17,6 +17,7 @@
 package accounts
 
 import (
+	"github.com/AlayaNetwork/Alaya-Go/common"
 	"reflect"
 	"sort"
 	"sync"
@@ -160,6 +161,20 @@ func (am *Manager) Wallet(url string) (Wallet, error) {
 		}
 	}
 	return nil, ErrUnknownWallet
+}
+
+// Accounts returns all account addresses of all wallets within the account manager
+func (am *Manager) Accounts() []common.Address {
+	am.lock.RLock()
+	defer am.lock.RUnlock()
+
+	addresses := make([]common.Address, 0) // return [] instead of nil if empty
+	for _, wallet := range am.wallets {
+		for _, account := range wallet.Accounts() {
+			addresses = append(addresses, account.Address)
+		}
+	}
+	return addresses
 }
 
 // Find attempts to locate the wallet corresponding to a specific account. Since

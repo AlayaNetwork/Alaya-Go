@@ -27,6 +27,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"github.com/AlayaNetwork/Alaya-Go/metrics"
 	"golang.org/x/crypto/sha3"
 	"hash"
 	"io"
@@ -50,10 +51,10 @@ import (
 const (
 	maxUint24 = ^uint32(0) >> 8
 
-	sskLen = 16 // ecies.MaxSharedKeyLength(pubKey) / 2
-	sigLen = 65 // elliptic S256
-	pubLen = 64 // 512 bit pubkey in uncompressed representation without format byte
-	shaLen = 32 // hash length (for nonce etc)
+	sskLen = 16                     // ecies.MaxSharedKeyLength(pubKey) / 2
+	sigLen = crypto.SignatureLength // elliptic S256
+	pubLen = 64                     // 512 bit pubkey in uncompressed representation without format byte
+	shaLen = 32                     // hash length (for nonce etc)
 
 	authMsgLen  = sigLen + shaLen + pubLen + shaLen + 1
 	authRespLen = pubLen + shaLen + 1
@@ -613,6 +614,10 @@ func (rw *rlpxFrameRW) WriteMsg(msg Msg) error {
 		msg.Payload = bytes.NewReader(payload)
 		msg.Size = uint32(len(payload))
 	}
+	msg.meterSize = msg.Size
+	if metrics.Enabled && msg.meterCap.Name != "" { // don't meter non-subprotocol messages
+		metrics.GetOrRegisterMeter(fmt.Sprintf("%s/%s/%d/%#02x", egressMeterName, msg.meterCap.Name, msg.meterCap.Version, msg.meterCode), nil).Mark(int64(msg.meterSize))
+	}
 	// write header
 	headbuf := make([]byte, 32)
 	fsize := uint32(len(ptype)) + msg.Size
@@ -708,6 +713,7 @@ func (rw *rlpxFrameRW) ReadMsg() (msg Msg, err error) {
 		return msg, err
 	}
 	msg.Size = uint32(content.Len())
+	msg.meterSize = msg.Size
 	msg.Payload = content
 
 	// if snappy is enabled, verify and decompress message

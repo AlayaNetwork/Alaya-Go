@@ -191,13 +191,7 @@ func NewPublicAccountAPI(am *accounts.Manager) *PublicAccountAPI {
 
 // Accounts returns the collection of accounts this node manages
 func (s *PublicAccountAPI) Accounts() []common.Address {
-	addresses := make([]common.Address, 0) // return [] instead of nil if empty
-	for _, wallet := range s.am.Wallets() {
-		for _, account := range wallet.Accounts() {
-			addresses = append(addresses, account.Address)
-		}
-	}
-	return addresses
+	return s.am.Accounts()
 }
 
 // PrivateAccountAPI provides an API to access accounts managed by this node.
@@ -220,13 +214,7 @@ func NewPrivateAccountAPI(b Backend, nonceLock *AddrLocker) *PrivateAccountAPI {
 
 // listAccounts will return a list of addresses for accounts this node manages.
 func (s *PrivateAccountAPI) ListAccounts() []common.Address {
-	addresses := make([]common.Address, 0) // return [] instead of nil if empty
-	for _, wallet := range s.am.Wallets() {
-		for _, account := range wallet.Accounts() {
-			addresses = append(addresses, account.Address)
-		}
-	}
-	return addresses
+	return s.am.Accounts()
 }
 
 // rawWallet is a JSON representation of an accounts.Wallet interface, with its
@@ -455,7 +443,7 @@ func (s *PrivateAccountAPI) Sign(ctx context.Context, data hexutil.Bytes, addr c
 		log.Warn("Failed data sign attempt", "address", addr, "err", err)
 		return nil, err
 	}
-	signature[64] += 27 // Transform V from 0/1 to 27/28 according to the yellow paper
+	signature[crypto.RecoveryIDOffset] += 27 // Transform V from 0/1 to 27/28 according to the yellow paper
 	return signature, nil
 }
 
@@ -470,13 +458,13 @@ func (s *PrivateAccountAPI) Sign(ctx context.Context, data hexutil.Bytes, addr c
 //
 // https://github.com/ethereum/go-ethereum/wiki/Management-APIs#personal_ecRecover
 func (s *PrivateAccountAPI) EcRecover(ctx context.Context, data, sig hexutil.Bytes) (common.Address, error) {
-	if len(sig) != 65 {
-		return common.Address{}, fmt.Errorf("signature must be 65 bytes long")
+	if len(sig) != crypto.SignatureLength {
+		return common.Address{}, fmt.Errorf("signature must be %d bytes long", crypto.SignatureLength)
 	}
-	if sig[64] != 27 && sig[64] != 28 {
+	if sig[crypto.RecoveryIDOffset] != 27 && sig[crypto.RecoveryIDOffset] != 28 {
 		return common.Address{}, fmt.Errorf("invalid Ethereum signature (V is not 27 or 28)")
 	}
-	sig[64] -= 27 // Transform yellow paper V from 27/28 to 0/1
+	sig[crypto.RecoveryIDOffset] -= 27 // Transform yellow paper V from 27/28 to 0/1
 
 	rpk, err := crypto.SigToPub(signHash(data), sig)
 	if err != nil {
@@ -1135,7 +1123,7 @@ func (s *PublicBlockChainAPI) rpcMarshalBlock(b *types.Block, inclTx bool, fullT
 
 // RPCTransaction represents a transaction that will serialize to the RPC representation of a transaction
 type RPCTransaction struct {
-	BlockHash        common.Hash     `json:"blockHash"`
+	BlockHash        *common.Hash    `json:"blockHash"`
 	BlockNumber      *hexutil.Big    `json:"blockNumber"`
 	From             common.Address  `json:"from"`
 	Gas              hexutil.Uint64  `json:"gas"`
@@ -1144,7 +1132,7 @@ type RPCTransaction struct {
 	Input            hexutil.Bytes   `json:"input"`
 	Nonce            hexutil.Uint64  `json:"nonce"`
 	To               *common.Address `json:"to"`
-	TransactionIndex hexutil.Uint    `json:"transactionIndex"`
+	TransactionIndex *hexutil.Uint64 `json:"transactionIndex"`
 	Value            *hexutil.Big    `json:"value"`
 	V                *hexutil.Big    `json:"v"`
 	R                *hexutil.Big    `json:"r"`
@@ -1172,9 +1160,9 @@ func newRPCTransaction(tx *types.Transaction, blockHash common.Hash, blockNumber
 		S:        (*hexutil.Big)(s),
 	}
 	if blockHash != (common.Hash{}) {
-		result.BlockHash = blockHash
+		result.BlockHash = &blockHash
 		result.BlockNumber = (*hexutil.Big)(new(big.Int).SetUint64(blockNumber))
-		result.TransactionIndex = hexutil.Uint(index)
+		result.TransactionIndex = (*hexutil.Uint64)(&index)
 	}
 	return result
 }
@@ -1541,6 +1529,22 @@ func (s *PublicTransactionPoolAPI) SendTransaction(ctx context.Context, args Sen
 	return SubmitTransaction(ctx, s.b, signed)
 }
 
+// FillTransaction fills the defaults (nonce, gas, gasPrice) on a given unsigned transaction,
+// and returns it to the caller for further processing (signing + broadcast)
+func (s *PublicTransactionPoolAPI) FillTransaction(ctx context.Context, args SendTxArgs) (*SignTransactionResult, error) {
+	// Set some sanity defaults and terminate on failure
+	if err := args.setDefaults(ctx, s.b); err != nil {
+		return nil, err
+	}
+	// Assemble the transaction and obtain rlp
+	tx := args.toTransaction()
+	data, err := rlp.EncodeToBytes(tx)
+	if err != nil {
+		return nil, err
+	}
+	return &SignTransactionResult{data, tx}, nil
+}
+
 // SendRawTransaction will add the signed transaction to the transaction pool.
 // The sender is responsible for signing the transaction and using the correct nonce.
 func (s *PublicTransactionPoolAPI) SendRawTransaction(ctx context.Context, encodedTx hexutil.Bytes) (common.Hash, error) {
@@ -1728,22 +1732,18 @@ func NewPrivateDebugAPI(b Backend) *PrivateDebugAPI {
 	return &PrivateDebugAPI{b: b}
 }
 
-// ChaindbProperty returns leveldb properties of the chain database.
+// ChaindbProperty returns leveldb properties of the key-value database.
 func (api *PrivateDebugAPI) ChaindbProperty(property string) (string, error) {
-	ldb, ok := api.b.ChainDb().(interface {
-		LDB() *leveldb.DB
-	})
-	if !ok {
-		return "", fmt.Errorf("chaindbProperty does not work for memory databases")
-	}
 	if property == "" {
 		property = "leveldb.stats"
 	} else if !strings.HasPrefix(property, "leveldb.") {
 		property = "leveldb." + property
 	}
-	return ldb.LDB().GetProperty(property)
+	return api.b.ChainDb().Stat(property)
 }
 
+// ChaindbCompact flattens the entire key-value database into a single level,
+// removing all unused slots and merging all keys.
 func (api *PrivateDebugAPI) ChaindbCompact() error {
 	ldb, ok := api.b.ChainDb().(interface {
 		LDB() *leveldb.DB
