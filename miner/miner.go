@@ -174,3 +174,9 @@ func (miner *Miner) Pending() (*types.Block, *state.StateDB) {
 func (miner *Miner) PendingBlock() *types.Block {
 	return miner.worker.pendingBlock()
 }
+
+// SubscribePendingLogs starts delivering logs from pending transactions
+// to the given channel.
+func (self *Miner) SubscribePendingLogs(ch chan<- []*types.Log) event.Subscription {
+	return self.worker.pendingLogsFeed.Subscribe(ch)
+}

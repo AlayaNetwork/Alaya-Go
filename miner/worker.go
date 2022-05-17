@@ -140,6 +140,9 @@ type worker struct {
 	eth          Backend
 	chain        *core.BlockChain
 
+	// Feeds
+	pendingLogsFeed event.Feed
+
 	// Subscriptions
 	mux          *event.TypeMux
 	txsCh        chan core.NewTxsEvent
