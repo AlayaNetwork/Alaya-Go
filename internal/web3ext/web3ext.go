@@ -18,14 +18,14 @@
 package web3ext
 
 var Modules = map[string]string{
-	"admin":      AdminJs,
-	"debug":      DebugJs,
-	"platon":     PlatonJs,
-	"miner":      MinerJs,
-	"net":        NetJs,
-	"personal":   PersonalJs,
-	"rpc":        RpcJs,
-	"txpool":     TxpoolJs,
+	"admin":    AdminJs,
+	"debug":    DebugJs,
+	"platon":   PlatonJs,
+	"miner":    MinerJs,
+	"net":      NetJs,
+	"personal": PersonalJs,
+	"rpc":      RpcJs,
+	"txpool":   TxpoolJs,
 }
 
 const AdminJs = `
@@ -55,8 +55,8 @@ web3._extend({
 		new web3._extend.Method({
 			name: 'exportChain',
 			call: 'admin_exportChain',
-			params: 1,
-			inputFormatter: [null]
+			params: 3,
+			inputFormatter: [null, null, null]
 		}),
 		new web3._extend.Method({
 			name: 'importChain',
