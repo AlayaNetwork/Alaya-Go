@@ -17,10 +17,14 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"testing"
+	"time"
+
+	"github.com/AlayaNetwork/Alaya-Go/rpc"
 
 	"github.com/AlayaNetwork/Alaya-Go/internal/cmdtest"
 	"github.com/docker/docker/pkg/reexec"
@@ -90,4 +94,29 @@ func runPlatON(t *testing.T, args ...string) *testplaton {
 	tt.Run("platon-test", args...)
 
 	return tt
+}
+
+// waitForEndpoint attempts to connect to an RPC endpoint until it succeeds.
+func waitForEndpoint(t *testing.T, endpoint string, timeout time.Duration) {
+	probe := func() bool {
+		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		defer cancel()
+		c, err := rpc.DialContext(ctx, endpoint)
+		if c != nil {
+			_, err = c.SupportedModules()
+			c.Close()
+		}
+		return err == nil
+	}
+
+	start := time.Now()
+	for {
+		if probe() {
+			return
+		}
+		if time.Since(start) > timeout {
+			t.Fatal("endpoint", endpoint, "did not open within", timeout)
+		}
+		time.Sleep(200 * time.Millisecond)
+	}
 }
