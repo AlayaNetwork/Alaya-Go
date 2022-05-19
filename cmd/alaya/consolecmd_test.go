@@ -80,11 +80,14 @@ func TestIPCAttachWelcome(t *testing.T) {
 	platon := runPlatON(t,
 		"--port", "0", "--alaya", "--maxpeers", "60", "--nodiscover", "--nat", "none", "--ipcpath", ipc)
 
+	defer func() {
+		platon.Interrupt()
+		platon.ExpectExit()
+	}()
+
 	waitForEndpoint(t, ipc, 3*time.Second)
 	testAttachWelcome(t, platon, "ipc:"+ipc, ipcAPIs)
 
-	platon.Interrupt()
-	platon.ExpectExit()
 }
 
 func TestHTTPAttachWelcome(t *testing.T) {
@@ -93,12 +96,15 @@ func TestHTTPAttachWelcome(t *testing.T) {
 		"--port", "0", "--ipcdisable", "--alaya", "--maxpeers", "60", "--nodiscover", "--nat", "none",
 		"--rpc", "--rpcport", port)
 
+	defer func() {
+		platon.Interrupt()
+		platon.ExpectExit()
+	}()
+
 	endpoint := "http://127.0.0.1:" + port
 	waitForEndpoint(t, endpoint, 3*time.Second)
 	testAttachWelcome(t, platon, endpoint, httpAPIs)
 
-	platon.Interrupt()
-	platon.ExpectExit()
 }
 
 func TestWSAttachWelcome(t *testing.T) {
@@ -108,12 +114,15 @@ func TestWSAttachWelcome(t *testing.T) {
 		"--port", "0", "--ipcdisable", "--alaya", "--maxpeers", "60", "--nodiscover", "--nat", "none",
 		"--ws", "--wsport", port /*, "--testnet"*/)
 
+	defer func() {
+		platon.Interrupt()
+		platon.ExpectExit()
+	}()
+
 	endpoint := "ws://127.0.0.1:" + port
 	waitForEndpoint(t, endpoint, 3*time.Second)
 	testAttachWelcome(t, platon, endpoint, httpAPIs)
 
-	platon.Interrupt()
-	platon.ExpectExit()
 }
 
 func testAttachWelcome(t *testing.T, platon *testplaton, endpoint, apis string) {
