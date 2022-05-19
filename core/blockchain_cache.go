@@ -287,13 +287,14 @@ func (bcc *BlockChainCache) Execute(block *types.Block, parent *types.Block) err
 	SenderCacher.RecoverFromBlock(types.NewEIP155Signer(bcc.chainConfig.ChainID), block)
 
 	log.Debug("Start execute block", "hash", block.Hash(), "number", block.Number(), "sealHash", block.Header().SealHash())
-	start := time.Now()
+
 	state, err := bcc.MakeStateDB(parent)
-	elapse := time.Since(start)
 	if err != nil {
 		return errors.New("execute block error")
 	}
 
+	start := time.Now()
+	elapse := time.Since(start)
 	t := time.Now()
 	//to execute
 	receipts, err := bcc.ProcessDirectly(block, state, parent)
