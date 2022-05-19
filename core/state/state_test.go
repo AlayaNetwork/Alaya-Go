@@ -33,23 +33,26 @@ import (
 
 	"github.com/AlayaNetwork/Alaya-Go/trie"
 
-	checker "gopkg.in/check.v1"
-
 	"github.com/AlayaNetwork/Alaya-Go/common"
 	"github.com/AlayaNetwork/Alaya-Go/crypto"
 	"github.com/AlayaNetwork/Alaya-Go/ethdb"
 )
 
-type StateSuite struct {
+var toAddr = common.BytesToAddress
+
+type stateTest struct {
 	db    ethdb.Database
 	state *StateDB
 }
 
-var _ = checker.Suite(&StateSuite{})
+func newStateTest() *stateTest {
+	db := rawdb.NewMemoryDatabase()
+	sdb, _ := New(common.Hash{}, NewDatabase(db))
+	return &stateTest{db: db, state: sdb}
+}
 
-var toAddr = common.BytesToAddress
-
-func (s *StateSuite) TestDump(c *checker.C) {
+func TestDump(t *testing.T) {
+	s := newStateTest()
 	// generate a few entries
 	obj1 := s.state.GetOrNewStateObject(toAddr([]byte{0x01}))
 	obj1.AddBalance(big.NewInt(22))
@@ -97,16 +100,12 @@ func (s *StateSuite) TestDump(c *checker.C) {
     }
 }`
 	if got != want {
-		c.Errorf("dump mismatch:\ngot: %s\nwant: %s\n", got, want)
+		t.Errorf("dump mismatch:\ngot: %s\nwant: %s\n", got, want)
 	}
 }
 
-func (s *StateSuite) SetUpTest(c *checker.C) {
-	s.db = rawdb.NewMemoryDatabase()
-	s.state, _ = New(common.Hash{}, NewDatabase(s.db))
-}
-
-func (s *StateSuite) TestNull(c *checker.C) {
+func TestNull(t *testing.T) {
+	s := newStateTest()
 	address := common.MustBech32ToAddress("atx1qqqqqqyzx9q8zzl38xgwg5qpxeexmz649nlcfu")
 	s.state.CreateAccount(address)
 	value := common.FromHex("0x823140710bf13990e4500136726d8b55")
@@ -118,15 +117,16 @@ func (s *StateSuite) TestNull(c *checker.C) {
 	s.state.Commit(false)
 
 	if value := s.state.GetState(address, key); bytes.Compare(value, value) != 0 {
-		c.Error("expected empty current value")
+		t.Error("expected empty current value")
 	}
 }
 
-func (s *StateSuite) TestSnapshot(c *checker.C) {
+func TestSnapshot(t *testing.T) {
 	stateobjaddr := toAddr([]byte("aa"))
 	var storageaddr common.Hash
 	data1 := common.BytesToHash([]byte{42})
 	data2 := common.BytesToHash([]byte{43})
+	s := newStateTest()
 
 	// snapshot the genesis state
 	genesis := s.state.Snapshot()
@@ -139,19 +139,28 @@ func (s *StateSuite) TestSnapshot(c *checker.C) {
 	s.state.SetState(stateobjaddr, storageaddr.Bytes(), data2.Bytes())
 	s.state.RevertToSnapshot(snapshot)
 
-	c.Assert(common.BytesToHash(s.state.GetState(stateobjaddr, storageaddr.Bytes())), checker.DeepEquals, data1)
+	if v := s.state.GetState(stateobjaddr, storageaddr.Bytes()); !bytes.Equal(v, data1.Bytes()) {
+		t.Errorf("wrong storage value %v, want %v", v, data1)
+	}
+	if v := s.state.GetCommittedState(stateobjaddr, storageaddr.Bytes()); !bytes.Equal(v, []byte("")) {
+		t.Errorf("wrong committed storage value %v, want %v", v, []byte(""))
+	}
 
 	// revert up to the genesis state and ensure correct content
 	s.state.RevertToSnapshot(genesis)
-	c.Assert(common.BytesToHash(s.state.GetState(stateobjaddr, storageaddr.Bytes())), checker.DeepEquals, common.Hash{})
+	if v := s.state.GetState(stateobjaddr, storageaddr.Bytes()); !bytes.Equal(v, []byte("")) {
+		t.Errorf("wrong storage value %v, want %v", v, []byte(""))
+	}
+	if v := s.state.GetCommittedState(stateobjaddr, storageaddr.Bytes()); !bytes.Equal(v, []byte("")) {
+		t.Errorf("wrong committed storage value %v, want %v", v, []byte(""))
+	}
 }
 
-func (s *StateSuite) TestSnapshotEmpty(c *checker.C) {
+func TestSnapshotEmpty(t *testing.T) {
+	s := newStateTest()
 	s.state.RevertToSnapshot(s.state.Snapshot())
 }
 
-// use testing instead of checker because checker does not support
-// printing/logging in tests (-check.vv does not work)
 func TestSnapshot2(t *testing.T) {
 	state, _ := New(common.Hash{}, NewDatabase(rawdb.NewMemoryDatabase()))
 

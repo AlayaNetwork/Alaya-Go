@@ -1,4 +1,4 @@
-// Copyright 2014 The go-ethereum Authors
+// Copyright 2019 The go-ethereum Authors
 // This file is part of the go-ethereum library.
 //
 // The go-ethereum library is free software: you can redistribute it and/or modify
@@ -14,12 +14,23 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
-package state
+package keystore
 
 import (
-	"testing"
-
-	checker "gopkg.in/check.v1"
+	"github.com/AlayaNetwork/Alaya-Go/accounts/keystore"
+	"os"
 )
 
-func Test(t *testing.T) { checker.TestingT(t) }
+func Fuzz(input []byte) int {
+	ks := keystore.NewKeyStore("/tmp/ks", keystore.LightScryptN, keystore.LightScryptP)
+
+	a, err := ks.NewAccount(string(input))
+	if err != nil {
+		panic(err)
+	}
+	if err := ks.Unlock(a, string(input)); err != nil {
+		panic(err)
+	}
+	os.Remove(a.URL.Path)
+	return 0
+}
