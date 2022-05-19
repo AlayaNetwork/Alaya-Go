@@ -20,8 +20,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/AlayaNetwork/Alaya-Go/cmd/utils"
 	"gopkg.in/urfave/cli.v1"
+
+	"github.com/AlayaNetwork/Alaya-Go/cmd/utils"
 )
 
 const (
@@ -45,6 +46,7 @@ func init() {
 		commandGenblskeypair,
 		commandAddressHexToBech32,
 	}
+	cli.CommandHelpTemplate = utils.OriginCommandHelpTemplate
 }
 
 // Commonly used command line flags.

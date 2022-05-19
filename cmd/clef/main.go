@@ -26,7 +26,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/mattn/go-isatty"
 	"io"
 	"io/ioutil"
 	"os"
@@ -36,7 +35,11 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/mattn/go-isatty"
+
 	"gopkg.in/urfave/cli.v1"
+
+	colorable "github.com/mattn/go-colorable"
 
 	"github.com/AlayaNetwork/Alaya-Go/cmd/utils"
 	"github.com/AlayaNetwork/Alaya-Go/common"
@@ -47,7 +50,6 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/signer/core"
 	"github.com/AlayaNetwork/Alaya-Go/signer/rules"
 	"github.com/AlayaNetwork/Alaya-Go/signer/storage"
-	colorable "github.com/mattn/go-colorable"
 )
 
 // ExternalAPIVersion -- see extapi_changelog.md
@@ -197,7 +199,7 @@ func init() {
 	}
 	app.Action = signer
 	app.Commands = []cli.Command{initCommand, attestCommand, addCredentialCommand}
-
+	cli.CommandHelpTemplate = utils.OriginCommandHelpTemplate
 }
 func main() {
 	if err := app.Run(os.Args); err != nil {

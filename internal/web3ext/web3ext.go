@@ -18,14 +18,14 @@
 package web3ext
 
 var Modules = map[string]string{
-	"admin":      AdminJs,
-	"debug":      DebugJs,
-	"platon":     PlatonJs,
-	"miner":      MinerJs,
-	"net":        NetJs,
-	"personal":   PersonalJs,
-	"rpc":        RpcJs,
-	"txpool":     TxpoolJs,
+	"admin":    AdminJs,
+	"debug":    DebugJs,
+	"platon":   PlatonJs,
+	"miner":    MinerJs,
+	"net":      NetJs,
+	"personal": PersonalJs,
+	"rpc":      RpcJs,
+	"txpool":   TxpoolJs,
 }
 
 const AdminJs = `
@@ -118,6 +118,11 @@ const DebugJs = `
 web3._extend({
 	property: 'debug',
 	methods: [
+		new web3._extend.Method({
+			name: 'accountRange',
+			call: 'debug_accountRange',
+			params: 2
+		}),	
 		new web3._extend.Method({
 			name: 'printBlock',
 			call: 'debug_printBlock',

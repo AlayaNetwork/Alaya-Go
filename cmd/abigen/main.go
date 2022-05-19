@@ -33,7 +33,6 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/cmd/utils"
 	"github.com/AlayaNetwork/Alaya-Go/common/compiler"
 	"github.com/AlayaNetwork/Alaya-Go/crypto"
-	"github.com/AlayaNetwork/Alaya-Go/internal/flags"
 	"github.com/AlayaNetwork/Alaya-Go/log"
 )
 
@@ -103,7 +102,7 @@ var (
 )
 
 func init() {
-	app = flags.NewApp(gitCommit, gitDate, "ethereum checkpoint helper tool")
+	app = utils.NewApp(gitCommit, gitDate, "alaya checkpoint helper tool")
 	app.Flags = []cli.Flag{
 		abiFlag,
 		binFlag,
@@ -120,7 +119,7 @@ func init() {
 		aliasFlag,
 	}
 	app.Action = utils.MigrateFlags(abigen)
-	cli.CommandHelpTemplate = flags.OriginCommandHelpTemplate
+	cli.CommandHelpTemplate = utils.OriginCommandHelpTemplate
 }
 
 func abigen(c *cli.Context) error {
