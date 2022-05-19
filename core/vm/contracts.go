@@ -20,8 +20,9 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"errors"
-	"github.com/AlayaNetwork/Alaya-Go/crypto/blake2b"
 	"math/big"
+
+	"github.com/AlayaNetwork/Alaya-Go/crypto/blake2b"
 
 	"github.com/AlayaNetwork/Alaya-Go/common/vm"
 
@@ -30,6 +31,8 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/crypto"
 	"github.com/AlayaNetwork/Alaya-Go/crypto/bn256"
 	"github.com/AlayaNetwork/Alaya-Go/params"
+
+	//lint:ignore SA1019 Needed for precompile
 	"golang.org/x/crypto/ripemd160"
 )
 

@@ -26,7 +26,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/mattn/go-isatty"
 	"io"
 	"io/ioutil"
 	"os"
@@ -36,7 +35,11 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/mattn/go-isatty"
+
 	"gopkg.in/urfave/cli.v1"
+
+	colorable "github.com/mattn/go-colorable"
 
 	"github.com/AlayaNetwork/Alaya-Go/cmd/utils"
 	"github.com/AlayaNetwork/Alaya-Go/common"
@@ -47,7 +50,6 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/signer/core"
 	"github.com/AlayaNetwork/Alaya-Go/signer/rules"
 	"github.com/AlayaNetwork/Alaya-Go/signer/storage"
-	colorable "github.com/mattn/go-colorable"
 )
 
 // ExternalAPIVersion -- see extapi_changelog.md
@@ -197,7 +199,7 @@ func init() {
 	}
 	app.Action = signer
 	app.Commands = []cli.Command{initCommand, attestCommand, addCredentialCommand}
-
+	cli.CommandHelpTemplate = utils.OriginCommandHelpTemplate
 }
 func main() {
 	if err := app.Run(os.Args); err != nil {
@@ -303,7 +305,7 @@ func initialize(c *cli.Context) error {
 	if c.Bool(stdiouiFlag.Name) {
 		logOutput = os.Stderr
 		// If using the stdioui, we can't do the 'confirm'-flow
-		fmt.Fprintf(logOutput, legalWarning)
+		fmt.Fprint(logOutput, legalWarning)
 	} else {
 		if !confirm(legalWarning) {
 			return fmt.Errorf("aborted by user")
@@ -476,7 +478,7 @@ func signer(c *cli.Context) error {
 		},
 	})
 
-	abortChan := make(chan os.Signal)
+	abortChan := make(chan os.Signal, 1)
 	signal.Notify(abortChan, os.Interrupt)
 
 	sig := <-abortChan
@@ -571,7 +573,7 @@ func checkFile(filename string) error {
 
 // confirm displays a text and asks for user confirmation
 func confirm(text string) bool {
-	fmt.Printf(text)
+	fmt.Print(text)
 	fmt.Printf("\nEnter 'ok' to proceed:\n>")
 
 	text, err := bufio.NewReader(os.Stdin).ReadString('\n')

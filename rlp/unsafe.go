@@ -1,4 +1,4 @@
-// Copyright 2014 The go-ethereum Authors
+// Copyright 2021 The go-ethereum Authors
 // This file is part of the go-ethereum library.
 //
 // The go-ethereum library is free software: you can redistribute it and/or modify
@@ -14,12 +14,22 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
-package state
+//go:build !nacl && !js && cgo
+// +build !nacl,!js,cgo
+
+package rlp
 
 import (
-	"testing"
-
-	checker "gopkg.in/check.v1"
+	"reflect"
+	"unsafe"
 )
 
-func Test(t *testing.T) { checker.TestingT(t) }
+// byteArrayBytes returns a slice of the byte array v.
+func byteArrayBytes(v reflect.Value, length int) []byte {
+	var s []byte
+	hdr := (*reflect.SliceHeader)(unsafe.Pointer(&s))
+	hdr.Data = v.UnsafeAddr()
+	hdr.Cap = length
+	hdr.Len = length
+	return s
+}
