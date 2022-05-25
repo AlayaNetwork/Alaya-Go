@@ -18,7 +18,6 @@ package main
 
 import (
 	"crypto/rand"
-	"github.com/AlayaNetwork/Alaya-Go/params"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -27,6 +26,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/AlayaNetwork/Alaya-Go/params"
 )
 
 const (
@@ -79,11 +80,14 @@ func TestIPCAttachWelcome(t *testing.T) {
 	platon := runPlatON(t,
 		"--port", "0", "--alaya", "--maxpeers", "60", "--nodiscover", "--nat", "none", "--ipcpath", ipc)
 
-	time.Sleep(2 * time.Second) // Simple way to wait for the RPC endpoint to open
+	defer func() {
+		platon.Interrupt()
+		platon.ExpectExit()
+	}()
+
+	waitForEndpoint(t, ipc, 3*time.Second)
 	testAttachWelcome(t, platon, "ipc:"+ipc, ipcAPIs)
 
-	platon.Interrupt()
-	platon.ExpectExit()
 }
 
 func TestHTTPAttachWelcome(t *testing.T) {
@@ -92,11 +96,15 @@ func TestHTTPAttachWelcome(t *testing.T) {
 		"--port", "0", "--ipcdisable", "--alaya", "--maxpeers", "60", "--nodiscover", "--nat", "none",
 		"--rpc", "--rpcport", port)
 
-	time.Sleep(2 * time.Second) // Simple way to wait for the RPC endpoint to open
-	testAttachWelcome(t, platon, "http://localhost:"+port, httpAPIs)
+	defer func() {
+		platon.Interrupt()
+		platon.ExpectExit()
+	}()
 
-	platon.Interrupt()
-	platon.ExpectExit()
+	endpoint := "http://127.0.0.1:" + port
+	waitForEndpoint(t, endpoint, 3*time.Second)
+	testAttachWelcome(t, platon, endpoint, httpAPIs)
+
 }
 
 func TestWSAttachWelcome(t *testing.T) {
@@ -106,11 +114,15 @@ func TestWSAttachWelcome(t *testing.T) {
 		"--port", "0", "--ipcdisable", "--alaya", "--maxpeers", "60", "--nodiscover", "--nat", "none",
 		"--ws", "--wsport", port /*, "--testnet"*/)
 
-	time.Sleep(2 * time.Second) // Simple way to wait for the RPC endpoint to open
-	testAttachWelcome(t, platon, "ws://localhost:"+port, httpAPIs)
+	defer func() {
+		platon.Interrupt()
+		platon.ExpectExit()
+	}()
 
-	platon.Interrupt()
-	platon.ExpectExit()
+	endpoint := "ws://127.0.0.1:" + port
+	waitForEndpoint(t, endpoint, 3*time.Second)
+	testAttachWelcome(t, platon, endpoint, httpAPIs)
+
 }
 
 func testAttachWelcome(t *testing.T, platon *testplaton, endpoint, apis string) {

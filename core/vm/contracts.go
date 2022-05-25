@@ -26,17 +26,15 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/crypto/blake2b"
 	"github.com/AlayaNetwork/Alaya-Go/log"
 	"github.com/AlayaNetwork/Alaya-Go/x/handler"
-
 	"github.com/AlayaNetwork/Alaya-Go/common/vm"
-
-	"golang.org/x/crypto/ripemd160"
-
 	"github.com/AlayaNetwork/Alaya-Go/common"
 	"github.com/AlayaNetwork/Alaya-Go/common/math"
 	"github.com/AlayaNetwork/Alaya-Go/crypto"
 	"github.com/AlayaNetwork/Alaya-Go/crypto/bn256"
 	"github.com/AlayaNetwork/Alaya-Go/params"
 
+	//lint:ignore SA1019 Needed for precompile
+	"golang.org/x/crypto/ripemd160"
 	vrf2 "github.com/AlayaNetwork/Alaya-Go/crypto/vrf"
 )
 
