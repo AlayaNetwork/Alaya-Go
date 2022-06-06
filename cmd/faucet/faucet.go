@@ -41,6 +41,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gorilla/websocket"
+
 	"github.com/AlayaNetwork/Alaya-Go/accounts"
 	"github.com/AlayaNetwork/Alaya-Go/accounts/keystore"
 	"github.com/AlayaNetwork/Alaya-Go/common"
@@ -58,7 +60,6 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/p2p/discv5"
 	"github.com/AlayaNetwork/Alaya-Go/p2p/nat"
 	"github.com/AlayaNetwork/Alaya-Go/params"
-	"github.com/gorilla/websocket"
 )
 
 var (
@@ -251,7 +252,6 @@ func newFaucet(genesis *core.Genesis, port int, enodes []*discv5.Node, network u
 	if err != nil {
 		return nil, fmt.Errorf("Failed to register the Ethereum service: %w", err)
 	}
-
 	// Assemble the ethstats monitoring and reporting service'
 	if stats != "" {
 		if err := ethstats.New(stack, lesBackend.ApiBackend, lesBackend.Engine(), stats); err != nil {
@@ -298,7 +298,6 @@ func (f *faucet) listenAndServe(port int) error {
 
 	http.HandleFunc("/", f.webHandler)
 	http.HandleFunc("/api", f.apiHandler)
-
 	return http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
 }
 
@@ -353,6 +352,7 @@ func (f *faucet) apiHandler(w http.ResponseWriter, r *http.Request) {
 
 		if head == nil || balance == nil {
 			// Report the faucet offline until initial stats are ready
+			//lint:ignore ST1005 This error is to be displayed in the browser
 			if err = sendError(conn, errors.New("Faucet offline")); err != nil {
 				log.Warn("Failed to send faucet error to client", "err", err)
 				return
@@ -361,11 +361,14 @@ func (f *faucet) apiHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	// Send over the initial stats and the latest header
+	f.lock.RLock()
+	reqs := f.reqs
+	f.lock.RUnlock()
 	if err = send(conn, map[string]interface{}{
 		"funds":    new(big.Int).Div(balance, ether),
 		"funded":   nonce,
 		"peers":    f.stack.Server().PeerCount(),
-		"requests": f.reqs,
+		"requests": reqs,
 	}, 3*time.Second); err != nil {
 		log.Warn("Failed to send initial stats to client", "err", err)
 		return
@@ -394,6 +397,7 @@ func (f *faucet) apiHandler(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		if msg.Tier >= uint(*tiersFlag) {
+			//lint:ignore ST1005 This error is to be displayed in the browser
 			if err = sendError(conn, errors.New("Invalid funding tier requested")); err != nil {
 				log.Warn("Failed to send tier error to client", "err", err)
 				return
@@ -431,6 +435,7 @@ func (f *faucet) apiHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			if !result.Success {
 				log.Warn("Captcha verification failed", "err", string(result.Errors))
+				//lint:ignore ST1005 it's funny and the robot won't mind
 				if err = sendError(conn, errors.New("Beep-bop, you're a robot!")); err != nil {
 					log.Warn("Failed to send captcha failure to client", "err", err)
 					return
@@ -754,6 +759,7 @@ func authFacebook(url string) (string, string, common.Address, error) {
 func authNoAuth(url string) (string, string, common.Address, error) {
 	address := common.HexToAddress(regexp.MustCompile("0x[0-9a-fA-F]{40}").FindString(url))
 	if address == (common.Address{}) {
+		//lint:ignore ST1005 This error is to be displayed in the browser
 		return "", "", common.Address{}, errors.New("No Alaya-Go address found to fund")
 	}
 	return address.Hex() + "@noauth", "", address, nil
