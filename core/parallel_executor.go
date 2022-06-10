@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/AlayaNetwork/Alaya-Go/x/gov"
 	"github.com/AlayaNetwork/Alaya-Go/crypto"
 
 	"github.com/panjf2000/ants/v2"
@@ -241,6 +242,6 @@ func (exe *Executor) isContract(tx *types.Transaction, state *state.StateDB, ctx
 	if _, ok := ctx.tempContractCache[*address]; ok {
 		return true
 	}
-	isContract := vm.IsPrecompiledContract(*address) || state.GetCodeSize(*address) > 0
+	isContract := vm.IsPrecompiledContract(*address, gov.Gte170VersionState(state)) || state.GetCodeSize(*address) > 0
 	return isContract
 }

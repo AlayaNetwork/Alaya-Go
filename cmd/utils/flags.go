@@ -46,6 +46,7 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/consensus"
 	"github.com/AlayaNetwork/Alaya-Go/consensus/cbft/types"
 	"github.com/AlayaNetwork/Alaya-Go/core"
+	types2 "github.com/AlayaNetwork/Alaya-Go/core/types"
 	"github.com/AlayaNetwork/Alaya-Go/core/vm"
 	"github.com/AlayaNetwork/Alaya-Go/crypto"
 	"github.com/AlayaNetwork/Alaya-Go/crypto/bls"
@@ -341,6 +342,10 @@ var (
 		Name:  "http.api",
 		Usage: "API's offered over the HTTP-RPC interface",
 		Value: "",
+	}
+	HTTPEnabledEthCompatibleFlag = cli.BoolFlag{
+		Name:  "http.ethcompatible",
+		Usage: "Enable eth compatible",
 	}
 	GraphQLEnabledFlag = cli.BoolFlag{
 		Name:  "graphql",
@@ -755,6 +760,9 @@ func setHTTP(ctx *cli.Context, cfg *node.Config) {
 	}
 	if ctx.GlobalIsSet(HTTPApiFlag.Name) {
 		cfg.HTTPModules = splitAndTrim(ctx.GlobalString(HTTPApiFlag.Name))
+	}
+	if ctx.GlobalBool(HTTPEnabledEthCompatibleFlag.Name) {
+		types2.HttpEthCompatible = true
 	}
 
 	if ctx.GlobalIsSet(LegacyRPCVirtualHostsFlag.Name) {

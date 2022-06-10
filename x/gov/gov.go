@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Alaya-Go library. If not, see <http://www.gnu.org/licenses/>.
 
-
 package gov
 
 import (
@@ -98,6 +97,14 @@ func Gte0160VersionState(state xcom.StateDB) bool {
 
 func Gte0160Version(version uint32) bool {
 	return version >= params.FORKVERSION_0_16_0
+}
+
+func Gte170VersionState(state xcom.StateDB) bool {
+	return Gte170Version(GetCurrentActiveVersion(state))
+}
+
+func Gte170Version(version uint32) bool {
+	return version >= params.FORKVERSION_0_17_0
 }
 
 func WriteEcHash0140(state xcom.StateDB) error {
