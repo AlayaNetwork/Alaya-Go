@@ -766,9 +766,10 @@ func DoCall(ctx context.Context, b Backend, args CallArgs, blockNrOrHash rpc.Blo
 	if err := overrides.Apply(state); err != nil {
 		return nil, err
 	}
+
 	// Set sender address or use zero address if none specified.
 	var addr common.Address
-	if args.From == nil {
+	if args.From != nil {
 		addr = *args.From
 	}
 
