@@ -223,7 +223,7 @@ func (b *bridge) readPinAndReopenWallet(call jsre.Call) (goja.Value, error) {
 	}
 	openWallet, callable := goja.AssertFunction(getJplaton(call.VM).Get("openWallet"))
 	if !callable {
-		return nil, fmt.Errorf("jeth.openWallet is not callable")
+		return nil, fmt.Errorf("jplaton.openWallet is not callable")
 	}
 	return openWallet(goja.Null(), wallet, call.VM.ToValue(input))
 }
@@ -304,7 +304,7 @@ func (b *bridge) Sign(call jsre.Call) (goja.Value, error) {
 	// Send the request to the backend and return
 	sign, callable := goja.AssertFunction(getJplaton(call.VM).Get("unlockAccount"))
 	if !callable {
-		return nil, fmt.Errorf("jeth.unlockAccount is not callable")
+		return nil, fmt.Errorf("jplaton.unlockAccount is not callable")
 	}
 	return sign(goja.Null(), message, account, passwd)
 }
@@ -351,7 +351,7 @@ func (b *bridge) SleepBlocks(call jsre.Call) (goja.Value, error) {
 	)
 	for time.Now().Before(deadline) {
 		var number hexutil.Uint64
-		if err := b.client.Call(&number, "eth_blockNumber"); err != nil {
+		if err := b.client.Call(&number, "platon_blockNumber"); err != nil {
 			return nil, err
 		}
 		if number != lastNumber {
