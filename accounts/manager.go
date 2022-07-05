@@ -17,10 +17,11 @@
 package accounts
 
 import (
-	"github.com/AlayaNetwork/Alaya-Go/common"
 	"reflect"
 	"sort"
 	"sync"
+
+	"github.com/AlayaNetwork/Alaya-Go/common"
 
 	"github.com/AlayaNetwork/Alaya-Go/event"
 )
@@ -141,6 +142,11 @@ func (am *Manager) Wallets() []Wallet {
 	am.lock.RLock()
 	defer am.lock.RUnlock()
 
+	return am.walletsNoLock()
+}
+
+// walletsNoLock returns all registered wallets. Callers must hold am.lock.
+func (am *Manager) walletsNoLock() []Wallet {
 	cpy := make([]Wallet, len(am.wallets))
 	copy(cpy, am.wallets)
 	return cpy
@@ -155,7 +161,7 @@ func (am *Manager) Wallet(url string) (Wallet, error) {
 	if err != nil {
 		return nil, err
 	}
-	for _, wallet := range am.Wallets() {
+	for _, wallet := range am.walletsNoLock() {
 		if wallet.URL() == parsed {
 			return wallet, nil
 		}

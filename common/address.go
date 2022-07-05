@@ -11,7 +11,7 @@ import (
 
 	"golang.org/x/crypto/sha3"
 
-	"github.com/btcsuite/btcutil/bech32"
+	"github.com/btcsuite/btcd/btcutil/bech32"
 
 	"github.com/AlayaNetwork/Alaya-Go/common/bech32util"
 	"github.com/AlayaNetwork/Alaya-Go/common/hexutil"
