@@ -19,7 +19,6 @@ package adapters
 import (
 	"bytes"
 	"context"
-	"crypto/ecdsa"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -137,7 +136,6 @@ type ExecNode struct {
 	client  *rpc.Client
 	wsAddr  string
 	newCmd  func() *exec.Cmd
-	key     *ecdsa.PrivateKey
 }
 
 // Addr returns the node's enode URL
@@ -280,7 +278,7 @@ func (n *ExecNode) Stop() error {
 	if err := n.Cmd.Process.Signal(syscall.SIGTERM); err != nil {
 		return n.Cmd.Process.Kill()
 	}
-	waitErr := make(chan error)
+	waitErr := make(chan error, 1)
 	go func() {
 		waitErr <- n.Cmd.Wait()
 	}()
