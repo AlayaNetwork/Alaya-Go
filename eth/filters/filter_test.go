@@ -32,7 +32,6 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/core/rawdb"
 	"github.com/AlayaNetwork/Alaya-Go/core/types"
 	"github.com/AlayaNetwork/Alaya-Go/crypto"
-	"github.com/AlayaNetwork/Alaya-Go/event"
 	"github.com/AlayaNetwork/Alaya-Go/params"
 )
 
@@ -53,24 +52,19 @@ func BenchmarkFilters(b *testing.B) {
 	defer os.RemoveAll(dir)
 
 	var (
-		db, _      = rawdb.NewLevelDBDatabase(dir, 0, 0, "")
-		mux        = new(event.TypeMux)
-		txFeed     = new(event.Feed)
-		rmLogsFeed = new(event.Feed)
-		logsFeed   = new(event.Feed)
-		chainFeed  = new(event.Feed)
-		backend    = &testBackend{mux, db, 0, txFeed, rmLogsFeed, logsFeed, chainFeed}
-		key1, _    = crypto.HexToECDSA("b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291")
-		addr1      = crypto.PubkeyToAddress(key1.PublicKey)
-		addr2      = common.BytesToAddress([]byte("jeff"))
-		addr3      = common.BytesToAddress([]byte("ethereum"))
-		addr4      = common.BytesToAddress([]byte("random addresses please"))
+		db, _   = rawdb.NewLevelDBDatabase(dir, 0, 0, "")
+		backend = &testBackend{db: db}
+		key1, _ = crypto.HexToECDSA("b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291")
+		addr1   = crypto.PubkeyToAddress(key1.PublicKey)
+		addr2   = common.BytesToAddress([]byte("jeff"))
+		addr3   = common.BytesToAddress([]byte("ethereum"))
+		addr4   = common.BytesToAddress([]byte("random addresses please"))
 	)
 	defer db.Close()
 
 	genesis := core.GenesisBlockForTesting(db, addr1, big.NewInt(1000000))
 
-	ctx := node.NewServiceContext(&node.Config{DataDir: ""}, nil, new(event.TypeMux), nil)
+	ctx, _ := node.New(&node.Config{DataDir: ""})
 	chain, receipts := core.GenerateChain(params.TestChainConfig, genesis, cbft.New(params.GrapeChainConfig.Cbft, nil, nil, ctx), db, 100010, func(i int, gen *core.BlockGen) {
 		switch i {
 		case 2403:
@@ -114,15 +108,10 @@ func TestFilters(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	var (
-		db, _      = rawdb.NewLevelDBDatabase(dir, 0, 0, "")
-		mux        = new(event.TypeMux)
-		txFeed     = new(event.Feed)
-		rmLogsFeed = new(event.Feed)
-		logsFeed   = new(event.Feed)
-		chainFeed  = new(event.Feed)
-		backend    = &testBackend{mux, db, 0, txFeed, rmLogsFeed, logsFeed, chainFeed}
-		key1, _    = crypto.HexToECDSA("b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291")
-		addr       = crypto.PubkeyToAddress(key1.PublicKey)
+		db, _   = rawdb.NewLevelDBDatabase(dir, 0, 0, "")
+		backend = &testBackend{db: db}
+		key1, _ = crypto.HexToECDSA("b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291")
+		addr    = crypto.PubkeyToAddress(key1.PublicKey)
 
 		hash1 = common.BytesToHash([]byte("topic1"))
 		hash2 = common.BytesToHash([]byte("topic2"))

@@ -23,6 +23,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/AlayaNetwork/Alaya-Go/x/gov"
+
 	"github.com/AlayaNetwork/Alaya-Go/common"
 	"github.com/AlayaNetwork/Alaya-Go/core/vm"
 	"github.com/AlayaNetwork/Alaya-Go/log"
@@ -241,7 +243,7 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 	ctx := context.Background()
 	var cancelFn context.CancelFunc
 	if st.evm.GetVMConfig().VmTimeoutDuration > 0 &&
-		(contractCreation || !vm.IsPrecompiledContract(*(msg.To()))) {
+		(contractCreation || !vm.IsPrecompiledContract(*(msg.To()), gov.Gte170VersionState(st.state))) {
 
 		timeout := time.Duration(st.evm.GetVMConfig().VmTimeoutDuration) * time.Millisecond
 		ctx, cancelFn = context.WithTimeout(ctx, timeout)

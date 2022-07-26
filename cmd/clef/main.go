@@ -35,7 +35,11 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/mattn/go-isatty"
+
 	"gopkg.in/urfave/cli.v1"
+
+	colorable "github.com/mattn/go-colorable"
 
 	"github.com/AlayaNetwork/Alaya-Go/cmd/utils"
 	"github.com/AlayaNetwork/Alaya-Go/common"
@@ -179,11 +183,11 @@ func init() {
 		utils.NetworkIdFlag,
 		utils.LightKDFFlag,
 		utils.NoUSBFlag,
-		utils.RPCListenAddrFlag,
-		utils.RPCVirtualHostsFlag,
+		utils.HTTPListenAddrFlag,
+		utils.HTTPVirtualHostsFlag,
 		utils.IPCDisabledFlag,
 		utils.IPCPathFlag,
-		utils.RPCEnabledFlag,
+		utils.HTTPEnabledFlag,
 		rpcPortFlag,
 		signerSecretFlag,
 		dBFlag,
@@ -195,7 +199,7 @@ func init() {
 	}
 	app.Action = signer
 	app.Commands = []cli.Command{initCommand, attestCommand, addCredentialCommand}
-
+	cli.CommandHelpTemplate = utils.OriginCommandHelpTemplate
 }
 func main() {
 	if err := app.Run(os.Args); err != nil {
@@ -301,14 +305,20 @@ func initialize(c *cli.Context) error {
 	if c.Bool(stdiouiFlag.Name) {
 		logOutput = os.Stderr
 		// If using the stdioui, we can't do the 'confirm'-flow
-		fmt.Fprintf(logOutput, legalWarning)
+		fmt.Fprint(logOutput, legalWarning)
 	} else {
 		if !confirm(legalWarning) {
 			return fmt.Errorf("aborted by user")
 		}
 	}
 
-	log.Root().SetHandler(log.LvlFilterHandler(log.Lvl(c.Int(logLevelFlag.Name)), log.StreamHandler(logOutput, log.TerminalFormat(true))))
+	usecolor := (isatty.IsTerminal(os.Stderr.Fd()) || isatty.IsCygwinTerminal(os.Stderr.Fd())) && os.Getenv("TERM") != "dumb"
+	output := io.Writer(logOutput)
+	if usecolor {
+		output = colorable.NewColorable(logOutput)
+	}
+	log.Root().SetHandler(log.LvlFilterHandler(log.Lvl(c.Int(logLevelFlag.Name)), log.StreamHandler(output, log.TerminalFormat(usecolor))))
+
 	return nil
 }
 
@@ -364,7 +374,7 @@ func signer(c *cli.Context) error {
 			hasher := sha256.New()
 			hasher.Write(ruleJS)
 			shasum := hasher.Sum(nil)
-			storedShasum := configStorage.Get("ruleset_sha256")
+			storedShasum, _ := configStorage.Get("ruleset_sha256")
 			if storedShasum != hex.EncodeToString(shasum) {
 				log.Info("Could not validate ruleset hash, rules not enabled", "got", hex.EncodeToString(shasum), "expected", storedShasum)
 			} else {
@@ -409,10 +419,9 @@ func signer(c *cli.Context) error {
 			Service:   api,
 			Version:   "1.0"},
 	}
-	if c.Bool(utils.RPCEnabledFlag.Name) {
-
-		vhosts := splitAndTrim(c.GlobalString(utils.RPCVirtualHostsFlag.Name))
-		cors := splitAndTrim(c.GlobalString(utils.RPCCORSDomainFlag.Name))
+	if c.Bool(utils.HTTPEnabledFlag.Name) {
+		vhosts := splitAndTrim(c.GlobalString(utils.HTTPVirtualHostsFlag.Name))
+		cors := splitAndTrim(c.GlobalString(utils.HTTPCORSDomainFlag.Name))
 
 		srv := rpc.NewServer()
 		err := node.RegisterApisFromWhitelist(rpcAPI, []string{"account"}, srv, false)
@@ -422,17 +431,18 @@ func signer(c *cli.Context) error {
 		handler := node.NewHTTPHandlerStack(srv, cors, vhosts)
 
 		// start http server
-		httpEndpoint := fmt.Sprintf("%s:%d", c.String(utils.RPCListenAddrFlag.Name), c.Int(rpcPortFlag.Name))
-		listener, err := node.StartHTTPEndpoint(httpEndpoint, rpc.DefaultHTTPTimeouts, handler)
+		httpEndpoint := fmt.Sprintf("%s:%d", c.GlobalString(utils.HTTPListenAddrFlag.Name), c.Int(rpcPortFlag.Name))
+		httpServer, addr, err := node.StartHTTPEndpoint(httpEndpoint, rpc.DefaultHTTPTimeouts, handler)
 		if err != nil {
 			utils.Fatalf("Could not start RPC api: %v", err)
 		}
-		extapiURL = fmt.Sprintf("http://%s", httpEndpoint)
+		extapiURL = fmt.Sprintf("http://%v/", addr)
 		log.Info("HTTP endpoint opened", "url", extapiURL)
 
 		defer func() {
-			listener.Close()
-			log.Info("HTTP endpoint closed", "url", httpEndpoint)
+			// Don't bother imposing a timeout here.
+			httpServer.Shutdown(context.Background())
+			log.Info("HTTP endpoint closed", "url", extapiURL)
 		}()
 
 	}
@@ -468,7 +478,7 @@ func signer(c *cli.Context) error {
 		},
 	})
 
-	abortChan := make(chan os.Signal)
+	abortChan := make(chan os.Signal, 1)
 	signal.Notify(abortChan, os.Interrupt)
 
 	sig := <-abortChan
@@ -563,7 +573,7 @@ func checkFile(filename string) error {
 
 // confirm displays a text and asks for user confirmation
 func confirm(text string) bool {
-	fmt.Printf(text)
+	fmt.Print(text)
 	fmt.Printf("\nEnter 'ok' to proceed:\n>")
 
 	text, err := bufio.NewReader(os.Stdin).ReadString('\n')

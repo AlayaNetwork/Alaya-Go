@@ -41,7 +41,7 @@ import (
 	"sync"
 	"time"
 
-	"golang.org/x/net/websocket"
+	"github.com/gorilla/websocket"
 
 	"github.com/AlayaNetwork/Alaya-Go/accounts"
 	"github.com/AlayaNetwork/Alaya-Go/accounts/keystore"
@@ -242,23 +242,19 @@ func newFaucet(genesis *core.Genesis, port int, enodes []*discv5.Node, network u
 	if err != nil {
 		return nil, err
 	}
+
 	// Assemble the Ethereum light client protocol
-	if err := stack.Register(func(ctx *node.ServiceContext) (node.Service, error) {
-		cfg := eth.DefaultConfig
-		cfg.SyncMode = downloader.LightSync
-		cfg.NetworkId = network
-		cfg.Genesis = genesis
-		return les.New(ctx, &cfg)
-	}); err != nil {
-		return nil, err
+	cfg := eth.DefaultConfig
+	cfg.SyncMode = downloader.LightSync
+	cfg.NetworkId = network
+	cfg.Genesis = genesis
+	lesBackend, err := les.New(stack, &cfg)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to register the Ethereum service: %w", err)
 	}
 	// Assemble the ethstats monitoring and reporting service'
 	if stats != "" {
-		if err := stack.Register(func(ctx *node.ServiceContext) (node.Service, error) {
-			var serv *les.LightEthereum
-			ctx.Service(&serv)
-			return ethstats.New(stats, nil, serv)
-		}); err != nil {
+		if err := ethstats.New(stack, lesBackend.ApiBackend, lesBackend.Engine(), stats); err != nil {
 			return nil, err
 		}
 	}
@@ -273,7 +269,7 @@ func newFaucet(genesis *core.Genesis, port int, enodes []*discv5.Node, network u
 	// Attach to the client and retrieve and interesting metadatas
 	api, err := stack.Attach()
 	if err != nil {
-		stack.Stop()
+		stack.Close()
 		return nil, err
 	}
 	client := ethclient.NewClient(api)
@@ -301,8 +297,7 @@ func (f *faucet) listenAndServe(port int) error {
 	go f.loop()
 
 	http.HandleFunc("/", f.webHandler)
-	http.Handle("/api", websocket.Handler(f.apiHandler))
-
+	http.HandleFunc("/api", f.apiHandler)
 	return http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
 }
 
@@ -313,7 +308,13 @@ func (f *faucet) webHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // apiHandler handles requests for Ether grants and transaction statuses.
-func (f *faucet) apiHandler(conn *websocket.Conn) {
+func (f *faucet) apiHandler(w http.ResponseWriter, r *http.Request) {
+	upgrader := websocket.Upgrader{}
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		return
+	}
+
 	// Start tracking the connection and drop at the end
 	defer conn.Close()
 
@@ -336,7 +337,6 @@ func (f *faucet) apiHandler(conn *websocket.Conn) {
 		head    *types.Header
 		balance *big.Int
 		nonce   uint64
-		err     error
 	)
 	for head == nil || balance == nil {
 		// Retrieve the current stats cached by the faucet
@@ -352,6 +352,7 @@ func (f *faucet) apiHandler(conn *websocket.Conn) {
 
 		if head == nil || balance == nil {
 			// Report the faucet offline until initial stats are ready
+			//lint:ignore ST1005 This error is to be displayed in the browser
 			if err = sendError(conn, errors.New("Faucet offline")); err != nil {
 				log.Warn("Failed to send faucet error to client", "err", err)
 				return
@@ -360,11 +361,14 @@ func (f *faucet) apiHandler(conn *websocket.Conn) {
 		}
 	}
 	// Send over the initial stats and the latest header
+	f.lock.RLock()
+	reqs := f.reqs
+	f.lock.RUnlock()
 	if err = send(conn, map[string]interface{}{
 		"funds":    new(big.Int).Div(balance, ether),
 		"funded":   nonce,
 		"peers":    f.stack.Server().PeerCount(),
-		"requests": f.reqs,
+		"requests": reqs,
 	}, 3*time.Second); err != nil {
 		log.Warn("Failed to send initial stats to client", "err", err)
 		return
@@ -381,7 +385,7 @@ func (f *faucet) apiHandler(conn *websocket.Conn) {
 			Tier    uint   `json:"tier"`
 			Captcha string `json:"captcha"`
 		}
-		if err = websocket.JSON.Receive(conn, &msg); err != nil {
+		if err = conn.ReadJSON(&msg); err != nil {
 			return
 		}
 		if !*noauthFlag && !strings.HasPrefix(msg.URL, "https://gist.github.com/") && !strings.HasPrefix(msg.URL, "https://twitter.com/") &&
@@ -393,6 +397,7 @@ func (f *faucet) apiHandler(conn *websocket.Conn) {
 			continue
 		}
 		if msg.Tier >= uint(*tiersFlag) {
+			//lint:ignore ST1005 This error is to be displayed in the browser
 			if err = sendError(conn, errors.New("Invalid funding tier requested")); err != nil {
 				log.Warn("Failed to send tier error to client", "err", err)
 				return
@@ -430,6 +435,7 @@ func (f *faucet) apiHandler(conn *websocket.Conn) {
 			}
 			if !result.Success {
 				log.Warn("Captcha verification failed", "err", string(result.Errors))
+				//lint:ignore ST1005 it's funny and the robot won't mind
 				if err = sendError(conn, errors.New("Beep-bop, you're a robot!")); err != nil {
 					log.Warn("Failed to send captcha failure to client", "err", err)
 					return
@@ -659,7 +665,7 @@ func send(conn *websocket.Conn, value interface{}, timeout time.Duration) error 
 		timeout = 60 * time.Second
 	}
 	conn.SetWriteDeadline(time.Now().Add(timeout))
-	return websocket.JSON.Send(conn, value)
+	return conn.WriteJSON(value)
 }
 
 // sendError transmits an error to the remote end of the websocket, also setting
@@ -753,6 +759,7 @@ func authFacebook(url string) (string, string, common.Address, error) {
 func authNoAuth(url string) (string, string, common.Address, error) {
 	address := common.HexToAddress(regexp.MustCompile("0x[0-9a-fA-F]{40}").FindString(url))
 	if address == (common.Address{}) {
+		//lint:ignore ST1005 This error is to be displayed in the browser
 		return "", "", common.Address{}, errors.New("No Alaya-Go address found to fund")
 	}
 	return address.Hex() + "@noauth", "", address, nil

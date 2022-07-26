@@ -17,12 +17,15 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"path/filepath"
 
-	"github.com/AlayaNetwork/Alaya-Go/trie"
+	"github.com/AlayaNetwork/Alaya-Go/eth"
+
 	"github.com/AlayaNetwork/Alaya-Go/core/rawdb"
+	"github.com/AlayaNetwork/Alaya-Go/trie"
 
 	"os"
 	"strconv"
@@ -30,11 +33,11 @@ import (
 
 	"gopkg.in/urfave/cli.v1"
 
-	"github.com/AlayaNetwork/Alaya-Go/core/snapshotdb"
 	"github.com/AlayaNetwork/Alaya-Go/cmd/utils"
 	"github.com/AlayaNetwork/Alaya-Go/common"
 	"github.com/AlayaNetwork/Alaya-Go/console"
 	"github.com/AlayaNetwork/Alaya-Go/core"
+	"github.com/AlayaNetwork/Alaya-Go/core/snapshotdb"
 	"github.com/AlayaNetwork/Alaya-Go/core/state"
 	"github.com/AlayaNetwork/Alaya-Go/core/types"
 	"github.com/AlayaNetwork/Alaya-Go/eth/downloader"
@@ -58,6 +61,18 @@ This is a destructive action and changes the network in which you will be
 participating.
 
 It expects the genesis file as argument.`,
+	}
+	dumpGenesisCommand = cli.Command{
+		Action:    utils.MigrateFlags(dumpGenesis),
+		Name:      "dumpgenesis",
+		Usage:     "Dumps genesis block JSON configuration to stdout",
+		ArgsUsage: "",
+		Flags: []cli.Flag{
+			utils.DataDirFlag,
+		},
+		Category: "BLOCKCHAIN COMMANDS",
+		Description: `
+The dumpgenesis command dumps the genesis block configuration in JSON format to stdout.`,
 	}
 	importPreimagesCommand = cli.Command{
 		Action:    utils.MigrateFlags(importPreimages),
@@ -159,7 +174,7 @@ func initGenesis(ctx *cli.Context) error {
 	}
 
 	// Open an initialise both full and light databases
-	stack := makeFullNode(ctx)
+	stack, _ := makeConfigNode(ctx)
 	defer stack.Close()
 
 	for _, name := range []string{"chaindata", "lightchaindata"} {
@@ -206,6 +221,17 @@ func initGenesis(ctx *cli.Context) error {
 	return nil
 }
 
+func dumpGenesis(ctx *cli.Context) error {
+	genesis := utils.MakeGenesis(ctx)
+	if genesis == nil {
+		genesis = core.DefaultAlayaGenesisBlock()
+	}
+	if err := json.NewEncoder(os.Stdout).Encode(genesis); err != nil {
+		utils.Fatalf("could not encode genesis")
+	}
+	return nil
+}
+
 type FakeBackend struct {
 	bc *core.BlockChain
 }
@@ -223,7 +249,7 @@ func importPreimages(ctx *cli.Context) error {
 	if len(ctx.Args()) < 1 {
 		utils.Fatalf("This command requires an argument.")
 	}
-	stack := makeFullNode(ctx)
+	stack, _ := makeFullNode(ctx)
 	defer stack.Close()
 
 	diskdb := utils.MakeChainDatabase(ctx, stack)
@@ -241,7 +267,7 @@ func exportPreimages(ctx *cli.Context) error {
 	if len(ctx.Args()) < 1 {
 		utils.Fatalf("This command requires an argument.")
 	}
-	stack := makeFullNode(ctx)
+	stack, _ := makeFullNode(ctx)
 	defer stack.Close()
 
 	diskdb := utils.MakeChainDatabase(ctx, stack)
@@ -267,7 +293,7 @@ func copyDb(ctx *cli.Context) error {
 		utils.Fatalf("Source SnapshotDBD directory (path to a local ppos database) path argument missing")
 	}
 	// Initialize a new chain for the running node to sync into
-	stack := makeFullNode(ctx)
+	stack, _ := makeFullNode(ctx)
 	defer stack.Close()
 
 	chain, chainDb := utils.MakeChain(ctx, stack)
@@ -379,8 +405,13 @@ func confirmAndRemoveDB(database string, kind string) {
 }
 
 func dump(ctx *cli.Context) error {
-	stack := makeFullNode(ctx)
+	stack, _ := makeFullNode(ctx)
 	defer stack.Close()
+
+	opts := &state.DumpConfig{
+		OnlyWithAddresses: true,
+		Max:               eth.AccountRangeMaxResults, // Sanity limit over RPC
+	}
 
 	chain, chainDb := utils.MakeChain(ctx, stack)
 	for _, arg := range ctx.Args() {
@@ -399,7 +430,7 @@ func dump(ctx *cli.Context) error {
 			if err != nil {
 				utils.Fatalf("could not create new state: %v", err)
 			}
-			fmt.Printf("%s\n", state.Dump())
+			fmt.Printf("%s\n", state.Dump(opts))
 		}
 	}
 	chainDb.Close()

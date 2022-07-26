@@ -66,6 +66,7 @@ func (opts *CallOpts) GetGasLimit() int64 { return 0 /* TODO(karalabe) */ }
 func (opts *CallOpts) SetPending(pending bool)     { opts.opts.Pending = pending }
 func (opts *CallOpts) SetGasLimit(limit int64)     { /* TODO(karalabe) */ }
 func (opts *CallOpts) SetContext(context *Context) { opts.opts.Context = context.context }
+func (opts *CallOpts) SetFrom(addr *Address)       { opts.opts.From = addr.address }
 
 // TransactOpts is the collection of authorization data required to create a
 // valid Ethereum transaction.
@@ -154,20 +155,12 @@ func (c *BoundContract) GetDeployer() *Transaction {
 // Call invokes the (constant) contract method with params as input values and
 // sets the output to result.
 func (c *BoundContract) Call(opts *CallOpts, out *Interfaces, method string, args *Interfaces) error {
-	if len(out.objects) == 1 {
-		result := out.objects[0]
-		if err := c.contract.Call(&opts.opts, result, method, args.objects...); err != nil {
-			return err
-		}
-		out.objects[0] = result
-	} else {
-		results := make([]interface{}, len(out.objects))
-		copy(results, out.objects)
-		if err := c.contract.Call(&opts.opts, &results, method, args.objects...); err != nil {
-			return err
-		}
-		copy(out.objects, results)
+	results := make([]interface{}, len(out.objects))
+	copy(results, out.objects)
+	if err := c.contract.Call(&opts.opts, &results, method, args.objects...); err != nil {
+		return err
 	}
+	copy(out.objects, results)
 	return nil
 }
 

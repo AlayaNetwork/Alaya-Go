@@ -19,11 +19,11 @@ package trie
 import (
 	"bytes"
 	"fmt"
+	"github.com/AlayaNetwork/Alaya-Go/rlp"
 
 	"github.com/AlayaNetwork/Alaya-Go/common"
 	"github.com/AlayaNetwork/Alaya-Go/ethdb"
 	"github.com/AlayaNetwork/Alaya-Go/log"
-	"github.com/AlayaNetwork/Alaya-Go/rlp"
 )
 
 // Prove constructs a merkle proof for key. The result contains all encoded nodes
@@ -64,26 +64,24 @@ func (t *Trie) Prove(key []byte, fromLevel uint, proofDb ethdb.KeyValueWriter) e
 			panic(fmt.Sprintf("%T: invalid node: %v", tn, tn))
 		}
 	}
-	hasher := newHasher(nil)
+	hasher := newHasher(false)
 	defer returnHasherToPool(hasher)
 
 	for i, n := range nodes {
-		// Don't bother checking for errors here since hasher panics
-		// if encoding doesn't work and we're not writing to any database.
-		n, _, _ = hasher.hashChildren(n, nil)
-		hn, _ := hasher.store(n, nil, false)
+		if fromLevel > 0 {
+			fromLevel--
+			continue
+		}
+		var hn node
+		n, hn = hasher.proofHash(n)
 		if hash, ok := hn.(hashNode); ok || i == 0 {
 			// If the node's database encoding is a hash (or is the
 			// root node), it becomes a proof element.
-			if fromLevel > 0 {
-				fromLevel--
-			} else {
-				enc, _ := rlp.EncodeToBytes(n)
-				if !ok {
-					hash = hasher.makeHashNode(enc)
-				}
-				proofDb.Put(hash, enc)
+			enc, _ := rlp.EncodeToBytes(n)
+			if !ok {
+				hash = hasher.hashData(enc)
 			}
+			proofDb.Put(hash, enc)
 		}
 	}
 	return nil
@@ -103,8 +101,6 @@ func (t *SecureTrie) Prove(key []byte, fromLevel uint, proofDb ethdb.KeyValueWri
 // VerifyProof checks merkle proofs. The given proof must contain the value for
 // key in a trie with the given root hash. VerifyProof returns an error if the
 // proof contains invalid trie nodes or the wrong value.
-//
-// Note, the method assumes that all key-values in proofDb satisfy key = hash(value).
 func VerifyProof(rootHash common.Hash, key []byte, proofDb ethdb.KeyValueReader) (value []byte, nodes int, err error) {
 	key = keybytesToHex(key)
 	wantHash := rootHash

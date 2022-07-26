@@ -19,12 +19,13 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/AlayaNetwork/Alaya-Go/accounts/abi"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	"github.com/AlayaNetwork/Alaya-Go/accounts/abi"
 
 	"gopkg.in/urfave/cli.v1"
 
@@ -32,7 +33,6 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/cmd/utils"
 	"github.com/AlayaNetwork/Alaya-Go/common/compiler"
 	"github.com/AlayaNetwork/Alaya-Go/crypto"
-	"github.com/AlayaNetwork/Alaya-Go/internal/flags"
 	"github.com/AlayaNetwork/Alaya-Go/log"
 )
 
@@ -97,12 +97,12 @@ var (
 	}
 	aliasFlag = cli.StringFlag{
 		Name:  "alias",
-		Usage: "Comma separated aliases for function and event renaming, e.g. original1=alias1, original2=alias2",
+		Usage: "Comma separated aliases for function and event renaming, e.g. foo=bar",
 	}
 )
 
 func init() {
-	app = flags.NewApp(gitCommit, gitDate, "ethereum checkpoint helper tool")
+	app = utils.NewApp(gitCommit, gitDate, "alaya checkpoint helper tool")
 	app.Flags = []cli.Flag{
 		abiFlag,
 		binFlag,
@@ -119,7 +119,7 @@ func init() {
 		aliasFlag,
 	}
 	app.Action = utils.MigrateFlags(abigen)
-	cli.CommandHelpTemplate = flags.OriginCommandHelpTemplate
+	cli.CommandHelpTemplate = utils.OriginCommandHelpTemplate
 }
 
 func abigen(c *cli.Context) error {

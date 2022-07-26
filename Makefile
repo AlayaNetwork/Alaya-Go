@@ -8,7 +8,7 @@
 .PHONY: geth-darwin geth-darwin-386 geth-darwin-amd64
 .PHONY: geth-windows geth-windows-386 geth-windows-amd64
 
-GOBIN = $(shell pwd)/build/bin
+GOBIN = ./build/bin
 GO ?= latest
 GPATH = $(shell go env GOPATH)
 GORUN = env GO111MODULE=on GOPATH=$(GPATH) go run
@@ -79,7 +79,6 @@ lint: ## Run linters.
 
 clean:
 	./build/clean_deps.sh
-	./build/clean_go_build_cache.sh
 	env GO111MODULE=on go clean -cache
 	rm -fr build/_workspace/pkg/ $(GOBIN)/*
 

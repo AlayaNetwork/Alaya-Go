@@ -19,8 +19,6 @@ package core
 
 import (
 	"context"
-	"sync"
-
 	"github.com/AlayaNetwork/Alaya-Go/internal/ethapi"
 	"github.com/AlayaNetwork/Alaya-Go/log"
 	"github.com/AlayaNetwork/Alaya-Go/rpc"
@@ -28,7 +26,6 @@ import (
 
 type StdIOUI struct {
 	client rpc.Client
-	mu     sync.Mutex
 }
 
 func NewStdIOUI() *StdIOUI {

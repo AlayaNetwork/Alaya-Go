@@ -18,14 +18,19 @@ package simulations
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"math/rand"
 	"net/http/httptest"
+	"os"
 	"reflect"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/AlayaNetwork/Alaya-Go/log"
+	"github.com/mattn/go-colorable"
 
 	"github.com/AlayaNetwork/Alaya-Go/event"
 	"github.com/AlayaNetwork/Alaya-Go/node"
@@ -34,6 +39,15 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/p2p/simulations/adapters"
 	"github.com/AlayaNetwork/Alaya-Go/rpc"
 )
+
+func TestMain(m *testing.M) {
+	loglevel := flag.Int("loglevel", 2, "verbosity of logs")
+
+	flag.Parse()
+	log.PrintOrigins(true)
+	log.Root().SetHandler(log.LvlFilterHandler(log.Lvl(*loglevel), log.StreamHandler(colorable.NewColorableStderr(), log.TerminalFormat(true))))
+	os.Exit(m.Run())
+}
 
 // testService implements the node.Service interface and provides protocols
 // and APIs which are useful for testing nodes in a simulation network
@@ -51,12 +65,15 @@ type testService struct {
 	state atomic.Value
 }
 
-func newTestService(ctx *adapters.ServiceContext) (node.Service, error) {
+func newTestService(ctx *adapters.ServiceContext, stack *node.Node) (node.Lifecycle, error) {
 	svc := &testService{
 		id:    ctx.Config.ID,
 		peers: make(map[discover.NodeID]*testPeer),
 	}
 	svc.state.Store(ctx.Snapshot)
+
+	stack.RegisterProtocols(svc.Protocols())
+	stack.RegisterAPIs(svc.APIs())
 	return svc, nil
 }
 
@@ -113,7 +130,7 @@ func (t *testService) APIs() []rpc.API {
 	}}
 }
 
-func (t *testService) Start(server *p2p.Server) error {
+func (t *testService) Start() error {
 	return nil
 }
 
@@ -275,7 +292,7 @@ func (t *TestAPI) Events(ctx context.Context) (*rpc.Subscription, error) {
 	return rpcSub, nil
 }
 
-var testServices = adapters.Services{
+var testServices = adapters.LifecycleConstructors{
 	"test": newTestService,
 }
 

@@ -484,12 +484,12 @@ func (ec *Client) SendTransaction(ctx context.Context, tx *types.Transaction) er
 	if err != nil {
 		return err
 	}
-	return ec.c.CallContext(ctx, nil, "platon_sendRawTransaction", common.ToHex(data))
+	return ec.c.CallContext(ctx, nil, "platon_sendRawTransaction", hexutil.Encode(data))
 }
 
 func (ec *Client) GetSchnorrNIZKProve(ctx context.Context) (string, error) {
 	var res string
-	err := ec.c.CallContext(ctx, &res, "platon_getSchnorrNIZKProve", nil)
+	err := ec.c.CallContext(ctx, &res, "platon_getSchnorrNIZKProve")
 	if err != nil {
 		return "", err
 	}
@@ -498,7 +498,7 @@ func (ec *Client) GetSchnorrNIZKProve(ctx context.Context) (string, error) {
 
 func (ec *Client) GetProgramVersion(ctx context.Context) (*params.ProgramVersion, error) {
 	var res *params.ProgramVersion
-	err := ec.c.CallContext(ctx, &res, "admin_getProgramVersion", nil)
+	err := ec.c.CallContext(ctx, &res, "admin_getProgramVersion")
 	if err != nil {
 		return nil, err
 	}
