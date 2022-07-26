@@ -718,7 +718,7 @@ func opCall(pc *uint64, interpreter *EVMInterpreter, callContext *callCtx) ([]by
 	}
 	callContext.contract.Gas += returnGas
 
-	if IsPlatONPrecompiledContract(toAddr) {
+	if IsPlatONPrecompiledContract(toAddr, false) {
 		saveTransData(interpreter, args, callContext.contract.self.Address().Bytes(), addr.Bytes(), string(ret))
 	}
 
@@ -785,7 +785,7 @@ func opDelegateCall(pc *uint64, interpreter *EVMInterpreter, callContext *callCt
 	}
 	callContext.contract.Gas += returnGas
 
-	if IsPlatONPrecompiledContract(toAddr) {
+	if IsPlatONPrecompiledContract(toAddr, false) {
 		saveTransData(interpreter, args, callContext.contract.CallerAddress.Bytes(), addr.Bytes(), string(ret))
 	}
 
