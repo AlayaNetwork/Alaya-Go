@@ -23,12 +23,13 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"golang.org/x/crypto/sha3"
 	"hash"
 	"io"
 	"io/ioutil"
 	"math/big"
 	"os"
+
+	"golang.org/x/crypto/sha3"
 
 	"github.com/AlayaNetwork/Alaya-Go/common"
 	"github.com/AlayaNetwork/Alaya-Go/common/math"
