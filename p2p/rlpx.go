@@ -28,7 +28,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/AlayaNetwork/Alaya-Go/metrics"
-	"golang.org/x/crypto/sha3"
 	"hash"
 	"io"
 	"io/ioutil"
