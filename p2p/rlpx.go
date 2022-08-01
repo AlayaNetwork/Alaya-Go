@@ -37,6 +37,8 @@ import (
 	"sync"
 	"time"
 
+	"golang.org/x/crypto/sha3"
+
 	"github.com/AlayaNetwork/Alaya-Go/log"
 
 	"github.com/golang/snappy"
