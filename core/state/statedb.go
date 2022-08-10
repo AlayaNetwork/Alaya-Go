@@ -663,16 +663,15 @@ func (s *StateDB) getStateObjectSnapshot(addr common.Address, key []byte) []byte
 			return value
 		}
 
-		value, cached := obj.originStorage[string(key)]
-		if cached {
-			return value
-		}
-
 		value, pending := obj.pendingStorage[string(key)]
 		if pending {
 			return value
 		}
 
+		value, cached := obj.originStorage[string(key)]
+		if cached {
+			return value
+		}
 	}
 	return nil
 }
