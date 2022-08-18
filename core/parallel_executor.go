@@ -1,11 +1,13 @@
 package core
 
 import (
-	"github.com/AlayaNetwork/Alaya-Go/crypto"
 	"math/big"
 	"runtime"
 	"sync"
 	"time"
+
+	"github.com/AlayaNetwork/Alaya-Go/x/gov"
+	"github.com/AlayaNetwork/Alaya-Go/crypto"
 
 	"github.com/panjf2000/ants/v2"
 
@@ -33,7 +35,7 @@ type Executor struct {
 	signer       types.Signer
 
 	workerPool *ants.PoolWithFunc
-	txpool *TxPool
+	txpool     *TxPool
 }
 
 type TaskArgs struct {
@@ -140,11 +142,11 @@ func (exe *Executor) ExecuteTransactions(ctx *ParallelContext) error {
 	}
 
 	// dag print info
-/*	logVerbosity := debug.GetLogVerbosity()
-	if logVerbosity == log.LvlTrace {
-		inf := ctx.txListInfo()
-		log.Trace("TxList Info", "blockNumber", ctx.header.Number, "txList", inf)
-	}*/
+	/*	logVerbosity := debug.GetLogVerbosity()
+		if logVerbosity == log.LvlTrace {
+			inf := ctx.txListInfo()
+			log.Trace("TxList Info", "blockNumber", ctx.header.Number, "txList", inf)
+		}*/
 
 	return nil
 }
@@ -218,7 +220,7 @@ func (exe *Executor) executeContractTransaction(ctx *ParallelContext, idx int) {
 
 	//log.Debug("execute contract", "txHash", tx.Hash(), "txIdx", idx, "gasPool", ctx.gp.Gas(), "txGasLimit", tx.Gas())
 	ctx.GetState().Prepare(tx.Hash(), ctx.GetBlockHash(), int(ctx.GetState().TxIdx()))
-	receipt, _, err := ApplyTransaction(exe.chainConfig, exe.chainContext, ctx.GetGasPool(), ctx.GetState(), ctx.GetHeader(), tx, ctx.GetBlockGasUsedHolder(), exe.vmCfg)
+	receipt, err := ApplyTransaction(exe.chainConfig, exe.chainContext, ctx.GetGasPool(), ctx.GetState(), ctx.GetHeader(), tx, ctx.GetBlockGasUsedHolder(), exe.vmCfg)
 	if err != nil {
 		log.Warn("Execute contract transaction failed", "blockNumber", ctx.GetHeader().Number.Uint64(), "txHash", tx.Hash(), "gasPool", ctx.GetGasPool().Gas(), "txGasLimit", tx.Gas(), "err", err.Error())
 		ctx.GetState().RevertToSnapshot(snap)
@@ -240,6 +242,6 @@ func (exe *Executor) isContract(tx *types.Transaction, state *state.StateDB, ctx
 	if _, ok := ctx.tempContractCache[*address]; ok {
 		return true
 	}
-	isContract := vm.IsPrecompiledContract(*address) || state.GetCodeSize(*address) > 0
+	isContract := vm.IsPrecompiledContract(*address, gov.Gte170VersionState(state)) || state.GetCodeSize(*address) > 0
 	return isContract
 }

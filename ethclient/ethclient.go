@@ -89,6 +89,13 @@ func (ec *Client) BlockByNumber(ctx context.Context, number *big.Int) (*types.Bl
 	return ec.getBlock(ctx, "platon_getBlockByNumber", toBlockNumArg(number), true)
 }
 
+// BlockNumber returns the most recent block number
+func (ec *Client) BlockNumber(ctx context.Context) (uint64, error) {
+	var result hexutil.Uint64
+	err := ec.c.CallContext(ctx, &result, "eth_blockNumber")
+	return uint64(result), err
+}
+
 type rpcBlock struct {
 	Hash         common.Hash      `json:"hash"`
 	Transactions []rpcTransaction `json:"transactions"`
@@ -484,12 +491,12 @@ func (ec *Client) SendTransaction(ctx context.Context, tx *types.Transaction) er
 	if err != nil {
 		return err
 	}
-	return ec.c.CallContext(ctx, nil, "platon_sendRawTransaction", common.ToHex(data))
+	return ec.c.CallContext(ctx, nil, "platon_sendRawTransaction", hexutil.Encode(data))
 }
 
 func (ec *Client) GetSchnorrNIZKProve(ctx context.Context) (string, error) {
 	var res string
-	err := ec.c.CallContext(ctx, &res, "platon_getSchnorrNIZKProve", nil)
+	err := ec.c.CallContext(ctx, &res, "platon_getSchnorrNIZKProve")
 	if err != nil {
 		return "", err
 	}
@@ -498,7 +505,7 @@ func (ec *Client) GetSchnorrNIZKProve(ctx context.Context) (string, error) {
 
 func (ec *Client) GetProgramVersion(ctx context.Context) (*params.ProgramVersion, error) {
 	var res *params.ProgramVersion
-	err := ec.c.CallContext(ctx, &res, "admin_getProgramVersion", nil)
+	err := ec.c.CallContext(ctx, &res, "admin_getProgramVersion")
 	if err != nil {
 		return nil, err
 	}
