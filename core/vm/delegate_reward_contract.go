@@ -18,8 +18,8 @@ package vm
 
 import (
 	"fmt"
+	"github.com/AlayaNetwork/Alaya-Go/common/sort"
 	"math/big"
-	"sort"
 
 	"github.com/AlayaNetwork/Alaya-Go/x/gov"
 	"github.com/AlayaNetwork/Alaya-Go/x/staking"
